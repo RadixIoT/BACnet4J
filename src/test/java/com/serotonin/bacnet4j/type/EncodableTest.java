@@ -29,6 +29,8 @@ package com.serotonin.bacnet4j.type;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.UnsupportedEncodingException;
+
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.enums.DayOfWeek;
@@ -58,6 +60,9 @@ import com.serotonin.bacnet4j.type.primitive.SignedInteger;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.Unsigned8;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import com.serotonin.bacnet4j.type.primitive.encoding.CharacterEncoding;
+import com.serotonin.bacnet4j.type.primitive.encoding.DbcsCp932CharacterEncoder;
+import com.serotonin.bacnet4j.type.primitive.encoding.StandardCharacterEncodings;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class EncodableTest {
@@ -152,6 +157,20 @@ public class EncodableTest {
         decodePrimitive("9C5B011804", 9, new Date(1991, Month.JANUARY, 24, DayOfWeek.THURSDAY));
         decodePrimitive("4C11232D11", 4, new Time(17, 35, 45, 17));
         decodePrimitive("4C00C0000F", 4, new ObjectIdentifier(ObjectType.binaryInput, 15));
+    }
+
+    @Test
+    public void shouldDecodeJapaneseEncoding() throws BACnetException, UnsupportedEncodingException {
+        ByteQueue queue = new ByteQueue();
+        String text = "JapaneseEncoding ｦ";
+        CharacterString value = new CharacterString(
+                new CharacterEncoding(StandardCharacterEncodings.IBM_MS_DBCS,
+                        DbcsCp932CharacterEncoder.JAPANESE_CODEPAGE),
+                text);
+        value.write(queue);
+
+        CharacterString characterString = Encodable.read(queue, CharacterString.class);
+        assertEquals(text, characterString.getValue());
     }
 
     private static void decodePrimitive(final String hex, final Primitive expected) throws BACnetException {
