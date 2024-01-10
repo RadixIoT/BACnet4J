@@ -4,7 +4,10 @@
 /target
 /build
 /.gradle
+gradlew*
+/gradle
 /gradle.properties
 /.classpath
 /.project
 /.settings
+/.idea
