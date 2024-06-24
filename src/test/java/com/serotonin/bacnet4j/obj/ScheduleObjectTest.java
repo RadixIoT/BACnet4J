@@ -44,13 +44,17 @@ import com.serotonin.bacnet4j.type.notificationParameters.ChangeOfReliabilityNot
 import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Date;
+import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.Primitive;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.RequestUtils;
 
 public class ScheduleObjectTest extends AbstractTest {
+    private final float defaultScheduledValue = 999;
+
     @Test
     public void fullTest() throws Exception {
         // Not really a full test. The effective period could be better.
@@ -76,7 +80,7 @@ public class ScheduleObjectTest extends AbstractTest {
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(10)),
                         new TimeValue(new Time(17, 0, 0, 0), new Real(11)))), //
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(12)),
-                        new TimeValue(new Time(17, 0, 0, 0), new Real(13)))), //
+                        new TimeValue(new Time(17, 0, 0, 0), new Null()))), //
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(14)),
                         new TimeValue(new Time(17, 0, 0, 0), new Real(15)))), //
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(9, 0, 0, 0), new Real(16)),
@@ -96,7 +100,7 @@ public class ScheduleObjectTest extends AbstractTest {
                         new UnsignedInteger(7)), // Calendar
                 new SpecialEvent(new CalendarEntry(new Date(-1, null, 8, DayOfWeek.WEDNESDAY)),
                         new SequenceOf<>(new TimeValue(new Time(10, 30, 0, 0), new Real(24)),
-                                new TimeValue(new Time(17, 0, 0, 0), new Real(25))),
+                                new TimeValue(new Time(17, 0, 0, 0), new Null())),
                         new UnsignedInteger(6)) // 7th is a Wednesday
         );
         final SequenceOf<DeviceObjectPropertyReference> listOfObjectPropertyReferences = new SequenceOf<>( //
@@ -106,7 +110,7 @@ public class ScheduleObjectTest extends AbstractTest {
         );
 
         final ScheduleObject so = new ScheduleObject(d1, 0, "sch0", effectivePeriod, weeklySchedule, exceptionSchedule,
-                new Real(8), listOfObjectPropertyReferences, 12, false);
+                new Real(defaultScheduledValue), listOfObjectPropertyReferences, 12, false);
 
         Thread.sleep(100); // Let the requests be received.
         Assert.assertEquals(new Real(14), so.get(PropertyIdentifier.presentValue));
@@ -114,36 +118,38 @@ public class ScheduleObjectTest extends AbstractTest {
         Assert.assertEquals(new Real(14), av1.get(PropertyIdentifier.presentValue));
 
         // Start actual tests.
-        testTime(so, av0, av1, java.time.Month.MAY, 1, 17, 0, 15);
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 0, 0, 8);
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 9, 0, 16);
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 20, 0, 17);
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 0, 0, 8);
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 13, 0, 22);
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 14, 0, 23);
-        testTime(so, av0, av1, java.time.Month.MAY, 4, 0, 0, 8);
-        testTime(so, av0, av1, java.time.Month.MAY, 5, 0, 0, 8);
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 0, 0, 8);
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 8, 0, 10);
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 17, 0, 11);
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 0, 0, 8);
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 8, 0, 12);
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 17, 0, 13);
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 0, 0, 8);
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 10, 30, 24);
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 17, 0, 25);
-        testTime(so, av0, av1, java.time.Month.MAY, 9, 0, 0, 8);
+        testTime(so, av0, av1, java.time.Month.MAY, 1, 17, 0, 15f);
+        testTime(so, av0, av1, java.time.Month.MAY, 2, 0, 0, defaultScheduledValue);
+        testTime(so, av0, av1, java.time.Month.MAY, 2, 9, 0, 16f);
+        testTime(so, av0, av1, java.time.Month.MAY, 2, 20, 0, 17f);
+        testTime(so, av0, av1, java.time.Month.MAY, 3, 0, 0, defaultScheduledValue);
+        testTime(so, av0, av1, java.time.Month.MAY, 3, 13, 0, 22f);
+        testTime(so, av0, av1, java.time.Month.MAY, 3, 14, 0, 23f);
+        testTime(so, av0, av1, java.time.Month.MAY, 4, 0, 0, defaultScheduledValue);
+        testTime(so, av0, av1, java.time.Month.MAY, 5, 0, 0, defaultScheduledValue);
+        testTime(so, av0, av1, java.time.Month.MAY, 6, 0, 0, defaultScheduledValue);
+        testTime(so, av0, av1, java.time.Month.MAY, 6, 8, 0, 10f);
+        testTime(so, av0, av1, java.time.Month.MAY, 6, 17, 0, 11f);
+        testTime(so, av0, av1, java.time.Month.MAY, 7, 0, 0, defaultScheduledValue);
+        testTime(so, av0, av1, java.time.Month.MAY, 7, 8, 0, 12f);
+        testTime(so, av0, av1, java.time.Month.MAY, 7, 17, 0, null); // Null schedule
+        testTime(so, av0, av1, java.time.Month.MAY, 8, 0, 0, defaultScheduledValue);
+        testTime(so, av0, av1, java.time.Month.MAY, 8, 10, 30, 24f);
+        testTime(so, av0, av1, java.time.Month.MAY, 8, 17, 0, null);  // Null schedule
+        testTime(so, av0, av1, java.time.Month.MAY, 9, 0, 0, defaultScheduledValue);
     }
 
     private void testTime(final ScheduleObject so, final AnalogValueObject av0, final AnalogValueObject av1,
-            final java.time.Month month, final int day, final int hour, final int min, final float expectedValue)
+            final java.time.Month month, final int day, final int hour, final int min, final Float scheduledValue)
             throws Exception {
         clock.set(2115, month, day, hour, min, 0);
         so.updatePresentValue();
         Thread.sleep(100); // Let the requests be received.
-        Assert.assertEquals(new Real(expectedValue), so.get(PropertyIdentifier.presentValue));
-        Assert.assertEquals(new Real(expectedValue), av0.get(PropertyIdentifier.presentValue));
-        Assert.assertEquals(new Real(expectedValue), av1.get(PropertyIdentifier.presentValue));
+
+        Primitive expectedValue = scheduledValue == null ? new Real(defaultScheduledValue): new Real(scheduledValue);
+        Assert.assertEquals(expectedValue, so.get(PropertyIdentifier.presentValue));
+        Assert.assertEquals(expectedValue, av0.get(PropertyIdentifier.presentValue));
+        Assert.assertEquals(expectedValue, av1.get(PropertyIdentifier.presentValue));
     }
 
     @SuppressWarnings("unchecked")
