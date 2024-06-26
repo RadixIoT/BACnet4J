@@ -76,7 +76,12 @@ public class ScheduleObjectTest extends AbstractTest {
         final CalendarObject co = new CalendarObject(d1, 0, "cal0", dateList);
 
         final DateRange effectivePeriod = new DateRange(Date.UNSPECIFIED, Date.UNSPECIFIED);
-        final BACnetArray<DailySchedule> weeklySchedule = new BACnetArray<>( //
+
+        // Monday-Wednesday 8:00 and 17:00
+        // Thursday 9:00 and 20:00
+        // Friday 9:00 and 21:30
+        // Saturday-Sunday -
+        final BACnetArray<DailySchedule> weeklySchedule = new BACnetArray<>(
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(10)),
                         new TimeValue(new Time(17, 0, 0, 0), new Real(11)))), //
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(12)),
@@ -89,7 +94,11 @@ public class ScheduleObjectTest extends AbstractTest {
                         new TimeValue(new Time(21, 30, 0, 0), new Real(19)))), //
                 new DailySchedule(new SequenceOf<TimeValue>()), //
                 new DailySchedule(new SequenceOf<TimeValue>()));
-        final SequenceOf<SpecialEvent> exceptionSchedule = new SequenceOf<>( //
+
+        // Every Friday, November to February, The Wednesday during the 4th week of each month - 8:00 and 22:00 (Priority:10)
+        // Every Friday, November to February, The Wednesday during the 4th week of each month - 13:00 and 14:00 (Priority:7)
+        // 7.th Wednesday 10:30 and 17:00 (Priority:6)
+        final SequenceOf<SpecialEvent> exceptionSchedule = new SequenceOf<>(
                 new SpecialEvent(co.getId(),
                         new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(20)),
                                 new TimeValue(new Time(22, 0, 0, 0), new Real(21))),
@@ -118,25 +127,25 @@ public class ScheduleObjectTest extends AbstractTest {
         Assert.assertEquals(new Real(14), av1.get(PropertyIdentifier.presentValue));
 
         // Start actual tests.
-        testTime(so, av0, av1, java.time.Month.MAY, 1, 17, 0, 15f);
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 0, 0, defaultScheduledValue);
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 9, 0, 16f);
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 20, 0, 17f);
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 0, 0, defaultScheduledValue);
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 13, 0, 22f);
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 14, 0, 23f);
-        testTime(so, av0, av1, java.time.Month.MAY, 4, 0, 0, defaultScheduledValue);
-        testTime(so, av0, av1, java.time.Month.MAY, 5, 0, 0, defaultScheduledValue);
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 0, 0, defaultScheduledValue);
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 8, 0, 10f);
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 17, 0, 11f);
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 0, 0, defaultScheduledValue);
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 8, 0, 12f);
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 17, 0, null); // Null schedule
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 0, 0, defaultScheduledValue);
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 10, 30, 24f);
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 17, 0, null);  // Null schedule
-        testTime(so, av0, av1, java.time.Month.MAY, 9, 0, 0, defaultScheduledValue);
+        testTime(so, av0, av1, java.time.Month.MAY, 1, 17, 0, 15f); // Wednesday
+        testTime(so, av0, av1, java.time.Month.MAY, 2, 0, 0, defaultScheduledValue); // Thursday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 2, 9, 0, 16f); // Thursday
+        testTime(so, av0, av1, java.time.Month.MAY, 2, 20, 0, 17f); // Thursday
+        testTime(so, av0, av1, java.time.Month.MAY, 3, 0, 0, defaultScheduledValue); // Friday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 3, 13, 0, 22f); // Exception schedule at 13:00 with priority 7
+        testTime(so, av0, av1, java.time.Month.MAY, 3, 14, 0, 23f); // Exception schedule at 14:00 with priority 7
+        testTime(so, av0, av1, java.time.Month.MAY, 4, 0, 0, defaultScheduledValue); // Saturday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 5, 0, 0, defaultScheduledValue); // Sunday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 6, 0, 0, defaultScheduledValue); // Monday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 6, 8, 0, 10f); // Monday
+        testTime(so, av0, av1, java.time.Month.MAY, 6, 17, 0, 11f);  // Monday
+        testTime(so, av0, av1, java.time.Month.MAY, 7, 0, 0, defaultScheduledValue); // Tuesday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 7, 8, 0, 12f); // Tuesday
+        testTime(so, av0, av1, java.time.Month.MAY, 7, 17, 0, null); // Null schedule from weekly schedule
+        testTime(so, av0, av1, java.time.Month.MAY, 8, 0, 0, defaultScheduledValue); // Wednesday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 8, 10, 30, 24f); // Exception schedule at 10:30 with priority 6
+        testTime(so, av0, av1, java.time.Month.MAY, 8, 17, 0, null);  // Null schedule from exception schedule
+        testTime(so, av0, av1, java.time.Month.MAY, 9, 0, 0, defaultScheduledValue); // Thursday beginning of the day
     }
 
     private void testTime(final ScheduleObject so, final AnalogValueObject av0, final AnalogValueObject av1,

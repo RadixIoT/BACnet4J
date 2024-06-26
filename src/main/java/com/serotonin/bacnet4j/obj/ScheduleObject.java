@@ -341,6 +341,11 @@ public class ScheduleObject extends BACnetObject {
                 }
 
                 // Determine the new present value.
+                // Our interpretation for ANSI/ASHRAE Standard 135-2016, 12.24.4 Present_Value
+                // When exception schedule with NULL values ignored then there is no possible way to deactivate schedules.
+                // Existing weekly schedule or another exception schedule with lower priority whose current value is not NULL will be used as present value.
+                // That makes allowing NULL values has no effect at all and functionally useless.
+                // This code should apply default schedule value to present value whenever effective schedule has NULL value.
                 if (currentTv == null || currentTv.getValue().getClass().equals(Null.class))
                     newValue = scheduleDefault;
                 else
