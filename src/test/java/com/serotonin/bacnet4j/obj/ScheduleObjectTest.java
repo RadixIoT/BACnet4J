@@ -142,7 +142,6 @@ public class ScheduleObjectTest extends AbstractTest {
             final java.time.Month month, final int day, final int hour, final int min, final Primitive scheduledValue)
             throws Exception {
         clock.set(2115, month, day, hour, min, 0);
-        so.updatePresentValue();
         Thread.sleep(100); // Let the requests be received.
 
         if (scheduledValue.getClass().equals(Null.class)) {
@@ -415,8 +414,8 @@ public class ScheduleObjectTest extends AbstractTest {
                         new TimeValue(new Time(20, 0, 0, 0), new Real(17)))), //
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(9, 0, 0, 0), new Real(18)),
                         new TimeValue(new Time(21, 30, 0, 0), new Real(19)))), //
-                new DailySchedule(new SequenceOf<TimeValue>()), //
-                new DailySchedule(new SequenceOf<TimeValue>()));
+                new DailySchedule(new SequenceOf<>()), //
+                new DailySchedule(new SequenceOf<>()));
 
         // Every Friday, November to February, The Wednesday during the 4th week of each month - 8:00 and 22:00 (Priority:10)
         // Every Friday, November to February, The Wednesday during the 4th week of each month - 13:00 and 14:00 (Priority:7)
@@ -441,8 +440,7 @@ public class ScheduleObjectTest extends AbstractTest {
                 new DeviceObjectPropertyReference(av1.getId(), PropertyIdentifier.presentValue, null, null) //
         );
 
-        final ScheduleObject so = new ScheduleObject(d1, 0, "sch0", effectivePeriod, weeklySchedule, exceptionSchedule,
+        return new ScheduleObject(d1, 0, "sch0", effectivePeriod, weeklySchedule, exceptionSchedule,
                 scheduleDefault, listOfObjectPropertyReferences, 12, false);
-        return so;
     }
 }

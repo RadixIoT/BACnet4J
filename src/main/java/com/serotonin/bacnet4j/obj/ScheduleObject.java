@@ -331,18 +331,7 @@ public class ScheduleObject extends BACnetObject {
                 nextCheck = nextDay(now);
             } else {
                 // Find the schedule entry in effect at this time.
-                TimeValue currentTv = null;
-                int tvIndex = schedule.getCount();
-                for (; tvIndex > 0; tvIndex--) {
-                    final TimeValue tv = schedule.getBase1(tvIndex);
-
-                    if (!tv.getTime().after(now.getTime())) {
-                        // Find time value entry that should be used
-                        if (currentTv == null || tv.getTime().after(currentTv.getTime())) {
-                            currentTv = tv;
-                        }
-                    }
-                }
+                TimeValue currentTv = getCurrentTimeValue(schedule, now);
 
                 // Determine the new present value.
                 // Our interpretation for ANSI/ASHRAE Standard 135-2016, 12.24.4 Present_Value
@@ -355,11 +344,10 @@ public class ScheduleObject extends BACnetObject {
                 else
                     newValue = currentTv.getValue();
 
-                // Determine the next time this method should run.
-                if (tvIndex < schedule.getCount()) {
-                    final TimeValue nextTv = schedule.getBase1(tvIndex + 1);
+                final TimeValue nextTv = getNextTimeValue(currentTv, schedule, now);
+                if (nextTv != null)
                     nextCheck = timeOf(now.getDate(), nextTv);
-                } else
+                else
                     nextCheck = nextDay(now);
             }
         }
@@ -367,9 +355,51 @@ public class ScheduleObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.presentValue, newValue);
 
         final java.util.Date nextRuntime = new java.util.Date(nextCheck);
-        presentValueRefersher = getLocalDevice().schedule(() -> updatePresentValue(), nextRuntime.getTime(),
-                TimeUnit.MILLISECONDS);
+        long delay = nextRuntime.getTime() - now.getGC().getTimeInMillis();
+        presentValueRefersher = getLocalDevice().schedule(this::updatePresentValue, delay, TimeUnit.MILLISECONDS);
         LOG.debug("Timer scheduled to run at {}", nextRuntime);
+    }
+
+    private static TimeValue getCurrentTimeValue(SequenceOf<TimeValue> schedule, DateTime now) {
+        TimeValue currentTv = null;
+        int tvIndex = schedule.getCount();
+        for (; tvIndex > 0; tvIndex--) {
+            final TimeValue tv = schedule.getBase1(tvIndex);
+            if (!tv.getTime().after(now.getTime())) {
+                // Find time value entry that should be used
+                if (currentTv == null || tv.getTime().after(currentTv.getTime())) {
+                    currentTv = tv;
+                }
+            }
+        }
+        return currentTv;
+    }
+
+    private static TimeValue getNextTimeValue(TimeValue currentTv, SequenceOf<TimeValue> schedule, DateTime now) {
+        TimeValue nextTv = null;
+        if (currentTv != null) nextTv = new TimeValue(currentTv.getTime(), currentTv.getValue());
+
+        int tvIndex = schedule.getCount();
+        for (; tvIndex > 0; tvIndex--) {
+            final TimeValue tv = schedule.getBase1(tvIndex);
+            if (nextTv == null && isBeginningOfDay(now)){
+                nextTv = tv;
+            }
+            if (nextTv != null && currentTv != null) {
+                if (tv.getTime().after(nextTv.getTime()) && tv.getTime().after(currentTv.getTime())) {
+                    nextTv = tv;
+                }
+            } else if (nextTv != null) {
+                if (tv.getTime().before(nextTv.getTime())) {
+                    nextTv = tv;
+                }
+            }
+        }
+
+        if (nextTv != null && currentTv != null && nextTv.getTime().equals(currentTv.getTime())) {
+            return null;
+        }
+        return nextTv;
     }
 
     private static long nextDay(final DateTime now) {
@@ -380,6 +410,14 @@ public class ScheduleObject extends BACnetObject {
         gc.add(Calendar.SECOND, -gc.get(Calendar.SECOND));
         gc.add(Calendar.MILLISECOND, -gc.get(Calendar.MILLISECOND));
         return gc.getTimeInMillis();
+    }
+
+    private static boolean isBeginningOfDay(final DateTime now) {
+        final GregorianCalendar gc = now.getGC();
+        return gc.get(Calendar.HOUR_OF_DAY) == 0 &&
+                gc.get(Calendar.MINUTE) == 0 &&
+                gc.get(Calendar.SECOND) == 0 &&
+                gc.get(Calendar.MILLISECOND) == 0;
     }
 
     private static long timeOf(final Date date, final TimeValue tv) {
