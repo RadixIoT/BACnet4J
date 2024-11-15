@@ -45,6 +45,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -841,8 +842,18 @@ public class LocalDevice {
         return rd;
     }
 
+    public enum CacheUpdate {
+        ALWAYS,
+        NEVER,
+        IF_EXPIRED
+    }
+
     public RemoteDeviceDiscoverer startRemoteDeviceDiscovery() {
-        return startRemoteDeviceDiscovery(null);
+        return startRemoteDeviceDiscovery(CacheUpdate.NEVER, null);
+    }
+
+    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(final Consumer<RemoteDevice> callback) {
+        return startRemoteDeviceDiscovery(CacheUpdate.NEVER, callback);
     }
 
     /**
@@ -853,20 +864,32 @@ public class LocalDevice {
      *            optional client callback
      * @return the discoverer, which must be stopped by the caller
      */
-    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(final Consumer<RemoteDevice> callback) {
-        final Consumer<RemoteDevice> cachingCallback = (d) -> {
+    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(CacheUpdate cacheUpdate, final Consumer<RemoteDevice> callback) {
+        final RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(this, discoveredDevice -> {
             // Cache the device.
-            remoteDeviceCache.putEntity(d.getInstanceNumber(), d, cachePolicies.getDevicePolicy(d.getInstanceNumber()));
+            remoteDeviceCache.putEntity(discoveredDevice.getInstanceNumber(), discoveredDevice,
+                    cachePolicies.getDevicePolicy(discoveredDevice.getInstanceNumber()));
 
             // Call the given callback
-            if (callback != null)
-                callback.accept(d);
-        };
-
-        final RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(this, cachingCallback);
+            if (callback != null) {
+                callback.accept(discoveredDevice);
+            }
+        }, getExpirationCheck(cacheUpdate));
         discoverer.start();
-
         return discoverer;
+    }
+
+    private Predicate<RemoteDevice> getExpirationCheck(CacheUpdate cacheUpdate) {
+        switch (cacheUpdate) {
+            case ALWAYS:
+                return d -> true;
+            case NEVER:
+                return d -> false;
+            case IF_EXPIRED:
+                return d -> remoteDeviceCache.getCachedEntity(d.getInstanceNumber()) == null;
+            default:
+                throw new IllegalArgumentException("Unknown value: " + cacheUpdate);
+        }
     }
 
     /**
