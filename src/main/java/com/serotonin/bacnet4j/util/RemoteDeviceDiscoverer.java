@@ -29,8 +29,11 @@
 package com.serotonin.bacnet4j.util;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
@@ -52,42 +55,43 @@ public class RemoteDeviceDiscoverer {
     private final Consumer<RemoteDevice> callback;
 
     private DeviceEventAdapter adapter;
-    private final List<RemoteDevice> allDevices = new ArrayList<>();
+    private final Map<Integer, RemoteDevice> allDevices = new HashMap<>();
     private final List<RemoteDevice> latestDevices = new ArrayList<>();
+    private final Predicate<RemoteDevice> expirationCheck;
 
     public RemoteDeviceDiscoverer(final LocalDevice localDevice) {
         this(localDevice, null);
     }
 
     public RemoteDeviceDiscoverer(final LocalDevice localDevice, final Consumer<RemoteDevice> callback) {
+        this(localDevice, callback, remoteDevice -> false);
+    }
+
+    public RemoteDeviceDiscoverer(final LocalDevice localDevice, final Consumer<RemoteDevice> callback,
+                                  final Predicate<RemoteDevice> expirationCheck) {
         this.localDevice = localDevice;
         this.callback = callback;
+        this.expirationCheck = expirationCheck;
     }
 
     public void start() {
         adapter = new DeviceEventAdapter() {
             @Override
-            public void iAmReceived(final RemoteDevice d) {
+            public void iAmReceived(final RemoteDevice newDevice) {
                 synchronized (allDevices) {
                     // Check if we already know about this device.
-                    boolean found = false;
-                    for (final RemoteDevice known : allDevices) {
-                        if (d.getInstanceNumber() == known.getInstanceNumber()) {
-                            found = true;
-                            break;
-                        }
-                    }
+                    RemoteDevice updated = allDevices.compute(newDevice.getInstanceNumber(), (n, existing) -> {
+                        if (existing == null) return newDevice;
+                        return expirationCheck.test(existing) ? newDevice : existing;
+                    });
 
-                    if (!found) {
-                        // Add to all devices
-                        allDevices.add(d);
-
+                    if (updated == newDevice) {
                         // Add to latest devices
-                        latestDevices.add(d);
+                        latestDevices.add(newDevice);
 
                         // Notify the callback
                         if (callback != null) {
-                            callback.accept(d);
+                            callback.accept(newDevice);
                         }
                     }
                 }
@@ -111,7 +115,7 @@ public class RemoteDeviceDiscoverer {
      */
     public List<RemoteDevice> getRemoteDevices() {
         synchronized (allDevices) {
-            return new ArrayList<>(allDevices);
+            return new ArrayList<>(allDevices.values());
         }
     }
 
