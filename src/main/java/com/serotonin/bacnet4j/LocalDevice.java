@@ -108,7 +108,7 @@ import lohbihler.warp.WarpUtils;
  * - default character string encoding
  * - persistence of recipient lists in notification forwarder object
  */
-public class LocalDevice {
+public class LocalDevice implements AutoCloseable {
     static final Logger LOG = LoggerFactory.getLogger(LocalDevice.class);
     public static final String VERSION = "6.0.0";
 
@@ -840,6 +840,13 @@ public class LocalDevice {
         }
 
         return rd;
+    }
+
+    @Override
+    public synchronized void close() throws Exception {
+        if (initialized) {
+            terminate();
+        }
     }
 
     public enum CacheUpdate {
