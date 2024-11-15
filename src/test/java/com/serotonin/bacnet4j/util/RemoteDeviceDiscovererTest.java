@@ -4,6 +4,10 @@ import static com.serotonin.bacnet4j.TestUtils.assertListEqualsIgnoreOrder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 
 import org.junit.Assert;
@@ -156,5 +160,39 @@ public class RemoteDeviceDiscovererTest {
         d10.terminate();
         d11.terminate();
         d12.terminate();
+    }
+
+    @Test
+    public void expirationCheck() throws Exception {
+        BlockingQueue<RemoteDevice> results = new ArrayBlockingQueue<>(10);
+
+        try (LocalDevice d1 = createLocalDevice(1);
+             LocalDevice d2 = createLocalDevice(2)) {
+
+            d1.initialize();
+            d2.initialize();
+
+            RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(d1, results::add, d -> true);
+            try {
+                discoverer.start();
+
+                RemoteDevice firstResponse = results.poll(10, TimeUnit.SECONDS);
+                Assert.assertNotNull(firstResponse);
+                Assert.assertEquals(2, firstResponse.getInstanceNumber());
+
+                d2.sendGlobalBroadcast(d2.getIAm());
+                RemoteDevice secondResponse = results.poll(10, TimeUnit.SECONDS);
+                Assert.assertNotNull(secondResponse);
+                Assert.assertEquals(2, secondResponse.getInstanceNumber());
+            } finally {
+                discoverer.stop();
+            }
+        }
+
+        Assert.assertTrue(results.isEmpty());
+    }
+
+    private LocalDevice createLocalDevice(int address) {
+        return new LocalDevice(address, new DefaultTransport(new TestNetwork(map, address, 1)));
     }
 }
