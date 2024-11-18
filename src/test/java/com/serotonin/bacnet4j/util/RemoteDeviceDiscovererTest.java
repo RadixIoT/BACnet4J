@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 
@@ -164,7 +163,7 @@ public class RemoteDeviceDiscovererTest {
 
     @Test
     public void expirationCheck() throws Exception {
-        BlockingQueue<RemoteDevice> results = new ArrayBlockingQueue<>(10);
+        BlockingQueue<RemoteDevice> results = new ArrayBlockingQueue<>(1);
 
         try (LocalDevice d1 = createLocalDevice(1);
              LocalDevice d2 = createLocalDevice(2)) {
@@ -172,8 +171,7 @@ public class RemoteDeviceDiscovererTest {
             d1.initialize();
             d2.initialize();
 
-            RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(d1, results::add, d -> true);
-            try {
+            try (RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(d1, results::add, d -> true)) {
                 discoverer.start();
 
                 RemoteDevice firstResponse = results.poll(10, TimeUnit.SECONDS);
@@ -184,8 +182,6 @@ public class RemoteDeviceDiscovererTest {
                 RemoteDevice secondResponse = results.poll(10, TimeUnit.SECONDS);
                 Assert.assertNotNull(secondResponse);
                 Assert.assertEquals(2, secondResponse.getInstanceNumber());
-            } finally {
-                discoverer.stop();
             }
         }
 
