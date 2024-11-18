@@ -8,11 +8,13 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.time.Clock;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.Collection;
+import java.util.concurrent.*;
 
+import com.serotonin.bacnet4j.LocalDevice.CacheUpdate;
+import com.serotonin.bacnet4j.cache.CachePolicies;
+import com.serotonin.bacnet4j.cache.RemoteEntityCachePolicy;
+import com.serotonin.bacnet4j.util.RemoteDeviceDiscoverer;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.junit.After;
 import org.junit.Before;
@@ -186,4 +188,137 @@ public class LocalDeviceTest {
             assertTrue(Clock.systemUTC().millis() - start >= 100);
         }
     }
+
+    @Test
+    public void remoteDeviceDiscoveryUpdateAlways() throws Exception {
+        BlockingQueue<RemoteDevice> results = new ArrayBlockingQueue<>(2);
+
+        try (LocalDevice localDevice = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0)))) {
+            localDevice.setClock(clock);
+            localDevice.initialize();
+
+            CachePolicies cachePolicies = localDevice.getCachePolicies();
+            cachePolicies.putDevicePolicy(1, RemoteEntityCachePolicy.EXPIRE_5_SECONDS);
+            cachePolicies.putDevicePolicy(2, RemoteEntityCachePolicy.EXPIRE_1_MINUTE);
+
+            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(
+                    CacheUpdate.ALWAYS, results::add)) {
+
+                RemoteDevice response1 = poll(results);
+                RemoteDevice response2 = poll(results);
+                containsRemoteDeviceOneAndTwo(discoverer, response1, response2);
+
+                // skip ahead 10 seconds, d1 should now be expired, d2 should not be expired
+                clock.plusSeconds(10);
+                d1.sendGlobalBroadcast(d1.getIAm());
+                d2.sendGlobalBroadcast(d2.getIAm());
+
+                // both d1 and d2 should have been updated - callback should fire 2x, and both should be in the latest devices list
+                RemoteDevice response3 = poll(results);
+                RemoteDevice response4 = poll(results);
+                containsRemoteDeviceOneAndTwo(discoverer, response3, response4);
+            }
+        }
+
+        // ensure no more iAm messages were received
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    public void remoteDeviceDiscoveryUpdateIfExpired() throws Exception {
+        BlockingQueue<RemoteDevice> results = new ArrayBlockingQueue<>(2);
+
+        try (LocalDevice localDevice = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0)))) {
+            localDevice.setClock(clock);
+            localDevice.initialize();
+
+            CachePolicies cachePolicies = localDevice.getCachePolicies();
+            cachePolicies.putDevicePolicy(1, RemoteEntityCachePolicy.EXPIRE_5_SECONDS);
+            cachePolicies.putDevicePolicy(2, RemoteEntityCachePolicy.EXPIRE_1_MINUTE);
+
+            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(
+                    CacheUpdate.IF_EXPIRED, results::add)) {
+
+                RemoteDevice response1 = poll(results);
+                RemoteDevice response2 = poll(results);
+                containsRemoteDeviceOneAndTwo(discoverer, response1, response2);
+
+                // skip ahead 10 seconds, d1 should now be expired, d2 should not be expired
+                clock.plusSeconds(10);
+                d1.sendGlobalBroadcast(d1.getIAm());
+                d2.sendGlobalBroadcast(d2.getIAm());
+
+                // d1 should have been updated - callback should fire, and it should be in the latest devices list
+                RemoteDevice response3 = poll(results);
+                assertNotNull(response3);
+                assertEquals(1, response3.getInstanceNumber());
+                assertEquals(2, discoverer.getRemoteDevices().size());
+                assertContainsExactlyInAnyOrder(discoverer.getLatestRemoteDevices(), response3);
+            }
+        }
+
+        // ensure no more iAm messages were received
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    public void remoteDeviceDiscoveryUpdateNever() throws Exception {
+        BlockingQueue<RemoteDevice> results = new ArrayBlockingQueue<>(2);
+
+        try (LocalDevice localDevice = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0)))) {
+            localDevice.setClock(clock);
+            localDevice.initialize();
+
+            CachePolicies cachePolicies = localDevice.getCachePolicies();
+            cachePolicies.putDevicePolicy(1, RemoteEntityCachePolicy.EXPIRE_5_SECONDS);
+            cachePolicies.putDevicePolicy(2, RemoteEntityCachePolicy.EXPIRE_1_MINUTE);
+
+            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(
+                    CacheUpdate.NEVER, results::add)) {
+
+                RemoteDevice response1 = poll(results);
+                RemoteDevice response2 = poll(results);
+                containsRemoteDeviceOneAndTwo(discoverer, response1, response2);
+
+                // skip ahead 10 seconds, d1 should now be expired, d2 should not be expired
+                clock.plusSeconds(10);
+                d1.sendGlobalBroadcast(d1.getIAm());
+                d2.sendGlobalBroadcast(d2.getIAm());
+
+                // neither should have been updated - no callback should fire, latest devices list should be empty
+                RemoteDevice response3 = poll(results);
+                assertNull(response3);
+                assertEquals(2, discoverer.getRemoteDevices().size());
+                assertEquals(0, discoverer.getLatestRemoteDevices().size());
+            }
+        }
+
+        // ensure no more iAm messages were received
+        assertTrue(results.isEmpty());
+    }
+
+    private RemoteDevice poll(BlockingQueue<RemoteDevice> results) throws InterruptedException {
+        return results.poll(5, TimeUnit.SECONDS);
+    }
+
+    private void containsRemoteDeviceOneAndTwo(RemoteDeviceDiscoverer discoverer, RemoteDevice remoteDeviceA, RemoteDevice remoteDeviceB) {
+        assertNotNull(remoteDeviceA);
+        assertNotNull(remoteDeviceB);
+        assertTrue(remoteDeviceA.getInstanceNumber() == 1 || remoteDeviceA.getInstanceNumber() == 2);
+        if (remoteDeviceA.getInstanceNumber() == 1) {
+            assertEquals(2, remoteDeviceB.getInstanceNumber());
+        } else {
+            assertEquals(1, remoteDeviceB.getInstanceNumber());
+        }
+        assertContainsExactlyInAnyOrder(discoverer.getRemoteDevices(), remoteDeviceA, remoteDeviceB);
+        assertContainsExactlyInAnyOrder(discoverer.getLatestRemoteDevices(), remoteDeviceA, remoteDeviceB);
+    }
+
+    private void assertContainsExactlyInAnyOrder(Collection<? extends RemoteDevice> devices, RemoteDevice... expected) {
+        assertEquals(expected.length, devices.size());
+        for (RemoteDevice device : expected) {
+            assertTrue(devices.contains(device));
+        }
+    }
+
 }

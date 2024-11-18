@@ -50,7 +50,7 @@ import com.serotonin.bacnet4j.service.unconfirmed.WhoIsRequest;
  *
  * @author Matthew
  */
-public class RemoteDeviceDiscoverer {
+public class RemoteDeviceDiscoverer implements AutoCloseable {
     private final LocalDevice localDevice;
     private final Consumer<RemoteDevice> callback;
 
@@ -74,26 +74,33 @@ public class RemoteDeviceDiscoverer {
         this.expirationCheck = expirationCheck;
     }
 
-    public void start() {
-        adapter = new DeviceEventAdapter() {
+    public synchronized void start() {
+        if (adapter != null) {
+            throw new IllegalStateException("Already started");
+        }
+        this.adapter = new DeviceEventAdapter() {
             @Override
             public void iAmReceived(final RemoteDevice newDevice) {
+                BooleanHolder updated = new BooleanHolder();
                 synchronized (allDevices) {
                     // Check if we already know about this device.
-                    RemoteDevice updated = allDevices.compute(newDevice.getInstanceNumber(), (n, existing) -> {
-                        if (existing == null) return newDevice;
-                        return expirationCheck.test(existing) ? newDevice : existing;
+                    allDevices.compute(newDevice.getInstanceNumber(), (k, existing) -> {
+                        if (existing == null || expirationCheck.test(existing)) {
+                            updated.value = true;
+                            return newDevice;
+                        }
+                        return existing;
                     });
 
-                    if (updated == newDevice) {
+                    if (updated.value) {
                         // Add to latest devices
                         latestDevices.add(newDevice);
-
-                        // Notify the callback
-                        if (callback != null) {
-                            callback.accept(newDevice);
-                        }
                     }
+                }
+
+                // Notify the callback
+                if (updated.value && callback != null) {
+                    callback.accept(newDevice);
                 }
             }
         };
@@ -105,9 +112,12 @@ public class RemoteDeviceDiscoverer {
         localDevice.sendGlobalBroadcast(new WhoIsRequest());
     }
 
-    public void stop() {
-        // Unregister as a listener
-        localDevice.getEventHandler().removeListener(adapter);
+    public synchronized void stop() {
+        if (adapter != null) {
+            // Unregister as a listener
+            localDevice.getEventHandler().removeListener(adapter);
+            this.adapter = null;
+        }
     }
 
     /**
@@ -128,5 +138,14 @@ public class RemoteDeviceDiscoverer {
             latestDevices.clear();
             return result;
         }
+    }
+
+    @Override
+    public void close() {
+        stop();
+    }
+
+    private static class BooleanHolder {
+        private boolean value = false;
     }
 }
