@@ -850,8 +850,17 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public enum CacheUpdate {
+        /**
+         * Always update the remote device cache, even if the existing entry has not expired.
+         */
         ALWAYS,
+        /**
+         * Never update the remote device cache, even if the existing entry has expired.
+         */
         NEVER,
+        /**
+         * Only update the remote device cache if the existing entry has expired.
+         */
         IF_EXPIRED
     }
 
@@ -867,8 +876,8 @@ public class LocalDevice implements AutoCloseable {
      * Creates and starts a remote device discovery. Discovered devices are added to the cache as they are found. The
      * returned discoverer must be stopped by the caller.
      *
-     * @param callback
-     *            optional client callback
+     * @param cacheUpdate controls if the remote device cache should be updated
+     * @param callback optional client callback
      * @return the discoverer, which must be stopped by the caller
      */
     public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(CacheUpdate cacheUpdate, final Consumer<RemoteDevice> callback) {
