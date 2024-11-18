@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.infiniteautomation</groupId>
 	<artifactId>bacnet4j</artifactId>
-	<version>6.0.1-SNAPSHOT</version>
+	<version>${revision}</version>
 	<name>BACnet4j Library</name>
 	<description>BACnet specification implementation in Java supporting IPv4, IPv6, and MS/TP.  This library supports protocol Version 1 Revision 19.</description>
 	<url>https://github.com/infiniteautomation/BACnet4J</url>
@@ -17,6 +17,7 @@
 		<url>https://www.infiniteautomation.com/</url>
 	</organization>
 	<properties>
+		<revision>6.0.1-SNAPSHOT</revision>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<additionalDeploymentRepositoryId>additional-deployment-repository</additionalDeploymentRepositoryId>
 	</properties>
