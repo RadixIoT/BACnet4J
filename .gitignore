@@ -1,10 +1,1 @@
-/docs
-/build.properties
-/bin
 /target
-/build
-/.gradle
-/gradle.properties
-/.classpath
-/.project
-/.settings
