@@ -61,6 +61,7 @@ Releases
 - Allow NULL values for daily schedule, exception schedule and schedule default
 - Fix scheduling issues when TimeValue sequences are not in chronological order
 - Fix schedule object using incorrect time format to trigger next update
+- Add new CacheUpdate option to the startRemoteDeviceDiscovery() method of LocalDevice 
 
 *Version 6.0.0*
 - fix DeviceObjectTest.timeSynchronization test to pass
