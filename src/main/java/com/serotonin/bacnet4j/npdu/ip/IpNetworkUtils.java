@@ -35,7 +35,9 @@ import java.net.NetworkInterface;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
@@ -158,16 +160,40 @@ public class IpNetworkUtils {
         return toAddress(networkNumber, addr.getAddress().getAddress(), addr.getPort());
     }
 
-    public static List<InterfaceAddress> getLocalInterfaceAddresses() {
+    /**
+     * Convenient method to get the deails of Network Interface card
+     * Details are stored in a dictionary containing key and values
+     * key (int) - NIC Card Index as per the OS
+     * Values (ArrayList of String) of size 4 in the order
+     * Values[0] - Interface Name
+     * Values[1] - IP4 Address assigned to the NIC
+     * Values[2] - Broadcast Address
+     * Values[3] - Subnet Mask
+     * @return Map<Integer, List<String>>
+    */
+    public static Map<Integer, List<String>> getLocalInterfaceAddresses() {
         try {
-            final List<InterfaceAddress> result = new ArrayList<>();
+            List<String> ifaceAddresses = new ArrayList<>(); 
+            Map<Integer, List<String>> ifaceDetails = new HashMap<>();
             for (final NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 for (final InterfaceAddress addr : iface.getInterfaceAddresses()) {
-                    if (!addr.getAddress().isLoopbackAddress() && addr.getAddress().isSiteLocalAddress())
-                        result.add(addr);
+                    if (!addr.getAddress().isLoopbackAddress() && addr.getAddress().isSiteLocalAddress()){
+                        ifaceAddresses.add(iface.getName()); 
+                        ifaceAddresses.add(addr.getAddress().getHostName());
+                        ifaceAddresses.add(addr.getBroadcast().getHostName());
+                        final int networkPrefixLength = addr.getNetworkPrefixLength();
+                        final long subnetMask = createMask(networkPrefixLength);
+                        ifaceAddresses.add(toIpAddrString(subnetMask));
+                        final List<String> values = new ArrayList<>();
+                        for (String sValue:ifaceAddresses){
+                            values.add(sValue);
+                        } 
+                        ifaceDetails.put(iface.getIndex(), values);
+                    }
                 }
+                ifaceAddresses.clear();
             }
-            return result;
+            return ifaceDetails;
         } catch (final Exception e) {
             // Should never happen, so just wrap in a RuntimeException
             throw new RuntimeException(e);
@@ -198,5 +224,105 @@ public class IpNetworkUtils {
         sb.append(addr >> 8 & 0xFF).append('.');
         sb.append(addr & 0xFF);
         return sb.toString();
+    }
+
+    
+    /**
+     * Method to return the IP Address in dotted string based on
+     * the broadcast Address string or IP Address string.
+     * Throws exception if the Broadcast Address or IP address is
+     * not configured in any of the available Network Interface
+     *
+     * @param host
+     * @return IPAddress
+     */
+    public static String getIPAddressString(String host)
+    {
+        try{
+            String ipAdd = "0.0.0.0";
+            int interfaceIndex = -1; 
+            for (Map.Entry<Integer, List<String>> item: getLocalInterfaceAddresses().entrySet()){
+                if (item.getValue().contains(host)){
+                    interfaceIndex = item.getKey();
+                    // IP Address is stored in the index 1
+                    return item.getValue().get(1);
+                }
+            }
+            if (interfaceIndex == -1)
+            {
+                throw new IllegalArgumentException(host + " is not configured in any interfaces.");
+            }
+            return ipAdd;
+
+        }catch (final Exception e) {
+            // Should never happen, so just wrap in a RuntimeException
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Method to return the Broadcast IP Address configured
+     // for the corresponding interface based on
+     * the local IP Address string.
+     * Throws exception if the IP address is
+     * not configured in any of the available Network Interface.
+     *
+     * @param host
+     * @return BroadcastAddress
+     */
+    public static String getLocalBroadcastAddressString(String host)
+    {
+        try{
+            String broadcastAdd = "255.255.255.255";
+            int interfaceIndex = -1;
+            for (Map.Entry<Integer, List<String>> item: getLocalInterfaceAddresses().entrySet()){
+                if (item.getValue().contains(host)){
+                    interfaceIndex = item.getKey();
+                    // Broadcast Address is stored in the index 2
+                    return item.getValue().get(2);
+                }
+            }
+            if (interfaceIndex == -1)
+                throw new IllegalArgumentException(host + " is not configured in any interfaces.");          
+            
+            return broadcastAdd;
+
+        }catch (final Exception e) {
+            // Should never happen, so just wrap in a RuntimeException
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    /**
+     * Method to return the the Subnet Mask configured
+     * for the corresponding interface based on the
+     * local IP Address string.
+     * Throws exception if the IP address is
+     * not configured in any of the available Network Interface.
+     *
+     * @param host
+     * @return String SubnetMask
+     */
+    public static String getSubnetMask(String host)
+    {
+        try{
+            String subnetMaskAdd = "255.255.255.0";
+            int interfaceIndex = -1;
+            for (Map.Entry<Integer, List<String>> item: getLocalInterfaceAddresses().entrySet()){
+                if (item.getValue().contains(host)){
+                    interfaceIndex = item.getKey();
+                    return item.getValue().get(3);
+                }
+            }
+            if (interfaceIndex == -1)
+                throw new IllegalArgumentException(host + "is not configured in any interfaces.");
+            
+            return subnetMaskAdd;
+
+        }catch (final Exception e) {
+            // Should never happen, so just wrap in a RuntimeException
+            throw new RuntimeException(e);
+        }
     }
 }

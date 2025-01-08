@@ -17,7 +17,7 @@
 		<url>https://www.infiniteautomation.com/</url>
 	</organization>
 	<properties>
-		<revision>6.0.1-SNAPSHOT</revision>
+		<revision>6.1.0-SNAPSHOT</revision>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<additionalDeploymentRepositoryId>additional-deployment-repository</additionalDeploymentRepositoryId>
 	</properties>
