@@ -3,7 +3,7 @@ BACnet4J
 
 BACnet4J is a pure Java implementation of the BACnet specification. Originally developed for supervisory use, it now includes support for many objects and so may be suitable for embedded use as well. Protocols supported include IPv4, IPv6, and MS/TP.  This library supports protocol Version 1 Revision 19.
 
-A discussion forum for this package can be found at http://infiniteautomation.com/forum/category/12/bacnet4j-general-discussion.
+A discussion forum for this package can be found at https://forum.mango-os.com/category/12/bacnet4j-general-discussion.
 
 **Commercial licenses are available by contacting: sales@radixiot.com**
 
@@ -57,7 +57,13 @@ The dependency information is BACnet4J pre 5.0 is:
 
 Releases
 ========
-*Version 6.0.0-SNAPSHOT*
+*Version 6.0.1*
+- Allow NULL values for daily schedule, exception schedule and schedule default
+- Fix scheduling issues when TimeValue sequences are not in chronological order
+- Fix schedule object using incorrect time format to trigger next update
+- Add new CacheUpdate option to the startRemoteDeviceDiscovery() method of LocalDevice 
+
+*Version 6.0.0*
 - fix DeviceObjectTest.timeSynchronization test to pass
 - IAmRequest no longer automatically gets the extended device information this must now be done by adding an `IAmRequestListener` or using `DiscoveryUtils.getExtendedDeviceInformation(d1, rd);` The extended device info no longer retrieved is:
     * PropertyIdentifier.protocolServicesSupported

@@ -29,8 +29,11 @@
 package com.serotonin.bacnet4j.util;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
@@ -47,49 +50,57 @@ import com.serotonin.bacnet4j.service.unconfirmed.WhoIsRequest;
  *
  * @author Matthew
  */
-public class RemoteDeviceDiscoverer {
+public class RemoteDeviceDiscoverer implements AutoCloseable {
     private final LocalDevice localDevice;
     private final Consumer<RemoteDevice> callback;
 
     private DeviceEventAdapter adapter;
-    private final List<RemoteDevice> allDevices = new ArrayList<>();
+    private final Map<Integer, RemoteDevice> allDevices = new HashMap<>();
     private final List<RemoteDevice> latestDevices = new ArrayList<>();
+    private final Predicate<RemoteDevice> expirationCheck;
 
     public RemoteDeviceDiscoverer(final LocalDevice localDevice) {
         this(localDevice, null);
     }
 
     public RemoteDeviceDiscoverer(final LocalDevice localDevice, final Consumer<RemoteDevice> callback) {
-        this.localDevice = localDevice;
-        this.callback = callback;
+        this(localDevice, callback, remoteDevice -> false);
     }
 
-    public void start() {
-        adapter = new DeviceEventAdapter() {
+    public RemoteDeviceDiscoverer(final LocalDevice localDevice, final Consumer<RemoteDevice> callback,
+                                  final Predicate<RemoteDevice> expirationCheck) {
+        this.localDevice = localDevice;
+        this.callback = callback;
+        this.expirationCheck = expirationCheck;
+    }
+
+    public synchronized void start() {
+        if (adapter != null) {
+            throw new IllegalStateException("Already started");
+        }
+        this.adapter = new DeviceEventAdapter() {
             @Override
-            public void iAmReceived(final RemoteDevice d) {
+            public void iAmReceived(final RemoteDevice newDevice) {
+                BooleanHolder updated = new BooleanHolder();
                 synchronized (allDevices) {
                     // Check if we already know about this device.
-                    boolean found = false;
-                    for (final RemoteDevice known : allDevices) {
-                        if (d.getInstanceNumber() == known.getInstanceNumber()) {
-                            found = true;
-                            break;
+                    allDevices.compute(newDevice.getInstanceNumber(), (k, existing) -> {
+                        if (existing == null || expirationCheck.test(existing)) {
+                            updated.value = true;
+                            return newDevice;
                         }
-                    }
+                        return existing;
+                    });
 
-                    if (!found) {
-                        // Add to all devices
-                        allDevices.add(d);
-
+                    if (updated.value) {
                         // Add to latest devices
-                        latestDevices.add(d);
-
-                        // Notify the callback
-                        if (callback != null) {
-                            callback.accept(d);
-                        }
+                        latestDevices.add(newDevice);
                     }
+                }
+
+                // Notify the callback
+                if (updated.value && callback != null) {
+                    callback.accept(newDevice);
                 }
             }
         };
@@ -101,9 +112,12 @@ public class RemoteDeviceDiscoverer {
         localDevice.sendGlobalBroadcast(new WhoIsRequest());
     }
 
-    public void stop() {
-        // Unregister as a listener
-        localDevice.getEventHandler().removeListener(adapter);
+    public synchronized void stop() {
+        if (adapter != null) {
+            // Unregister as a listener
+            localDevice.getEventHandler().removeListener(adapter);
+            this.adapter = null;
+        }
     }
 
     /**
@@ -111,7 +125,7 @@ public class RemoteDeviceDiscoverer {
      */
     public List<RemoteDevice> getRemoteDevices() {
         synchronized (allDevices) {
-            return new ArrayList<>(allDevices);
+            return new ArrayList<>(allDevices.values());
         }
     }
 
@@ -124,5 +138,14 @@ public class RemoteDeviceDiscoverer {
             latestDevices.clear();
             return result;
         }
+    }
+
+    @Override
+    public void close() {
+        stop();
+    }
+
+    private static class BooleanHolder {
+        private boolean value = false;
     }
 }

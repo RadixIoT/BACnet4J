@@ -74,6 +74,7 @@ import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Date;
+import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Primitive;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -176,7 +177,8 @@ public class ScheduleObject extends BACnetObject {
                 final ObjectPropertyTypeDefinition def = ObjectProperties.getObjectPropertyTypeDefinition(
                         ref.getObjectIdentifier().getObjectType(), ref.getPropertyIdentifier());
                 if (def != null) {
-                    if (scheduleDefault.getClass() != def.getPropertyTypeDefinition().getClazz()) {
+                    boolean isNull = scheduleDefault.getClass().equals(Null.class);
+                    if (!isNull && scheduleDefault.getClass() != def.getPropertyTypeDefinition().getClazz()) {
                         throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
                     }
                 }
@@ -187,7 +189,8 @@ public class ScheduleObject extends BACnetObject {
             final BACnetArray<DailySchedule> weeklySchedule = value.getValue();
             for (final DailySchedule daily : weeklySchedule) {
                 for (final TimeValue timeValue : daily.getDaySchedule()) {
-                    if (scheduleDefault.getClass() != timeValue.getValue().getClass()) {
+                    boolean isNull = timeValue.getValue().getClass().equals(Null.class) || scheduleDefault.getClass().equals(Null.class);
+                    if (!isNull &&  scheduleDefault.getClass() != timeValue.getValue().getClass()) {
                         throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
                     }
                     if (!timeValue.getTime().isFullySpecified()) {
@@ -201,7 +204,8 @@ public class ScheduleObject extends BACnetObject {
             final SequenceOf<SpecialEvent> exceptionSchedule = value.getValue();
             for (final SpecialEvent specialEvent : exceptionSchedule) {
                 for (final TimeValue timeValue : specialEvent.getListOfTimeValues()) {
-                    if (scheduleDefault.getClass() != timeValue.getValue().getClass()) {
+                    boolean isNull = timeValue.getValue().getClass().equals(Null.class) || scheduleDefault.getClass().equals(Null.class);
+                    if (!isNull &&  scheduleDefault.getClass() != timeValue.getValue().getClass()) {
                         throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
                     }
                     if (!timeValue.getTime().isFullySpecified()) {
@@ -327,29 +331,23 @@ public class ScheduleObject extends BACnetObject {
                 nextCheck = nextDay(now);
             } else {
                 // Find the schedule entry in effect at this time.
-                TimeValue currentTv = null;
-                int tvIndex = schedule.getCount();
-                for (; tvIndex > 0; tvIndex--) {
-                    final TimeValue tv = schedule.getBase1(tvIndex);
-
-                    if (!tv.getTime().after(now.getTime())) {
-                        // Found a time value entry that can be used.
-                        currentTv = tv;
-                        break;
-                    }
-                }
+                TimeValue currentTv = getCurrentTimeValue(schedule, now);
 
                 // Determine the new present value.
-                if (currentTv == null)
+                // Our interpretation for ANSI/ASHRAE Standard 135-2016, 12.24.4 Present_Value
+                // When exception schedule with NULL values ignored then there is no possible way to deactivate schedules.
+                // Existing weekly schedule or another exception schedule with lower priority whose current value is not NULL will be used as present value.
+                // That makes allowing NULL values has no effect at all and functionally useless.
+                // This code should apply default schedule value to present value whenever effective schedule has NULL value.
+                if (currentTv == null || currentTv.getValue().getClass().equals(Null.class))
                     newValue = scheduleDefault;
                 else
                     newValue = currentTv.getValue();
 
-                // Determine the next time this method should run.
-                if (tvIndex < schedule.getCount()) {
-                    final TimeValue nextTv = schedule.getBase1(tvIndex + 1);
+                final TimeValue nextTv = getNextTimeValue(currentTv, schedule, now);
+                if (nextTv != null)
                     nextCheck = timeOf(now.getDate(), nextTv);
-                } else
+                else
                     nextCheck = nextDay(now);
             }
         }
@@ -357,9 +355,51 @@ public class ScheduleObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.presentValue, newValue);
 
         final java.util.Date nextRuntime = new java.util.Date(nextCheck);
-        presentValueRefersher = getLocalDevice().schedule(() -> updatePresentValue(), nextRuntime.getTime(),
-                TimeUnit.MILLISECONDS);
+        long delay = nextRuntime.getTime() - now.getGC().getTimeInMillis();
+        presentValueRefersher = getLocalDevice().schedule(this::updatePresentValue, delay, TimeUnit.MILLISECONDS);
         LOG.debug("Timer scheduled to run at {}", nextRuntime);
+    }
+
+    private static TimeValue getCurrentTimeValue(SequenceOf<TimeValue> schedule, DateTime now) {
+        TimeValue currentTv = null;
+        int tvIndex = schedule.getCount();
+        for (; tvIndex > 0; tvIndex--) {
+            final TimeValue tv = schedule.getBase1(tvIndex);
+            if (!tv.getTime().after(now.getTime())) {
+                // Find time value entry that should be used
+                if (currentTv == null || tv.getTime().after(currentTv.getTime())) {
+                    currentTv = tv;
+                }
+            }
+        }
+        return currentTv;
+    }
+
+    private static TimeValue getNextTimeValue(TimeValue currentTv, SequenceOf<TimeValue> schedule, DateTime now) {
+        TimeValue nextTv = null;
+        if (currentTv != null) nextTv = new TimeValue(currentTv.getTime(), currentTv.getValue());
+
+        int tvIndex = schedule.getCount();
+        for (; tvIndex > 0; tvIndex--) {
+            final TimeValue tv = schedule.getBase1(tvIndex);
+            if (nextTv == null && isBeginningOfDay(now)){
+                nextTv = tv;
+            }
+            if (nextTv != null && currentTv != null) {
+                if (tv.getTime().after(nextTv.getTime()) && tv.getTime().after(currentTv.getTime())) {
+                    nextTv = tv;
+                }
+            } else if (nextTv != null) {
+                if (tv.getTime().before(nextTv.getTime())) {
+                    nextTv = tv;
+                }
+            }
+        }
+
+        if (nextTv != null && currentTv != null && nextTv.getTime().equals(currentTv.getTime())) {
+            return null;
+        }
+        return nextTv;
     }
 
     private static long nextDay(final DateTime now) {
@@ -370,6 +410,14 @@ public class ScheduleObject extends BACnetObject {
         gc.add(Calendar.SECOND, -gc.get(Calendar.SECOND));
         gc.add(Calendar.MILLISECOND, -gc.get(Calendar.MILLISECOND));
         return gc.getTimeInMillis();
+    }
+
+    private static boolean isBeginningOfDay(final DateTime now) {
+        final GregorianCalendar gc = now.getGC();
+        return gc.get(Calendar.HOUR_OF_DAY) == 0 &&
+                gc.get(Calendar.MINUTE) == 0 &&
+                gc.get(Calendar.SECOND) == 0 &&
+                gc.get(Calendar.MILLISECOND) == 0;
     }
 
     private static long timeOf(final Date date, final TimeValue tv) {
