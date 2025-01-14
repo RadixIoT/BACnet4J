@@ -9,9 +9,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import org.junit.Before;
 import org.junit.Test;
 
 public class IpNetworkBuilderTest {
+
+    int interfaceIndex;
+    Map<Integer, List<String>> interfaceDetails;
+
     @Test
     public void withSubnet16() {
         final IpNetworkBuilder builder = new IpNetworkBuilder().withSubnet("192.168.0.0", 16);
@@ -54,53 +59,40 @@ public class IpNetworkBuilderTest {
         assertEquals("255.255.224.0", builder.getSubnetMask());
     }
 
-    @Test
-    public void withLocalIPAddress(){
-        try {
-            Random rand = new Random();
-            Map<Integer, List<String>> interfaceDetails = IpNetworkUtils.getLocalInterfaceAddresses();
-            List<Integer> keys = new ArrayList<>(interfaceDetails.keySet());
-            final int interfaceIndex = keys.get(rand.nextInt(keys.size()));
-            String IPAddress = interfaceDetails.get(interfaceIndex).get(1); 
-            final IpNetworkBuilder builder = new IpNetworkBuilder().withLocalBindAddress(IPAddress);
-            assertEquals(IPAddress,builder.getLocalBindAddress());
-            assertEquals(interfaceDetails.get(interfaceIndex).get(2), builder.getBroadcastAddress());
-            assertEquals(interfaceDetails.get(interfaceIndex).get(3), builder.getSubnetMask());
-            System.out.println(IPAddress);
-            
-        }catch (final Exception e) {
-            // Should never happen, so just wrap in a RuntimeException
-            throw new RuntimeException(e);
-        }
+    @Before public void initialize(){
+        Random rand = new Random();
+        interfaceDetails = IpNetworkUtils.getLocalInterfaceAddresses();
+        List<Integer> keys = new ArrayList<>(interfaceDetails.keySet());
+        interfaceIndex = keys.get(rand.nextInt(keys.size()));
     }
+
     @Test
-    public void withBroadcast(){
-        try {
-            Random rand = new Random();
-            Map<Integer, List<String>> interfaceDetails = IpNetworkUtils.getLocalInterfaceAddresses();
-            List<Integer> keys = new ArrayList<>(interfaceDetails.keySet());
-            final int interfaceIndex = keys.get(rand.nextInt(keys.size()));
-            String IPAddress = interfaceDetails.get(interfaceIndex).get(2); 
-            final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast(IPAddress, 24);
-            assertEquals(IPAddress,builder.getBroadcastAddress());
-            assertEquals(interfaceDetails.get(interfaceIndex).get(1), builder.getLocalBindAddress());
-            assertEquals(interfaceDetails.get(interfaceIndex).get(3), builder.getSubnetMask());
-            System.out.println(IPAddress);
+    public void withLocalIPAddress() throws RuntimeException{
+        
+        String IPAddress = interfaceDetails.get(interfaceIndex).get(1); 
+        final IpNetworkBuilder builder = new IpNetworkBuilder().withLocalBindAddress(IPAddress);
+        assertEquals(IPAddress,builder.getLocalBindAddress());
+        assertEquals(interfaceDetails.get(interfaceIndex).get(2), builder.getBroadcastAddress());
+        assertEquals(interfaceDetails.get(interfaceIndex).get(3), builder.getSubnetMask());   
+    }
+
+    @Test
+    public void withBroadcast() throws RuntimeException{
+                
+        String IPAddress = interfaceDetails.get(interfaceIndex).get(2); 
+        final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast(IPAddress, 24);
+        assertEquals(IPAddress,builder.getBroadcastAddress());
+        assertEquals(interfaceDetails.get(interfaceIndex).get(1), builder.getLocalBindAddress());
+        assertEquals(interfaceDetails.get(interfaceIndex).get(3), builder.getSubnetMask());
             
-        }catch (final Exception e) {
-            // Should never happen, so just wrap in a RuntimeException
-            throw new RuntimeException(e);
-        }
-    
     }
 
     
     @Test
-    public void withLocalBindAddress_IncorrectIP(){
+    public void withLocalBindAddress_IncorrectIP() throws RuntimeException{
         String IPAddress = "1.1.1.1";
         Exception exception = assertThrows(RuntimeException.class,() -> {
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withLocalBindAddress(IPAddress);
-    });
+        final IpNetworkBuilder builder = new IpNetworkBuilder().withLocalBindAddress(IPAddress);});
         String actualMsg = exception.getMessage();
         System.out.println(actualMsg);
         assertTrue((actualMsg.contains("IllegalArgument")));
@@ -110,27 +102,19 @@ public class IpNetworkBuilderTest {
     public void verifyReuseAddress(){
         final IpNetworkBuilder builder = new IpNetworkBuilder();
         if (System.getProperty("os.name").contains("Windows"))
-
             assertTrue(!builder.isReuseAddress());//reuseAddress = false;
         else
             assertTrue(builder.isReuseAddress()); 
-        System.out.println(builder.isReuseAddress());
+        
     }
 
     @Test
-    public void withIterfaceName(){
-        Random rand = new Random();
-        Map<Integer, List<String>> interfaceDetails = IpNetworkUtils.getLocalInterfaceAddresses();
-        List<Integer> keys = new ArrayList<>(interfaceDetails.keySet());
-        System.out.println(keys);
-        final int interfaceIndex = keys.get(rand.nextInt(keys.size()));
+    public void withIterfaceName() throws RuntimeException{
         String ifaceName = interfaceDetails.get(interfaceIndex).get(0); 
         final IpNetworkBuilder builder = new IpNetworkBuilder().withInterfaceName(ifaceName);
         assertEquals(interfaceDetails.get(interfaceIndex).get(1), builder.getLocalBindAddress());
         assertEquals(interfaceDetails.get(interfaceIndex).get(2),builder.getBroadcastAddress());
         assertEquals(interfaceDetails.get(interfaceIndex).get(3), builder.getSubnetMask());
-        System.out.println("Local Bind Address : " + interfaceDetails.get(interfaceIndex).get(1) +
-            " BroadcastAddress : " + interfaceDetails.get(interfaceIndex).get(2) + " SubnetMask: "+ interfaceDetails.get(interfaceIndex).get(3));
 
     }
 }

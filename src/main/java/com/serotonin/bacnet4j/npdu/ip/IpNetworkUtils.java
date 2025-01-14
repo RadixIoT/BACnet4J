@@ -316,7 +316,7 @@ public class IpNetworkUtils {
                 }
             }
             if (interfaceIndex == -1)
-                throw new IllegalArgumentException(host + "is not configured in any interfaces.");
+                throw new IllegalArgumentException(host + " is not configured in any interfaces.");
             
             return subnetMaskAdd;
 

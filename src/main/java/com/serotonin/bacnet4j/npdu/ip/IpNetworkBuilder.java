@@ -30,6 +30,8 @@ package com.serotonin.bacnet4j.npdu.ip;
 
 import static com.serotonin.bacnet4j.npdu.ip.IpNetworkUtils.toIpAddrString;
 
+import org.apache.commons.lang3.SystemUtils;
+
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.util.BACnetUtils;
 
@@ -39,7 +41,7 @@ public class IpNetworkBuilder {
     private String subnetMask;
     private int port = IpNetwork.DEFAULT_PORT;
     private int localNetworkNumber = Address.LOCAL_NETWORK;
-    private boolean reuseAddress = (System.getProperty("os.name").contains("Windows")) ? false : true;
+    final private boolean reuseAddress = (SystemUtils.IS_OS_WINDOWS) ? false : true;
 
     public IpNetworkBuilder withLocalBindAddress(final String localBindAddress) {
         this.localBindAddress = localBindAddress;
@@ -97,12 +99,7 @@ public class IpNetworkBuilder {
         return this;
     }
 
-    // private IpNetworkBuilder withReuseAddress(final boolean reuseAddress) {
-    //     this.reuseAddress = reuseAddress;
-    //     return this;
-    // }
-
-    public IpNetworkBuilder withInterfaceName(final String ifaceName ){
+       public IpNetworkBuilder withInterfaceName(final String ifaceName ){
         this.localBindAddress = IpNetworkUtils.getIPAddressString(ifaceName);
         this.broadcastAddress = IpNetworkUtils.getLocalBroadcastAddressString(ifaceName);
         this.subnetMask = IpNetworkUtils.getSubnetMask(ifaceName);
