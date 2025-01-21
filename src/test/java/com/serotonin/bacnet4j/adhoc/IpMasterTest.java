@@ -6,9 +6,9 @@
 
 package com.serotonin.bacnet4j.adhoc;
 
-import java.util.ArrayList;
+
 import java.util.List;
-import java.util.Map;
+import java.util.Random;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,11 +39,11 @@ public class IpMasterTest {
     }
 
     public LocalDevice createIpLocalDevice() throws Exception {
-        Map<Integer, List<String>> interfaceDetails = IpNetworkUtils.getLocalInterfaceAddresses();
-        List<Integer> keys = new ArrayList<>(interfaceDetails.keySet());
-        String ifaceName = interfaceDetails.get(keys.get(0)).get(0);
+        Random rand = new Random();
+        List<IpNetworkUtils.InterfaceInfo> interfaceDetails = IpNetworkUtils.getLocalInterfaceAddresses();
+        final IpNetworkUtils.InterfaceInfo efaceInfo = interfaceDetails.get(rand.nextInt(interfaceDetails.size()));
         Network network  = new IpNetworkBuilder()
-                .withInterfaceName(ifaceName)
+                .withInterfaceName(efaceInfo.interfaceName())
                 .withPort(47808)
                 .withLocalNetworkNumber(5)
                 .build();

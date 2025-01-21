@@ -4,9 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 
 import org.junit.Before;
@@ -14,8 +12,8 @@ import org.junit.Test;
 
 public class IpNetworkBuilderTest {
 
-    int interfaceIndex;
-    Map<Integer, List<String>> interfaceDetails;
+    IpNetworkUtils.InterfaceInfo efaceInfo; 
+    List<IpNetworkUtils.InterfaceInfo> interfaceDetails; 
 
     @Test
     public void withSubnet16() {
@@ -62,29 +60,27 @@ public class IpNetworkBuilderTest {
     @Before public void initialize(){
         Random rand = new Random();
         interfaceDetails = IpNetworkUtils.getLocalInterfaceAddresses();
-        List<Integer> keys = new ArrayList<>(interfaceDetails.keySet());
-        interfaceIndex = keys.get(rand.nextInt(keys.size()));
+        efaceInfo = interfaceDetails.get(rand.nextInt(interfaceDetails.size()));  
     }
 
     @Test
     public void withLocalIPAddress() throws RuntimeException{
         
-        String IPAddress = interfaceDetails.get(interfaceIndex).get(1); 
+        String IPAddress = efaceInfo.localIPAddress(); 
         final IpNetworkBuilder builder = new IpNetworkBuilder().withLocalBindAddress(IPAddress);
         assertEquals(IPAddress,builder.getLocalBindAddress());
-        assertEquals(interfaceDetails.get(interfaceIndex).get(2), builder.getBroadcastAddress());
-        assertEquals(interfaceDetails.get(interfaceIndex).get(3), builder.getSubnetMask());   
+        assertEquals(efaceInfo.broadcastAddress(), builder.getBroadcastAddress());
+        assertEquals(efaceInfo.subnetMask(), builder.getSubnetMask());   
     }
 
     @Test
     public void withBroadcast() throws RuntimeException{
                 
-        String IPAddress = interfaceDetails.get(interfaceIndex).get(2); 
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast(IPAddress, 24);
+        String IPAddress = efaceInfo.broadcastAddress();
+        final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast(IPAddress, efaceInfo.networkPrefixLength());
         assertEquals(IPAddress,builder.getBroadcastAddress());
-        assertEquals(interfaceDetails.get(interfaceIndex).get(1), builder.getLocalBindAddress());
-        assertEquals(interfaceDetails.get(interfaceIndex).get(3), builder.getSubnetMask());
-            
+        assertEquals(efaceInfo.localIPAddress(), builder.getLocalBindAddress());
+        assertEquals(efaceInfo.subnetMask(), builder.getSubnetMask());
     }
 
     
@@ -110,11 +106,11 @@ public class IpNetworkBuilderTest {
 
     @Test
     public void withIterfaceName() throws RuntimeException{
-        String ifaceName = interfaceDetails.get(interfaceIndex).get(0); 
+        String ifaceName = efaceInfo.interfaceName(); 
         final IpNetworkBuilder builder = new IpNetworkBuilder().withInterfaceName(ifaceName);
-        assertEquals(interfaceDetails.get(interfaceIndex).get(1), builder.getLocalBindAddress());
-        assertEquals(interfaceDetails.get(interfaceIndex).get(2),builder.getBroadcastAddress());
-        assertEquals(interfaceDetails.get(interfaceIndex).get(3), builder.getSubnetMask());
+        assertEquals(efaceInfo.localIPAddress(), builder.getLocalBindAddress());
+        assertEquals(efaceInfo.broadcastAddress(),builder.getBroadcastAddress());
+        assertEquals(efaceInfo.subnetMask(), builder.getSubnetMask());
 
     }
 }
