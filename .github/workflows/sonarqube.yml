@@ -28,4 +28,4 @@ jobs:
       - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B -T1C org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=RadixIoT_BACnet4J
+        run: mvn -B -T1C test-compile org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=RadixIoT_BACnet4J -Dsonar.organization=radixiot
