@@ -45,8 +45,11 @@ public class IpNetworkBuilder {
 
     public IpNetworkBuilder withLocalBindAddress(final String localBindAddress) {
         this.localBindAddress = localBindAddress;
-        this.broadcastAddress = IpNetworkUtils.getLocalBroadcastAddressString(localBindAddress);
-        this.subnetMask = IpNetworkUtils.getSubnetMask(localBindAddress);
+        if (this.broadcastAddress == null)
+            this.broadcastAddress = IpNetworkUtils.getLocalBroadcastAddressString(localBindAddress);
+        if (this.subnetMask == null)
+            this.subnetMask = IpNetworkUtils.getSubnetMask(localBindAddress);
+
         return this;
     }
 
@@ -62,7 +65,9 @@ public class IpNetworkBuilder {
     public IpNetworkBuilder withBroadcast(final String broadcastAddress, final int networkPrefixLength) {
         this.broadcastAddress = broadcastAddress;
         this.subnetMask = toIpAddrString(IpNetworkUtils.createMask(networkPrefixLength));
-        this.localBindAddress = IpNetworkUtils.getIPAddressString(this.broadcastAddress);
+        if (this.localBindAddress == null || 
+            this.localBindAddress == IpNetwork.DEFAULT_BIND_IP)
+                this.localBindAddress = IpNetworkUtils.getIPAddressString(this.broadcastAddress);
         return this;
     }
 
@@ -83,9 +88,11 @@ public class IpNetworkBuilder {
 
         final long negMask = ~subnetMask & 0xFFFFFFFFL;
         final long subnet = IpNetworkUtils.bytesToLong(BACnetUtils.dottedStringToBytes(subnetAddress));
-
-        this.broadcastAddress = toIpAddrString(subnet | negMask);
-        this.localBindAddress = IpNetworkUtils.getIPAddressString(this.broadcastAddress);
+        if (this.broadcastAddress == null)
+            this.broadcastAddress = toIpAddrString(subnet | negMask);
+        if (this.localBindAddress == null || 
+            this.localBindAddress == IpNetwork.DEFAULT_BIND_IP)
+            this.localBindAddress = IpNetworkUtils.getIPAddressString(this.broadcastAddress);
         return this;
     }
 

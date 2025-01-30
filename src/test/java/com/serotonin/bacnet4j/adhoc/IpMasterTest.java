@@ -7,12 +7,6 @@
 package com.serotonin.bacnet4j.adhoc;
 
 
-import java.util.List;
-import java.util.Random;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.event.IAmListener;
@@ -26,6 +20,11 @@ import com.serotonin.bacnet4j.transport.Transport;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.util.DiscoveryUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+
 
 /**
  * Example of creating an Ip Master
@@ -39,11 +38,11 @@ public class IpMasterTest {
     }
 
     public LocalDevice createIpLocalDevice() throws Exception {
-        Random rand = new Random();
+       
         List<IpNetworkUtils.InterfaceInfo> interfaceDetails = IpNetworkUtils.getLocalInterfaceAddresses();
-        final IpNetworkUtils.InterfaceInfo efaceInfo = interfaceDetails.get(rand.nextInt(interfaceDetails.size()));
+        final IpNetworkUtils.InterfaceInfo interfaceInfo = interfaceDetails.get(0);
         Network network  = new IpNetworkBuilder()
-                .withInterfaceName(efaceInfo.interfaceName())
+                .withInterfaceName(interfaceInfo.interfaceName())
                 .withPort(47808)
                 .withLocalNetworkNumber(5)
                 .build();

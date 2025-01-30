@@ -1,6 +1,9 @@
 package com.serotonin.bacnet4j.npdu.ip;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mockStatic;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -17,6 +20,9 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
@@ -27,9 +33,10 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 import lohbihler.warp.WarpClock;
 
+@ExtendWith(MockitoExtension.class)
 public class BBMDTest {
     static final int port = 0xBAC0;
-
+    private MockedStatic<IpNetworkUtils> mockedUtil;
     private final WarpClock clock = new WarpClock();
     boolean canRun;
     
@@ -465,9 +472,17 @@ public class BBMDTest {
     }
 
     private LDInfo createLocalDevice(final int subnet, final int addr) throws Exception {
+        mockedUtil = mockStatic(IpNetworkUtils.class, CALLS_REAL_METHODS);
+        final String ipAddress = "127.0." + subnet + "." + addr;
+        final String broadcastAdd = "127.0." + subnet + "." + "255";
+        final String subnetMask = "255.255.255.0";
+        mockedUtil.when(()->IpNetworkUtils.getIPAddressString(anyString())).thenReturn(ipAddress);
+        mockedUtil.when(()->IpNetworkUtils.getLocalBroadcastAddressString(anyString())).thenReturn(broadcastAdd);
+        mockedUtil.when(()->IpNetworkUtils.getSubnetMask(anyString())).thenReturn(subnetMask);
+        
         final LDInfo info = new LDInfo();
 
-        info.network = new IpNetworkBuilder().withLocalBindAddress("127.0." + subnet + "." + addr) //
+        info.network = new IpNetworkBuilder().withLocalBindAddress(ipAddress) //
                 .withSubnet("127.0." + subnet + ".0", 24) //
                 .withLocalNetworkNumber(1) //
                 .build();       
@@ -487,7 +502,7 @@ public class BBMDTest {
         });
 
         allSockets.add(info.network.getSocket());
-
+        mockedUtil.close();
         return info;
     }
 

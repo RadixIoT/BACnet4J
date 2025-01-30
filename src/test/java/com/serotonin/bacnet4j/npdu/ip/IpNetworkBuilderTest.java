@@ -1,86 +1,111 @@
 package com.serotonin.bacnet4j.npdu.ip;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
-
-import java.util.List;
-import java.util.Random;
-
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+
+
+import static org.junit.Assert.*;
+import static org.mockito.Answers.CALLS_REAL_METHODS;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mockStatic;
+
+@ExtendWith(MockitoExtension.class)
 public class IpNetworkBuilderTest {
 
-    IpNetworkUtils.InterfaceInfo efaceInfo; 
+    IpNetworkUtils.InterfaceInfo interfaceInfo; 
     List<IpNetworkUtils.InterfaceInfo> interfaceDetails; 
 
     @Test
     public void withSubnet16() {
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withSubnet("192.168.0.0", 16);
-        assertEquals("192.168.255.255", builder.getBroadcastAddress());
-        assertEquals("255.255.0.0", builder.getSubnetMask());
+        try(MockedStatic<IpNetworkUtils> mockedUtil = mockStatic(IpNetworkUtils.class, CALLS_REAL_METHODS)){
+                mockedUtil.when(()->IpNetworkUtils.getIPAddressString(anyString())).thenReturn(IpNetwork.DEFAULT_BIND_IP);
+                final IpNetworkBuilder builder = new IpNetworkBuilder().withSubnet("192.168.0.0", 16);
+       
+                assertEquals("192.168.255.255", builder.getBroadcastAddress());
+                assertEquals("255.255.0.0",builder.getSubnetMask());
+            }
     }
 
     @Test
     public void withBroadcast16() {
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast("192.168.255.255", 16);
-        assertEquals("192.168.255.255", builder.getBroadcastAddress());
-        assertEquals("255.255.0.0", builder.getSubnetMask());
+        try(MockedStatic<IpNetworkUtils> mockedUtil = mockStatic(IpNetworkUtils.class, CALLS_REAL_METHODS)){
+            mockedUtil.when(()->IpNetworkUtils.getIPAddressString(anyString())).thenReturn(IpNetwork.DEFAULT_BIND_IP);
+            final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast("192.168.255.255", 16);
+            assertEquals("192.168.255.255", builder.getBroadcastAddress());
+            assertEquals("255.255.0.0", builder.getSubnetMask());
+        }
+    
     }
 
     @Test
     public void withSubnet24() {
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withSubnet("192.168.2.0", 24);
-        assertEquals("192.168.2.255", builder.getBroadcastAddress());
-        assertEquals("255.255.255.0", builder.getSubnetMask());
+        try(MockedStatic<IpNetworkUtils> mockedUtil = mockStatic(IpNetworkUtils.class, CALLS_REAL_METHODS)){
+            mockedUtil.when(()->IpNetworkUtils.getIPAddressString(anyString())).thenReturn(IpNetwork.DEFAULT_BIND_IP);
+            final IpNetworkBuilder builder = new IpNetworkBuilder().withSubnet("192.168.2.0", 24);
+            assertEquals("192.168.2.255", builder.getBroadcastAddress());
+            assertEquals("255.255.255.0", builder.getSubnetMask());
+        }
     }
 
     @Test
     public void withBroadcast24() {
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast("192.168.4.255", 24);
-        assertEquals("192.168.4.255", builder.getBroadcastAddress());
-        assertEquals("255.255.255.0", builder.getSubnetMask());
+        try(MockedStatic<IpNetworkUtils> mockedUtil = mockStatic(IpNetworkUtils.class, CALLS_REAL_METHODS)){
+            mockedUtil.when(()->IpNetworkUtils.getIPAddressString(anyString())).thenReturn(IpNetwork.DEFAULT_BIND_IP);
+            final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast("192.168.4.255", 24);
+            assertEquals("192.168.4.255", builder.getBroadcastAddress());
+            assertEquals("255.255.255.0", builder.getSubnetMask());
+        }
     }
 
     @Test
     public void withSubnet19() {
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withSubnet("192.168.192.0", 19);
-        assertEquals("192.168.223.255", builder.getBroadcastAddress());
-        assertEquals("255.255.224.0", builder.getSubnetMask());
+        try(MockedStatic<IpNetworkUtils> mockedUtil = mockStatic(IpNetworkUtils.class, CALLS_REAL_METHODS)){
+            mockedUtil.when(()->IpNetworkUtils.getIPAddressString(anyString())).thenReturn(IpNetwork.DEFAULT_BIND_IP);
+            final IpNetworkBuilder builder = new IpNetworkBuilder().withSubnet("192.168.192.0", 19);
+            assertEquals("192.168.223.255", builder.getBroadcastAddress());
+            assertEquals("255.255.224.0", builder.getSubnetMask());
+        }
     }
 
     @Test
     public void withBroadcast19() {
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast("192.168.223.255", 19);
-        assertEquals("192.168.223.255", builder.getBroadcastAddress());
-        assertEquals("255.255.224.0", builder.getSubnetMask());
+        try(MockedStatic<IpNetworkUtils> mockedUtil = mockStatic(IpNetworkUtils.class, CALLS_REAL_METHODS)){
+            mockedUtil.when(()->IpNetworkUtils.getIPAddressString(anyString())).thenReturn(IpNetwork.DEFAULT_BIND_IP);
+            final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast("192.168.223.255", 19);
+            assertEquals("192.168.223.255", builder.getBroadcastAddress());
+            assertEquals("255.255.224.0", builder.getSubnetMask());
+        }
     }
 
-    @Before public void initialize(){
-        Random rand = new Random();
+    @Before 
+    public void initialize(){
         interfaceDetails = IpNetworkUtils.getLocalInterfaceAddresses();
-        efaceInfo = interfaceDetails.get(rand.nextInt(interfaceDetails.size()));  
+        interfaceInfo = interfaceDetails.get(0);  
     }
 
     @Test
     public void withLocalIPAddress() throws RuntimeException{
         
-        String IPAddress = efaceInfo.localIPAddress(); 
+        String IPAddress = interfaceInfo.localIPAddress(); 
         final IpNetworkBuilder builder = new IpNetworkBuilder().withLocalBindAddress(IPAddress);
         assertEquals(IPAddress,builder.getLocalBindAddress());
-        assertEquals(efaceInfo.broadcastAddress(), builder.getBroadcastAddress());
-        assertEquals(efaceInfo.subnetMask(), builder.getSubnetMask());   
+        assertEquals(interfaceInfo.broadcastAddress(), builder.getBroadcastAddress());
+        assertEquals(interfaceInfo.subnetMask(), builder.getSubnetMask());   
     }
 
     @Test
     public void withBroadcast() throws RuntimeException{
                 
-        String IPAddress = efaceInfo.broadcastAddress();
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast(IPAddress, efaceInfo.networkPrefixLength());
+        String IPAddress = interfaceInfo.broadcastAddress();
+        final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast(IPAddress, interfaceInfo.networkPrefixLength());
         assertEquals(IPAddress,builder.getBroadcastAddress());
-        assertEquals(efaceInfo.localIPAddress(), builder.getLocalBindAddress());
-        assertEquals(efaceInfo.subnetMask(), builder.getSubnetMask());
+        assertEquals(interfaceInfo.localIPAddress(), builder.getLocalBindAddress());
+        assertEquals(interfaceInfo.subnetMask(), builder.getSubnetMask());
     }
 
     
@@ -90,7 +115,6 @@ public class IpNetworkBuilderTest {
         Exception exception = assertThrows(RuntimeException.class,() -> {
         final IpNetworkBuilder builder = new IpNetworkBuilder().withLocalBindAddress(IPAddress);});
         String actualMsg = exception.getMessage();
-        System.out.println(actualMsg);
         assertTrue((actualMsg.contains("IllegalArgument")));
     }
 
@@ -106,11 +130,11 @@ public class IpNetworkBuilderTest {
 
     @Test
     public void withIterfaceName() throws RuntimeException{
-        String ifaceName = efaceInfo.interfaceName(); 
+        String ifaceName = interfaceInfo.interfaceName(); 
         final IpNetworkBuilder builder = new IpNetworkBuilder().withInterfaceName(ifaceName);
-        assertEquals(efaceInfo.localIPAddress(), builder.getLocalBindAddress());
-        assertEquals(efaceInfo.broadcastAddress(),builder.getBroadcastAddress());
-        assertEquals(efaceInfo.subnetMask(), builder.getSubnetMask());
+        assertEquals(interfaceInfo.localIPAddress(), builder.getLocalBindAddress());
+        assertEquals(interfaceInfo.broadcastAddress(),builder.getBroadcastAddress());
+        assertEquals(interfaceInfo.subnetMask(), builder.getSubnetMask());
 
     }
 }

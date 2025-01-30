@@ -170,7 +170,7 @@ public class IpNetworkUtils {
      * <li> Integer format of the Network Prefix Length of the NIC </li> 
      * </ul>
      */
-    public static record InterfaceInfo(int index, 
+    public record InterfaceInfo(int index,
         String interfaceName, 
         String localIPAddress, 
         String broadcastAddress, 
@@ -183,12 +183,12 @@ public class IpNetworkUtils {
      * <p>
      * Values of the following parameters of each NIC are stored in record format:
      * <ul>
-     * <li> index (int) - NIC Card Index assigned by the OS
-     * <li> Name of the NIC (String)
-     * <li> IP4 Address assigned to the NIC (String)
-     * <li> Broadcast Address of the NIC (String)
-     * <li> SubnetMask of the NIC calculated based on the NetworkPrefixLength (String)
-     * <li> Network Prefix Length of the NIC (int)
+     * <li> index (int) - NIC Card Index assigned by the OS </li>
+     * <li> Name of the NIC (String) </li>
+     * <li> IP4 Address assigned to the NIC (String) </li>
+     * <li> Broadcast Address of the NIC (String) </li>
+     * <li> SubnetMask of the NIC calculated based on the NetworkPrefixLength (String) </li>
+     * <li> Network Prefix Length of the NIC (int) </li>
      * </ul>
      * @return the list of records of all NIC available in this device
     */
