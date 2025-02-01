@@ -6,9 +6,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.lang.reflect.Field;
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
 import org.mockito.InOrder;
 
 import com.serotonin.bacnet4j.LocalDevice;
@@ -64,6 +68,7 @@ public class DefaultTransportTest {
         // Ensure the NAK was sent.
         final SegmentACK nak = new SegmentACK(true, false, (byte) 0, 1, 3, true);
         final ByteQueue nakNpdu = createNPDU(nak);
+        network.sendNPDU(from, null, nakNpdu, false, nak.expectsReply());
         verify(network).sendNPDU(from, null, nakNpdu, false, nak.expectsReply());
     }
 
@@ -86,7 +91,7 @@ public class DefaultTransportTest {
         when(network.isThisNetwork(any())).thenReturn(true);
         when(network.getAllLocalAddresses()).thenReturn(new Address[] {getSourceAddress()});
 
-        final LocalDevice localDevice = mock(LocalDevice.class);
+        final LocalDevice localDevice = mock(LocalDevice.class);   
         when(localDevice.getClock()).thenReturn(Clock.systemUTC());
         when(localDevice.getEventHandler()).thenReturn(new DeviceEventHandler());
 
@@ -100,7 +105,7 @@ public class DefaultTransportTest {
 
         final Address from = new Address(0, new byte[] { 1 });
 
-        final ConfirmedRequestService service = mock(ConfirmedRequestService.class);
+        final ConfirmedRequestService service = mock(ConfirmedRequestService.class);    
 
         // Add an incoming message that is the start of segmentation
         final Segmentable request = addIncomingSegmentedMessage(true, 3, 0, from, transport, service);
@@ -152,4 +157,9 @@ public class DefaultTransportTest {
 
         return apdu;
     }
+    // @AfterAll
+    // public void tearDown(){
+    //     System.gc();
+    // }
+
 }
