@@ -406,8 +406,8 @@ public class LocalDevice implements AutoCloseable {
         if (timer != null) {
             timer.shutdown();
             try {
-                if (!timer.awaitTermination(10, TimeUnit.SECONDS))
-                    LOG.warn("BACnet4J timer did not shutdown within 10 seconds");
+                if (!timer.awaitTermination(400, TimeUnit.SECONDS))
+                    LOG.warn("BACnet4J timer did not shutdown within 400 seconds");
             } catch (final InterruptedException e) {
                 LOG.warn("Interrupted while waiting for shutdown of executors", e);
             }
