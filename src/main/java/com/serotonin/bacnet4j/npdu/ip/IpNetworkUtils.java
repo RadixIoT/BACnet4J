@@ -28,20 +28,17 @@
  */
 package com.serotonin.bacnet4j.npdu.ip;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.InterfaceAddress;
-import java.net.NetworkInterface;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.util.BACnetUtils;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
+import com.serotonin.bacnet4j.util.sero.HostNotConfiguredException;
 import com.serotonin.bacnet4j.util.sero.IpAddressUtils;
+
+import java.net.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class IpNetworkUtils {
     public static OctetString toOctetString(final String dottedString) {
@@ -199,13 +196,13 @@ public class IpNetworkUtils {
                 for (final InterfaceAddress addr : iface.getInterfaceAddresses()) {
                     if (!addr.getAddress().isLoopbackAddress() && addr.getAddress().isSiteLocalAddress()){
                         String ifaceName = iface.getName();
-                        String IPAddress = addr.getAddress().getHostName();
+                        String ipAddress = addr.getAddress().getHostName();
                         String broadcastAddress = addr.getBroadcast().getHostName();
                         final int networkPrefixLength = addr.getNetworkPrefixLength();
                         final long subnetMask = createMask(networkPrefixLength);
                         String networkMask = toIpAddrString(subnetMask);
                         int ifaceIndex = iface.getIndex();
-                        InterfaceInfo ifaceInfo = new InterfaceInfo(ifaceIndex, ifaceName, IPAddress, broadcastAddress, networkMask, networkPrefixLength);
+                        InterfaceInfo ifaceInfo = new InterfaceInfo(ifaceIndex, ifaceName, ipAddress, broadcastAddress, networkMask, networkPrefixLength);
                         ifaceDetails.add(ifaceInfo);
                     }
                 }
@@ -263,12 +260,12 @@ public class IpNetworkUtils {
                 info.broadcastAddress().equals(host))
                     return info.localIPAddress();
             }
-            throw new IllegalArgumentException(host + " is not configured in any interfaces.");
+            throw new HostNotConfiguredException(host);
             
 
         }catch (final Exception e) {
             // Should never happen, so just wrap in a RuntimeException
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(e);
         }
     }
 
@@ -294,11 +291,11 @@ public class IpNetworkUtils {
                 
             }
             
-                throw new IllegalArgumentException(host + " is not configured in any interfaces.");          
+                throw new HostNotConfiguredException(host);
             
         }catch (final Exception e) {
             // Should never happen, so just wrap in a RuntimeException
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(e);
         }
     }
 
@@ -324,13 +321,13 @@ public class IpNetworkUtils {
                     info.broadcastAddress().equals(host))
                         return info.subnetMask();
             }
-                throw new IllegalArgumentException(host + " is not configured in any interfaces.");
+                throw new HostNotConfiguredException(host);
             
             
 
         }catch (final Exception e) {
             // Should never happen, so just wrap in a RuntimeException
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(e);
         }
     }
 }

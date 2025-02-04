@@ -91,9 +91,9 @@ public class IpNetworkBuilderTest {
     @Test
     public void withLocalIPAddress() throws RuntimeException{
         
-        String IPAddress = interfaceInfo.localIPAddress(); 
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withLocalBindAddress(IPAddress);
-        assertEquals(IPAddress,builder.getLocalBindAddress());
+        String ipAddress = interfaceInfo.localIPAddress();
+        final IpNetworkBuilder builder = new IpNetworkBuilder().withLocalBindAddress(ipAddress);
+        assertEquals(ipAddress,builder.getLocalBindAddress());
         assertEquals(interfaceInfo.broadcastAddress(), builder.getBroadcastAddress());
         assertEquals(interfaceInfo.subnetMask(), builder.getSubnetMask());   
     }
@@ -101,9 +101,10 @@ public class IpNetworkBuilderTest {
     @Test
     public void withBroadcast() throws RuntimeException{
                 
-        String IPAddress = interfaceInfo.broadcastAddress();
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withBroadcast(IPAddress, interfaceInfo.networkPrefixLength());
-        assertEquals(IPAddress,builder.getBroadcastAddress());
+        String ipAddress = interfaceInfo.broadcastAddress();
+        final IpNetworkBuilder builder = new IpNetworkBuilder();
+        builder.withBroadcast(ipAddress, interfaceInfo.networkPrefixLength());
+        assertEquals(ipAddress,builder.getBroadcastAddress());
         assertEquals(interfaceInfo.localIPAddress(), builder.getLocalBindAddress());
         assertEquals(interfaceInfo.subnetMask(), builder.getSubnetMask());
     }
@@ -111,25 +112,24 @@ public class IpNetworkBuilderTest {
     
     @Test
     public void withLocalBindAddress_IncorrectIP() throws RuntimeException{
-        String IPAddress = "1.1.1.1";
-        Exception exception = assertThrows(RuntimeException.class,() -> {
-        final IpNetworkBuilder builder = new IpNetworkBuilder().withLocalBindAddress(IPAddress);});
-        String actualMsg = exception.getMessage();
-        assertTrue((actualMsg.contains("IllegalArgument")));
+        String ipAddress = "1.1.1.1";
+        Exception exception = assertThrows(IllegalArgumentException.class,() -> {
+            final IpNetworkBuilder builder =  new IpNetworkBuilder();
+            builder.withLocalBindAddress(ipAddress);});
     }
 
     @Test
     public void verifyReuseAddress(){
         final IpNetworkBuilder builder = new IpNetworkBuilder();
         if (System.getProperty("os.name").contains("Windows"))
-            assertTrue(!builder.isReuseAddress());//reuseAddress = false;
+            assertFalse(builder.isReuseAddress());
         else
             assertTrue(builder.isReuseAddress()); 
         
     }
 
     @Test
-    public void withIterfaceName() throws RuntimeException{
+    public void withInterfaceName() throws RuntimeException{
         String ifaceName = interfaceInfo.interfaceName(); 
         final IpNetworkBuilder builder = new IpNetworkBuilder().withInterfaceName(ifaceName);
         assertEquals(interfaceInfo.localIPAddress(), builder.getLocalBindAddress());

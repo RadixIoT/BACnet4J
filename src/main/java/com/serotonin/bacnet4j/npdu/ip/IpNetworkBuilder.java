@@ -28,12 +28,11 @@
  */
 package com.serotonin.bacnet4j.npdu.ip;
 
-import static com.serotonin.bacnet4j.npdu.ip.IpNetworkUtils.toIpAddrString;
-
-import org.apache.commons.lang3.SystemUtils;
-
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.util.BACnetUtils;
+import org.apache.commons.lang3.SystemUtils;
+
+import static com.serotonin.bacnet4j.npdu.ip.IpNetworkUtils.toIpAddrString;
 
 public class IpNetworkBuilder {
     private String localBindAddress = IpNetwork.DEFAULT_BIND_IP;
@@ -41,7 +40,7 @@ public class IpNetworkBuilder {
     private String subnetMask;
     private int port = IpNetwork.DEFAULT_PORT;
     private int localNetworkNumber = Address.LOCAL_NETWORK;
-    final private boolean reuseAddress = (SystemUtils.IS_OS_WINDOWS) ? false : true;
+    private static final boolean reuseAddress = !(SystemUtils.IS_OS_WINDOWS);
 
     public IpNetworkBuilder withLocalBindAddress(final String localBindAddress) {
         this.localBindAddress = localBindAddress;
@@ -66,7 +65,7 @@ public class IpNetworkBuilder {
         this.broadcastAddress = broadcastAddress;
         this.subnetMask = toIpAddrString(IpNetworkUtils.createMask(networkPrefixLength));
         if (this.localBindAddress == null || 
-            this.localBindAddress == IpNetwork.DEFAULT_BIND_IP)
+            this.localBindAddress.equals(IpNetwork.DEFAULT_BIND_IP))
                 this.localBindAddress = IpNetworkUtils.getIPAddressString(this.broadcastAddress);
         return this;
     }
@@ -91,7 +90,7 @@ public class IpNetworkBuilder {
         if (this.broadcastAddress == null)
             this.broadcastAddress = toIpAddrString(subnet | negMask);
         if (this.localBindAddress == null || 
-            this.localBindAddress == IpNetwork.DEFAULT_BIND_IP)
+            this.localBindAddress.equals(IpNetwork.DEFAULT_BIND_IP))
             this.localBindAddress = IpNetworkUtils.getIPAddressString(this.broadcastAddress);
         return this;
     }
