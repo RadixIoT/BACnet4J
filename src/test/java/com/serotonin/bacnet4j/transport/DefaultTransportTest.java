@@ -157,9 +157,5 @@ public class DefaultTransportTest {
 
         return apdu;
     }
-    // @AfterAll
-    // public void tearDown(){
-    //     System.gc();
-    // }
 
 }

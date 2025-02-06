@@ -290,8 +290,7 @@ public class IpNetworkUtils {
                         return info.broadcastAddress();
                 
             }
-            
-                throw new HostNotConfiguredException(host);
+            throw new HostNotConfiguredException(host);
             
         }catch (final Exception e) {
             // Should never happen, so just wrap in a RuntimeException
