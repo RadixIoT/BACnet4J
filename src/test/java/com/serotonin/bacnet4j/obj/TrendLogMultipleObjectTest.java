@@ -156,6 +156,7 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         assertEquals(unknownObject, record3.getLogData().getData().get(2).getDatum());
         assertEquals(noPropSpecified, record3.getLogData().getData().get(3).getDatum());
         assertEquals(noPropSpecified, record3.getLogData().getData().get(4).getDatum());
+        Thread.sleep(2000);
     }
 
     @Test

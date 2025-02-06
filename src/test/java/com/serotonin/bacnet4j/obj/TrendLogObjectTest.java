@@ -135,6 +135,7 @@ public class TrendLogObjectTest extends AbstractTest {
         final LogRecord record5 = tl.getBuffer().get(2);
         assertEquals(new Real(4), record5.getChoice());
         assertEquals(new StatusFlags(false, false, false, false), record5.getStatusFlags());
+        Thread.sleep(2000);
     }
 
     @Test
