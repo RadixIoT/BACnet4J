@@ -1,46 +1,12 @@
 package com.serotonin.bacnet4j.obj;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.junit.Assert.assertEquals;
-
-import java.time.temporal.ChronoField;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
-import com.serotonin.bacnet4j.type.constructed.BACnetArray;
-import com.serotonin.bacnet4j.type.constructed.ClientCov;
-import com.serotonin.bacnet4j.type.constructed.CovSubscription;
-import com.serotonin.bacnet4j.type.constructed.DateTime;
-import com.serotonin.bacnet4j.type.constructed.Destination;
-import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
-import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
-import com.serotonin.bacnet4j.type.constructed.LogRecord;
-import com.serotonin.bacnet4j.type.constructed.LogStatus;
-import com.serotonin.bacnet4j.type.constructed.PropertyValue;
-import com.serotonin.bacnet4j.type.constructed.Recipient;
-import com.serotonin.bacnet4j.type.constructed.SequenceOf;
-import com.serotonin.bacnet4j.type.constructed.StatusFlags;
-import com.serotonin.bacnet4j.type.constructed.TimeStamp;
-import com.serotonin.bacnet4j.type.enumerated.EngineeringUnits;
-import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
-import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
-import com.serotonin.bacnet4j.type.enumerated.EventState;
-import com.serotonin.bacnet4j.type.enumerated.EventType;
-import com.serotonin.bacnet4j.type.enumerated.NotifyType;
-import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
-import com.serotonin.bacnet4j.type.enumerated.Reliability;
+import com.serotonin.bacnet4j.type.constructed.*;
+import com.serotonin.bacnet4j.type.enumerated.*;
 import com.serotonin.bacnet4j.type.eventParameter.BufferReady;
 import com.serotonin.bacnet4j.type.eventParameter.EventParameter;
 import com.serotonin.bacnet4j.type.notificationParameters.BufferReadyNotif;
@@ -50,6 +16,19 @@ import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.temporal.ChronoField;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.junit.Assert.assertEquals;
 
 public class TrendLogObjectTest extends AbstractTest {
     static final Logger LOG = LoggerFactory.getLogger(TrendLogObjectTest.class);
@@ -85,8 +64,6 @@ public class TrendLogObjectTest extends AbstractTest {
 
     private void polling(final TrendLogObject tl, final BACnetObject bo) throws Exception {
         assertEquals(0, tl.getBuffer().size());
-
-        //
         // Advance the clock to the polling time.
         LOG.info("Starting time: {}", clock.instant());
         final int seconds = (62 - clock.get(ChronoField.SECOND_OF_MINUTE) - 1) % 60 + 1;
@@ -106,7 +83,6 @@ public class TrendLogObjectTest extends AbstractTest {
 
         // Advance the clock another minute to poll again.
         clock.plus(1, MINUTES, 0);
-
         TestUtils.assertSize(tl.getBuffer(), 2, 500);
         final LogRecord record2 = tl.getBuffer().get(1);
         assertEquals(2, record2.getTimestamp().getTime().getSecond());
@@ -121,7 +97,6 @@ public class TrendLogObjectTest extends AbstractTest {
 
         // Advance the clock another minute to poll again.
         clock.plus(1, MINUTES, 0);
-
         TestUtils.assertSize(tl.getBuffer(), 3, 500);
         final LogRecord record3 = tl.getBuffer().get(2);
         assertEquals(2, record3.getTimestamp().getTime().getSecond());
@@ -130,33 +105,37 @@ public class TrendLogObjectTest extends AbstractTest {
         assertEquals(new Real(2), record3.getChoice());
         assertEquals(new StatusFlags(false, false, true, false), record3.getStatusFlags());
 
-        //
         // Update the log interval to 1 hour.
+        tl.writeProperty(null, PropertyIdentifier.enable, Boolean.FALSE);
+        tl.writeProperty(null, PropertyIdentifier.recordCount, new UnsignedInteger(0));
         tl.writeProperty(null, PropertyIdentifier.logInterval, new UnsignedInteger(60 * 60 * 100));
+        tl.writeProperty(null, PropertyIdentifier.enable, Boolean.TRUE);
         bo.writePropertyInternal(PropertyIdentifier.presentValue, new Real(3));
 
         // Advance the clock to the new polling time.
-        final int minutes = (62 - clock.get(ChronoField.MINUTE_OF_HOUR)) % 60;
-        clock.plus(minutes, MINUTES, 0);
-
-        TestUtils.assertSize(tl.getBuffer(), 4, 500);
-        final LogRecord record4 = tl.getBuffer().get(3);
+        int minutes = (62 - clock.get(ChronoField.MINUTE_OF_HOUR));
+        if (minutes < 34)
+            minutes +=  60;
+        clock.plus(minutes, MINUTES, 100);
+        TestUtils.assertSize(tl.getBuffer(), 2, 500);
+        final LogRecord record4 = tl.getBuffer().get(1);
         assertEquals(2, record4.getTimestamp().getTime().getMinute());
         assertEquals(new Real(3), record4.getChoice());
         assertEquals(new StatusFlags(false, false, true, false), record4.getStatusFlags());
 
-        //
         // Try a trigger for fun.
+        tl.writePropertyInternal(PropertyIdentifier.loggingType, LoggingType.triggered);
         bo.writePropertyInternal(PropertyIdentifier.presentValue, new Real(4));
         bo.setOverridden(false);
         tl.trigger();
-
+      
         // Wait for the polling to finish.
-        Thread.sleep(50);
-        assertEquals(5, tl.getBuffer().size());
-        final LogRecord record5 = tl.getBuffer().get(4);
+        Thread.sleep(50); 
+        assertEquals(3, tl.getBuffer().size());
+        final LogRecord record5 = tl.getBuffer().get(2);
         assertEquals(new Real(4), record5.getChoice());
         assertEquals(new StatusFlags(false, false, false, false), record5.getStatusFlags());
+        Thread.sleep(2000);
     }
 
     @Test
@@ -182,7 +161,6 @@ public class TrendLogObjectTest extends AbstractTest {
 
         // Wait for the COV to set up, and for the initial notification to be sent.
         Thread.sleep(300);
-
         // Make sure the subscription is there.
         SequenceOf<CovSubscription> subscriptions = d.getObject(d.getId())
                 .readProperty(PropertyIdentifier.activeCovSubscriptions);

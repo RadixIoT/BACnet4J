@@ -38,7 +38,7 @@ public class MultipleLocalDevices {
         IpNetwork networkOne = new IpNetworkBuilder()
                 .withLocalBindAddress(bindAddress1)
                 .withBroadcast("255.255.255.255", 24)
-                .withLocalNetworkNumber(1).withPort(47808).withReuseAddress(false).build();
+                .withLocalNetworkNumber(1).withPort(47808).build();
         Transport transportOne = new DefaultTransport(networkOne);
         LocalDevice localDeviceOne = new LocalDevice(1, transportOne);
 
@@ -60,7 +60,7 @@ public class MultipleLocalDevices {
         IpNetwork networkTwo = new IpNetworkBuilder()
                 .withLocalBindAddress(bindAddress2)
                 .withBroadcast("255.255.255.255", 24)
-                .withLocalNetworkNumber(1).withPort(47808).withReuseAddress(false).build();
+                .withLocalNetworkNumber(1).withPort(47808).build();
         Transport transportTwo = new DefaultTransport(networkTwo);
         LocalDevice localDeviceTwo = new LocalDevice(2, transportTwo);
 

@@ -28,20 +28,17 @@
  */
 package com.serotonin.bacnet4j.npdu.ip;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.InterfaceAddress;
-import java.net.NetworkInterface;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.util.BACnetUtils;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
+import com.serotonin.bacnet4j.util.sero.HostNotConfiguredException;
 import com.serotonin.bacnet4j.util.sero.IpAddressUtils;
+
+import java.net.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class IpNetworkUtils {
     public static OctetString toOctetString(final String dottedString) {
@@ -158,16 +155,60 @@ public class IpNetworkUtils {
         return toAddress(networkNumber, addr.getAddress().getAddress(), addr.getPort());
     }
 
-    public static List<InterfaceAddress> getLocalInterfaceAddresses() {
+    
+    /**
+     * Following details of the NIC (Network Interface Card) are stored in this record:
+     * <ul>
+     * <li> Integer format of index value of the NIC assigned by the OS </li>
+     * <li> String format of the name of the NIC </li>
+     * <li> String format of the IP4 Address assigned to the NIC </li>
+     * <li> String format of the the broadcast Address of the NIC </li>
+     * <li> String format of the SubnetMask of the NIC </li>
+     * <li> Integer format of the Network Prefix Length of the NIC </li> 
+     * </ul>
+     */
+    public record InterfaceInfo(int index,
+        String interfaceName, 
+        String localIPAddress, 
+        String broadcastAddress, 
+        String subnetMask, 
+        int networkPrefixLength) {}
+
+
+    /**
+     * Convenient method to get the deails of Network Interface card
+     * <p>
+     * Values of the following parameters of each NIC are stored in record format:
+     * <ul>
+     * <li> index (int) - NIC Card Index assigned by the OS </li>
+     * <li> Name of the NIC (String) </li>
+     * <li> IP4 Address assigned to the NIC (String) </li>
+     * <li> Broadcast Address of the NIC (String) </li>
+     * <li> SubnetMask of the NIC calculated based on the NetworkPrefixLength (String) </li>
+     * <li> Network Prefix Length of the NIC (int) </li>
+     * </ul>
+     * @return the list of records of all NIC available in this device
+    */
+    public static List<InterfaceInfo> getLocalInterfaceAddresses() {
         try {
-            final List<InterfaceAddress> result = new ArrayList<>();
+            List<InterfaceInfo> ifaceDetails = new ArrayList<>();
             for (final NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 for (final InterfaceAddress addr : iface.getInterfaceAddresses()) {
-                    if (!addr.getAddress().isLoopbackAddress() && addr.getAddress().isSiteLocalAddress())
-                        result.add(addr);
+                    if (!addr.getAddress().isLoopbackAddress() && addr.getAddress().isSiteLocalAddress()){
+                        String ifaceName = iface.getName();
+                        String ipAddress = addr.getAddress().getHostName();
+                        String broadcastAddress = addr.getBroadcast().getHostName();
+                        final int networkPrefixLength = addr.getNetworkPrefixLength();
+                        final long subnetMask = createMask(networkPrefixLength);
+                        String networkMask = toIpAddrString(subnetMask);
+                        int ifaceIndex = iface.getIndex();
+                        InterfaceInfo ifaceInfo = new InterfaceInfo(ifaceIndex, ifaceName, ipAddress, broadcastAddress, networkMask, networkPrefixLength);
+                        ifaceDetails.add(ifaceInfo);
+                    }
                 }
+                
             }
-            return result;
+            return ifaceDetails;
         } catch (final Exception e) {
             // Should never happen, so just wrap in a RuntimeException
             throw new RuntimeException(e);
@@ -198,5 +239,94 @@ public class IpNetworkUtils {
         sb.append(addr >> 8 & 0xFF).append('.');
         sb.append(addr & 0xFF);
         return sb.toString();
+    }
+
+    
+    /**
+     * Method to return the IP Address in dotted string based on
+     * the broadcast Address string or IP Address string.
+     * Throws exception if the Broadcast Address or IP address is
+     * not configured in any of the available Network Interface
+     *
+     * @param host
+     * @return the IP Address assigned to the NIC
+     */
+    public static String getIPAddressString(String host)
+    {
+        try{
+            for (InterfaceInfo info:getLocalInterfaceAddresses()){
+                if (info.localIPAddress().equals(host) ||
+                info.interfaceName().equals(host) ||
+                info.broadcastAddress().equals(host))
+                    return info.localIPAddress();
+            }
+            throw new HostNotConfiguredException(host);
+            
+
+        }catch (final Exception e) {
+            // Should never happen, so just wrap in a RuntimeException
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    /**
+     * Method to return the Broadcast IP Address configured
+     * for the corresponding interface based on  the 
+     * IP Address string or name of the NIC. 
+     * Throws exception if the IP address or interface name is
+     * not configured in any of the available Network Interface.
+     *
+     * @param host
+     * @return BroadcastAddress
+     */
+    public static String getLocalBroadcastAddressString(String host)
+    {
+        try{
+            for (InterfaceInfo info:getLocalInterfaceAddresses()){
+                if (info.localIPAddress().equals(host) ||
+                    (info.broadcastAddress() != null &&
+                    info.broadcastAddress().equals(host)) ||
+                    info.interfaceName().equals(host))
+                        return info.broadcastAddress();
+                
+            }
+            throw new HostNotConfiguredException(host);
+            
+        }catch (final Exception e) {
+            // Should never happen, so just wrap in a RuntimeException
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+
+    /**
+     * Method to return the the Subnet Mask configured
+     * for the corresponding interface based on the
+     * IP Address string or interface name.
+     * Throws IllegalArguement exception if the IP address or
+     * interface name is not configured in any of the 
+     * available Network Interface.
+     *
+     * @param host
+     * @return SubnetMask of the NIC
+     */
+    public static String getSubnetMask(String host)
+    {
+        try{
+           
+            for (InterfaceInfo info:getLocalInterfaceAddresses()){
+                if (info.localIPAddress().equals(host) ||
+                    info.interfaceName().equals(host) ||
+                    info.broadcastAddress().equals(host))
+                        return info.subnetMask();
+            }
+                throw new HostNotConfiguredException(host);
+            
+            
+
+        }catch (final Exception e) {
+            // Should never happen, so just wrap in a RuntimeException
+            throw new IllegalArgumentException(e);
+        }
     }
 }

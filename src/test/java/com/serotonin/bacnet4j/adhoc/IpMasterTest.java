@@ -6,8 +6,6 @@
 
 package com.serotonin.bacnet4j.adhoc;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
@@ -15,12 +13,18 @@ import com.serotonin.bacnet4j.event.IAmListener;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.npdu.Network;
 import com.serotonin.bacnet4j.npdu.ip.IpNetworkBuilder;
+import com.serotonin.bacnet4j.npdu.ip.IpNetworkUtils;
 import com.serotonin.bacnet4j.service.unconfirmed.WhoIsRequest;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.transport.Transport;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.util.DiscoveryUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+
 
 /**
  * Example of creating an Ip Master
@@ -34,12 +38,13 @@ public class IpMasterTest {
     }
 
     public LocalDevice createIpLocalDevice() throws Exception {
-        Network network =network = new IpNetworkBuilder()
-                .withLocalBindAddress("0.0.0.0")
-                .withBroadcast("255.255.255.255", 24)
+       
+        List<IpNetworkUtils.InterfaceInfo> interfaceDetails = IpNetworkUtils.getLocalInterfaceAddresses();
+        final IpNetworkUtils.InterfaceInfo interfaceInfo = interfaceDetails.get(0);
+        Network network  = new IpNetworkBuilder()
+                .withInterfaceName(interfaceInfo.interfaceName())
                 .withPort(47808)
                 .withLocalNetworkNumber(5)
-                .withReuseAddress(true)
                 .build();
 
         Transport transport = new DefaultTransport(network);

@@ -28,12 +28,11 @@
  */
 package com.serotonin.bacnet4j.npdu.ip;
 
-import static com.serotonin.bacnet4j.npdu.ip.IpNetworkUtils.toIpAddrString;
-
-import org.apache.commons.lang3.StringUtils;
-
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.util.BACnetUtils;
+import org.apache.commons.lang3.SystemUtils;
+
+import static com.serotonin.bacnet4j.npdu.ip.IpNetworkUtils.toIpAddrString;
 
 public class IpNetworkBuilder {
     private String localBindAddress = IpNetwork.DEFAULT_BIND_IP;
@@ -41,10 +40,15 @@ public class IpNetworkBuilder {
     private String subnetMask;
     private int port = IpNetwork.DEFAULT_PORT;
     private int localNetworkNumber = Address.LOCAL_NETWORK;
-    private boolean reuseAddress = false;
+    private static final boolean reuseAddress = !(SystemUtils.IS_OS_WINDOWS);
 
     public IpNetworkBuilder withLocalBindAddress(final String localBindAddress) {
         this.localBindAddress = localBindAddress;
+        if (this.broadcastAddress == null)
+            this.broadcastAddress = IpNetworkUtils.getLocalBroadcastAddressString(localBindAddress);
+        if (this.subnetMask == null)
+            this.subnetMask = IpNetworkUtils.getSubnetMask(localBindAddress);
+
         return this;
     }
 
@@ -60,7 +64,9 @@ public class IpNetworkBuilder {
     public IpNetworkBuilder withBroadcast(final String broadcastAddress, final int networkPrefixLength) {
         this.broadcastAddress = broadcastAddress;
         this.subnetMask = toIpAddrString(IpNetworkUtils.createMask(networkPrefixLength));
-
+        if (this.localBindAddress == null || 
+            this.localBindAddress.equals(IpNetwork.DEFAULT_BIND_IP))
+                this.localBindAddress = IpNetworkUtils.getIPAddressString(this.broadcastAddress);
         return this;
     }
 
@@ -81,9 +87,11 @@ public class IpNetworkBuilder {
 
         final long negMask = ~subnetMask & 0xFFFFFFFFL;
         final long subnet = IpNetworkUtils.bytesToLong(BACnetUtils.dottedStringToBytes(subnetAddress));
-
-        this.broadcastAddress = toIpAddrString(subnet | negMask);
-
+        if (this.broadcastAddress == null)
+            this.broadcastAddress = toIpAddrString(subnet | negMask);
+        if (this.localBindAddress == null || 
+            this.localBindAddress.equals(IpNetwork.DEFAULT_BIND_IP))
+            this.localBindAddress = IpNetworkUtils.getIPAddressString(this.broadcastAddress);
         return this;
     }
 
@@ -97,11 +105,13 @@ public class IpNetworkBuilder {
         return this;
     }
 
-    public IpNetworkBuilder withReuseAddress(final boolean reuseAddress) {
-        this.reuseAddress = reuseAddress;
+       public IpNetworkBuilder withInterfaceName(final String ifaceName ){
+        this.localBindAddress = IpNetworkUtils.getIPAddressString(ifaceName);
+        this.broadcastAddress = IpNetworkUtils.getLocalBroadcastAddressString(ifaceName);
+        this.subnetMask = IpNetworkUtils.getSubnetMask(ifaceName);
         return this;
     }
-
+    
     public String getLocalBindAddress() {
         return localBindAddress;
     }
