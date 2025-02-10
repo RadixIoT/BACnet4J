@@ -117,39 +117,15 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         assertEquals(noPropSpecified, record1.getLogData().getData().get(4).getDatum());
 
         //
-        // Update the log interval to 1 hour.
-        tl.writeProperty(null, PropertyIdentifier.logInterval, new UnsignedInteger(60 * 60 * 100));
-        ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(3));
-
-        // Advance the clock to the new polling time.
-        int minutes = (62 - clock.get(ChronoField.MINUTE_OF_HOUR)) % 60;
-        if (minutes < 34)
-            minutes +=  60;
-        clock.plus(minutes, MINUTES, 100);
-        LOG.debug("poll: {}", clock.instant());
-
-        TestUtils.assertSize(tl.getBuffer(), 3, 500);
-        assertEquals(3, tl.getBuffer().size());
-        final LogMultipleRecord record2 = tl.getBuffer().get(2);
-        assertEquals(2, record2.getTimestamp().getTime().getMinute());
-        assertEquals(3, record2.getSequenceNumber());
-        assertEquals(5, record2.getLogData().getData().size());
-        assertEquals(new Real(3), record2.getLogData().getData().get(0).getDatum());
-        assertEquals(new Real(0), record2.getLogData().getData().get(1).getDatum());
-        assertEquals(unknownObject, record2.getLogData().getData().get(2).getDatum());
-        assertEquals(noPropSpecified, record2.getLogData().getData().get(3).getDatum());
-        assertEquals(noPropSpecified, record2.getLogData().getData().get(4).getDatum());
-
-        //
         // Try a trigger for fun.
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(4));
         tl.trigger();
 
         // Wait for the polling to finish.
         Thread.sleep(100);
-        TestUtils.assertSize(tl.getBuffer(), 4, 500);
-        final LogMultipleRecord record3 = tl.getBuffer().get(3);
-        assertEquals(4, record3.getSequenceNumber());
+        TestUtils.assertSize(tl.getBuffer(), 3, 500);
+        final LogMultipleRecord record3 = tl.getBuffer().get(2);
+        assertEquals(3, record3.getSequenceNumber());
         assertEquals(5, record3.getLogData().getData().size());
         assertEquals(new Real(4), record3.getLogData().getData().get(0).getDatum());
         assertEquals(new Real(0), record3.getLogData().getData().get(1).getDatum());

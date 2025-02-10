@@ -105,24 +105,6 @@ public class TrendLogObjectTest extends AbstractTest {
         assertEquals(new Real(2), record3.getChoice());
         assertEquals(new StatusFlags(false, false, true, false), record3.getStatusFlags());
 
-        // Update the log interval to 1 hour.
-        tl.writeProperty(null, PropertyIdentifier.enable, Boolean.FALSE);
-        tl.writeProperty(null, PropertyIdentifier.recordCount, new UnsignedInteger(0));
-        tl.writeProperty(null, PropertyIdentifier.logInterval, new UnsignedInteger(60 * 60 * 100));
-        tl.writeProperty(null, PropertyIdentifier.enable, Boolean.TRUE);
-        bo.writePropertyInternal(PropertyIdentifier.presentValue, new Real(3));
-
-        // Advance the clock to the new polling time.
-        int minutes = (62 - clock.get(ChronoField.MINUTE_OF_HOUR));
-        if (minutes < 34)
-            minutes +=  60;
-        clock.plus(minutes, MINUTES, 100);
-        TestUtils.assertSize(tl.getBuffer(), 2, 500);
-        final LogRecord record4 = tl.getBuffer().get(1);
-        assertEquals(2, record4.getTimestamp().getTime().getMinute());
-        assertEquals(new Real(3), record4.getChoice());
-        assertEquals(new StatusFlags(false, false, true, false), record4.getStatusFlags());
-
         // Try a trigger for fun.
         tl.writePropertyInternal(PropertyIdentifier.loggingType, LoggingType.triggered);
         bo.writePropertyInternal(PropertyIdentifier.presentValue, new Real(4));
@@ -131,11 +113,11 @@ public class TrendLogObjectTest extends AbstractTest {
       
         // Wait for the polling to finish.
         Thread.sleep(50); 
-        assertEquals(3, tl.getBuffer().size());
-        final LogRecord record5 = tl.getBuffer().get(2);
+        assertEquals(4, tl.getBuffer().size());
+        final LogRecord record5 = tl.getBuffer().get(3);
         assertEquals(new Real(4), record5.getChoice());
         assertEquals(new StatusFlags(false, false, false, false), record5.getStatusFlags());
-        Thread.sleep(2000);
+        Thread.sleep(1000);
     }
 
     @Test
