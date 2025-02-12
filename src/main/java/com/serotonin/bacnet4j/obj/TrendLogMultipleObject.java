@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -175,8 +176,10 @@ public class TrendLogMultipleObject extends BACnetObject {
         return logDisabled;
     }
 
-    public LogBuffer<LogMultipleRecord> getBuffer() {
-        return buffer;
+    public void withBuffer(Consumer<LogBuffer<LogMultipleRecord>> bufferConsumer) {
+        synchronized (buffer) {
+            bufferConsumer.accept(buffer);
+        }
     }
 
     public void setEnabled(final boolean enabled) {

@@ -274,7 +274,7 @@ public class TestUtils {
         assertSize(() -> collection.size(), size, wait);
     }
 
-    private static void assertSize(final SizeRetriever thingWithSize, final int size, final int wait) {
+    public static void assertSize(final SizeRetriever thingWithSize, final int size, final int wait) {
         final long deadline = Clock.systemUTC().millis() + wait;
         while (true) {
             if (thingWithSize.size() == size) {
@@ -288,7 +288,7 @@ public class TestUtils {
     }
 
     @FunctionalInterface
-    interface SizeRetriever {
+    public interface SizeRetriever {
         int size();
     }
 }
