@@ -283,7 +283,7 @@ public class TestUtils {
             if (deadline < Clock.systemUTC().millis()) {
                 fail("Expected collection size of " + size + ", but was " + thingWithSize.size());
             }
-            ThreadUtils.sleep(2);
+            ThreadUtils.sleep(100);
         }
     }
 

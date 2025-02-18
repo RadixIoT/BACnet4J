@@ -87,7 +87,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         a.supportIntrinsicReporting(50, 30, 60, 20, 3, new UnsignedInteger(5), 54, new LimitEnable(true, true),
                 new EventTransitionBits(true, true, true), NotifyType.event);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Advance the clock half a second so that pulses are out of time with scheduled tasks.
         clock.plusMillis(500);
@@ -102,7 +102,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(40), a.readProperty(PropertyIdentifier.pulseRate));
         assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         // Ensure that no notifications are sent.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         //
         // Write pulses to go out of range value and then set back to normal before the time delay.
@@ -123,8 +123,8 @@ public class AccumulatorObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, false, false, false), a.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        Map<String, Object> notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(a.getId(), notif.get("eventObjectIdentifier"));
@@ -147,8 +147,8 @@ public class AccumulatorObjectTest extends AbstractTest {
         a.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(false, true));
         assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState));
         Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(a.getId(), notif.get("eventObjectIdentifier"));
@@ -172,8 +172,8 @@ public class AccumulatorObjectTest extends AbstractTest {
         assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState));
         doPulses(27, 27, 27, 27);
         assertEquals(EventState.lowLimit, a.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(EventType.unsignedRange, notif.get("eventType"));
         assertEquals(EventState.normal, notif.get("fromState"));
         assertEquals(EventState.lowLimit, notif.get("toState"));
@@ -186,8 +186,8 @@ public class AccumulatorObjectTest extends AbstractTest {
         doPulses(61);
         assertEquals(EventState.fault, a.readProperty(PropertyIdentifier.eventState));
         Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(EventState.lowLimit, notif.get("fromState"));
         assertEquals(EventState.fault, notif.get("toState"));
         assertEquals(
@@ -202,8 +202,8 @@ public class AccumulatorObjectTest extends AbstractTest {
         doPulses(52);
         assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState));
         Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(EventState.fault, notif.get("fromState"));
         assertEquals(EventState.normal, notif.get("toState"));
         assertEquals(
@@ -351,7 +351,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Ensure that initializing the event enrollment object didn't fire any notifications.
         Thread.sleep(40);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Go to high limit.
         doPulses(53, 53, 53, 53, 53);
@@ -360,8 +360,8 @@ public class AccumulatorObjectTest extends AbstractTest {
         assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
         assertEquals(new StatusFlags(true, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        Map<String, Object> notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -388,8 +388,8 @@ public class AccumulatorObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, true, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));

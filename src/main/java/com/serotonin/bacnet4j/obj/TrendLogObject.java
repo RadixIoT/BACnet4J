@@ -211,6 +211,12 @@ public class TrendLogObject extends BACnetObject {
         }
     }
 
+    public int size() {
+        synchronized (buffer) {
+            return buffer.size();
+        }
+    }
+
     public void setEnabled(final boolean enabled) {
         writePropertyInternal(PropertyIdentifier.enable, Boolean.valueOf(enabled));
     }
