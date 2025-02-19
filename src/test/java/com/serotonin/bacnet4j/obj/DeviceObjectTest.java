@@ -200,8 +200,8 @@ public class DeviceObjectTest extends AbstractTest {
         TimeStamp ts = new TimeStamp(new DateTime(d1));
         Thread.sleep(40);
 
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        final Map<String, Object> notif = listener.poll();
         assertEquals(UnsignedInteger.ZERO, notif.get("subscriberProcessIdentifier"));
         assertEquals(d1.getId(), notif.get("monitoredObjectIdentifier"));
         assertEquals(UnsignedInteger.ZERO, notif.get("timeRemaining"));
@@ -228,15 +228,15 @@ public class DeviceObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         dev.supportIntrinsicReporting(7, new EventTransitionBits(true, true, true), NotifyType.event);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Write a fault reliability value.
         dev.writePropertyInternal(PropertyIdentifier.reliability, Reliability.memberFault);
         assertEquals(EventState.fault, dev.readProperty(PropertyIdentifier.eventState));
         Thread.sleep(100);
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        final Map<String, Object> notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(dev.getId(), notif.get("eventObjectIdentifier"));

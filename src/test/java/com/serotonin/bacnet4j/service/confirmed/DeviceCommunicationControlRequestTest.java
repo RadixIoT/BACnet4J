@@ -1,13 +1,5 @@
 package com.serotonin.bacnet4j.service.confirmed;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
-
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.junit.Test;
-
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
@@ -32,6 +24,15 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
+import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 /**
  * All tests modify the communication control in device d1.
@@ -190,6 +191,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
         d2.send(rd1, new DeviceCommunicationControlRequest(new UnsignedInteger(5), EnableDisable.disable, null)).get();
 
         // Fail to receive a request
+        AtomicReference<BACnetTimeoutException> timeoutException = new AtomicReference<>();
         try {
             final ServiceFuture future = d2.send(rd1,
                     new WritePropertyRequest(new ObjectIdentifier(ObjectType.device, 1), PropertyIdentifier.description,
@@ -205,10 +207,16 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
             fail("BACnetTimeoutException should have been thrown");
         } catch (@SuppressWarnings("unused") final BACnetTimeoutException e) {
             // Expected
+            timeoutException.set(e);
         }
+
+        //Assert that the exception was caught
+        assertNotNull(timeoutException.get());
 
         // Let the 5 minutes elapse.
         clock.plusMinutes(6);
+        //TODO Add delay to allow executor to run timeout task until we fix MANGO-1981
+        ThreadUtils.sleep(100);
 
         // Receive a request. This time it too succeeds. Note that the value is already "a", because requests are
         // still processed, just not responded.

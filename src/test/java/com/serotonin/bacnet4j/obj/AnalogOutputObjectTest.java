@@ -69,7 +69,7 @@ public class AnalogOutputObjectTest extends AbstractTest {
                 new EventTransitionBits(true, true, true), NotifyType.alarm, 180);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
         Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Do a real state change. Write an out of range value. After 60s the alarm will be raised.
         ao.writePropertyInternal(PropertyIdentifier.presentValue, new Real(101));
@@ -80,8 +80,8 @@ public class AnalogOutputObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, false, false, false), ao.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        Map<String, Object> notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(ao.getId(), notif.get("eventObjectIdentifier"));
@@ -103,14 +103,14 @@ public class AnalogOutputObjectTest extends AbstractTest {
         // Return to normal. After 180s the notification will be sent.
         ao.writePropertyInternal(PropertyIdentifier.presentValue, new Real(94));
         assertEquals(EventState.highLimit, ao.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
         clock.plus(179999, TimeUnit.MILLISECONDS, 179999, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.highLimit, ao.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
         clock.plus(2, TimeUnit.MILLISECONDS, 2, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.normal, ao.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(EventState.highLimit, notif.get("fromState"));
         assertEquals(EventState.normal, notif.get("toState"));
         assertEquals(
@@ -215,7 +215,7 @@ public class AnalogOutputObjectTest extends AbstractTest {
         // Ensure that initializing the event enrollment object didn't fire any notifications.
         Thread.sleep(40);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         //
         // Go to high limit.
@@ -231,8 +231,8 @@ public class AnalogOutputObjectTest extends AbstractTest {
         assertEquals(EventState.highLimit, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        Map<String, Object> notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -265,8 +265,8 @@ public class AnalogOutputObjectTest extends AbstractTest {
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
