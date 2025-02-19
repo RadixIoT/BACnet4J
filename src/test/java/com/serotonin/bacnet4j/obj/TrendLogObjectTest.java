@@ -1,22 +1,5 @@
 package com.serotonin.bacnet4j.obj;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.time.temporal.ChronoField;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
@@ -53,6 +36,21 @@ import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.temporal.ChronoField;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.junit.Assert.assertEquals;
 
 public class TrendLogObjectTest extends AbstractTest {
     static final Logger LOG = LoggerFactory.getLogger(TrendLogObjectTest.class);
@@ -338,7 +336,6 @@ public class TrendLogObjectTest extends AbstractTest {
         // Trigger an update
         LOG.info("Trigger");
         tl.trigger();
-        Thread.sleep(200);
 
         //Wait for the log to show up
         TestUtils.assertSize(tl::size, 1, 500);
