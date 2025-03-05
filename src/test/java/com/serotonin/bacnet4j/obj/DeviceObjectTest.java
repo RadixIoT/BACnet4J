@@ -52,7 +52,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
 
 public class DeviceObjectTest extends AbstractTest {
     static final Logger LOG = LoggerFactory.getLogger(DeviceObjectTest.class);
@@ -206,7 +205,6 @@ public class DeviceObjectTest extends AbstractTest {
         assertEquals(d1.getId(), notif.get("monitoredObjectIdentifier"));
         assertEquals(UnsignedInteger.ZERO, notif.get("timeRemaining"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
-
 
         PropertyValue expectedSystemStatus = new PropertyValue(PropertyIdentifier.systemStatus, DeviceStatus.operational);
         PropertyValue expectedRestartTime = new PropertyValue(PropertyIdentifier.timeOfDeviceRestart, ts);
