@@ -24,8 +24,10 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
+import lohbihler.warp.TestingWarpScheduledExecutorService;
 import org.junit.Test;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -94,12 +96,10 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
 
         // Should also fail to send an IAm
         d1.send(rd2, d1.getIAm());
-        Thread.sleep(100);
         assertEquals(0, iamCount.get());
 
         // But should still respond to a WhoIs
         d2.send(rd1, new WhoIsRequest(1, 1));
-        Thread.sleep(100);
         assertEquals(1, iamCount.get());
 
         // Re-enable
@@ -205,7 +205,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
 
             future.get();
             fail("BACnetTimeoutException should have been thrown");
-        } catch (@SuppressWarnings("unused") final BACnetTimeoutException e) {
+        } catch (final BACnetTimeoutException e) {
             // Expected
             timeoutException.set(e);
         }
@@ -215,8 +215,13 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
 
         // Let the 5 minutes elapse.
         clock.plusMinutes(6);
-        //TODO Add delay to allow executor to run timeout task until we fix MANGO-1981
-        ThreadUtils.sleep(100);
+
+        try {
+            ((TestingWarpScheduledExecutorService)this.executor).waitForExecutorTasks(50, TimeUnit.MILLISECONDS, 10,
+                    true, true, true);
+        } catch (InterruptedException e) {
+            fail(e.getMessage());
+        }
 
         // Receive a request. This time it too succeeds. Note that the value is already "a", because requests are
         // still processed, just not responded.

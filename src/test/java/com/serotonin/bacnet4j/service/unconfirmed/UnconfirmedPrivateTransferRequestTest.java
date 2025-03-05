@@ -1,11 +1,5 @@
 package com.serotonin.bacnet4j.service.unconfirmed;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.junit.Test;
-
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.event.PrivateTransferHandler;
@@ -18,8 +12,16 @@ import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.junit.Assert.assertEquals;
 
 public class UnconfirmedPrivateTransferRequestTest extends AbstractTest {
+
+
+
     @Test
     public void noHandler() {
         new UnconfirmedPrivateTransferRequest(236, 11, new Real(12.3F)).handle(d1, null);
@@ -39,9 +41,13 @@ public class UnconfirmedPrivateTransferRequestTest extends AbstractTest {
                 assertEquals(new UnsignedInteger(12), serviceNumber);
                 assertEquals(null, serviceParameters);
                 assertEquals(false, confirmed);
-                synchronized (handled) {
+                if(synchronousTesting) {
                     handled.set(true);
-                    handled.notify();
+                } else {
+                    synchronized (handled) {
+                        handled.set(true);
+                        handled.notify();
+                    }
                 }
                 return null;
             }
@@ -49,7 +55,9 @@ public class UnconfirmedPrivateTransferRequestTest extends AbstractTest {
 
         synchronized (handled) {
             d2.send(rd1, new UnconfirmedPrivateTransferRequest(236, 12, null));
-            handled.wait();
+            if(!synchronousTesting) {
+                handled.wait();
+            }
         }
         assertEquals(true, handled.get());
     }
@@ -70,9 +78,13 @@ public class UnconfirmedPrivateTransferRequestTest extends AbstractTest {
                 assertEquals(new UnsignedInteger(13), serviceNumber);
                 assertEquals(parameters, serviceParameters);
                 assertEquals(false, confirmed);
-                synchronized (handled) {
+                if(synchronousTesting) {
                     handled.set(true);
-                    handled.notify();
+                } else {
+                    synchronized (handled) {
+                        handled.set(true);
+                        handled.notify();
+                    }
                 }
                 return null;
             }
@@ -80,7 +92,9 @@ public class UnconfirmedPrivateTransferRequestTest extends AbstractTest {
 
         synchronized (handled) {
             d2.send(rd1, new UnconfirmedPrivateTransferRequest(236, 13, parameters));
-            handled.wait();
+            if(!synchronousTesting) {
+                handled.wait();
+            }
         }
         assertEquals(true, handled.get());
     }

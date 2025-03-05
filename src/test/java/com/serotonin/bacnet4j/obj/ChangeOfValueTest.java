@@ -1,15 +1,5 @@
 package com.serotonin.bacnet4j.obj;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.util.List;
-import java.util.Map;
-
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.exception.ErrorAPDUException;
@@ -40,6 +30,17 @@ import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.Utils;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class ChangeOfValueTest extends AbstractTest {
     static final Logger LOG = LoggerFactory.getLogger(ChangeOfValueTest.class);
@@ -373,8 +374,19 @@ public class ChangeOfValueTest extends AbstractTest {
         Thread.sleep(50);
 
         assertEquals(4, listener2.size());
+        //Find the messages and order them by the subscriberProcessIdentifier since the executor service doesn't
+        // guarantee the order we get them in.
+        List<Map<String, Object>> listener2Notifications = new ArrayList<>();
+        while(listener2.size() > 0) {
+            listener2Notifications.add(listener2.poll());
+        }
+        Collections.sort(listener2Notifications, (n1, n2) -> {
+            UnsignedInteger n1Pid = (UnsignedInteger) n1.get("subscriberProcessIdentifier");
+            UnsignedInteger n2Pid = (UnsignedInteger) n2.get("subscriberProcessIdentifier");
+            return Integer.compare(n1Pid.intValue(), n2Pid.intValue());
+        });
 
-        Map<String, Object> notif1 = listener2.poll();
+        Map<String, Object> notif1 = listener2Notifications.get(0);
         assertEquals(new UnsignedInteger(4), notif1.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif1.get("initiatingDevice"));
         assertEquals(av0.getId(), notif1.get("monitoredObjectIdentifier"));
@@ -384,7 +396,7 @@ public class ChangeOfValueTest extends AbstractTest {
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
                 notif1.get("listOfValues"));
 
-        Map<String, Object> notif2 = listener2.poll();
+        Map<String, Object> notif2 = listener2Notifications.get(1);
         assertEquals(new UnsignedInteger(5), notif2.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif2.get("initiatingDevice"));
         assertEquals(av0.getId(), notif2.get("monitoredObjectIdentifier"));
@@ -394,7 +406,7 @@ public class ChangeOfValueTest extends AbstractTest {
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
                 notif2.get("listOfValues"));
 
-        Map<String, Object> notif3 = listener2.poll();
+        Map<String, Object> notif3 = listener2Notifications.get(2);
         assertEquals(new UnsignedInteger(6), notif3.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif3.get("initiatingDevice"));
         assertEquals(av1.getId(), notif3.get("monitoredObjectIdentifier"));
@@ -404,7 +416,7 @@ public class ChangeOfValueTest extends AbstractTest {
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, true))),
                 notif3.get("listOfValues"));
 
-        Map<String, Object> notif4 = listener2.poll();
+        Map<String, Object> notif4 = listener2Notifications.get(3);
         assertEquals(new UnsignedInteger(7), notif4.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif4.get("initiatingDevice"));
         assertEquals(av1.getId(), notif4.get("monitoredObjectIdentifier"));
@@ -415,8 +427,20 @@ public class ChangeOfValueTest extends AbstractTest {
                 notif4.get("listOfValues"));
 
         assertEquals(4, listener3.size());
+        //Find the messages and order them by the subscriberProcessIdentifier since the executor service doesn't
+        // guarantee the order we get them in.
+        List<Map<String, Object>> listener3Notifications = new ArrayList<>();
+        while(listener3.size() > 0) {
+            listener3Notifications.add(listener3.poll());
+        }
+        Collections.sort(listener3Notifications, (n1, n2) -> {
+            UnsignedInteger n1Pid = (UnsignedInteger) n1.get("subscriberProcessIdentifier");
+            UnsignedInteger n2Pid = (UnsignedInteger) n2.get("subscriberProcessIdentifier");
+            return Integer.compare(n1Pid.intValue(), n2Pid.intValue());
+        });
 
-        Map<String, Object> l3Notif1 = listener3.poll();
+
+        Map<String, Object> l3Notif1 = listener3Notifications.get(0);
         assertEquals(new UnsignedInteger(4), l3Notif1.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), l3Notif1.get("initiatingDevice"));
         assertEquals(av0.getId(), l3Notif1.get("monitoredObjectIdentifier"));
@@ -426,7 +450,7 @@ public class ChangeOfValueTest extends AbstractTest {
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
                 l3Notif1.get("listOfValues"));
 
-        Map<String, Object> l3Notif2 = listener3.poll();
+        Map<String, Object> l3Notif2 = listener3Notifications.get(1);
         assertEquals(new UnsignedInteger(5), l3Notif2.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), l3Notif2.get("initiatingDevice"));
         assertEquals(av0.getId(), l3Notif2.get("monitoredObjectIdentifier"));
@@ -436,7 +460,7 @@ public class ChangeOfValueTest extends AbstractTest {
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
                 l3Notif2.get("listOfValues"));
 
-        Map<String, Object> l3Notif3 = listener3.poll();
+        Map<String, Object> l3Notif3 = listener3Notifications.get(2);
         assertEquals(new UnsignedInteger(6), l3Notif3.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), l3Notif3.get("initiatingDevice"));
         assertEquals(av1.getId(), l3Notif3.get("monitoredObjectIdentifier"));
@@ -446,7 +470,7 @@ public class ChangeOfValueTest extends AbstractTest {
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, true))),
                 l3Notif3.get("listOfValues"));
 
-        Map<String, Object> l3Notif4 = listener3.poll();
+        Map<String, Object> l3Notif4 = listener3Notifications.get(3);
         assertEquals(new UnsignedInteger(7), l3Notif4.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), l3Notif4.get("initiatingDevice"));
         assertEquals(av1.getId(), l3Notif4.get("monitoredObjectIdentifier"));

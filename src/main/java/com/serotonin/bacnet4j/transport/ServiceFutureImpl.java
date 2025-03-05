@@ -48,10 +48,10 @@ import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 public class ServiceFutureImpl implements ServiceFuture, ResponseConsumer {
     static final Logger LOG = LoggerFactory.getLogger(ServiceFutureImpl.class);
 
-    private AcknowledgementService ack;
-    private AckAPDU fail;
-    private BACnetException ex;
-    private volatile boolean done;
+    protected AcknowledgementService ack;
+    protected AckAPDU fail;
+    protected BACnetException ex;
+    protected volatile boolean done;
 
     @Override
     public synchronized <T extends AcknowledgementService> T get() throws BACnetException {
@@ -65,7 +65,7 @@ public class ServiceFutureImpl implements ServiceFuture, ResponseConsumer {
     }
 
     @SuppressWarnings("unchecked")
-    private <T extends AcknowledgementService> T result() throws BACnetException {
+    protected <T extends AcknowledgementService> T result() throws BACnetException {
         if (ex != null) {
             // We want to preserve the original type of the exception, but not have
             // to have a big if/then/else chain to handle all of the exception types.

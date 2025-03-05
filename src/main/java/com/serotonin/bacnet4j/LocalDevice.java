@@ -28,30 +28,6 @@
  */
 package com.serotonin.bacnet4j;
 
-import java.time.Clock;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.cache.CachePolicies;
 import com.serotonin.bacnet4j.cache.RemoteEntityCache;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
@@ -98,9 +74,31 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.RemoteDeviceDiscoverer;
 import com.serotonin.bacnet4j.util.RemoteDeviceFinder;
 import com.serotonin.bacnet4j.util.RemoteDeviceFinder.RemoteDeviceFuture;
-
 import lohbihler.warp.WarpScheduledExecutorService;
 import lohbihler.warp.WarpUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.Clock;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Enhancements:
@@ -150,7 +148,7 @@ public class LocalDevice implements AutoCloseable {
     /**
      * The clock used for all timing, except for Object.wait and Thread.sleep calls.
      */
-    private Clock clock = Clock.systemUTC();
+    protected Clock clock = Clock.systemUTC();
 
     private boolean initialized;
 
@@ -174,7 +172,7 @@ public class LocalDevice implements AutoCloseable {
     // Reinitialize device handler
     private ReinitializeDeviceHandler reinitializeDeviceHandler = new DefaultReinitializeDeviceHandler();
 
-    private ScheduledExecutorService timer;
+    private ScheduledExecutorService timer = new WarpScheduledExecutorService(clock);;
 
     //Callback if other devices have the same id like us
     private Consumer<Address> sameDeviceIdCallback;
@@ -216,6 +214,16 @@ public class LocalDevice implements AutoCloseable {
         if (initialized)
             throw new IllegalStateException("Clock needs to be set before LocalDevice is initialized");
         this.clock = clock;
+    }
+
+    /**
+     * Supply your own scheduled executor
+     * @param scheduledExecutorService
+     * @return
+     */
+    public LocalDevice withScheduledExecutor(final ScheduledExecutorService scheduledExecutorService) {
+        this.timer = scheduledExecutorService;
+        return this;
     }
 
     public DeviceObject getDeviceObject() {
@@ -314,7 +322,6 @@ public class LocalDevice implements AutoCloseable {
     public synchronized LocalDevice initialize(final RestartReason lastRestartReason) throws Exception {
         deviceObject.writePropertyInternal(PropertyIdentifier.lastRestartReason, lastRestartReason);
 
-        timer = createScheduledExecutorService();
         transport.initialize();
         initialized = true;
 
@@ -391,15 +398,6 @@ public class LocalDevice implements AutoCloseable {
         }
 
         return this;
-    }
-
-    /**
-     * Create a ScheduledExecutorService for use by the local device
-     * @return
-     * @see java.util.concurrent.ScheduledExecutorService
-     */
-    protected ScheduledExecutorService createScheduledExecutorService() {
-        return new WarpScheduledExecutorService(clock);
     }
 
     public synchronized void terminate() {
