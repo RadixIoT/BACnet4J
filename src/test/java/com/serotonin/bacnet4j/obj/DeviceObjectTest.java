@@ -1,20 +1,5 @@
 package com.serotonin.bacnet4j.obj;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-
-import java.util.Map;
-import java.util.TimeZone;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
@@ -53,6 +38,21 @@ import com.serotonin.bacnet4j.type.primitive.SignedInteger;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.RequestUtils;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 public class DeviceObjectTest extends AbstractTest {
     static final Logger LOG = LoggerFactory.getLogger(DeviceObjectTest.class);
@@ -196,8 +196,8 @@ public class DeviceObjectTest extends AbstractTest {
         // Stop the device.
         d1.terminate();
         // Restart the device.
-        d1.initialize(RestartReason.warmstart);
         TimeStamp ts = new TimeStamp(new DateTime(d1));
+        d1.initialize(RestartReason.warmstart);
         Thread.sleep(40);
 
         assertEquals(1, listener.size());
@@ -206,11 +206,17 @@ public class DeviceObjectTest extends AbstractTest {
         assertEquals(d1.getId(), notif.get("monitoredObjectIdentifier"));
         assertEquals(UnsignedInteger.ZERO, notif.get("timeRemaining"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(
-                new SequenceOf<>(new PropertyValue(PropertyIdentifier.systemStatus, DeviceStatus.operational),
-                        new PropertyValue(PropertyIdentifier.timeOfDeviceRestart, ts),
-                        new PropertyValue(PropertyIdentifier.lastRestartReason, RestartReason.warmstart)),
-                notif.get("listOfValues"));
+
+
+        PropertyValue expectedSystemStatus = new PropertyValue(PropertyIdentifier.systemStatus, DeviceStatus.operational);
+        PropertyValue expectedRestartTime = new PropertyValue(PropertyIdentifier.timeOfDeviceRestart, ts);
+        PropertyValue expectedRestartReason = new PropertyValue(PropertyIdentifier.lastRestartReason, RestartReason.warmstart);
+
+        SequenceOf<PropertyValue> covProperties = (SequenceOf<PropertyValue>) notif.get("listOfValues");
+        assertEquals(expectedSystemStatus, findProperty(PropertyIdentifier.systemStatus, covProperties));
+        //Since we can't know down to the exact millisecond when the device started, lets just confirm the property exists
+        assertNotNull(findProperty(PropertyIdentifier.timeOfDeviceRestart, covProperties));
+        assertEquals(expectedRestartReason, findProperty(PropertyIdentifier.lastRestartReason, covProperties));
     }
 
     @SuppressWarnings("unchecked")

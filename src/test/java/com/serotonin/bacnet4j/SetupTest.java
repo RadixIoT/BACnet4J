@@ -1,17 +1,15 @@
 package com.serotonin.bacnet4j;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.serotonin.bacnet4j.npdu.test.SynchronousTestNetwork;
+import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
+import com.serotonin.bacnet4j.transport.SynchronousTransport;
+import lohbihler.warp.WarpClock;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.serotonin.bacnet4j.npdu.test.TestNetwork;
-import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
-import com.serotonin.bacnet4j.transport.DefaultTransport;
-
-import lohbihler.warp.WarpClock;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SetupTest {
     static final Logger LOG = LoggerFactory.getLogger(SetupTest.class);
@@ -26,7 +24,7 @@ public class SetupTest {
 
         final List<LocalDevice> lds = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            lds.add(new LocalDevice(i, new DefaultTransport(new TestNetwork(map, i, 0).withTimeout(timeout)))
+            lds.add(new LocalDevice(i, new SynchronousTransport(new SynchronousTestNetwork(map, i, 0).withTimeout(timeout)))
                     .withClock(clock));
         }
 

@@ -7,12 +7,17 @@ import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.transport.AbstractTransport;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.transport.SynchronousTransport;
+import com.serotonin.bacnet4j.type.constructed.PropertyValue;
+import com.serotonin.bacnet4j.type.constructed.SequenceOf;
+import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.util.DiscoveryUtils;
 import lohbihler.warp.TestingWarpScheduledExecutorService;
 import lohbihler.warp.WarpClock;
 import lohbihler.warp.WarpScheduledExecutorService;
 import org.junit.After;
 import org.junit.Before;
+
+import static org.junit.Assert.fail;
 
 /**
  * Common base class for tests that use real local devices and a warp clock.
@@ -123,6 +128,22 @@ abstract public class AbstractTest {
             return new TestNetwork(map, address, sendDelay);
         }
 
+    }
+
+    /**
+     * Helper for assertions, find a property in a sequence by the identifier, if it doesn't exist fail via assertion
+     * @param propertyIdentifier
+     * @param covProperties
+     * @return
+     */
+    protected PropertyValue findProperty(PropertyIdentifier propertyIdentifier, SequenceOf<PropertyValue> covProperties) {
+        for(PropertyValue propertyValue : covProperties) {
+            if(propertyIdentifier.equals(propertyValue.getPropertyIdentifier())) {
+                return propertyValue;
+            }
+        }
+        fail("Didn't find property " + propertyIdentifier.toString());
+        return null;
     }
 
     /**
