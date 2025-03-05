@@ -3,7 +3,7 @@ package com.serotonin.bacnet4j;
 import com.serotonin.bacnet4j.npdu.test.SynchronousTestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.transport.SynchronousTransport;
-import lohbihler.warp.WarpClock;
+import com.serotonin.warp.WarpClock;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +24,7 @@ public class SetupTest {
 
         final List<LocalDevice> lds = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            lds.add(new LocalDevice(i, new SynchronousTransport(new SynchronousTestNetwork(map, i, 0).withTimeout(timeout)))
-                    .withClock(clock));
+            lds.add(new LocalDevice(i, new SynchronousTransport(new SynchronousTestNetwork(map, i, 0).withTimeout(timeout)), clock));
         }
 
         for (int i = 0; i < count; i++) {

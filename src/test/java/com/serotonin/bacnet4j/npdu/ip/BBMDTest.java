@@ -1,6 +1,17 @@
 package com.serotonin.bacnet4j.npdu.ip;
 
-import static org.junit.Assert.assertEquals;
+import com.serotonin.bacnet4j.LocalDevice;
+import com.serotonin.bacnet4j.RemoteDevice;
+import com.serotonin.bacnet4j.event.DeviceEventAdapter;
+import com.serotonin.bacnet4j.service.unconfirmed.WhoIsRequest;
+import com.serotonin.bacnet4j.transport.DefaultTransport;
+import com.serotonin.bacnet4j.util.sero.ByteQueue;
+import com.serotonin.warp.WarpClock;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.junit.After;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -12,20 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang3.mutable.MutableInt;
-import org.junit.After;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
-
-import com.serotonin.bacnet4j.LocalDevice;
-import com.serotonin.bacnet4j.RemoteDevice;
-import com.serotonin.bacnet4j.event.DeviceEventAdapter;
-import com.serotonin.bacnet4j.service.unconfirmed.WhoIsRequest;
-import com.serotonin.bacnet4j.transport.DefaultTransport;
-import com.serotonin.bacnet4j.util.sero.ByteQueue;
-
-import lohbihler.warp.WarpClock;
+import static org.junit.Assert.assertEquals;
 
 public class BBMDTest {
     static final int port = 0xBAC0;
@@ -473,8 +471,7 @@ public class BBMDTest {
                 .build();       
         info.network.enableBBMD();
 
-        info.ld = new LocalDevice(subnet * 10 + addr, new DefaultTransport(info.network)) //
-                .withClock(clock) //
+        info.ld = new LocalDevice(subnet * 10 + addr, new DefaultTransport(info.network), clock) //
                 .initialize();
 
         info.iamCount = new MutableInt();

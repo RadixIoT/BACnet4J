@@ -17,9 +17,10 @@
 		<url>https://www.infiniteautomation.com/</url>
 	</organization>
 	<properties>
-		<revision>6.0.1-SNAPSHOT</revision>
+		<revision>7.0.0-SNAPSHOT</revision>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<additionalDeploymentRepositoryId>additional-deployment-repository</additionalDeploymentRepositoryId>
+		<maven.compiler.release>17</maven.compiler.release>
 	</properties>
 	<build>
 		<sourceDirectory>src/main/java</sourceDirectory>
@@ -46,16 +47,12 @@
 		<plugins>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.1</version>
-				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
-				</configuration>
+				<version>3.13.0</version>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>3.0.1</version>
+				<version>3.3.1</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -68,7 +65,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-site-plugin</artifactId>
-				<version>3.8.2</version>
+				<version>3.21.0</version>
 			</plugin>
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
@@ -99,18 +96,6 @@
 		</plugins>
 	</build>
 	<dependencies>
-		<dependency>
-			<groupId>lohbihler</groupId>
-			<artifactId>sero-scheduler</artifactId>
-			<version>1.1.0</version>
-		</dependency>
-
-		<dependency>
-			<groupId>lohbihler</groupId>
-			<artifactId>sero-warp</artifactId>
-			<version>1.0.1-SNAPSHOT</version>
-		</dependency>
-
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>

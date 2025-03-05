@@ -28,8 +28,6 @@
  */
 package com.serotonin.bacnet4j.transport;
 
-import java.util.Map;
-
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.ResponseConsumer;
 import com.serotonin.bacnet4j.ServiceFuture;
@@ -41,6 +39,8 @@ import com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedRequestService;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
+
+import java.util.Map;
 
 /**
  * Provides segmentation support for all data link types.

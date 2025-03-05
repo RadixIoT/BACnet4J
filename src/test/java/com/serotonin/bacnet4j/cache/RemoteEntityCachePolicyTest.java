@@ -1,16 +1,15 @@
 package com.serotonin.bacnet4j.cache;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import org.junit.Test;
-
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
+import com.serotonin.warp.WarpClock;
+import org.junit.Test;
 
-import lohbihler.warp.WarpClock;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 
 public class RemoteEntityCachePolicyTest {
     private final TestNetworkMap map = new TestNetworkMap();
@@ -18,7 +17,7 @@ public class RemoteEntityCachePolicyTest {
     @Test
     public void test() {
         final WarpClock clock = new WarpClock();
-        final LocalDevice d = new LocalDevice(0, new DefaultTransport(new TestNetwork(map, 1, 10))).withClock(clock);
+        final LocalDevice d = new LocalDevice(0, new DefaultTransport(new TestNetwork(map, 1, 10)), clock);
 
         final Object neverCache = RemoteEntityCachePolicy.NEVER_CACHE.prepareState(d);
         final Object state5Seconds = RemoteEntityCachePolicy.EXPIRE_5_SECONDS.prepareState(d);

@@ -11,9 +11,9 @@ import com.serotonin.bacnet4j.type.constructed.PropertyValue;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.util.DiscoveryUtils;
-import lohbihler.warp.TestingWarpScheduledExecutorService;
-import lohbihler.warp.WarpClock;
-import lohbihler.warp.WarpScheduledExecutorService;
+import com.serotonin.warp.TestingWarpScheduledExecutorService;
+import com.serotonin.warp.WarpClock;
+import com.serotonin.warp.WarpScheduledExecutorService;
 import org.junit.After;
 import org.junit.Before;
 
@@ -91,15 +91,11 @@ abstract public class AbstractTest {
         this.clock = new WarpClock();
         this.executor = createExecutorService();
         this.d1 = new LocalDevice(1,
-                createTransport(createNetwork(map, 1, 0, TIMEOUT))).withClock(clock)
-                .withScheduledExecutor(executor);
+                createTransport(createNetwork(map, 1, 0, TIMEOUT)), clock, executor);
         this.d2 = new LocalDevice(2,
-                createTransport(createNetwork(map, 2, 0, TIMEOUT))).withClock(clock)
-                .withScheduledExecutor(executor);
-        this.d3 = new LocalDevice(3, createTransport(createNetwork(map, 3, 0))).withClock(clock)
-                .withScheduledExecutor(executor);
-        this.d4 = new LocalDevice(4, createTransport(createNetwork(map, 4, 0))).withClock(clock)
-                .withScheduledExecutor(executor);
+                createTransport(createNetwork(map, 2, 0, TIMEOUT)), clock, executor);
+        this.d3 = new LocalDevice(3, createTransport(createNetwork(map, 3, 0)), clock, executor);
+        this.d4 = new LocalDevice(4, createTransport(createNetwork(map, 4, 0)), clock, executor);
     }
 
     protected WarpScheduledExecutorService createExecutorService() {

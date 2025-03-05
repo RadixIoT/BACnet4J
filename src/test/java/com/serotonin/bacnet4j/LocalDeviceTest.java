@@ -1,32 +1,8 @@
 package com.serotonin.bacnet4j;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.time.Clock;
-import java.util.Collection;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-
 import com.serotonin.bacnet4j.LocalDevice.CacheUpdate;
 import com.serotonin.bacnet4j.cache.CachePolicies;
 import com.serotonin.bacnet4j.cache.RemoteEntityCachePolicy;
-import com.serotonin.bacnet4j.util.RemoteDeviceDiscoverer;
-import org.apache.commons.lang3.mutable.MutableObject;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
@@ -37,9 +13,32 @@ import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.util.DiscoveryUtils;
+import com.serotonin.bacnet4j.util.RemoteDeviceDiscoverer;
 import com.serotonin.bacnet4j.util.RemoteDeviceFinder.RemoteDeviceFuture;
+import com.serotonin.warp.WarpClock;
+import org.apache.commons.lang3.mutable.MutableObject;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import lohbihler.warp.WarpClock;
+import java.time.Clock;
+import java.util.Collection;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 
 public class LocalDeviceTest {
     static final Logger LOG = LoggerFactory.getLogger(LocalDeviceTest.class);
@@ -124,8 +123,7 @@ public class LocalDeviceTest {
     @Test
     public void undefinedDeviceId() throws Exception {
         final LocalDevice ld = new LocalDevice(ObjectIdentifier.UNINITIALIZED,
-                new DefaultTransport(new TestNetwork(map, 3, 10)));
-        ld.setClock(clock);
+                new DefaultTransport(new TestNetwork(map, 3, 10)), clock);
         new Thread(() -> clock.plus(200, TimeUnit.SECONDS, 10, TimeUnit.SECONDS, 10, 0)).start();
         ld.initialize();
 
@@ -162,7 +160,7 @@ public class LocalDeviceTest {
     @SuppressWarnings("unused")
     @Test
     public void getDeviceBlockingTimeout() throws Exception {
-        final LocalDevice d3 = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0))).withClock(clock)
+        final LocalDevice d3 = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0)), clock)
                 .initialize();
 
         final long start = Clock.systemUTC().millis();
@@ -198,8 +196,7 @@ public class LocalDeviceTest {
     public void remoteDeviceDiscoveryUpdateAlways() throws Exception {
         BlockingQueue<RemoteDevice> results = new ArrayBlockingQueue<>(2);
 
-        try (LocalDevice localDevice = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0)))) {
-            localDevice.setClock(clock);
+        try (LocalDevice localDevice = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0)), clock)) {
             localDevice.initialize();
 
             CachePolicies cachePolicies = localDevice.getCachePolicies();
@@ -233,8 +230,7 @@ public class LocalDeviceTest {
     public void remoteDeviceDiscoveryUpdateIfExpired() throws Exception {
         BlockingQueue<RemoteDevice> results = new ArrayBlockingQueue<>(2);
 
-        try (LocalDevice localDevice = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0)))) {
-            localDevice.setClock(clock);
+        try (LocalDevice localDevice = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0)), clock)) {
             localDevice.initialize();
 
             CachePolicies cachePolicies = localDevice.getCachePolicies();
@@ -270,8 +266,7 @@ public class LocalDeviceTest {
     public void remoteDeviceDiscoveryUpdateNever() throws Exception {
         BlockingQueue<RemoteDevice> results = new ArrayBlockingQueue<>(2);
 
-        try (LocalDevice localDevice = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0)))) {
-            localDevice.setClock(clock);
+        try (LocalDevice localDevice = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0)), clock)) {
             localDevice.initialize();
 
             CachePolicies cachePolicies = localDevice.getCachePolicies();
