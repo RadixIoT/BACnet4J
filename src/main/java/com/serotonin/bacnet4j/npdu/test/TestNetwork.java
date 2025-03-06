@@ -28,41 +28,28 @@
  */
 package com.serotonin.bacnet4j.npdu.test;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.serotonin.bacnet4j.apdu.APDU;
-import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.npdu.MessageValidationException;
 import com.serotonin.bacnet4j.npdu.NPDU;
-import com.serotonin.bacnet4j.npdu.Network;
-import com.serotonin.bacnet4j.npdu.NetworkIdentifier;
 import com.serotonin.bacnet4j.transport.Transport;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.constructed.NetworkSourceAddress;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * A network that is useful for unit tests as it simulates a BACnet network within
  * a single process. The static <code>instances</code> field keeps track of all of
  * the currently available networks,
  */
-public class TestNetwork extends Network implements Runnable {
+public class TestNetwork extends AbstractTestNetwork<TestNetwork> implements Runnable {
     static final Logger LOG = LoggerFactory.getLogger(TestNetwork.class);
-
-    public static final OctetString BROADCAST = new OctetString(new byte[0]);
-
-    private final TestNetworkMap networkMap;
-    private final Address address;
-    private final int sendDelay;
-    private int timeout = 6000;
-    private int segTimeout = 1000;
 
     private volatile boolean running = true;
     private Thread thread;
@@ -79,30 +66,7 @@ public class TestNetwork extends Network implements Runnable {
     }
 
     public TestNetwork(final TestNetworkMap map, final Address address, final int sendDelay) {
-        super(0);
-        this.networkMap = map;
-        this.address = address;
-        this.sendDelay = sendDelay;
-    }
-
-    public TestNetwork withTimeout(final int timeout) {
-        this.timeout = timeout;
-        return this;
-    }
-
-    public TestNetwork withSegTimeout(final int segTimeout) {
-        this.segTimeout = segTimeout;
-        return this;
-    }
-
-    @Override
-    public NetworkIdentifier getNetworkIdentifier() {
-        return new TestNetworkIdentifier();
-    }
-
-    @Override
-    public MaxApduLength getMaxApduLength() {
-        return MaxApduLength.UP_TO_1476;
+        super(map, address, sendDelay);
     }
 
     @Override
@@ -118,47 +82,19 @@ public class TestNetwork extends Network implements Runnable {
     @Override
     public void initialize(final Transport transport) throws Exception {
         super.initialize(transport);
-
         running = true;
-        transport.setTimeout(timeout);
-        transport.setRetries(0); // no retries, there's no network here after all
-        transport.setSegTimeout(segTimeout);
-
         thread = new Thread(this,
                 "BACnet4J test network for address " + (address.getMacAddress().getBytes()[0] & 0xff));
         thread.start();
-
-        networkMap.add(address, this);
     }
 
     @Override
     public void terminate() {
-        networkMap.remove(address);
-
+        super.terminate();
         running = false;
         ThreadUtils.notifySync(queue);
         if (thread != null)
             ThreadUtils.join(thread);
-    }
-
-    @Override
-    protected OctetString getBroadcastMAC() {
-        return BROADCAST;
-    }
-
-    @Override
-    public Address[] getAllLocalAddresses() {
-        return new Address[] { address };
-    }
-
-    @Override
-    public Address getLoopbackAddress() {
-        return address;
-    }
-
-    @Override
-    public Address getSourceAddress(final APDU apdu) {
-        return address;
     }
 
     @Override
@@ -196,17 +132,6 @@ public class TestNetwork extends Network implements Runnable {
                 }
             }
         }
-    }
-
-    /**
-     * Passes the the data over to the given network instance.
-     *
-     * @param recipient
-     * @param data
-     */
-    private void receive(final TestNetwork recipient, final byte[] data) {
-        LOG.debug("Sending data from {} to {}", address, recipient.address);
-        recipient.handleIncomingData(new ByteQueue(data), address.getMacAddress());
     }
 
     @Override

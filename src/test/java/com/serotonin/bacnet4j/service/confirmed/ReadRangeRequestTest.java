@@ -1,14 +1,5 @@
 package com.serotonin.bacnet4j.service.confirmed;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.TestUtils;
@@ -49,8 +40,15 @@ import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
+import com.serotonin.warp.WarpClock;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
-import lohbihler.warp.WarpClock;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+
+import static org.junit.Assert.assertEquals;
 
 public class ReadRangeRequestTest {
     private final TestNetworkMap map = new TestNetworkMap();
@@ -107,11 +105,11 @@ public class ReadRangeRequestTest {
     public void trendLogMultiple() throws Exception {
         final WarpClock clock = new WarpClock();
 
-        final LocalDevice d11 = new LocalDevice(11, new DefaultTransport(new TestNetwork(map, 11, 0))).withClock(clock)
+        final LocalDevice d11 = new LocalDevice(11, new DefaultTransport(new TestNetwork(map, 11, 0)), clock)
                 .initialize();
         final AnalogInputObject ai = new AnalogInputObject(d11, 0, "ai", 12, EngineeringUnits.noUnits, false);
 
-        final LocalDevice d12 = new LocalDevice(12, new DefaultTransport(new TestNetwork(map, 12, 0))).withClock(clock)
+        final LocalDevice d12 = new LocalDevice(12, new DefaultTransport(new TestNetwork(map, 12, 0)), clock)
                 .initialize();
         final TrendLogMultipleObject tl = new TrendLogMultipleObject(d12, 0, "tlm", new LinkedListLogBuffer<>(), true,
                 DateTime.UNSPECIFIED, DateTime.UNSPECIFIED,

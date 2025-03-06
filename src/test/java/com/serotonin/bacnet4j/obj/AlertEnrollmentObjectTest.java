@@ -52,7 +52,7 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Issue an alert from the AV.
         ae.issueAlert(av0.getId(), 123, //
@@ -65,8 +65,8 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
         assertEquals(EventState.normal, ae.readProperty(PropertyIdentifier.eventState)); // Still normal. Always normal.
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        final Map<String, Object> notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(ae.getId(), notif.get("eventObjectIdentifier"));

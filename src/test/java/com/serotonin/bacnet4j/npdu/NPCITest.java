@@ -12,13 +12,9 @@ public class NPCITest {
     @Test
     public void priorityTest() {
         NPCI npci = new NPCI(new Address(2, new byte[] { 1 }));
-        System.out.println(npci.getNetworkPriority());
         npci.priority(NetworkPriority.criticalEquipment);
-        System.out.println(npci.getNetworkPriority());
-
         ByteQueue queue = new ByteQueue();
         npci.write(queue);
-        System.out.println(queue);
 
         byte[] expected = { 0x1, // version
                 0x2a, // control Bx00101010
