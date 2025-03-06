@@ -131,6 +131,7 @@ public class TestingWarpScheduledExecutorService extends WarpScheduledExecutorSe
             } else {
                 return true;
             }
+            waits++;
         }
         return false;
     }
