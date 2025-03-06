@@ -23,16 +23,16 @@ public class OrderedExecutorServiceTest {
 
     private WarpClock clock;
     private Instant start;
-    private TestingWarpScheduledExecutorService scheduler;
+    private ObservableScheduledExecutorService scheduler;
 
     @Before
     public void before() {
         ZoneId zone = ZoneId.systemDefault();
         clock = new WarpClock(zone, LocalDateTime.now(Clock.system(zone)));
         start = clock.instant();
-        scheduler = new TestingWarpScheduledExecutorService(clock,
+        scheduler = new ObservableScheduledExecutorService(new WarpScheduledExecutorService(clock,
             new OrderedExecutorService(1, Integer.MAX_VALUE, 60L,
-                TimeUnit.SECONDS, new LinkedBlockingQueue<>()));
+                TimeUnit.SECONDS, new LinkedBlockingQueue<>())));
     }
 
     @Test

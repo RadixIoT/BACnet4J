@@ -32,14 +32,14 @@ public class WarpScheduledExecutorServiceTest {
 
     private WarpClock clock;
     private Instant start;
-    private TestingWarpScheduledExecutorService scheduler;
+    private ObservableScheduledExecutorService scheduler;
 
     @Before
     public void before() {
         ZoneId zone = ZoneId.systemDefault();
         clock = new WarpClock();
         start = clock.instant();
-        scheduler = new TestingWarpScheduledExecutorService(clock);
+        scheduler = new ObservableScheduledExecutorService(new WarpScheduledExecutorService(clock));
     }
 
     @Test

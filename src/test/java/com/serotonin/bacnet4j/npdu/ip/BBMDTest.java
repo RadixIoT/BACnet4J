@@ -6,8 +6,9 @@ import com.serotonin.bacnet4j.event.DeviceEventAdapter;
 import com.serotonin.bacnet4j.service.unconfirmed.WhoIsRequest;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
-import com.serotonin.warp.TestingWarpScheduledExecutorService;
+import com.serotonin.warp.ObservableScheduledExecutorService;
 import com.serotonin.warp.WarpClock;
+import com.serotonin.warp.WarpScheduledExecutorService;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.junit.After;
 import org.junit.Assume;
@@ -512,7 +513,7 @@ public class BBMDTest {
                 .withLocalNetworkNumber(1) //
                 .build();       
         info.network.enableBBMD();
-        info.executor = new TestingWarpScheduledExecutorService(clock);
+        info.executor = new ObservableScheduledExecutorService(new WarpScheduledExecutorService(clock));
         info.ld = new LocalDevice(subnet * 10 + addr, new DefaultTransport(info.network), clock, info.executor) //
                 .initialize();
 
@@ -555,7 +556,7 @@ public class BBMDTest {
         LocalDevice ld;
         IpNetwork network;
         MutableInt iamCount;
-        TestingWarpScheduledExecutorService executor;
+        ObservableScheduledExecutorService executor;
 
         void reset() {
             ld.clearRemoteDevices();

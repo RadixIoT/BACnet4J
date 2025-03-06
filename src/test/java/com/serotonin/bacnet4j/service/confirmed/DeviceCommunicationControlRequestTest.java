@@ -24,7 +24,6 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
-import com.serotonin.warp.TestingWarpScheduledExecutorService;
 import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -217,7 +216,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
         clock.plusMinutes(6);
 
         try {
-            ((TestingWarpScheduledExecutorService)this.executor).waitForExecutorTasks(50, TimeUnit.MILLISECONDS, 10,
+            this.d1Executor.waitForExecutorTasks(50, TimeUnit.MILLISECONDS, 10,
                     true, true, true);
         } catch (InterruptedException e) {
             fail(e.getMessage());

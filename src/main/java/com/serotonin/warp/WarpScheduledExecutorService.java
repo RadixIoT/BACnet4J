@@ -16,13 +16,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.Delayed;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -33,7 +30,7 @@ import java.util.concurrent.TimeoutException;
  *
  * @author Matthew
  */
-public class WarpScheduledExecutorService implements ScheduledExecutorService, ClockListener {
+public class WarpScheduledExecutorService implements WarpTaskExecutingScheduledExecutorService, ClockListener {
 
     protected final WarpClock clock;
     protected final ExecutorService executorService;
@@ -81,6 +78,11 @@ public class WarpScheduledExecutorService implements ScheduledExecutorService, C
                 task.execute();
             }
         }
+    }
+
+    @Override
+    public List<ScheduleFutureImpl<?>> getTasks() {
+        return tasks;
     }
 
     @Override
@@ -138,7 +140,7 @@ public class WarpScheduledExecutorService implements ScheduledExecutorService, C
     @Override
     public <T> Future<T> submit(final Callable<T> task) {
         if (delegate == null) {
-            return submitToExecutor(task);
+            return executorService.submit(task);
         }
         return delegate.submit(task);
     }
@@ -146,7 +148,7 @@ public class WarpScheduledExecutorService implements ScheduledExecutorService, C
     @Override
     public <T> Future<T> submit(final Runnable task, final T result) {
         if (delegate == null) {
-            return submitToExecutor(task, result);
+            return executorService.submit(task, result);
         }
         return delegate.submit(task, result);
     }
@@ -154,7 +156,7 @@ public class WarpScheduledExecutorService implements ScheduledExecutorService, C
     @Override
     public Future<?> submit(final Runnable task) {
         if (delegate == null) {
-            return submitToExecutor(task);
+            return executorService.submit(task);
         }
         return delegate.submit(task);
     }
@@ -200,7 +202,7 @@ public class WarpScheduledExecutorService implements ScheduledExecutorService, C
     @Override
     public void execute(final Runnable command) {
         if (delegate == null) {
-            executeInExecutor(command);
+            executorService.execute(command);
         } else {
             delegate.execute(command);
         }
@@ -210,7 +212,7 @@ public class WarpScheduledExecutorService implements ScheduledExecutorService, C
     public ScheduledFuture<?> schedule(final Runnable command, final long delay,
         final TimeUnit unit) {
         if (delegate == null) {
-            return addTask(new OneTime(command, delay, unit));
+            return addTask(new OneTime(this, command, delay, unit));
         }
         return delegate.schedule(command, delay, unit);
     }
@@ -219,7 +221,7 @@ public class WarpScheduledExecutorService implements ScheduledExecutorService, C
     public <V> ScheduledFuture<V> schedule(final Callable<V> callable, final long delay,
         final TimeUnit unit) {
         if (delegate == null) {
-            return addTask(new OneTimeCallable<>(callable, delay, unit));
+            return addTask(new OneTimeCallable<>(this, callable, delay, unit));
         }
         return delegate.schedule(callable, delay, unit);
     }
@@ -229,7 +231,7 @@ public class WarpScheduledExecutorService implements ScheduledExecutorService, C
         final long period,
         final TimeUnit unit) {
         if (delegate == null) {
-            return addTask(new FixedRate(command, initialDelay, period, unit));
+            return addTask(new FixedRate(this, command, initialDelay, period, unit));
         }
         return delegate.scheduleAtFixedRate(command, initialDelay, period, unit);
     }
@@ -239,17 +241,18 @@ public class WarpScheduledExecutorService implements ScheduledExecutorService, C
         final long initialDelay, final long delay,
         final TimeUnit unit) {
         if (delegate == null) {
-            return addTask(new FixedDelay(command, initialDelay, delay, unit));
+            return addTask(new FixedDelay(this, command, initialDelay, delay, unit));
         }
         return delegate.scheduleWithFixedDelay(command, initialDelay, delay, unit);
     }
 
 
-    protected <V> ScheduleFutureImpl<V> addTask(final ScheduleFutureImpl<V> task) {
+    @Override
+    public <V> ScheduleFutureImpl<V> addTask(final ScheduleFutureImpl<V> task) {
         synchronized (tasks) {
             if (task.getDelay(TimeUnit.MILLISECONDS) <= 0) {
                 // Run now
-                submitToExecutor(task.getRunnable());
+                executorService.submit(task.getRunnable());
             } else {
                 int index = Collections.binarySearch(tasks, task);
                 if (index < 0) {
@@ -261,274 +264,9 @@ public class WarpScheduledExecutorService implements ScheduledExecutorService, C
         }
     }
 
-    protected void executeInExecutor(final Runnable command) {
-        executorService.execute(command);
+    @Override
+    public Clock getClock() {
+        return clock;
     }
 
-    protected Future<?> submitToExecutor(final Runnable runnable) {
-        return executorService.submit(runnable);
-    }
-
-    protected <V> Future<V> submitToExecutor(final Callable<V> runnable) {
-        return executorService.submit(runnable);
-    }
-
-    protected <T> Future<T> submitToExecutor(final Runnable task, final T result) {
-        return executorService.submit(task, result);
-    }
-
-    abstract class ScheduleFutureImpl<V> implements ScheduledFuture<V> {
-
-        private volatile boolean success;
-        private volatile V result;
-        private volatile Exception exception;
-        private volatile boolean cancelled;
-        private volatile boolean done;
-
-        public void execute() {
-            submitToExecutor(() -> executeImpl());
-        }
-
-        abstract void executeImpl();
-
-        abstract Runnable getRunnable();
-
-        @Override
-        public int compareTo(final Delayed that) {
-            return Long.compare(getDelay(TimeUnit.MILLISECONDS),
-                that.getDelay(TimeUnit.MILLISECONDS));
-        }
-
-        @Override
-        public boolean cancel(final boolean mayInterruptIfRunning) {
-            synchronized (this) {
-                if (!done) {
-                    cancelled = true;
-                    notifyAll();
-                    done = true;
-                    return true;
-                }
-                return false;
-            }
-        }
-
-        @Override
-        public boolean isCancelled() {
-            synchronized (this) {
-                return cancelled;
-            }
-        }
-
-        @Override
-        public V get() throws InterruptedException, ExecutionException {
-            try {
-                return await(false, 0L);
-            } catch (final TimeoutException e) {
-                // Should not happen
-                throw new RuntimeException(e);
-            }
-        }
-
-        @Override
-        public V get(final long timeout, final TimeUnit unit)
-            throws InterruptedException, ExecutionException, TimeoutException {
-            return await(true, unit.toMillis(timeout));
-        }
-
-        private V await(final boolean timed, final long millis)
-            throws InterruptedException, ExecutionException, TimeoutException {
-            final long expiry = clock.millis() + millis;
-
-            while (true) {
-                synchronized (this) {
-                    final long remaining = expiry - clock.millis();
-                    if (success) {
-                        return result;
-                    }
-                    if (exception != null) {
-                        throw new ExecutionException(exception);
-                    }
-                    if (isCancelled()) {
-                        throw new CancellationException();
-                    }
-
-                    if (timed) {
-                        if (remaining <= 0) {
-                            throw new TimeoutException();
-                        }
-                        WarpUtils.wait(clock, this, remaining, TimeUnit.MILLISECONDS);
-                    } else {
-                        wait();
-                    }
-                }
-            }
-        }
-
-        @Override
-        public boolean isDone() {
-            return done;
-        }
-
-        protected void success(final V result) {
-            synchronized (this) {
-                if (!done) {
-                    success = true;
-                    this.result = result;
-                    notifyAll();
-                    done = true;
-                }
-            }
-        }
-
-        protected void exception(final Exception exception) {
-            synchronized (this) {
-                if (!done) {
-                    this.exception = exception;
-                    notifyAll();
-                    done = true;
-                }
-            }
-        }
-    }
-
-    class OneTime extends ScheduleFutureImpl<Void> {
-
-        private final Runnable command;
-        private final long runtime;
-
-        public OneTime(final Runnable command, final long delay, final TimeUnit unit) {
-            this.command = command;
-            runtime = clock.millis() + unit.toMillis(delay);
-        }
-
-        @Override
-        Runnable getRunnable() {
-            return command;
-        }
-
-        @Override
-        void executeImpl() {
-            command.run();
-            success(null);
-        }
-
-        @Override
-        public long getDelay(final TimeUnit unit) {
-            final long millis = runtime - clock.millis();
-            return unit.convert(millis, TimeUnit.MILLISECONDS);
-        }
-    }
-
-    abstract class Repeating extends ScheduleFutureImpl<Void> {
-
-        private final Runnable command;
-        protected final TimeUnit unit;
-
-        protected long nextRuntime;
-
-        public Repeating(final Runnable command, final long initialDelay, final TimeUnit unit) {
-            this.command = () -> {
-                command.run();
-                if (!isCancelled()) {
-                    // Reschedule to run at the period from the last run.
-                    updateNextRuntime();
-                    addTask(this);
-                }
-            };
-            nextRuntime = clock.millis() + unit.toMillis(initialDelay);
-            this.unit = unit;
-        }
-
-        @Override
-        Runnable getRunnable() {
-            return command;
-        }
-
-        @Override
-        void executeImpl() {
-            command.run();
-        }
-
-        @Override
-        public long getDelay(final TimeUnit unit) {
-            final long millis = nextRuntime - clock.millis();
-            return unit.convert(millis, TimeUnit.MILLISECONDS);
-        }
-
-        @Override
-        public boolean isDone() {
-            return isCancelled();
-        }
-
-        abstract void updateNextRuntime();
-    }
-
-    class FixedRate extends Repeating {
-
-        private final long period;
-
-        public FixedRate(final Runnable command, final long initialDelay, final long period,
-            final TimeUnit unit) {
-            super(command, initialDelay, unit);
-            this.period = period;
-        }
-
-        @Override
-        void updateNextRuntime() {
-            nextRuntime += unit.toMillis(period);
-        }
-    }
-
-    class FixedDelay extends Repeating {
-
-        private final long delay;
-
-        public FixedDelay(final Runnable command, final long initialDelay, final long delay,
-            final TimeUnit unit) {
-            super(command, initialDelay, unit);
-            this.delay = delay;
-        }
-
-        @Override
-        void updateNextRuntime() {
-            nextRuntime = clock.millis() + unit.toMillis(delay);
-        }
-    }
-
-    class OneTimeCallable<V> extends ScheduleFutureImpl<V> {
-
-        private final Callable<V> command;
-        private final long runtime;
-
-        public OneTimeCallable(final Callable<V> command, final long delay, final TimeUnit unit) {
-            this.command = command;
-            runtime = clock.millis() + unit.toMillis(delay);
-        }
-
-        @Override
-        Runnable getRunnable() {
-            return () -> {
-                try {
-                    command.call();
-                } catch (final Exception e) {
-                    throw new RuntimeException(e);
-                }
-            };
-        }
-
-        @Override
-        void executeImpl() {
-            try {
-                success(command.call());
-            } catch (final Exception e) {
-                exception(e);
-            }
-        }
-
-        @Override
-        public long getDelay(final TimeUnit unit) {
-            final long millis = runtime - clock.millis();
-            return unit.convert(millis, TimeUnit.MILLISECONDS);
-        }
-    }
 }

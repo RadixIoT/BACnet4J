@@ -32,16 +32,14 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.Delayed;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 /**
  * A scheduled executor service backed by variable executor service so that it
@@ -56,7 +54,8 @@ import java.util.concurrent.TimeoutException;
  *
  * @author Matthew Lohbihler
  */
-public class ScheduledExecutorServiceVariablePool implements ScheduledExecutorService, Runnable {
+public class ScheduledExecutorServiceVariablePool implements TaskExecutingScheduledExecutorService, Runnable {
+
     static final Logger LOG = LoggerFactory.getLogger(ScheduledExecutorServiceVariablePool.class);
     private final Clock clock;
     private final ExecutorService executorService;
@@ -69,35 +68,42 @@ public class ScheduledExecutorServiceVariablePool implements ScheduledExecutorSe
 
     public ScheduledExecutorServiceVariablePool(final Clock clock) {
         this.clock = clock;
-        scheduler = new Thread(this, "ScheduledExecutorServiceVariablePool");
-        state = State.running;
-        scheduler.start();
-        executorService = Executors.newCachedThreadPool();
+        this.scheduler = new Thread(this, "ScheduledExecutorServiceVariablePool");
+        this.state = State.running;
+        this.scheduler.start();
+        this.executorService = Executors.newCachedThreadPool();
     }
 
     @Override
     public ScheduledFuture<?> schedule(final Runnable command, final long delay, final TimeUnit unit) {
-        return addTask(new OneTime(command, delay, unit));
+        return addTask(new OneTime(this, executorService, command, delay, unit));
     }
 
     @Override
     public ScheduledFuture<?> scheduleAtFixedRate(final Runnable command, final long initialDelay, final long period,
                                                   final TimeUnit unit) {
-        return addTask(new FixedRate(command, initialDelay, period, unit));
+        return addTask(new FixedRate(this, executorService, command, initialDelay, period, unit));
     }
 
     @Override
     public ScheduledFuture<?> scheduleWithFixedDelay(final Runnable command, final long initialDelay, final long delay,
                                                      final TimeUnit unit) {
-        return addTask(new FixedDelay(command, initialDelay, delay, unit));
+        return addTask(new FixedDelay(this, executorService, command, initialDelay, delay, unit));
     }
 
     @Override
     public <V> ScheduledFuture<V> schedule(final Callable<V> callable, final long delay, final TimeUnit unit) {
-        return addTask(new OneTimeCallable<>(callable, delay, unit));
+        return addTask(new OneTimeCallable<>(this, executorService, callable, delay, unit));
     }
 
-    private <V> ScheduleFutureImpl<V> addTask(final ScheduleFutureImpl<V> task) {
+    @Override
+    public List<ScheduleFutureImpl<?>> getTasks() {
+        synchronized (tasks) {
+            return tasks.stream().collect(Collectors.toUnmodifiableList());
+        }
+    }
+
+    public <V> ScheduleFutureImpl<V> addTask(final ScheduleFutureImpl<V> task) {
         synchronized (tasks) {
             int index = Collections.binarySearch(tasks, task);
             if (index < 0)
@@ -106,6 +112,11 @@ public class ScheduledExecutorServiceVariablePool implements ScheduledExecutorSe
             tasks.notify();
         }
         return task;
+    }
+
+    @Override
+    public Clock getClock() {
+        return clock;
     }
 
     @Override
@@ -241,223 +252,4 @@ public class ScheduledExecutorServiceVariablePool implements ScheduledExecutorSe
         running, stopping, stopped;
     }
 
-    abstract class ScheduleFutureImpl<V> implements ScheduledFuture<V> {
-        protected volatile Future<V> future;
-        private volatile boolean cancelled;
-
-        abstract void execute();
-
-        void setFuture(final Future<V> future) {
-            synchronized (this) {
-                this.future = future;
-                notifyAll();
-            }
-        }
-
-        void clearFuture() {
-            future = null;
-        }
-
-        @Override
-        public int compareTo(final Delayed that) {
-            return Long.compare(getDelay(TimeUnit.MILLISECONDS), that.getDelay(TimeUnit.MILLISECONDS));
-        }
-
-        @Override
-        public boolean cancel(final boolean mayInterruptIfRunning) {
-            synchronized (this) {
-                if (future != null)
-                    return future.cancel(mayInterruptIfRunning);
-
-                cancelled = true;
-                notifyAll();
-                return true;
-            }
-        }
-
-        @Override
-        public boolean isCancelled() {
-            synchronized (this) {
-                if (future != null)
-                    return future.isCancelled();
-                return cancelled;
-            }
-        }
-
-        @Override
-        public V get() throws InterruptedException, ExecutionException {
-            try {
-                return await(false, 0L);
-            } catch (final TimeoutException e) {
-                // Should not happen
-                throw new RuntimeException(e);
-            }
-        }
-
-        @Override
-        public V get(final long timeout, final TimeUnit unit)
-                throws InterruptedException, ExecutionException, TimeoutException {
-            return await(true, unit.toMillis(timeout));
-        }
-
-        private V await(final boolean timed, final long millis)
-                throws InterruptedException, ExecutionException, TimeoutException {
-            final long expiry = clock.millis() + millis;
-
-            while (true) {
-                synchronized (this) {
-                    final long remaining = expiry - clock.millis();
-                    if (future != null) {
-                        if (timed)
-                            return future.get(remaining, TimeUnit.MILLISECONDS);
-                        return future.get();
-                    }
-                    if (isCancelled())
-                        throw new CancellationException();
-
-                    if (timed) {
-                        if (remaining <= 0)
-                            throw new TimeoutException();
-                        wait(remaining);
-                    } else {
-                        wait();
-                    }
-                }
-            }
-        }
-    }
-
-    class OneTime extends ScheduleFutureImpl<Void> {
-        private final Runnable command;
-        private final long runtime;
-
-        public OneTime(final Runnable command, final long delay, final TimeUnit unit) {
-            this.command = command;
-            runtime = clock.millis() + unit.toMillis(delay);
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        void execute() {
-            synchronized (this) {
-                setFuture((Future<Void>) executorService.submit(command));
-            }
-        }
-
-        @Override
-        public boolean isDone() {
-            synchronized (this) {
-                if (future != null)
-                    return future.isDone();
-                return isCancelled();
-            }
-        }
-
-        @Override
-        public long getDelay(final TimeUnit unit) {
-            final long millis = runtime - clock.millis();
-            return unit.convert(millis, TimeUnit.MILLISECONDS);
-        }
-    }
-
-    abstract class Repeating extends ScheduleFutureImpl<Void> {
-        protected final TimeUnit unit;
-        private final Runnable command;
-        protected long nextRuntime;
-
-        public Repeating(final Runnable command, final long initialDelay, final TimeUnit unit) {
-            this.command = () -> {
-                command.run();
-                synchronized (this) {
-                    if (!isCancelled()) {
-                        // Reschedule to run at the period from the last run.
-                        updateNextRuntime();
-                        clearFuture();
-                        addTask(this);
-                    }
-                }
-            };
-            nextRuntime = clock.millis() + unit.toMillis(initialDelay);
-            this.unit = unit;
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        void execute() {
-            synchronized (this) {
-                setFuture((Future<Void>) executorService.submit(command));
-            }
-        }
-
-        @Override
-        public long getDelay(final TimeUnit unit) {
-            final long millis = nextRuntime - clock.millis();
-            return unit.convert(millis, TimeUnit.MILLISECONDS);
-        }
-
-        @Override
-        public boolean isDone() {
-            return isCancelled();
-        }
-
-        abstract void updateNextRuntime();
-    }
-
-    class FixedRate extends Repeating {
-        private final long period;
-
-        public FixedRate(final Runnable command, final long initialDelay, final long period, final TimeUnit unit) {
-            super(command, initialDelay, unit);
-            this.period = period;
-        }
-
-        @Override
-        void updateNextRuntime() {
-            nextRuntime += unit.toMillis(period);
-        }
-    }
-
-    class FixedDelay extends Repeating {
-        private final long delay;
-
-        public FixedDelay(final Runnable command, final long initialDelay, final long delay, final TimeUnit unit) {
-            super(command, initialDelay, unit);
-            this.delay = delay;
-        }
-
-        @Override
-        void updateNextRuntime() {
-            nextRuntime = clock.millis() + unit.toMillis(delay);
-        }
-    }
-
-    class OneTimeCallable<V> extends ScheduleFutureImpl<V> {
-        private final Callable<V> command;
-        private final long runtime;
-
-        public OneTimeCallable(final Callable<V> command, final long delay, final TimeUnit unit) {
-            this.command = command;
-            runtime = clock.millis() + unit.toMillis(delay);
-        }
-
-        @Override
-        void execute() {
-            setFuture(executorService.submit(command));
-        }
-
-        @Override
-        public boolean isDone() {
-            synchronized (this) {
-                if (future != null)
-                    return future.isDone();
-                return isCancelled();
-            }
-        }
-
-        @Override
-        public long getDelay(final TimeUnit unit) {
-            final long millis = runtime - clock.millis();
-            return unit.convert(millis, TimeUnit.MILLISECONDS);
-        }
-    }
 }
