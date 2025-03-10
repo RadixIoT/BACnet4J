@@ -1,13 +1,5 @@
 package com.serotonin.bacnet4j.obj;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.File;
-
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkUtils;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
@@ -45,38 +37,54 @@ import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.Unsigned8;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+
+import static org.junit.Assert.assertEquals;
 
 public class NotificationForwarderObjectTest extends AbstractTest {
     static final Logger LOG = LoggerFactory.getLogger(TrendLogMultipleObjectTest.class);
 
-    private final BACnetArray<PortPermission> portFilter = new BACnetArray<>(
-            new PortPermission(new Unsigned8(0), Boolean.TRUE));
+    private BACnetArray<PortPermission> portFilter;
 
-    private final TimeStamp now = new TimeStamp(new DateTime(d1));
-    private final ConfirmedEventNotificationRequest n1 = new ConfirmedEventNotificationRequest(new UnsignedInteger(122),
-            new ObjectIdentifier(ObjectType.device, 50), new ObjectIdentifier(ObjectType.device, 50), now,
-            new UnsignedInteger(456), new UnsignedInteger(1), EventType.accessEvent, new CharacterString("message"),
-            NotifyType.event, Boolean.FALSE, EventState.fault, EventState.highLimit,
-            new NotificationParameters(
-                    new BufferReadyNotif(
-                            new DeviceObjectPropertyReference(51, new ObjectIdentifier(ObjectType.trendLog, 0),
-                                    PropertyIdentifier.logBuffer),
-                            new UnsignedInteger(1000), new UnsignedInteger(2000))));
-    private final ConfirmedEventNotificationRequest n2 = new ConfirmedEventNotificationRequest(new UnsignedInteger(123),
-            new ObjectIdentifier(ObjectType.device, 1), new ObjectIdentifier(ObjectType.device, 1), now,
-            new UnsignedInteger(456), new UnsignedInteger(1), EventType.accessEvent, new CharacterString("message"),
-            NotifyType.event, Boolean.FALSE, EventState.fault, EventState.highLimit,
-            new NotificationParameters(
-                    new BufferReadyNotif(
-                            new DeviceObjectPropertyReference(51, new ObjectIdentifier(ObjectType.trendLog, 0),
-                                    PropertyIdentifier.logBuffer),
-                            new UnsignedInteger(1000), new UnsignedInteger(2000))));
-    private final ConfirmedEventNotificationRequest n3 = new ConfirmedEventNotificationRequest(new UnsignedInteger(124),
-            new ObjectIdentifier(ObjectType.device, 60), new ObjectIdentifier(ObjectType.device, 60), now,
-            new UnsignedInteger(789), new UnsignedInteger(109), EventType.commandFailure,
-            new CharacterString("message2"), NotifyType.alarm, Boolean.TRUE, EventState.offnormal, EventState.normal,
-            new NotificationParameters(new OutOfRangeNotif(new Real(34), new StatusFlags(true, true, true, true),
-                    new Real(35), new Real(36))));
+    private TimeStamp now;
+    private ConfirmedEventNotificationRequest n1;
+    private ConfirmedEventNotificationRequest n2;
+    private ConfirmedEventNotificationRequest n3;
+
+    public void beforeInit() {
+        this.portFilter = new BACnetArray<>(
+                new PortPermission(new Unsigned8(0), Boolean.TRUE));
+
+        this.now = new TimeStamp(new DateTime(d1));
+        this.n1 = new ConfirmedEventNotificationRequest(new UnsignedInteger(122),
+                new ObjectIdentifier(ObjectType.device, 50), new ObjectIdentifier(ObjectType.device, 50), now,
+                new UnsignedInteger(456), new UnsignedInteger(1), EventType.accessEvent, new CharacterString("message"),
+                NotifyType.event, Boolean.FALSE, EventState.fault, EventState.highLimit,
+                new NotificationParameters(
+                        new BufferReadyNotif(
+                                new DeviceObjectPropertyReference(51, new ObjectIdentifier(ObjectType.trendLog, 0),
+                                        PropertyIdentifier.logBuffer),
+                                new UnsignedInteger(1000), new UnsignedInteger(2000))));
+        this.n2 = new ConfirmedEventNotificationRequest(new UnsignedInteger(123),
+                new ObjectIdentifier(ObjectType.device, 1), new ObjectIdentifier(ObjectType.device, 1), now,
+                new UnsignedInteger(456), new UnsignedInteger(1), EventType.accessEvent, new CharacterString("message"),
+                NotifyType.event, Boolean.FALSE, EventState.fault, EventState.highLimit,
+                new NotificationParameters(
+                        new BufferReadyNotif(
+                                new DeviceObjectPropertyReference(51, new ObjectIdentifier(ObjectType.trendLog, 0),
+                                        PropertyIdentifier.logBuffer),
+                                new UnsignedInteger(1000), new UnsignedInteger(2000))));
+        this.n3 = new ConfirmedEventNotificationRequest(new UnsignedInteger(124),
+                new ObjectIdentifier(ObjectType.device, 60), new ObjectIdentifier(ObjectType.device, 60), now,
+                new UnsignedInteger(789), new UnsignedInteger(109), EventType.commandFailure,
+                new CharacterString("message2"), NotifyType.alarm, Boolean.TRUE, EventState.offnormal, EventState.normal,
+                new NotificationParameters(new OutOfRangeNotif(new Real(34), new StatusFlags(true, true, true, true),
+                        new Real(35), new Real(36))));
+    }
 
     @Test
     public void subscriptions() throws Exception {

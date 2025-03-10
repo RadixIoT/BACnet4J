@@ -1,6 +1,19 @@
 package com.serotonin.bacnet4j.npdu.ip;
 
-import static org.junit.Assert.assertEquals;
+import com.serotonin.bacnet4j.LocalDevice;
+import com.serotonin.bacnet4j.RemoteDevice;
+import com.serotonin.bacnet4j.event.DeviceEventAdapter;
+import com.serotonin.bacnet4j.service.unconfirmed.WhoIsRequest;
+import com.serotonin.bacnet4j.transport.DefaultTransport;
+import com.serotonin.bacnet4j.util.sero.ByteQueue;
+import com.serotonin.warp.ObservableScheduledExecutorService;
+import com.serotonin.warp.WarpClock;
+import com.serotonin.warp.WarpScheduledExecutorService;
+import org.apache.commons.lang3.mutable.MutableInt;
+import org.junit.After;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -12,21 +25,43 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang3.mutable.MutableInt;
-import org.junit.After;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
-import com.serotonin.bacnet4j.LocalDevice;
-import com.serotonin.bacnet4j.RemoteDevice;
-import com.serotonin.bacnet4j.event.DeviceEventAdapter;
-import com.serotonin.bacnet4j.service.unconfirmed.WhoIsRequest;
-import com.serotonin.bacnet4j.transport.DefaultTransport;
-import com.serotonin.bacnet4j.util.sero.ByteQueue;
-
-import lohbihler.warp.WarpClock;
-
+/**
+ * To run on MacOS you need these addresses setup:
+ * sudo ifconfig lo0 alias 127.0.1.0
+ * sudo ifconfig lo0 alias 127.0.1.1
+ * sudo ifconfig lo0 alias 127.0.1.2
+ * sudo ifconfig lo0 alias 127.0.1.3
+ * sudo ifconfig lo0 alias 127.0.1.255
+ *
+ * sudo ifconfig lo0 alias 127.0.2.0
+ * sudo ifconfig lo0 alias 127.0.2.1
+ * sudo ifconfig lo0 alias 127.0.2.2
+ * sudo ifconfig lo0 alias 127.0.2.3
+ * sudo ifconfig lo0 alias 127.0.2.255
+ *
+ * sudo ifconfig lo0 alias 127.0.3.0
+ * sudo ifconfig lo0 alias 127.0.3.1
+ * sudo ifconfig lo0 alias 127.0.3.2
+ * sudo ifconfig lo0 alias 127.0.3.3
+ * sudo ifconfig lo0 alias 127.0.3.255
+ *
+ * sudo ifconfig lo0 alias 127.0.151.0
+ * sudo ifconfig lo0 alias 127.0.151.1
+ * sudo ifconfig lo0 alias 127.0.151.255
+ *
+ * sudo ifconfig lo0 alias 127.0.152.0
+ * sudo ifconfig lo0 alias 127.0.152.1
+ * sudo ifconfig lo0 alias 127.0.152.255
+ *
+ * sudo ifconfig lo0 alias 127.0.153.0
+ * sudo ifconfig lo0 alias 127.0.153.1
+ * sudo ifconfig lo0 alias 127.0.153.255
+ *
+ *
+ * sudo ifconfig lo0 alias 127.0.254.254
+ */
 public class BBMDTest {
     static final int port = 0xBAC0;
 
@@ -118,6 +153,10 @@ public class BBMDTest {
         ld33.ld.sendLocalBroadcast(new WhoIsRequest());
         clock.plus(400, TimeUnit.MILLISECONDS, 800);
 
+        ld11.executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
+        ld12.executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
+        ld33.executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
+
         // Confirm that the above broadcasts were only received on their subnets.
         assertEquals(1, ld11.iamCount()); // IAm from 12
         assertEquals(1, ld12.iamCount()); // IAm from 11
@@ -198,6 +237,7 @@ public class BBMDTest {
 
         // Verify that it is there
         configurer.send(packet(6, "", ld11));
+        ld11.executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         configurer.receive(response);
         assertPacketEquals("810700227F009701BAC0000300207F009801BAC0001E003B7F009901BAC00001001F", response);
 
@@ -207,6 +247,7 @@ public class BBMDTest {
 
         // Read registrations again
         configurer.send(packet(6, "", ld11));
+        ld11.executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
 
         // Get the response
         configurer.receive(response);
@@ -472,9 +513,8 @@ public class BBMDTest {
                 .withLocalNetworkNumber(1) //
                 .build();       
         info.network.enableBBMD();
-
-        info.ld = new LocalDevice(subnet * 10 + addr, new DefaultTransport(info.network)) //
-                .withClock(clock) //
+        info.executor = new ObservableScheduledExecutorService(new WarpScheduledExecutorService(clock));
+        info.ld = new LocalDevice(subnet * 10 + addr, new DefaultTransport(info.network), clock, info.executor) //
                 .initialize();
 
         info.iamCount = new MutableInt();
@@ -516,6 +556,7 @@ public class BBMDTest {
         LocalDevice ld;
         IpNetwork network;
         MutableInt iamCount;
+        ObservableScheduledExecutorService executor;
 
         void reset() {
             ld.clearRemoteDevices();

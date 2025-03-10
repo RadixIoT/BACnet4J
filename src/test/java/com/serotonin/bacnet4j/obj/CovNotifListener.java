@@ -17,20 +17,33 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class CovNotifListener extends DeviceEventAdapter {
     static final Logger LOG = LoggerFactory.getLogger(CovNotifListener.class);
 
-    public final List<Map<String, Object>> notifs = new ArrayList<>();
+    private final List<Map<String, Object>> notifs = new ArrayList<>();
 
     @Override
     public void covNotificationReceived(final UnsignedInteger subscriberProcessIdentifier,
             final ObjectIdentifier initiatingDevice, final ObjectIdentifier monitoredObjectIdentifier,
             final UnsignedInteger timeRemaining, final SequenceOf<PropertyValue> listOfValues) {
         LOG.info("COV notification received.");
+        synchronized (notifs) {
+            final Map<String, Object> notif = new HashMap<>();
+            notif.put("subscriberProcessIdentifier", subscriberProcessIdentifier);
+            notif.put("initiatingDevice", initiatingDevice);
+            notif.put("monitoredObjectIdentifier", monitoredObjectIdentifier);
+            notif.put("timeRemaining", timeRemaining);
+            notif.put("listOfValues", listOfValues);
+            notifs.add(notif);
+        }
+    }
 
-        final Map<String, Object> notif = new HashMap<>();
-        notif.put("subscriberProcessIdentifier", subscriberProcessIdentifier);
-        notif.put("initiatingDevice", initiatingDevice);
-        notif.put("monitoredObjectIdentifier", monitoredObjectIdentifier);
-        notif.put("timeRemaining", timeRemaining);
-        notif.put("listOfValues", listOfValues);
-        notifs.add(notif);
+    public Map<String, Object> poll() {
+        synchronized (notifs) {
+            return notifs.remove(0);
+        }
+    }
+
+    public int size() {
+        synchronized (notifs) {
+            return notifs.size();
+        }
     }
 }
