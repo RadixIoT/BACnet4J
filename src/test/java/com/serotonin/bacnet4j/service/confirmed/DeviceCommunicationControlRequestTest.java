@@ -26,7 +26,6 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 import org.junit.Test;
 
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -215,12 +214,9 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
         // Let the 5 minutes elapse.
         clock.plusMinutes(6);
 
-        try {
-            this.d1Executor.waitForExecutorTasks(50, TimeUnit.MILLISECONDS, 10,
-                    true, true, true);
-        } catch (InterruptedException e) {
-            fail(e.getMessage());
-        }
+        //Ensure the comms are back up (after the 5 minutes)
+        //  we disabled d1 so we will check that here
+        TestUtils.assertTrueCondition(() -> d1.getCommunicationControlState() == EnableDisable.enable, 1000);
 
         // Receive a request. This time it too succeeds. Note that the value is already "a", because requests are
         // still processed, just not responded.

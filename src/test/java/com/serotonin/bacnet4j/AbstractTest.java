@@ -11,11 +11,12 @@ import com.serotonin.bacnet4j.type.constructed.PropertyValue;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.util.DiscoveryUtils;
-import com.serotonin.warp.ObservableScheduledExecutorService;
 import com.serotonin.warp.WarpClock;
 import com.serotonin.warp.WarpScheduledExecutorService;
 import org.junit.After;
 import org.junit.Before;
+
+import java.util.concurrent.ScheduledExecutorService;
 
 import static org.junit.Assert.fail;
 
@@ -34,16 +35,16 @@ abstract public class AbstractTest {
     protected WarpClock clock;
 
     protected LocalDevice d1;
-    protected ObservableScheduledExecutorService d1Executor;
+    protected ScheduledExecutorService d1Executor;
 
     protected LocalDevice d2;
-    protected ObservableScheduledExecutorService d2Executor;
+    protected ScheduledExecutorService d2Executor;
 
     protected LocalDevice d3;
-    protected ObservableScheduledExecutorService d3Executor;
+    protected ScheduledExecutorService d3Executor;
 
     protected LocalDevice d4;
-    protected ObservableScheduledExecutorService d4Executor;
+    protected ScheduledExecutorService d4Executor;
 
     protected RemoteDevice rd1;
     protected RemoteDevice rd2;
@@ -111,8 +112,8 @@ abstract public class AbstractTest {
         this.d4 = new LocalDevice(4, createTransport(createNetwork(map, 4, 0)), clock, d4Executor);
     }
 
-    protected ObservableScheduledExecutorService createExecutorService() {
-        return new ObservableScheduledExecutorService(new WarpScheduledExecutorService(clock));
+    protected ScheduledExecutorService createExecutorService() {
+        return new WarpScheduledExecutorService(clock);
     }
 
     protected AbstractTransport createTransport(AbstractTestNetwork network) {

@@ -273,21 +273,70 @@ public class TestUtils {
         assertSize(collection::size, size, wait);
     }
 
+    /**
+     *
+     * @param thingWithSize - size of thing to check
+     * @param size - expected size
+     * @param wait - time to wait for sizes to match
+     */
     public static void assertSize(final SizeRetriever thingWithSize, final int size, final int wait) {
-        final long deadline = Clock.systemUTC().millis() + wait;
-        while (true) {
-            if (thingWithSize.size() == size) {
-                return;
+        if(!checkCondition(() -> thingWithSize.size() == size, true, wait, 100)) {
+            fail("Expected collection size of " + size + ", but was " + thingWithSize.size());
+        }
+    }
+
+    /**
+     *
+     * @param thingWithCondition - condition to check for true-ness
+     * @param wait - time to wait for condition to match
+     */
+    public static void assertTrueCondition(final ConditionRetriever thingWithCondition, final int wait) {
+        if(!checkCondition(thingWithCondition, true, wait, 100)) {
+            fail("Expected condition size of true, but was " + thingWithCondition.condition());
+        }
+    }
+
+    /**
+     *
+     * @param thingWithCondition - condition to check
+     * @param conditionState - expected state of condition
+     * @param wait - time to wait for condition to match
+     */
+    public static void assertCondition(final ConditionRetriever thingWithCondition, boolean conditionState, final int wait) {
+        if(!checkCondition(thingWithCondition, conditionState, wait, 100)) {
+            fail("Expected condition of " + conditionState + ", but was " + thingWithCondition.condition());
+        }
+    }
+
+    /**
+     *
+     * @param thingWithCondition - condition to check
+     * @param conditionState - expected state of condition
+     * @param waitMs - time to wait for condition to match
+     * @param waitMsPerIteration - while checking condition in a loop, wait this long in between
+     * @return
+     */
+    public static boolean checkCondition(final ConditionRetriever thingWithCondition, boolean conditionState, final int waitMs, final int waitMsPerIteration) {
+        final long deadline = Clock.systemUTC().millis() + waitMs;
+        while (deadline >= Clock.systemUTC().millis()) {
+            if (thingWithCondition.condition() == conditionState) {
+                return true;
             }
             if (deadline < Clock.systemUTC().millis()) {
-                fail("Expected collection size of " + size + ", but was " + thingWithSize.size());
+                return false;
             }
-            ThreadUtils.sleep(100);
+            ThreadUtils.sleep(waitMsPerIteration);
         }
+        return false;
     }
 
     @FunctionalInterface
     public interface SizeRetriever {
         int size();
+    }
+
+    @FunctionalInterface
+    public interface ConditionRetriever {
+        boolean condition();
     }
 }

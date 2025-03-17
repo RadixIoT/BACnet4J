@@ -36,7 +36,6 @@ import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
-import com.serotonin.warp.ObservableScheduledExecutorService;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +44,7 @@ import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -85,7 +85,7 @@ public class TrendLogObjectTest extends AbstractTest {
         polling(tl, ao, d1Executor);
     }
 
-    private void polling(final TrendLogObject tl, final BACnetObject bo, ObservableScheduledExecutorService executorService) throws Exception {
+    private void polling(final TrendLogObject tl, final BACnetObject bo, ScheduledExecutorService executorService) throws Exception {
         tl.withBuffer(buffer -> {
             assertEquals(0, buffer.size());
         });
@@ -114,7 +114,6 @@ public class TrendLogObjectTest extends AbstractTest {
 
         // Advance the clock another minute to poll again.
         clock.plus(1, MINUTES, 0);
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(tl::size, 2, 500);
 
         tl.withBuffer(buffer -> {
@@ -133,7 +132,6 @@ public class TrendLogObjectTest extends AbstractTest {
         // Advance the clock another minute to poll again.
         clock.plus(1, MINUTES, 0);
 
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(tl::size, 3, 500);
         tl.withBuffer(buffer -> {
             final LogRecord record3 = buffer.get(2);
@@ -154,7 +152,6 @@ public class TrendLogObjectTest extends AbstractTest {
         clock.plus(minutes, MINUTES, 0);
 
         //Wait for the tasks
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, true);
         TestUtils.assertSize(tl::size, 4, 500);
         tl.withBuffer(buffer -> {
             final LogRecord record4 = buffer.get(3);
@@ -169,7 +166,6 @@ public class TrendLogObjectTest extends AbstractTest {
         bo.setOverridden(false);
         tl.trigger();
 
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         // Wait for the polling to finish.
         TestUtils.assertSize(tl::size, 5, 500);
         tl.withBuffer(buffer -> {
@@ -198,7 +194,7 @@ public class TrendLogObjectTest extends AbstractTest {
         cov(tl, d1, ao, d1Executor);
     }
 
-    private void cov(final TrendLogObject tl, final LocalDevice d, final BACnetObject bo, ObservableScheduledExecutorService executorService) throws Exception {
+    private void cov(final TrendLogObject tl, final LocalDevice d, final BACnetObject bo, ScheduledExecutorService executorService) throws Exception {
         DateTime now = new DateTime(clock.millis());
         AtomicReference<DateTime> nowRef = new AtomicReference<>(now);
         // Wait for the COV to set up, and for the initial notification to be sent.
@@ -212,7 +208,6 @@ public class TrendLogObjectTest extends AbstractTest {
         // Remember the process id.
         final int processId = subscriptions.getBase1(1).getRecipient().getProcessIdentifier().intValue();
 
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         // The initial notification should be there.
         TestUtils.assertSize(tl::size, 1, 500);
         tl.withBuffer(buffer -> {
@@ -227,7 +222,6 @@ public class TrendLogObjectTest extends AbstractTest {
         bo.writePropertyInternal(PropertyIdentifier.presentValue, new Real(1));
 
         //Wait for the messages
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(tl::size, 2, 500);
         tl.withBuffer(buffer -> {
             final LogRecord record2 = buffer.get(1);
@@ -242,7 +236,6 @@ public class TrendLogObjectTest extends AbstractTest {
         clock.plusSeconds(45);
         bo.writePropertyInternal(PropertyIdentifier.presentValue, new Real(1.2F));
 
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(tl::size, 2, 500);
 
         //
@@ -253,7 +246,6 @@ public class TrendLogObjectTest extends AbstractTest {
         nowRef.set(now);
         bo.writePropertyInternal(PropertyIdentifier.presentValue, new Real(1.6F));
 
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(tl::size, 3, 500);
         tl.withBuffer(buffer -> {
             final LogRecord record3 = buffer.get(2);
@@ -269,7 +261,6 @@ public class TrendLogObjectTest extends AbstractTest {
         nowRef.set(now);
         bo.setOverridden(true);
 
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(tl::size, 4, 500);
         tl.withBuffer(buffer -> {
             final LogRecord record4 = buffer.get(3);
@@ -284,7 +275,6 @@ public class TrendLogObjectTest extends AbstractTest {
         now = new DateTime(clock.millis());
         nowRef.set(now);
 
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(tl::size, 5, 500);
         tl.withBuffer(buffer -> {
             final LogRecord record5 = buffer.get(4);
@@ -304,7 +294,6 @@ public class TrendLogObjectTest extends AbstractTest {
         final int processId2 = subscriptions.getBase1(1).getRecipient().getProcessIdentifier().intValue();
         assertEquals(processId + 1, processId2);
 
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         // Check that an update was sent due to the resubscription.
         TestUtils.assertSize(tl::size, 6, 500);
 
@@ -314,14 +303,12 @@ public class TrendLogObjectTest extends AbstractTest {
         now = new DateTime(clock.millis());
         nowRef.set(now);
 
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(tl::size, 7, 500);
 
         //
         // Try a trigger for fun.
         tl.trigger();
 
-        executorService.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         // Wait for the polling to finish.
         TestUtils.assertSize(tl::size, 8, 500);
     }
@@ -354,7 +341,6 @@ public class TrendLogObjectTest extends AbstractTest {
         LOG.info("Trigger");
         tl.trigger();
 
-        d1Executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         //Wait for the log to show up
         TestUtils.assertSize(tl::size, 1, 500);
 
@@ -392,7 +378,6 @@ public class TrendLogObjectTest extends AbstractTest {
         //
         // Write 4 triggers and make sure no notification was sent.
         doTriggers(tl, 4);
-        this.d1Executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(tl::size, 4, 500);
 
         assertEquals(0, listener.size());
@@ -404,7 +389,6 @@ public class TrendLogObjectTest extends AbstractTest {
         //
         // Write one more and make sure a notification was received.
         doTriggers(tl, 1);
-        this.d1Executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(tl::size, 5, 500);
         TestUtils.assertSize(listener::size, 1, 500);
 
@@ -437,7 +421,6 @@ public class TrendLogObjectTest extends AbstractTest {
         //
         // Write another 5 triggers and ensure that the notification looks ok.
         doTriggers(tl, 5);
-        this.d1Executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(() -> {
             AtomicInteger size = new AtomicInteger(0);
             tl.withBuffer(buffer -> size.set(buffer.size()));
@@ -478,7 +461,6 @@ public class TrendLogObjectTest extends AbstractTest {
         tl.set(PropertyIdentifier.totalRecordCount, new UnsignedInteger(0xFFFFFFFDL));
         doTriggers(tl, 5);
 
-        this.d1Executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(tl::size, 15, 500);
         TestUtils.assertSize(listener::size, 1, 500);
         assertEquals(1, listener.size());
@@ -558,7 +540,6 @@ public class TrendLogObjectTest extends AbstractTest {
         // Trigger another notification so that a notification is sent.
         doTriggers(tl, 1);
         clock.plusSeconds(1);
-        this.d1Executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(listener::size, 1, 500);
         Map<String, Object> notif = listener.poll();
         assertEquals(new UnsignedInteger(28), notif.get("processIdentifier"));
@@ -582,7 +563,6 @@ public class TrendLogObjectTest extends AbstractTest {
         // Trigger another batch of updates. One notification should be sent.
         doTriggers(tl, 7);
         clock.plusSeconds(1);
-        this.d1Executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(listener::size, 1, 500);
         notif = listener.poll();
         assertEquals(new UnsignedInteger(28), notif.get("processIdentifier"));
@@ -906,7 +886,6 @@ public class TrendLogObjectTest extends AbstractTest {
                         .withCov(100, new ClientCov(Null.instance));
 
         // Wait for the notification.
-        this.d2Executor.waitForExecutorTasks(10, TimeUnit.MILLISECONDS, 50, true, true, false);
         TestUtils.assertSize(listener::size, 1, 500);
 
         // Validate notification
