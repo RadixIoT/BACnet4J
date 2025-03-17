@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiPredicate;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.fail;
 
@@ -279,9 +280,9 @@ public class TestUtils {
      * @param size - expected size
      * @param wait - time to wait for sizes to match
      */
-    public static void assertSize(final SizeRetriever thingWithSize, final int size, final int wait) {
-        if(!checkCondition(() -> thingWithSize.size() == size, true, wait, 100)) {
-            fail("Expected collection size of " + size + ", but was " + thingWithSize.size());
+    public static void assertSize(final Supplier<Integer> thingWithSize, final int size, final int wait) {
+        if(!checkCondition(() -> thingWithSize.get() == size, true, wait, 100)) {
+            fail("Expected collection size of " + size + ", but was " + thingWithSize.get());
         }
     }
 
@@ -290,9 +291,9 @@ public class TestUtils {
      * @param thingWithCondition - condition to check for true-ness
      * @param wait - time to wait for condition to match
      */
-    public static void assertTrueCondition(final ConditionRetriever thingWithCondition, final int wait) {
+    public static void assertTrueCondition(final Supplier<Boolean> thingWithCondition, final int wait) {
         if(!checkCondition(thingWithCondition, true, wait, 100)) {
-            fail("Expected condition size of true, but was " + thingWithCondition.condition());
+            fail("Expected condition size of true, but was " + thingWithCondition.get());
         }
     }
 
@@ -302,9 +303,9 @@ public class TestUtils {
      * @param conditionState - expected state of condition
      * @param wait - time to wait for condition to match
      */
-    public static void assertCondition(final ConditionRetriever thingWithCondition, boolean conditionState, final int wait) {
+    public static void assertCondition(final Supplier<Boolean> thingWithCondition, boolean conditionState, final int wait) {
         if(!checkCondition(thingWithCondition, conditionState, wait, 100)) {
-            fail("Expected condition of " + conditionState + ", but was " + thingWithCondition.condition());
+            fail("Expected condition of " + conditionState + ", but was " + thingWithCondition.get());
         }
     }
 
@@ -316,10 +317,10 @@ public class TestUtils {
      * @param waitMsPerIteration - while checking condition in a loop, wait this long in between
      * @return
      */
-    public static boolean checkCondition(final ConditionRetriever thingWithCondition, boolean conditionState, final int waitMs, final int waitMsPerIteration) {
+    public static boolean checkCondition(final Supplier<Boolean> thingWithCondition, boolean conditionState, final int waitMs, final int waitMsPerIteration) {
         final long deadline = Clock.systemUTC().millis() + waitMs;
         while (deadline >= Clock.systemUTC().millis()) {
-            if (thingWithCondition.condition() == conditionState) {
+            if (thingWithCondition.get() == conditionState) {
                 return true;
             }
             if (deadline < Clock.systemUTC().millis()) {
@@ -330,13 +331,4 @@ public class TestUtils {
         return false;
     }
 
-    @FunctionalInterface
-    public interface SizeRetriever {
-        int size();
-    }
-
-    @FunctionalInterface
-    public interface ConditionRetriever {
-        boolean condition();
-    }
 }
