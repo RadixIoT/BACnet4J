@@ -1,18 +1,11 @@
 package com.serotonin.bacnet4j;
 
-import com.serotonin.bacnet4j.npdu.test.AbstractTestNetwork;
-import com.serotonin.bacnet4j.npdu.test.SynchronousTestNetwork;
-import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
-import com.serotonin.bacnet4j.transport.AbstractTransport;
-import com.serotonin.bacnet4j.transport.DefaultTransport;
-import com.serotonin.bacnet4j.transport.SynchronousTransport;
 import com.serotonin.bacnet4j.type.constructed.PropertyValue;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.util.DiscoveryUtils;
 import com.serotonin.warp.WarpClock;
-import com.serotonin.warp.WarpScheduledExecutorService;
 import org.junit.After;
 import org.junit.Before;
 
@@ -25,11 +18,8 @@ import static org.junit.Assert.fail;
  *
  * @author Matthew
  */
-abstract public class AbstractTest {
+abstract public class AbstractTest implements SynchronousLocalDeviceInitializer {
     protected static final int TIMEOUT = 500;
-
-    //Do we use a synchronous test implementation or the actual Network and Transport implementations
-    protected final boolean synchronousTesting;
 
     private TestNetworkMap map;
     protected WarpClock clock;
@@ -51,11 +41,7 @@ abstract public class AbstractTest {
     protected RemoteDevice rd3;
 
     public AbstractTest() {
-        this(true);
-    }
 
-    public AbstractTest(boolean synchronousTesting) {
-        this.synchronousTesting = synchronousTesting;
     }
 
     @Before
@@ -96,45 +82,20 @@ abstract public class AbstractTest {
      */
     public void setup() {
         this.map = new TestNetworkMap();
-        this.clock = new WarpClock();
-        this.d1Executor = createExecutorService();
+        this.clock = getClock();
+        this.d1Executor = createExecutorService(clock);
         this.d1 = new LocalDevice(1,
-                createTransport(createNetwork(map, 1, 0, TIMEOUT)), clock, d1Executor);
+                createTransport(createTestNetwork(map, 1, 0, TIMEOUT)), clock, d1Executor);
 
-        this.d2Executor = createExecutorService();
+        this.d2Executor = createExecutorService(clock);
         this.d2 = new LocalDevice(2,
-                createTransport(createNetwork(map, 2, 0, TIMEOUT)), clock, d2Executor);
+                createTransport(createTestNetwork(map, 2, 0, TIMEOUT)), clock, d2Executor);
 
-        this.d3Executor = createExecutorService();
-        this.d3 = new LocalDevice(3, createTransport(createNetwork(map, 3, 0)), clock, d3Executor);
+        this.d3Executor = createExecutorService(clock);
+        this.d3 = new LocalDevice(3, createTransport(createTestNetwork(map, 3, 0)), clock, d3Executor);
 
-        this.d4Executor = createExecutorService();
-        this.d4 = new LocalDevice(4, createTransport(createNetwork(map, 4, 0)), clock, d4Executor);
-    }
-
-    protected ScheduledExecutorService createExecutorService() {
-        return new WarpScheduledExecutorService(clock);
-    }
-
-    protected AbstractTransport createTransport(AbstractTestNetwork network) {
-        if(synchronousTesting) {
-            return new SynchronousTransport(network);
-        }else {
-            return new DefaultTransport(network);
-        }
-    }
-
-    protected AbstractTestNetwork createNetwork(TestNetworkMap map, int address, int sendDelay, int timeout) {
-        return this.createNetwork(map, address, sendDelay).withTimeout(timeout);
-    }
-
-    protected AbstractTestNetwork createNetwork(TestNetworkMap map, int address, int sendDelay) {
-        if(synchronousTesting) {
-            return new SynchronousTestNetwork(map, address, sendDelay);
-        }else {
-            return new TestNetwork(map, address, sendDelay);
-        }
-
+        this.d4Executor = createExecutorService(clock);
+        this.d4 = new LocalDevice(4, createTransport(createTestNetwork(map, 4, 0)), clock, d4Executor);
     }
 
     /**

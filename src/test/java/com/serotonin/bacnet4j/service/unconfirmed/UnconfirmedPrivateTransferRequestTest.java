@@ -2,6 +2,7 @@ package com.serotonin.bacnet4j.service.unconfirmed;
 
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.LocalDevice;
+import com.serotonin.bacnet4j.SynchronousLocalDeviceInitializer;
 import com.serotonin.bacnet4j.event.PrivateTransferHandler;
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkUtils;
@@ -41,7 +42,7 @@ public class UnconfirmedPrivateTransferRequestTest extends AbstractTest {
                 assertEquals(new UnsignedInteger(12), serviceNumber);
                 assertEquals(null, serviceParameters);
                 assertEquals(false, confirmed);
-                if(synchronousTesting) {
+                if(UnconfirmedPrivateTransferRequestTest.this instanceof SynchronousLocalDeviceInitializer) {
                     handled.set(true);
                 } else {
                     synchronized (handled) {
@@ -55,7 +56,7 @@ public class UnconfirmedPrivateTransferRequestTest extends AbstractTest {
 
         synchronized (handled) {
             d2.send(rd1, new UnconfirmedPrivateTransferRequest(236, 12, null));
-            if(!synchronousTesting) {
+            if(!(UnconfirmedPrivateTransferRequestTest.this instanceof SynchronousLocalDeviceInitializer)) {
                 handled.wait();
             }
         }
@@ -78,7 +79,7 @@ public class UnconfirmedPrivateTransferRequestTest extends AbstractTest {
                 assertEquals(new UnsignedInteger(13), serviceNumber);
                 assertEquals(parameters, serviceParameters);
                 assertEquals(false, confirmed);
-                if(synchronousTesting) {
+                if(UnconfirmedPrivateTransferRequestTest.this instanceof SynchronousLocalDeviceInitializer) {
                     handled.set(true);
                 } else {
                     synchronized (handled) {
@@ -92,7 +93,7 @@ public class UnconfirmedPrivateTransferRequestTest extends AbstractTest {
 
         synchronized (handled) {
             d2.send(rd1, new UnconfirmedPrivateTransferRequest(236, 13, parameters));
-            if(!synchronousTesting) {
+            if(!(UnconfirmedPrivateTransferRequestTest.this instanceof SynchronousLocalDeviceInitializer)) {
                 handled.wait();
             }
         }
