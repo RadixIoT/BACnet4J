@@ -44,6 +44,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class ScheduledExecutorServiceVariablePoolTest {
@@ -110,8 +112,6 @@ public class ScheduledExecutorServiceVariablePoolTest {
 
     @Test
     public void scheduleCancel() throws InterruptedException, ExecutionException {
-        final long startTime = clock.millis();
-
         final AtomicLong executorRuntime = new AtomicLong();
         final AtomicLong timerRuntime = new AtomicLong();
 
@@ -128,7 +128,7 @@ public class ScheduledExecutorServiceVariablePoolTest {
         TestUtils.assertTrueCondition(() -> timerRuntime.get() == 0, 1000);
 
         executorFuture.cancel(true);
-        TestUtils.assertTrueCondition(() -> executorFuture.isCancelled(), 1000);
+        TestUtils.assertTrueCondition(executorFuture::isCancelled, 1000);
         assertEquals(true, executorFuture.isCancelled());
         assertEquals(true, executorFuture.isDone());
         assertEquals(0, executorRuntime.get());
@@ -141,7 +141,7 @@ public class ScheduledExecutorServiceVariablePoolTest {
         }
 
         timerFuture.cancel(true);
-        TestUtils.assertTrueCondition(() -> timerFuture.isCancelled(), 1000);
+        TestUtils.assertTrueCondition(timerFuture::isCancelled, 1000);
 
         assertEquals(100, timerFuture.getDelay(TimeUnit.MILLISECONDS));
         assertEquals(true, timerFuture.isCancelled());
@@ -237,8 +237,8 @@ public class ScheduledExecutorServiceVariablePoolTest {
 
         // Wait until both tasks are done by moving the time ahead 50ms
         clock.plusMillis(50);
-        TestUtils.assertTrueCondition(() -> executorFuture.isDone(), 1000);
-        TestUtils.assertTrueCondition(() -> timerFuture.isDone(), 1000);
+        TestUtils.assertTrueCondition(executorFuture::isDone, 1000);
+        TestUtils.assertTrueCondition(timerFuture::isDone, 1000);
 
         executorFuture.get(100 + TOLERANCE_MILLIS, TimeUnit.MILLISECONDS);
         timerFuture.get(TOLERANCE_MILLIS, TimeUnit.MILLISECONDS);
@@ -273,10 +273,10 @@ public class ScheduledExecutorServiceVariablePoolTest {
         // Check immediately
         assertEquals(300, timerFuture.getDelay(TimeUnit.MILLISECONDS));
 
-        assertEquals(false, executorFuture.isCancelled());
-        assertEquals(false, timerFuture.isCancelled());
-        assertEquals(false, executorFuture.isDone());
-        assertEquals(false, timerFuture.isDone());
+        assertFalse(executorFuture.isCancelled());
+        assertFalse(timerFuture.isCancelled());
+        assertFalse(executorFuture.isDone());
+        assertFalse(timerFuture.isDone());
         assertEquals(0, executorCompleteTime.get());
         assertEquals(0, timerCompleteTime.get());
 
@@ -288,10 +288,10 @@ public class ScheduledExecutorServiceVariablePoolTest {
         TestUtils.assertTrueCondition(() -> executorCompleteTime.get() != 0, 1000);
         TestUtils.assertTrueCondition(() -> timerCompleteTime.get() != 0, 1000);
 
-        assertEquals(false, executorFuture.isCancelled());
-        assertEquals(false, timerFuture.isCancelled());
-        assertEquals(false, executorFuture.isDone());
-        assertEquals(false, timerFuture.isDone());
+        assertFalse(executorFuture.isCancelled());
+        assertFalse(timerFuture.isCancelled());
+        assertFalse(executorFuture.isDone());
+        assertFalse(timerFuture.isDone());
         assertEquals(startTime + 300, executorCompleteTime.get());
         assertEquals(startTime + 300, timerCompleteTime.get());
 
@@ -305,10 +305,10 @@ public class ScheduledExecutorServiceVariablePoolTest {
         TestUtils.assertTrueCondition(() -> executorCompleteTime.get() != 0, 1000);
         TestUtils.assertTrueCondition(() -> timerCompleteTime.get() != 0, 1000);
 
-        assertEquals(false, executorFuture.isCancelled());
-        assertEquals(false, timerFuture.isCancelled());
-        assertEquals(false, executorFuture.isDone());
-        assertEquals(false, timerFuture.isDone());
+        assertFalse(executorFuture.isCancelled());
+        assertFalse(timerFuture.isCancelled());
+        assertFalse(executorFuture.isDone());
+        assertFalse(timerFuture.isDone());
         assertEquals(startTime + 300 + 200, executorCompleteTime.get());
         assertEquals(startTime + 300 + 200, timerCompleteTime.get());
 
@@ -318,10 +318,10 @@ public class ScheduledExecutorServiceVariablePoolTest {
 
         // Check again
         assertEquals(200, timerFuture.getDelay(TimeUnit.MILLISECONDS));
-        assertEquals(true, executorFuture.isCancelled());
-        assertEquals(true, timerFuture.isCancelled());
-        assertEquals(true, executorFuture.isDone());
-        assertEquals(true, timerFuture.isDone());
+        assertTrue(executorFuture.isCancelled());
+        assertTrue(timerFuture.isCancelled());
+        assertTrue(executorFuture.isDone());
+        assertTrue(timerFuture.isDone());
         assertEquals(startTime + 300 + 200, executorCompleteTime.get());
         assertEquals(startTime + 300 + 200, timerCompleteTime.get());
     }
@@ -388,7 +388,6 @@ public class ScheduledExecutorServiceVariablePoolTest {
 
     @Test
     public void scheduleCallable() throws InterruptedException, ExecutionException, TimeoutException {
-        final long startTime = clock.millis();
         final AtomicLong executorStartTime = new AtomicLong();
         final AtomicLong timerStartTime = new AtomicLong();
         final AtomicLong executorCompleteTime = new AtomicLong();
@@ -400,6 +399,7 @@ public class ScheduledExecutorServiceVariablePoolTest {
             while(taskWaitForTime.get() < clock.millis()) {
                 sleepPeacefully(10);
             }
+            executorCompleteTime.set(clock.millis());
             return "executor";
         };
         final Callable<String> timerCallable = () -> {
@@ -407,14 +407,15 @@ public class ScheduledExecutorServiceVariablePoolTest {
             while(taskWaitForTime.get() < clock.millis()) {
                 sleepPeacefully(10);
             }
+            timerCompleteTime.set(clock.millis());
             return "timer";
         };
 
         final ScheduledFuture<?> executorFuture = executor.schedule(executorCallable, 200, TimeUnit.MILLISECONDS);
         final ScheduledFuture<?> timerFuture = timer.schedule(timerCallable, 200, TimeUnit.MILLISECONDS);
 
-        assertEquals(false, executorFuture.isCancelled());
-        assertEquals(false, timerFuture.isCancelled());
+        assertFalse(executorFuture.isCancelled());
+        assertFalse(timerFuture.isCancelled());
         assertEquals(false, executorFuture.isDone());
         assertEquals(false, timerFuture.isDone());
 
@@ -468,6 +469,9 @@ public class ScheduledExecutorServiceVariablePoolTest {
 
         // Wait until both tasks are done.
         taskWaitForTime.set(clock.millis());
+        TestUtils.assertTrueCondition(() -> executorCompleteTime.get() != 0, 1000);
+        TestUtils.assertTrueCondition(() -> timerCompleteTime.get() != 0, 1000);
+
         assertEquals("executor", executorFuture.get(100 + TOLERANCE_MILLIS, TimeUnit.MILLISECONDS));
         assertEquals("timer", timerFuture.get(1, TimeUnit.MILLISECONDS));
 
@@ -547,7 +551,7 @@ public class ScheduledExecutorServiceVariablePoolTest {
     }
 
     @Test
-    public void getWhileScheduled() throws InterruptedException, ExecutionException {
+    public void getWhileScheduled() {
 
         AtomicBoolean taskDone = new AtomicBoolean();
         final ScheduledFuture<?> future = timer.schedule(() -> {
@@ -557,19 +561,16 @@ public class ScheduledExecutorServiceVariablePoolTest {
             try {
                 future.get();
                 taskDone.set(true);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            } catch (ExecutionException e) {
+            } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);
             }
         });
         clock.plusMillis(500);
-        TestUtils.assertTrueCondition(() -> taskDone.get(), 1000);
+        TestUtils.assertTrueCondition(taskDone::get, 1000);
     }
 
     @Test
     public void shutdown() throws InterruptedException {
-        final long startTime = clock.millis();
         final AtomicLong timerStartTime = new AtomicLong();
         final AtomicLong timerCompleteTime = new AtomicLong();
         final AtomicLong taskWaitForTime = new AtomicLong();
@@ -596,7 +597,7 @@ public class ScheduledExecutorServiceVariablePoolTest {
     }
 
     @Test
-    public void getTimedWhileScheduled() throws InterruptedException, ExecutionException, TimeoutException {
+    public void getTimedWhileScheduled() {
         final long startTime = clock.millis();
         AtomicBoolean taskDone = new AtomicBoolean();
         final ScheduledFuture<?> future = timer.schedule(() -> {
@@ -606,16 +607,12 @@ public class ScheduledExecutorServiceVariablePoolTest {
             try {
                 future.get(1000, TimeUnit.MILLISECONDS);
                 taskDone.set(true);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            } catch (ExecutionException e) {
-                throw new RuntimeException(e);
-            } catch (TimeoutException e) {
+            } catch (InterruptedException | ExecutionException | TimeoutException e) {
                 throw new RuntimeException(e);
             }
         });
         clock.plusMillis(500);
-        TestUtils.assertTrueCondition(() -> taskDone.get(), 1000);
+        TestUtils.assertTrueCondition(taskDone::get, 1000);
         assertEquals(startTime + 500, clock.millis());
     }
 
