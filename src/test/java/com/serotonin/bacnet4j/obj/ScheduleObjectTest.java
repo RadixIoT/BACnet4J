@@ -1,14 +1,5 @@
 package com.serotonin.bacnet4j.obj;
 
-import static org.junit.Assert.assertEquals;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import org.junit.Assert;
-import org.junit.Test;
-
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.enums.DayOfWeek;
@@ -55,8 +46,25 @@ import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.RequestUtils;
+import com.serotonin.warp.WarpClock;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.junit.Assert.assertEquals;
 
 public class ScheduleObjectTest extends AbstractTest {
+
+    @Override
+    public WarpClock getClock() {
+        //Because our schedules are based on our local timezone we don't want to use the UTC Clock for this
+        return new WarpClock(ZoneId.systemDefault());
+    }
 
     @Test
     public void fullTest() throws Exception {
@@ -72,10 +80,10 @@ public class ScheduleObjectTest extends AbstractTest {
         final Primitive defaultScheduledValue = new Real(999);
         final ScheduleObject so = createScheduleObject(av0, av1 , defaultScheduledValue);
 
-        Thread.sleep(100); // Let the requests be received.
-        Assert.assertEquals(new Real(14), so.get(PropertyIdentifier.presentValue));
-        Assert.assertEquals(new Real(14), av0.get(PropertyIdentifier.presentValue));
-        Assert.assertEquals(new Real(14), av1.get(PropertyIdentifier.presentValue));
+        Real initialValue = new Real(14);
+        TestUtils.assertCondition(() -> initialValue.equals(so.get(PropertyIdentifier.presentValue)), true, 1000);
+        TestUtils.assertCondition(() -> initialValue.equals(av0.get(PropertyIdentifier.presentValue)), true, 1000);
+        TestUtils.assertCondition(() -> initialValue.equals(av1.get(PropertyIdentifier.presentValue)), true, 1000);
 
         // Start actual tests.
         testTime(so, av0, av1, java.time.Month.MAY, 1, 17, 0, new Real(15)); // Wednesday
@@ -86,17 +94,17 @@ public class ScheduleObjectTest extends AbstractTest {
         testTime(so, av0, av1, java.time.Month.MAY, 3, 13, 0,  new Real(22)); // Exception schedule at 13:00 with priority 7
         testTime(so, av0, av1, java.time.Month.MAY, 3, 14, 0,  new Real(23)); // Exception schedule at 14:00 with priority 7
         testTime(so, av0, av1, java.time.Month.MAY, 4, 0, 0, defaultScheduledValue); // Saturday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 5, 0, 0, defaultScheduledValue); // Sunday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 0, 0, defaultScheduledValue); // Monday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 5, 0, 0, defaultScheduledValue, false, false, false); // Sunday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 6, 0, 0, defaultScheduledValue, false, false, false); // Monday beginning of the day
         testTime(so, av0, av1, java.time.Month.MAY, 6, 8, 0,  new Real(10)); // Monday
         testTime(so, av0, av1, java.time.Month.MAY, 6, 17, 0,  new Real(11));  // Monday
         testTime(so, av0, av1, java.time.Month.MAY, 7, 0, 0, defaultScheduledValue); // Tuesday beginning of the day
         testTime(so, av0, av1, java.time.Month.MAY, 7, 8, 0,  new Real(12)); // Tuesday
         testTime(so, av0, av1, java.time.Month.MAY, 7, 17, 0, new Null()); // Null schedule from weekly schedule
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 0, 0, defaultScheduledValue); // Wednesday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 8, 0, 0, defaultScheduledValue, false, false, false); // Wednesday beginning of the day
         testTime(so, av0, av1, java.time.Month.MAY, 8, 10, 30,  new Real(24)); // Exception schedule at 10:30 with priority 6
         testTime(so, av0, av1, java.time.Month.MAY, 8, 17, 0, new Null());  // Null schedule from exception schedule
-        testTime(so, av0, av1, java.time.Month.MAY, 9, 0, 0, defaultScheduledValue); // Thursday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 9, 0, 0, defaultScheduledValue, false, false, false); // Thursday beginning of the day
     }
 
     @Test
@@ -111,7 +119,6 @@ public class ScheduleObjectTest extends AbstractTest {
         final Primitive defaultScheduledValue = new Null();
         final ScheduleObject so = createScheduleObject(av0, av1, defaultScheduledValue);
 
-        Thread.sleep(100); // Let the requests be received.
         Assert.assertEquals(new Real(14), so.get(PropertyIdentifier.presentValue));
         Assert.assertEquals(new Real(14), av0.get(PropertyIdentifier.presentValue));
         Assert.assertEquals(new Real(14), av1.get(PropertyIdentifier.presentValue));
@@ -125,40 +132,147 @@ public class ScheduleObjectTest extends AbstractTest {
         testTime(so, av0, av1, java.time.Month.MAY, 3, 13, 0,  new Real(22)); // Exception schedule at 13:00 with priority 7
         testTime(so, av0, av1, java.time.Month.MAY, 3, 14, 0,  new Real(23)); // Exception schedule at 14:00 with priority 7
         testTime(so, av0, av1, java.time.Month.MAY, 4, 0, 0, defaultScheduledValue); // Saturday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 5, 0, 0, defaultScheduledValue); // Sunday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 0, 0, defaultScheduledValue); // Monday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 5, 0, 0, defaultScheduledValue, false, false, false); // Sunday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 6, 0, 0, defaultScheduledValue, false, false, false); // Monday beginning of the day
         testTime(so, av0, av1, java.time.Month.MAY, 6, 8, 0,  new Real(10)); // Monday
         testTime(so, av0, av1, java.time.Month.MAY, 6, 17, 0,  new Real(11));  // Monday
         testTime(so, av0, av1, java.time.Month.MAY, 7, 0, 0, defaultScheduledValue); // Tuesday beginning of the day
         testTime(so, av0, av1, java.time.Month.MAY, 7, 8, 0,  new Real(12)); // Tuesday
         testTime(so, av0, av1, java.time.Month.MAY, 7, 17, 0, new Null()); // Null schedule from weekly schedule
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 0, 0, defaultScheduledValue); // Wednesday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 8, 0, 0, defaultScheduledValue, false, false, false); // Wednesday beginning of the day
         testTime(so, av0, av1, java.time.Month.MAY, 8, 10, 30,  new Real(24)); // Exception schedule at 10:30 with priority 6
         testTime(so, av0, av1, java.time.Month.MAY, 8, 17, 0, new Null());  // Null schedule from exception schedule
-        testTime(so, av0, av1, java.time.Month.MAY, 9, 0, 0, defaultScheduledValue); // Thursday beginning of the day
+        testTime(so, av0, av1, java.time.Month.MAY, 9, 0, 0, defaultScheduledValue, false, false, false); // Thursday beginning of the day
     }
 
     private void testTime(final ScheduleObject so, final AnalogValueObject av0, final AnalogValueObject av1,
-            final java.time.Month month, final int day, final int hour, final int min, final Primitive scheduledValue)
+                          final java.time.Month month, final int day, final int hour, final int min, final Primitive scheduledValue)
             throws Exception {
-        clock.set(2115, month, day, hour, min, 0);
-        Thread.sleep(100); // Let the requests be received.
+        testTime(so, av0, av1, month, day, hour, min, scheduledValue, true, true, true);
+    }
+    private void testTime(final ScheduleObject so, final AnalogValueObject av0, final AnalogValueObject av1,
+            final java.time.Month month, final int day, final int hour, final int min, final Primitive scheduledValue,
+                          boolean schedulePresentValueChange, boolean av0PresentValueChange, boolean av1PresentValueChange)
+            throws Exception {
+        AtomicBoolean scheduleChanged = new AtomicBoolean(false);
+        AtomicBoolean av0Ready = new AtomicBoolean(false);
+        AtomicBoolean av1Ready = new AtomicBoolean(false);
+
+        BACnetObjectListener scheduleListener;
+        BACnetObjectListener av0Listener;
+        BACnetObjectListener av1Listener;
 
         if (scheduledValue.getClass().equals(Null.class)) {
-            final Primitive scheduleDefault = so.readProperty(PropertyIdentifier.scheduleDefault);
-            if (scheduleDefault.getClass().equals(Null.class)) {
-                Assert.assertEquals(new Null(), so.get(PropertyIdentifier.presentValue));
-                Assert.assertEquals(av0.readProperty(PropertyIdentifier.relinquishDefault), av0.get(PropertyIdentifier.presentValue));
-                Assert.assertEquals(av1.readProperty(PropertyIdentifier.relinquishDefault), av1.get(PropertyIdentifier.presentValue));
+            scheduleListener = (pid, oldValue, newValue) -> {
+                try {
+                    final Primitive scheduleDefault = so.readProperty(PropertyIdentifier.scheduleDefault);
+                    if (scheduleDefault.getClass().equals(Null.class)) {
+                        if (pid.equals(PropertyIdentifier.presentValue) && newValue.equals(new Null())) {
+                            scheduleChanged.set(true);
+                        }
+                    }else {
+                        if (pid.equals(PropertyIdentifier.presentValue) && newValue.equals(scheduleDefault)) {
+                            scheduleChanged.set(true);
+                        }
+                    }
+                }catch(Exception e) {
+                    //TODO Log me?
+                }
+            };
+            av0Listener = (pid, oldValue, newValue) -> {
+                try {
+                    final Primitive scheduleDefault = so.readProperty(PropertyIdentifier.scheduleDefault);
+                    if (scheduleDefault.getClass().equals(Null.class)) {
+                        if (pid.equals(PropertyIdentifier.presentValue) && newValue.equals(av0.readProperty(PropertyIdentifier.relinquishDefault))) {
+                            av0Ready.set(true);
+                        }
+                    }else {
+                        if (pid.equals(PropertyIdentifier.presentValue) && newValue.equals(scheduleDefault)) {
+                            av0Ready.set(true);
+                        }
+                    }
+                }catch(Exception e) {
+                    //TODO Log me?
+                }
+            };
+            av1Listener = (pid, oldValue, newValue) -> {
+                try {
+                    final Primitive scheduleDefault = so.readProperty(PropertyIdentifier.scheduleDefault);
+                    if (scheduleDefault.getClass().equals(Null.class)) {
+                        if (pid.equals(PropertyIdentifier.presentValue) && newValue.equals(av1.readProperty(PropertyIdentifier.relinquishDefault))) {
+                            av1Ready.set(true);
+                        }
+                    }else {
+                        if (pid.equals(PropertyIdentifier.presentValue) && newValue.equals(scheduleDefault)) {
+                            av1Ready.set(true);
+                        }
+                    }
+                }catch(Exception e) {
+                    //TODO Log me?
+                }
+            };
+        }else {
+            scheduleListener = (pid, oldValue, newValue) -> {
+                if(pid.equals(PropertyIdentifier.presentValue) && scheduledValue.equals(newValue)) {
+                    scheduleChanged.set(true);
+                }
+            };
+            av0Listener = (pid, oldValue, newValue) -> {
+                if(pid.equals(PropertyIdentifier.presentValue) && scheduledValue.equals(newValue)) {
+                    av0Ready.set(true);
+                }
+            };
+            av1Listener = (pid, oldValue, newValue) -> {
+                if(pid.equals(PropertyIdentifier.presentValue) && scheduledValue.equals(newValue)) {
+                    av1Ready.set(true);
+                }
+            };
+        }
+
+        so.addListener(scheduleListener);
+        av0.addListener(av0Listener);
+        av1.addListener(av1Listener);
+
+        clock.set(2115, month, day, hour, min, 0);
+
+        if(schedulePresentValueChange) {
+            TestUtils.assertCondition(scheduleChanged::get, schedulePresentValueChange, 1000);
+        }else {
+            Thread.sleep(500);  //TODO Handle the cases that we don't expect a change as they screw up the timing
+        }
+        if(av0PresentValueChange) {
+            TestUtils.assertCondition(av0Ready::get, av0PresentValueChange, 1000);
+        }else {
+            Thread.sleep(500);  //TODO Handle the cases that we don't expect a change as they screw up the timing
+        }
+        if(av1PresentValueChange) {
+            TestUtils.assertCondition(av1Ready::get, av1PresentValueChange, 1000);
+        }else {
+            Thread.sleep(500);  //TODO Handle the cases that we don't expect a change as they screw up the timing
+        }
+
+
+        try {
+            if (scheduledValue.getClass().equals(Null.class)) {
+                final Primitive scheduleDefault = so.readProperty(PropertyIdentifier.scheduleDefault);
+                if (scheduleDefault.getClass().equals(Null.class)) {
+                    Assert.assertEquals(new Null(), so.get(PropertyIdentifier.presentValue));
+                    Assert.assertEquals(av0.readProperty(PropertyIdentifier.relinquishDefault), av0.get(PropertyIdentifier.presentValue));
+                    Assert.assertEquals(av1.readProperty(PropertyIdentifier.relinquishDefault), av1.get(PropertyIdentifier.presentValue));
+                } else {
+                    Assert.assertEquals(scheduleDefault, so.get(PropertyIdentifier.presentValue));
+                    Assert.assertEquals(scheduleDefault, av0.get(PropertyIdentifier.presentValue));
+                    Assert.assertEquals(scheduleDefault, av1.get(PropertyIdentifier.presentValue));
+                }
             } else {
-                Assert.assertEquals(scheduleDefault, so.get(PropertyIdentifier.presentValue));
-                Assert.assertEquals(scheduleDefault, av0.get(PropertyIdentifier.presentValue));
-                Assert.assertEquals(scheduleDefault, av1.get(PropertyIdentifier.presentValue));
+                Assert.assertEquals(scheduledValue, so.get(PropertyIdentifier.presentValue));
+                Assert.assertEquals(scheduledValue, av0.get(PropertyIdentifier.presentValue));
+                Assert.assertEquals(scheduledValue, av1.get(PropertyIdentifier.presentValue));
             }
-        } else {
-            Assert.assertEquals(scheduledValue, so.get(PropertyIdentifier.presentValue));
-            Assert.assertEquals(scheduledValue, av0.get(PropertyIdentifier.presentValue));
-            Assert.assertEquals(scheduledValue, av1.get(PropertyIdentifier.presentValue));
+        }finally {
+            so.removeListener(scheduleListener);
+            av0.removeListener(av0Listener);
+            av1.removeListener(av1Listener);
         }
     }
 
@@ -409,7 +523,7 @@ public class ScheduleObjectTest extends AbstractTest {
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(12)),
                         new TimeValue(new Time(17, 0, 0, 0), new Null()))), //
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(17, 0, 0, 0), new Real(15)),
-                        new TimeValue(new Time(8, 0, 0, 0), new Real(14)))), // TimValue is in wrong order
+                        new TimeValue(new Time(8, 0, 0, 0), new Real(14)))), // TimeValue is in wrong order
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(9, 0, 0, 0), new Real(16)),
                         new TimeValue(new Time(20, 0, 0, 0), new Real(17)))), //
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(9, 0, 0, 0), new Real(18)),
