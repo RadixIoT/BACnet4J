@@ -12,7 +12,6 @@ import org.junit.Test;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
@@ -32,14 +31,13 @@ public class WarpScheduledExecutorServiceTest {
 
     private WarpClock clock;
     private Instant start;
-    private ObservableScheduledExecutorService scheduler;
+    private WarpScheduledExecutorService scheduler;
 
     @Before
     public void before() {
-        ZoneId zone = ZoneId.systemDefault();
         clock = new WarpClock();
         start = clock.instant();
-        scheduler = new ObservableScheduledExecutorService(new WarpScheduledExecutorService(clock));
+        scheduler = new WarpScheduledExecutorService(clock);
     }
 
     @Test
