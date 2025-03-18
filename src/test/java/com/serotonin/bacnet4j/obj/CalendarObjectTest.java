@@ -1,9 +1,5 @@
 package com.serotonin.bacnet4j.obj;
 
-import static org.junit.Assert.assertEquals;
-
-import org.junit.Test;
-
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.enums.DayOfWeek;
 import com.serotonin.bacnet4j.enums.Month;
@@ -17,8 +13,21 @@ import com.serotonin.bacnet4j.type.constructed.WeekNDay.WeekOfMonth;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Date;
+import com.serotonin.warp.WarpClock;
+import org.junit.Test;
+
+import java.time.ZoneId;
+
+import static org.junit.Assert.assertEquals;
 
 public class CalendarObjectTest extends AbstractTest {
+
+    @Override
+    public WarpClock getClock() {
+        //Because our schedules are based on our local timezone we don't want to use the UTC Clock for this
+        return new WarpClock(ZoneId.systemDefault());
+    }
+
     @Test
     public void test() throws Exception {
         clock.set(2115, java.time.Month.JANUARY, 1, 12, 0, 0);
