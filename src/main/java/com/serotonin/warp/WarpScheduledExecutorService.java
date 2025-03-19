@@ -102,11 +102,6 @@ public class WarpScheduledExecutorService implements WarpTaskExecutingScheduledE
     }
 
     @Override
-    public List<ScheduleFutureImpl<?>> getTasks() {
-        return tasks;
-    }
-
-    @Override
     public void shutdown() {
         if (delegate == null) {
             executorService.shutdown();

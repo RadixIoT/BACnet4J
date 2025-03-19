@@ -44,7 +44,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
 
 /**
  * A scheduled executor service backed by variable executor service so that it
@@ -99,13 +98,6 @@ public class ScheduledExecutorServiceVariablePool implements TaskExecutingSchedu
     @Override
     public <V> ScheduledFuture<V> schedule(final Callable<V> callable, final long delay, final TimeUnit unit) {
         return addTask(new OneTimeCallable<>(this, executorService, callable, delay, unit));
-    }
-
-    @Override
-    public List<ScheduleFutureImpl<?>> getTasks() {
-        synchronized (tasks) {
-            return tasks.stream().collect(Collectors.toUnmodifiableList());
-        }
     }
 
     public <V> ScheduleFutureImpl<V> addTask(final ScheduleFutureImpl<V> task) {
@@ -253,7 +245,7 @@ public class ScheduledExecutorServiceVariablePool implements TaskExecutingSchedu
         executorService.execute(command);
     }
 
-    private static enum State {
+    private enum State {
         RUNNING, STOPPING, STOPPED;
     }
 
