@@ -69,7 +69,7 @@ public abstract class AbstractTransport implements Transport {
     int segWindow = DEFAULT_SEG_WINDOW;
     ServicesSupported servicesSupported;
 
-    public AbstractTransport(Network network) {
+    protected AbstractTransport(Network network) {
         this.network = network;
     }
 
@@ -97,12 +97,9 @@ public abstract class AbstractTransport implements Transport {
             allowSend = false;
 
             // Check if this is an IAm.
-            if (service instanceof IAmRequest) {
-                // IAms are allowed to be sent if they are issued in accordance with the WhoIs procedure.
-                if (((IAmRequest) service).isResponseToWhoIs()) {
+            if (service instanceof IAmRequest && ((IAmRequest) service).isResponseToWhoIs()) {
                     allowSend = true;
                 }
-            }
         }
 
         if (allowSend) {
@@ -113,7 +110,7 @@ public abstract class AbstractTransport implements Transport {
     @Override
     public ServiceFuture send(final Address address, final int maxAPDULengthAccepted,
                               final Segmentation segmentationSupported, final ConfirmedRequestService service) {
-        final ServiceFutureImpl future = new ServiceFutureImpl();
+        final ServiceFutureImpl future = getFuture();
         send(address, maxAPDULengthAccepted, segmentationSupported, service, future);
         return future;
     }
@@ -131,17 +128,6 @@ public abstract class AbstractTransport implements Transport {
         }
     }
 
-    @Override
-    public void incoming(final NPDU npdu) {
-        incomingImpl(npdu);
-    }
-
-    /**
-     * Incoming message
-     * @param npdu
-     */
-    protected abstract void incomingImpl(final NPDU npdu);
-
     /**
      * Send a confirmed request
      * @param address
@@ -149,9 +135,12 @@ public abstract class AbstractTransport implements Transport {
      * @param segmentationSupported
      * @param service
      */
-    protected abstract void sendConfirmedImpl(final Address address, final int maxAPDULengthAccepted,
+    protected void sendConfirmedImpl(final Address address, final int maxAPDULengthAccepted,
                                               final Segmentation segmentationSupported, final
-                                              ConfirmedRequestService service, final ResponseConsumer consumer);
+                                              ConfirmedRequestService service, final ResponseConsumer consumer) {
+        sendOutgoingConfirmed(new OutgoingConfirmed(this, address, maxAPDULengthAccepted, segmentationSupported, service, consumer,
+                new Exception()));
+    }
 
     /**
      * Send unconfirmed request
@@ -159,7 +148,37 @@ public abstract class AbstractTransport implements Transport {
      * @param service
      * @param broadcast
      */
-    protected abstract void sendUnconfirmedImpl(final Address address, final UnconfirmedRequestService service, final boolean broadcast);
+    protected void sendUnconfirmedImpl(final Address address, final UnconfirmedRequestService service,
+                                       final boolean broadcast) {
+        sendOutgoingUnconfirmed(new OutgoingUnconfirmed(this, address, service, broadcast, new Exception()));
+    }
+
+    /**
+     * Allow overriding our
+     * @return
+     */
+    protected ServiceFutureImpl getFuture() {
+        return new ServiceFutureImpl();
+    }
+
+    /**
+     * Send a delayed outgoing message, this will happen if a message send fails
+     * and can be re-tried
+     * @param message
+     */
+    protected abstract void sendDelayedOutgoing(DelayedOutgoing message);
+
+    /**
+     * Send an unconfirmed message
+     * @param message
+     */
+    protected abstract void sendOutgoingUnconfirmed(OutgoingUnconfirmed message);
+
+    /**
+     * Send a confirmed message
+     * @param message
+     */
+    protected abstract void sendOutgoingConfirmed(OutgoingConfirmed message);
 
     protected void receiveImpl(final NPDU in) {
         if (in.isNetworkMessage()) {
@@ -434,7 +453,7 @@ public abstract class AbstractTransport implements Transport {
             try {
                 network.sendAPDU(key.getAddress(), key.getLinkService(), segment, false);
             } catch (final BACnetException e) {
-                ctx.useConsumer((consumer) -> consumer.ex(e));
+                ctx.useConsumer(consumer -> consumer.ex(e));
                 return;
             }
 
@@ -563,8 +582,31 @@ public abstract class AbstractTransport implements Transport {
             network.sendAPDU(key.getAddress(), key.getLinkService(), ctx.getOriginalApdu(), false);
         } catch (final BACnetException e) {
             unackedMessages.remove(key);
-            ctx.useConsumer((consumer) -> consumer.ex(e));
+            ctx.useConsumer(consumer -> consumer.ex(e));
         }
+    }
+
+    /**
+     * Confirm the message is to be sent to a specific remote network
+     * @param address
+     * @return - the address or if not found throws exception
+     * @throws BACnetException
+     */
+    protected OctetString checkLinkService(Address address) throws BACnetException {
+        OctetString linkService = null;
+        // Check if the message is to be sent to a specific remote network.
+        final int targetNetworkNumber = address.getNetworkNumber().intValue();
+        if (targetNetworkNumber != Address.LOCAL_NETWORK && targetNetworkNumber != Address.ALL_NETWORKS
+                && targetNetworkNumber != network.getLocalNetworkNumber()) {
+            // Going to a specific remote network. Check if we know the router for it.
+            linkService = networkRouters.get(targetNetworkNumber);
+            if (linkService == null) {
+                throw new BACnetException(
+                        "Unable to find router to network " + address.getNetworkNumber().intValue());
+
+            }
+        }
+        return linkService;
     }
 
     protected boolean expire() {
@@ -591,12 +633,12 @@ public abstract class AbstractTransport implements Transport {
                     umIter.remove();
                     if (ctx.getSegmentWindow() == null) {
                         // Not a segmented message, at least as far as we know.
-                        ctx.useConsumer((consumer) -> consumer.ex(new BACnetTimeoutException()));
+                        ctx.useConsumer(consumer -> consumer.ex(new BACnetTimeoutException()));
                     } else {
                         // A segmented message.
                         if (ctx.getSegmentWindow().isEmpty()) {
                             // No segments received. Return a timeout.
-                            ctx.useConsumer((consumer) -> consumer.ex(new BACnetTimeoutException(
+                            ctx.useConsumer(consumer -> consumer.ex(new BACnetTimeoutException(
                                     "Timeout while waiting for segment part: invokeId=" + key.getInvokeId()
                                             + ", sequenceId=" + ctx.getSegmentWindow().getFirstSequenceId())));
                         } else if (ctx.getSegmentWindow().isEmpty())
@@ -610,7 +652,7 @@ public abstract class AbstractTransport implements Transport {
                                                 ctx.getSegmentWindow().getWindowSize(), true),
                                         false);
                             } catch (final BACnetException ex) {
-                                ctx.useConsumer((consumer) -> consumer.ex(ex));
+                                ctx.useConsumer(consumer -> consumer.ex(ex));
                             }
                         }
                     }

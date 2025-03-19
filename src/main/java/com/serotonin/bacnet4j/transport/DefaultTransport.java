@@ -28,22 +28,13 @@
  */
 package com.serotonin.bacnet4j.transport;
 
-import com.serotonin.bacnet4j.ResponseConsumer;
 import com.serotonin.bacnet4j.ServiceFuture;
-import com.serotonin.bacnet4j.apdu.APDU;
-import com.serotonin.bacnet4j.apdu.ConfirmedRequest;
-import com.serotonin.bacnet4j.apdu.UnconfirmedRequest;
 import com.serotonin.bacnet4j.exception.BACnetException;
-import com.serotonin.bacnet4j.exception.BACnetRecoverableException;
-import com.serotonin.bacnet4j.exception.ServiceTooBigException;
 import com.serotonin.bacnet4j.npdu.NPDU;
 import com.serotonin.bacnet4j.npdu.Network;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedRequestService;
-import com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedRequestService;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.enumerated.Segmentation;
-import com.serotonin.bacnet4j.type.primitive.OctetString;
-import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +53,7 @@ public class DefaultTransport extends AbstractTransport implements Runnable {
     // Message queues
     protected final Queue<Outgoing> outgoing = new ConcurrentLinkedQueue<>();
     protected final Queue<NPDU> incoming = new ConcurrentLinkedQueue<>();
-    protected final Queue<DefaultTransport.DelayedOutgoing> delayedOutgoing = new LinkedList<>();
+    protected final Queue<DelayedOutgoing> delayedOutgoing = new LinkedList<>();
 
     private Thread thread;
     private volatile boolean running = true;
@@ -89,11 +80,11 @@ public class DefaultTransport extends AbstractTransport implements Runnable {
             ThreadUtils.join(thread);
 
         // Cancel any queued outgoing messages.
-        for (final DefaultTransport.Outgoing og : outgoing) {
-            if (og instanceof DefaultTransport.OutgoingConfirmed) {
-                final DefaultTransport.OutgoingConfirmed ogc = (DefaultTransport.OutgoingConfirmed) og;
-                if (ogc.consumer != null) {
-                    ogc.consumer.ex(new BACnetException("Cancelled due to transport shutdown"));
+        for (final Outgoing og : outgoing) {
+            if (og instanceof OutgoingConfirmed) {
+                final OutgoingConfirmed ogc = (OutgoingConfirmed) og;
+                if (ogc.getConsumer() != null) {
+                    ogc.getConsumer().ex(new BACnetException("Cancelled due to transport shutdown"));
                 }
             }
         }
@@ -114,18 +105,19 @@ public class DefaultTransport extends AbstractTransport implements Runnable {
 
 
     @Override
-    protected void sendUnconfirmedImpl(final Address address, final UnconfirmedRequestService service,
-                                       final boolean broadcast) {
-        outgoing.add(new OutgoingUnconfirmed(address, service, broadcast, new Exception()));
+    protected void sendOutgoingUnconfirmed(OutgoingUnconfirmed message) {
+        outgoing.add(message);
         ThreadUtils.notifySync(pauseLock);
     }
 
     @Override
-    protected void sendConfirmedImpl(final Address address, final int maxAPDULengthAccepted,
-                                     final Segmentation segmentationSupported,
-                                     final ConfirmedRequestService service, final ResponseConsumer consumer) {
-        outgoing.add(new OutgoingConfirmed(address, maxAPDULengthAccepted, segmentationSupported, service, consumer,
-                new Exception()));
+    protected void sendDelayedOutgoing(DelayedOutgoing message) {
+        delayedOutgoing.add(message);
+    }
+
+    @Override
+    protected void sendOutgoingConfirmed(OutgoingConfirmed message) {
+        outgoing.add(message);
         ThreadUtils.notifySync(pauseLock);
     }
 
@@ -141,7 +133,7 @@ public class DefaultTransport extends AbstractTransport implements Runnable {
     }
 
     @Override
-    protected void incomingImpl(NPDU npdu) {
+    public void incoming(NPDU npdu) {
         incoming.add(npdu);
         ThreadUtils.notifySync(pauseLock);
     }
@@ -238,164 +230,4 @@ public class DefaultTransport extends AbstractTransport implements Runnable {
         return true;
     }
 
-    abstract class Outgoing {
-        protected final Address address;
-        protected OctetString linkService;
-        // TODO remove this when it is no longer needed.
-        protected final Exception stack;
-
-        public Outgoing(final Address address, final Exception stack) {
-            if (address == null)
-                throw new IllegalArgumentException("address cannot be null");
-            this.address = address;
-            this.stack = stack;
-        }
-
-        void send() {
-            // Check if the message is to be sent to a specific remote network.
-            final int targetNetworkNumber = address.getNetworkNumber().intValue();
-            if (targetNetworkNumber != Address.LOCAL_NETWORK && targetNetworkNumber != Address.ALL_NETWORKS
-                    && targetNetworkNumber != network.getLocalNetworkNumber()) {
-                // Going to a specific remote network. Check if we know the router for it.
-                linkService = networkRouters.get(targetNetworkNumber);
-                if (linkService == null) {
-                    handleException(new BACnetException(
-                            "Unable to find router to network " + address.getNetworkNumber().intValue()));
-                    return;
-                }
-            }
-
-            try {
-                sendImpl();
-            } catch (final BACnetRecoverableException e) {
-                LOG.info("Send delayed due to recoverable error: {}", e.getMessage());
-                delayedOutgoing.add(new DelayedOutgoing(this));
-            } catch (final BACnetException e) {
-                handleException(e);
-            }
-        }
-
-        abstract protected void sendImpl() throws BACnetException;
-
-        abstract protected void handleException(BACnetException e);
-    }
-
-    class OutgoingConfirmed extends Outgoing {
-        private final int maxAPDULengthAccepted;
-        private final Segmentation segmentationSupported;
-        private final ConfirmedRequestService service;
-        private final ResponseConsumer consumer;
-
-        public OutgoingConfirmed(final Address address, final int maxAPDULengthAccepted,
-                                 final Segmentation segmentationSupported, final ConfirmedRequestService service,
-                                 final ResponseConsumer consumer, final Exception stack) {
-            super(address, stack);
-            this.maxAPDULengthAccepted = maxAPDULengthAccepted;
-            this.segmentationSupported = segmentationSupported;
-            this.service = service;
-            this.consumer = consumer;
-        }
-
-        @Override
-        protected void sendImpl() throws BACnetException {
-            final ByteQueue serviceData = new ByteQueue();
-            service.write(serviceData);
-
-            final UnackedMessageContext ctx = new UnackedMessageContext(localDevice.getClock(), timeout, retries,
-                    consumer, service);
-            final UnackedMessageKey key;
-            APDU apdu;
-
-            // Check if we need to segment the message.
-            if (serviceData.size() > maxAPDULengthAccepted - ConfirmedRequest.getHeaderSize(false)) {
-                final int maxServiceData = maxAPDULengthAccepted - ConfirmedRequest.getHeaderSize(true);
-                // Check if the device can accept what we want to send.
-                if (segmentationSupported.intValue() == Segmentation.noSegmentation.intValue()
-                        || segmentationSupported.intValue() == Segmentation.segmentedTransmit.intValue())
-                    throw new ServiceTooBigException("Request too big to send to device without segmentation");
-                final int segmentsRequired = serviceData.size() / maxServiceData + 1;
-                if (segmentsRequired > 255)
-                    throw new ServiceTooBigException("Request too big to send to device; too many segments required");
-
-                key = unackedMessages.addClient(address, linkService, ctx);
-                // Prepare the segmenting session.
-                ctx.setSegmentTemplate(new ConfirmedRequest(true, true, true, MAX_SEGMENTS, network.getMaxApduLength(),
-                        key.getInvokeId(), 0, segWindow, service.getChoiceId(), null, service.getNetworkPriority()));
-                ctx.setServiceData(serviceData);
-                ctx.setSegBuf(new byte[maxServiceData]);
-
-                // Send an initial message to negotiate communication terms.
-                apdu = ctx.getSegmentTemplate().clone(true, 0, segWindow, ctx.getNextSegment());
-            } else {
-                key = unackedMessages.addClient(address, linkService, ctx);
-                // We can send the whole APDU in one shot.
-                apdu = new ConfirmedRequest(false, false, true, MAX_SEGMENTS, network.getMaxApduLength(),
-                        key.getInvokeId(), (byte) 0, 0, service.getChoiceId(), serviceData,
-                        service.getNetworkPriority());
-            }
-
-            ctx.setOriginalApdu(apdu);
-            sendForResponse(key, ctx);
-        }
-
-        @Override
-        protected void handleException(final BACnetException e) {
-            if (consumer == null) {
-                LOG.warn("Error during send", e);
-                LOG.warn("Original stack", stack);
-            } else
-                consumer.ex(e);
-        }
-
-        @Override
-        public String toString() {
-            return "OutgoingConfirmed [maxAPDULengthAccepted=" + maxAPDULengthAccepted + ", segmentationSupported="
-                    + segmentationSupported + ", service=" + service + ", consumer=" + consumer + ", address=" + address
-                    + ", linkService=" + linkService + "]";
-        }
-    }
-
-    class OutgoingUnconfirmed extends Outgoing {
-        private final UnconfirmedRequestService service;
-        private final boolean broadcast;
-
-        public OutgoingUnconfirmed(final Address address, final UnconfirmedRequestService service,
-                                   final boolean broadcast, final Exception stack) {
-            super(address, stack);
-            this.service = service;
-            this.broadcast = broadcast;
-        }
-
-        @Override
-        protected void sendImpl() throws BACnetException {
-            network.sendAPDU(address, linkService, new UnconfirmedRequest(service), broadcast);
-        }
-
-        @Override
-        protected void handleException(final BACnetException e) {
-            LOG.error("Error during send", e);
-        }
-
-        @Override
-        public String toString() {
-            return "OutgoingUnconfirmed [service=" + service + ", broadcast=" + broadcast + ", address=" + address
-                    + ", linkService=" + linkService + "]";
-        }
-    }
-
-    class DelayedOutgoing {
-        final Outgoing outgoing;
-        final long retryTime;
-
-        public DelayedOutgoing(final Outgoing outgoing) {
-            super();
-            this.outgoing = outgoing;
-            // Retry in 1 second.
-            retryTime = localDevice.getClock().millis() + 1000;
-        }
-
-        boolean isReady() {
-            return retryTime <= localDevice.getClock().millis();
-        }
-    }
 }
