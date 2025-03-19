@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.fail;
+
 public class SetupTest {
     static final Logger LOG = LoggerFactory.getLogger(SetupTest.class);
 
@@ -18,34 +20,38 @@ public class SetupTest {
 
     @Test
     public void setup() throws Exception {
-        final int count = 20;
-        final TestNetworkMap map = new TestNetworkMap();
-        final WarpClock clock = new WarpClock();
+        try {
+            final int count = 20;
+            final TestNetworkMap map = new TestNetworkMap();
+            final WarpClock clock = new WarpClock();
 
-        final List<LocalDevice> lds = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            lds.add(new LocalDevice(i, new SynchronousTransport(new SynchronousTestNetwork(map, i, 0).withTimeout(timeout)), clock));
-        }
+            final List<LocalDevice> lds = new ArrayList<>();
+            for (int i = 0; i < count; i++) {
+                lds.add(new LocalDevice(i, new SynchronousTransport(new SynchronousTestNetwork(map, i, 0).withTimeout(timeout)), clock));
+            }
 
-        for (int i = 0; i < count; i++) {
-            lds.get(i).initialize();
-        }
+            for (int i = 0; i < count; i++) {
+                lds.get(i).initialize();
+            }
 
-        for (int i = 0; i < count; i++) {
-            final LocalDevice d = lds.get(i);
-            for (int j = 0; j < count; j++) {
-                if (i != j) {
-                    if ((i + j) % 2 == 0) {
-                        d.getRemoteDevice(j).get();
-                    } else {
-                        d.getRemoteDeviceBlocking(j);
+            for (int i = 0; i < count; i++) {
+                final LocalDevice d = lds.get(i);
+                for (int j = 0; j < count; j++) {
+                    if (i != j) {
+                        if ((i + j) % 2 == 0) {
+                            d.getRemoteDevice(j).get();
+                        } else {
+                            d.getRemoteDeviceBlocking(j);
+                        }
                     }
                 }
             }
-        }
 
-        for (int i = 0; i < count; i++) {
-            lds.get(i).terminate();
+            for (int i = 0; i < count; i++) {
+                lds.get(i).terminate();
+            }
+        }catch (Exception e) {
+            fail(e.getMessage());
         }
     }
 }

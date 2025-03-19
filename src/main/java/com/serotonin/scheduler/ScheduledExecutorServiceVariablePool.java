@@ -74,7 +74,7 @@ public class ScheduledExecutorServiceVariablePool implements TaskExecutingSchedu
     public ScheduledExecutorServiceVariablePool(final Clock clock) {
         this.clock = clock;
         this.scheduler = new Thread(this, "ScheduledExecutorServiceVariablePool");
-        this.state = State.running;
+        this.state = State.RUNNING;
         this.scheduler.start();
         this.executorService = Executors.newCachedThreadPool();
     }
@@ -127,7 +127,7 @@ public class ScheduledExecutorServiceVariablePool implements TaskExecutingSchedu
     @Override
     public void run() {
         try {
-            while (state == State.running) {
+            while (state == State.RUNNING) {
                 synchronized (tasks) {
                     long waitTime;
                     ScheduleFutureImpl<?> task = null;
@@ -161,7 +161,7 @@ public class ScheduledExecutorServiceVariablePool implements TaskExecutingSchedu
                 }
             }
         } finally {
-            state = State.stopped;
+            state = State.STOPPED;
         }
     }
 
@@ -179,19 +179,19 @@ public class ScheduledExecutorServiceVariablePool implements TaskExecutingSchedu
 
     private void shutdownScheduler() {
         synchronized (tasks) {
-            state = State.stopping;
+            state = State.STOPPING;
             tasks.notify();
         }
     }
 
     @Override
     public boolean isShutdown() {
-        return state != State.running && executorService.isShutdown();
+        return state != State.RUNNING && executorService.isShutdown();
     }
 
     @Override
     public boolean isTerminated() {
-        return state == State.stopped && executorService.isTerminated();
+        return state == State.STOPPED && executorService.isTerminated();
     }
 
     @Override
@@ -200,7 +200,7 @@ public class ScheduledExecutorServiceVariablePool implements TaskExecutingSchedu
 
         final long millis = unit.toMillis(timeout);
         scheduler.join(millis);
-        if (state != State.stopped)
+        if (state != State.STOPPED)
             return false;
 
         final long remaining = millis - (Clock.systemUTC().millis() - start);
@@ -254,7 +254,7 @@ public class ScheduledExecutorServiceVariablePool implements TaskExecutingSchedu
     }
 
     private static enum State {
-        running, stopping, stopped;
+        RUNNING, STOPPING, STOPPED;
     }
 
 }
