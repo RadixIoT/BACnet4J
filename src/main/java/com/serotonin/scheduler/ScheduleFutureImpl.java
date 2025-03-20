@@ -22,7 +22,7 @@
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
+ * See www.radixiot.com for commercial license options.
  *
  * @author Matthew Lohbihler
  */
@@ -37,14 +37,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * @author Terry Packer
+ * @author Matthew Lohbihler
  */
 abstract class ScheduleFutureImpl<V> implements ScheduledFuture<V> {
     protected final TaskExecutingScheduledExecutorService scheduledExecutorService;
     protected volatile Future<V> future;
     private volatile boolean cancelled;
 
-    public ScheduleFutureImpl(TaskExecutingScheduledExecutorService scheduledExecutorServiceVariablePool) {
+    protected ScheduleFutureImpl(TaskExecutingScheduledExecutorService scheduledExecutorServiceVariablePool) {
         this.scheduledExecutorService = scheduledExecutorServiceVariablePool;
     }
 

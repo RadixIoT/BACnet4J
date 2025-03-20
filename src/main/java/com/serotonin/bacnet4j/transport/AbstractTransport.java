@@ -516,8 +516,8 @@ public abstract class AbstractTransport implements Transport {
             localDevice.getEventHandler().requestReceived(from, service);
             return service.handle(localDevice, from);
         } catch (@SuppressWarnings("unused") final NotImplementedException e) {
-            LOG.warn("Unsupported confirmed request: invokeId=" + invokeId + ", from=" + from + ", request="
-                    + service.getClass().getName());
+            LOG.warn("Unsupported confirmed request: invokeId={}, from={}, request={}", invokeId, from,
+                    service.getClass().getName());
             throw new BACnetRejectException(RejectReason.unrecognizedService, e);
         } catch (final BACnetErrorException e) {
             throw e;
@@ -637,13 +637,14 @@ public abstract class AbstractTransport implements Transport {
                     } else {
                         // A segmented message.
                         if (ctx.getSegmentWindow().isEmpty()) {
+                            if(LOG.isWarnEnabled()) {
+                                LOG.warn("No segments received for message {}", ctx.getOriginalApdu());
+                            }
                             // No segments received. Return a timeout.
                             ctx.useConsumer(consumer -> consumer.ex(new BACnetTimeoutException(
                                     "Timeout while waiting for segment part: invokeId=" + key.getInvokeId()
                                             + ", sequenceId=" + ctx.getSegmentWindow().getFirstSequenceId())));
-                        } else if (ctx.getSegmentWindow().isEmpty())
-                            LOG.warn("No segments received for message " + ctx.getOriginalApdu());
-                        else {
+                        } else {
                             // Return a NAK with the last sequence id received in order and start over.
                             try {
                                 network.sendAPDU(key.getAddress(), key.getLinkService(),

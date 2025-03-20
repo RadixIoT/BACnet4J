@@ -22,7 +22,7 @@
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
+ * See www.radixiot.com for commercial license options.
  *
  * @author Matthew Lohbihler
  */
@@ -33,7 +33,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author Terry Packer
+ * @author Matthew Lohbihler
  */
 abstract class Repeating extends ScheduleFutureImpl<Void> {
     protected final ExecutorService executorService;
