@@ -34,15 +34,17 @@ import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 
+import java.util.Objects;
+
 /**
  * @author Terry Packer
  */
-public class SynchronousTestNetwork extends AbstractTestNetwork<SynchronousTestNetwork> {
+public class SynchronousTestNetwork extends AbstractTestNetwork {
 
     private long bytesOut;
     private long bytesIn;
 
-    public SynchronousTestNetwork(TestNetworkMap map, int address, int sendDelay) {
+    public SynchronousTestNetwork(TestNetworkMap<AbstractTestNetwork> map, int address, int sendDelay) {
         super(map, address, sendDelay);
     }
 
@@ -68,11 +70,11 @@ public class SynchronousTestNetwork extends AbstractTestNetwork<SynchronousTestN
 
         if (d.recipient.equals(getLocalBroadcastAddress()) || d.recipient.equals(Address.GLOBAL)) {
             // A broadcast. Send to everyone.
-            for (final SynchronousTestNetwork network : networkMap)
+            for (final AbstractTestNetwork network : networkMap)
                 receive(network, d.data);
         } else {
             // A directed message. Find the network to pass it to.
-            final SynchronousTestNetwork network = networkMap.get(d.recipient);
+            final AbstractTestNetwork network = networkMap.get(d.recipient);
             if (network != null)
                 receive(network, d.data);
         }
@@ -81,5 +83,19 @@ public class SynchronousTestNetwork extends AbstractTestNetwork<SynchronousTestN
     @Override
     protected NPDU handleIncomingDataImpl(ByteQueue queue, OctetString linkService) throws Exception {
         return parseNpduData(queue, linkService);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        SynchronousTestNetwork that = (SynchronousTestNetwork) o;
+        return bytesOut == that.bytesOut && bytesIn == that.bytesIn;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), bytesOut, bytesIn);
     }
 }

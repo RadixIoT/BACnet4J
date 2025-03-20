@@ -39,49 +39,51 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
+
 /**
  * @author Terry Packer
  */
-public abstract class AbstractTestNetwork<T extends AbstractTestNetwork> extends Network {
+public abstract class AbstractTestNetwork extends Network {
     static final Logger LOG = LoggerFactory.getLogger(AbstractTestNetwork.class);
 
     public static final OctetString BROADCAST = new OctetString(new byte[0]);
 
-    protected final TestNetworkMap<T> networkMap;
+    protected final TestNetworkMap<AbstractTestNetwork> networkMap;
     protected final Address address;
     protected final int sendDelay;
 
     protected int timeout = 6000;
     protected int segTimeout = 1000;
 
-    public AbstractTestNetwork(final TestNetworkMap map, final int address, final int sendDelay) {
+    protected AbstractTestNetwork(final TestNetworkMap<AbstractTestNetwork> map, final int address, final int sendDelay) {
         this(map, new NetworkSourceAddress(Address.LOCAL_NETWORK, new byte[] { (byte) address }), sendDelay);
     }
 
-    public AbstractTestNetwork(final TestNetworkMap map, final Address address, final int sendDelay) {
+    protected AbstractTestNetwork(final TestNetworkMap<AbstractTestNetwork> map, final Address address, final int sendDelay) {
         super(0);
         this.networkMap = map;
         this.address = address;
         this.sendDelay = sendDelay;
     }
 
-    public T withTimeout(final int timeout) {
+    public AbstractTestNetwork withTimeout(final int timeout) {
         this.timeout = timeout;
-        return (T)this;
+        return this;
     }
 
-    public T withSegTimeout(final int segTimeout) {
+    public AbstractTestNetwork withSegTimeout(final int segTimeout) {
         this.segTimeout = segTimeout;
-        return (T)this;
+        return this;
     }
 
     /**
      * Passes the the data over to the given network instance.
      *
-     * @param recipient
-     * @param data
+     * @param recipient - recipient network
+     * @param data - message to send
      */
-    protected void receive(final AbstractTestNetwork<T> recipient, final byte[] data) {
+    protected void receive(final AbstractTestNetwork recipient, final byte[] data) {
         LOG.debug("Sending data from {} to {}", address, recipient.address);
         recipient.handleIncomingData(new ByteQueue(data), address.getMacAddress());
     }
@@ -92,7 +94,7 @@ public abstract class AbstractTestNetwork<T extends AbstractTestNetwork> extends
         transport.setTimeout(timeout);
         transport.setRetries(0); // no retries, there's no network here after all
         transport.setSegTimeout(segTimeout);
-        networkMap.add(address, (T)this);
+        networkMap.add(address, this);
     }
 
     @Override
@@ -128,5 +130,19 @@ public abstract class AbstractTestNetwork<T extends AbstractTestNetwork> extends
     @Override
     public Address getSourceAddress(final APDU apdu) {
         return address;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        AbstractTestNetwork that = (AbstractTestNetwork) o;
+        return sendDelay == that.sendDelay && timeout == that.timeout && segTimeout == that.segTimeout && Objects.equals(networkMap, that.networkMap) && Objects.equals(address, that.address);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), networkMap, address, sendDelay, timeout, segTimeout);
     }
 }

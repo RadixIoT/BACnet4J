@@ -26,21 +26,21 @@ public interface LocalDeviceInitializer {
 
     /**
      * Create the desired transport
-     * @param network
-     * @return
+     * @param network - the network for the transport to use
+     * @return - transport for the network
      */
     AbstractTransport createTransport(Network network);
 
-    default AbstractTestNetwork createTestNetwork(TestNetworkMap map, int address, int sendDelay, int timeout) {
+    default AbstractTestNetwork createTestNetwork(TestNetworkMap<AbstractTestNetwork> map, int address, int sendDelay, int timeout) {
         return this.createTestNetwork(map, address, sendDelay).withTimeout(timeout);
     }
 
     /**
      * Create the test network
-     * @param map
-     * @param address
-     * @param sendDelay
-     * @return
+     * @param map - map of network
+     * @param address - address in the network
+     * @param sendDelay - delay before sending messages
+     * @return the test network
      */
-    AbstractTestNetwork createTestNetwork(TestNetworkMap map, int address, int sendDelay);
+    AbstractTestNetwork createTestNetwork(TestNetworkMap<AbstractTestNetwork> map, int address, int sendDelay);
 }

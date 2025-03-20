@@ -309,10 +309,10 @@ public class WarpScheduledExecutorServiceTest {
     public void shutdownNow() {
         final AtomicInteger counter = new AtomicInteger(0);
 
-        scheduler.schedule((Runnable) () -> counter.incrementAndGet(), 1, TimeUnit.MINUTES);
-        scheduler.schedule(() -> counter.incrementAndGet(), 1, TimeUnit.MINUTES);
-        scheduler.scheduleAtFixedRate(() -> counter.incrementAndGet(), 1, 1, TimeUnit.MINUTES);
-        scheduler.scheduleWithFixedDelay(() -> counter.incrementAndGet(), 1, 1, TimeUnit.MINUTES);
+        scheduler.schedule((Runnable) counter::incrementAndGet, 1, TimeUnit.MINUTES);
+        scheduler.schedule(counter::incrementAndGet, 1, TimeUnit.MINUTES);
+        scheduler.scheduleAtFixedRate(counter::incrementAndGet, 1, 1, TimeUnit.MINUTES);
+        scheduler.scheduleWithFixedDelay(counter::incrementAndGet, 1, 1, TimeUnit.MINUTES);
 
         final List<Runnable> runnables = scheduler.shutdownNow();
         for (final Runnable runnable : runnables) {

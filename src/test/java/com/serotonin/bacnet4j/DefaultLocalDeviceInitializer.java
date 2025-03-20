@@ -19,7 +19,7 @@ public interface DefaultLocalDeviceInitializer extends LocalDeviceInitializer {
     }
 
     @Override
-    default AbstractTestNetwork createTestNetwork(TestNetworkMap map, int address, int sendDelay) {
+    default AbstractTestNetwork createTestNetwork(TestNetworkMap<AbstractTestNetwork> map, int address, int sendDelay) {
         return new TestNetwork(map, address, sendDelay);
     }
 }

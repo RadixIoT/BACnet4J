@@ -58,18 +58,18 @@ import com.serotonin.bacnet4j.type.primitive.Primitive;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
-abstract public class Encodable {
+public abstract class Encodable {
     static final Logger LOG = LoggerFactory.getLogger(Encodable.class);
 
-    abstract public void write(ByteQueue queue);
+    public abstract void write(ByteQueue queue);
 
-    abstract public void write(ByteQueue queue, int contextId);
+    public abstract void write(ByteQueue queue, int contextId);
 
     /**
      * Optionally validate the value before it is written into our device
-     * @throws BACnetErrorException
+     * @throws BACnetServiceException - for invalid values
      */
-    abstract public void validate() throws BACnetServiceException;
+    public abstract void validate() throws BACnetServiceException;
     
     @Override
     public String toString() {

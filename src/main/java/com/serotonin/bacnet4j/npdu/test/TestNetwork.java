@@ -40,6 +40,7 @@ import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -48,7 +49,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * a single process. The static <code>instances</code> field keeps track of all of
  * the currently available networks,
  */
-public class TestNetwork extends AbstractTestNetwork<TestNetwork> implements Runnable {
+public class TestNetwork extends AbstractTestNetwork implements Runnable {
     static final Logger LOG = LoggerFactory.getLogger(TestNetwork.class);
 
     private volatile boolean running = true;
@@ -61,11 +62,11 @@ public class TestNetwork extends AbstractTestNetwork<TestNetwork> implements Run
     private long bytesOut;
     private long bytesIn;
 
-    public TestNetwork(final TestNetworkMap map, final int address, final int sendDelay) {
+    public TestNetwork(final TestNetworkMap<AbstractTestNetwork> map, final int address, final int sendDelay) {
         this(map, new NetworkSourceAddress(Address.LOCAL_NETWORK, new byte[] { (byte) address }), sendDelay);
     }
 
-    public TestNetwork(final TestNetworkMap map, final Address address, final int sendDelay) {
+    public TestNetwork(final TestNetworkMap<AbstractTestNetwork> map, final Address address, final int sendDelay) {
         super(map, address, sendDelay);
     }
 
@@ -122,11 +123,11 @@ public class TestNetwork extends AbstractTestNetwork<TestNetwork> implements Run
 
                 if (d.recipient.equals(getLocalBroadcastAddress()) || d.recipient.equals(Address.GLOBAL)) {
                     // A broadcast. Send to everyone.
-                    for (final TestNetwork network : networkMap)
+                    for (final AbstractTestNetwork network : networkMap)
                         receive(network, d.data);
                 } else {
                     // A directed message. Find the network to pass it to.
-                    final TestNetwork network = networkMap.get(d.recipient);
+                    final AbstractTestNetwork network = networkMap.get(d.recipient);
                     if (network != null)
                         receive(network, d.data);
                 }
@@ -143,5 +144,19 @@ public class TestNetwork extends AbstractTestNetwork<TestNetwork> implements Run
     static class SendData {
         Address recipient;
         byte[] data;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        TestNetwork that = (TestNetwork) o;
+        return running == that.running && bytesOut == that.bytesOut && bytesIn == that.bytesIn && Objects.equals(thread, that.thread) && Objects.equals(queue, that.queue);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), running, thread, queue, bytesOut, bytesIn);
     }
 }
