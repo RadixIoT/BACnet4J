@@ -42,6 +42,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Clock that can control time
@@ -50,7 +51,7 @@ import java.util.concurrent.TimeUnit;
 public class WarpClock extends Clock {
 
     private final ZoneId zoneId;
-    private LocalDateTime dateTime;
+    private AtomicReference<LocalDateTime> dateTime;
     private final List<ClockListener> listeners = new CopyOnWriteArrayList<>();
 
     public WarpClock() {
@@ -69,7 +70,7 @@ public class WarpClock extends Clock {
         Objects.requireNonNull(zoneId, "zoneId");
         Objects.requireNonNull(dateTime, "dateTime");
         this.zoneId = zoneId;
-        this.dateTime = dateTime;
+        this.dateTime = new AtomicReference<>(dateTime);
 
     }
 
@@ -83,7 +84,7 @@ public class WarpClock extends Clock {
 
     public <V> TimeoutFuture<V> setTimeout(final Callable<V> callable, final long timeout,
         final TimeUnit timeUnit) {
-        final LocalDateTime deadline = dateTime.plusNanos(timeUnit.toNanos(timeout));
+        final LocalDateTime deadline = dateTime.get().plusNanos(timeUnit.toNanos(timeout));
         final TimeoutFutureImpl<V> future = new TimeoutFutureImpl<>();
         final ClockListener listener = new ClockListener() {
             @Override
@@ -216,47 +217,47 @@ public class WarpClock extends Clock {
     }
 
     public LocalDateTime plus(final TemporalAmount amountToAdd) {
-        return fireUpdate(dateTime.plus(amountToAdd));
+        return fireUpdate(dateTime.get().plus(amountToAdd));
     }
 
     public LocalDateTime plus(final long amountToAdd, final TemporalUnit unit) {
-        return fireUpdate(dateTime.plus(amountToAdd, unit));
+        return fireUpdate(dateTime.get().plus(amountToAdd, unit));
     }
 
     public LocalDateTime plusYears(final long years) {
-        return fireUpdate(dateTime.plusYears(years));
+        return fireUpdate(dateTime.get().plusYears(years));
     }
 
     public LocalDateTime plusMonths(final long months) {
-        return fireUpdate(dateTime.plusMonths(months));
+        return fireUpdate(dateTime.get().plusMonths(months));
     }
 
     public LocalDateTime plusWeeks(final long weeks) {
-        return fireUpdate(dateTime.plusWeeks(weeks));
+        return fireUpdate(dateTime.get().plusWeeks(weeks));
     }
 
     public LocalDateTime plusDays(final long days) {
-        return fireUpdate(dateTime.plusDays(days));
+        return fireUpdate(dateTime.get().plusDays(days));
     }
 
     public LocalDateTime plusHours(final long hours) {
-        return fireUpdate(dateTime.plusHours(hours));
+        return fireUpdate(dateTime.get().plusHours(hours));
     }
 
     public LocalDateTime plusMinutes(final long minutes) {
-        return fireUpdate(dateTime.plusMinutes(minutes));
+        return fireUpdate(dateTime.get().plusMinutes(minutes));
     }
 
     public LocalDateTime plusSeconds(final long seconds) {
-        return fireUpdate(dateTime.plusSeconds(seconds));
+        return fireUpdate(dateTime.get().plusSeconds(seconds));
     }
 
     public LocalDateTime plusMillis(final long millis) {
-        return fireUpdate(dateTime.plusNanos(millis * 1_000_000L));
+        return fireUpdate(dateTime.get().plusNanos(millis * 1_000_000L));
     }
 
     public LocalDateTime plusNanos(final long nanos) {
-        return fireUpdate(dateTime.plusNanos(nanos));
+        return fireUpdate(dateTime.get().plusNanos(nanos));
     }
 
     public LocalDateTime plus(final int amount, final TimeUnit unit, final long endSleep) {
@@ -296,23 +297,23 @@ public class WarpClock extends Clock {
     }
 
     private LocalDateTime fireUpdate(final LocalDateTime newDateTime) {
-        dateTime = newDateTime;
+        dateTime.set(newDateTime);
         for (final ClockListener l : listeners) {
             l.clockUpdate(newDateTime);
         }
-        return dateTime;
+        return dateTime.get();
     }
 
     public int get(final TemporalField field) {
-        return dateTime.get(field);
+        return dateTime.get().get(field);
     }
 
     public long getLong(final TemporalField field) {
-        return dateTime.getLong(field);
+        return dateTime.get().getLong(field);
     }
 
     public LocalDateTime getDateTime() {
-        return dateTime;
+        return dateTime.get();
     }
 
     @Override
@@ -322,11 +323,24 @@ public class WarpClock extends Clock {
 
     @Override
     public Clock withZone(final ZoneId zone) {
-        return new WarpClock(zoneId, dateTime);
+        return new WarpClock(zoneId, dateTime.get());
     }
 
     @Override
     public Instant instant() {
-        return dateTime.atZone(zoneId).toInstant();
+        return dateTime.get().atZone(zoneId).toInstant();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
+        WarpClock warpClock = (WarpClock) o;
+        return Objects.equals(zoneId, warpClock.zoneId) && Objects.equals(dateTime, warpClock.dateTime) && Objects.equals(listeners, warpClock.listeners);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), zoneId, dateTime, listeners);
     }
 }

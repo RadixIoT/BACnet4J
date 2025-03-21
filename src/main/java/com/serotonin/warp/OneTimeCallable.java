@@ -28,6 +28,7 @@
  */
 package com.serotonin.warp;
 
+import java.time.Instant;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -67,7 +68,12 @@ class OneTimeCallable<V> extends ScheduleFutureImpl<V> {
 
     @Override
     public long getDelay(final TimeUnit unit) {
-        final long millis = runtime - executorService.getClock().millis();
+        return getDelay(unit, executorService.getClock().instant());
+    }
+
+    @Override
+    public long getDelay(TimeUnit unit, Instant from) {
+        final long millis = runtime - from.toEpochMilli();
         return unit.convert(millis, TimeUnit.MILLISECONDS);
     }
 }

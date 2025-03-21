@@ -28,6 +28,7 @@
  */
 package com.serotonin.warp;
 
+import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,7 +41,7 @@ abstract class Repeating extends ScheduleFutureImpl<Void> {
 
     protected long nextRuntime;
 
-    public Repeating(WarpTaskExecutingScheduledExecutorService executorService, final Runnable command, final long initialDelay, final TimeUnit unit) {
+    protected Repeating(WarpTaskExecutingScheduledExecutorService executorService, final Runnable command, final long initialDelay, final TimeUnit unit) {
         super(executorService);
         this.command = () -> {
             command.run();
@@ -66,7 +67,12 @@ abstract class Repeating extends ScheduleFutureImpl<Void> {
 
     @Override
     public long getDelay(final TimeUnit unit) {
-        final long millis = nextRuntime - executorService.getClock().millis();
+        return getDelay(unit, executorService.getClock().instant());
+    }
+
+    @Override
+    public long getDelay(TimeUnit unit, Instant from) {
+        final long millis = nextRuntime - from.toEpochMilli();
         return unit.convert(millis, TimeUnit.MILLISECONDS);
     }
 

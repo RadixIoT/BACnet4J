@@ -28,6 +28,7 @@
  */
 package com.serotonin.warp;
 
+import java.time.Instant;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.ExecutionException;
@@ -47,17 +48,25 @@ abstract class ScheduleFutureImpl<V> implements ScheduledFuture<V> {
     private volatile boolean cancelled;
     private volatile boolean done;
 
-    public ScheduleFutureImpl(WarpTaskExecutingScheduledExecutorService executorService) {
+    protected ScheduleFutureImpl(WarpTaskExecutingScheduledExecutorService executorService) {
         this.executorService = executorService;
     }
 
     public void execute() {
-        executorService.submit(() -> executeImpl());
+        executorService.submit(this::executeImpl);
     }
 
     abstract void executeImpl();
 
     abstract Runnable getRunnable();
+
+    /**
+     * Get the delay from a given time
+     * @param unit
+     * @param from
+     * @return
+     */
+    abstract long getDelay(TimeUnit unit, Instant from);
 
     @Override
     public int compareTo(final Delayed that) {

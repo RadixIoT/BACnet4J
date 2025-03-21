@@ -28,16 +28,6 @@
  */
 package com.serotonin.bacnet4j.obj;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.mixin.CommandableMixin;
@@ -72,6 +62,15 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * @author Matthew
@@ -201,8 +200,14 @@ public class BACnetObject {
     //
     // Mixins
     //
-    protected final void addMixin(final AbstractMixin mixin) {
-        mixins.add(mixin);
+
+    /**
+     * Add Mixin to known location in the list of mixins, usually first position=0
+     * @param position
+     * @param mixin
+     */
+    protected void addMixin(final int position, final AbstractMixin mixin) {
+        mixins.add(position, mixin);
 
         if (mixin instanceof HasStatusFlagsMixin)
             hasStatusFlagsMixin = (HasStatusFlagsMixin) mixin;
@@ -212,6 +217,14 @@ public class BACnetObject {
             intrinsicReportingMixin = (IntrinsicReportingMixin) mixin;
         else if (mixin instanceof CovReportingMixin)
             changeOfValueMixin = (CovReportingMixin) mixin;
+    }
+
+    /**
+     * Add mixin to the end of the mixin list
+     * @param mixin
+     */
+    protected final void addMixin(final AbstractMixin mixin) {
+        addMixin(mixins.size(), mixin);
     }
 
     public void setOverridden(final boolean b) {
