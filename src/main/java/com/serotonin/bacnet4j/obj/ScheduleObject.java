@@ -28,15 +28,6 @@
  */
 package com.serotonin.bacnet4j.obj;
 
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.Objects;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.ResponseConsumer;
@@ -78,6 +69,16 @@ import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Primitive;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * TODO
@@ -104,6 +105,7 @@ public class ScheduleObject extends BACnetObject {
      * failures, restarts, and the like.
      */
     private ScheduledFuture<?> periodicWriter;
+    private final List<ScheduleListener> scheduleListeners = new CopyOnWriteArrayList<>();
 
     public ScheduleObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final DateRange effectivePeriod, final BACnetArray<DailySchedule> weeklySchedule,
@@ -247,6 +249,14 @@ public class ScheduleObject extends BACnetObject {
         cancelPeriodicWriter();
     }
 
+    public void addScheduleListener(final ScheduleListener listener) {
+        this.scheduleListeners.add(listener);
+    }
+
+    public void removeScheduleListener(final ScheduleListener listener) {
+        this.scheduleListeners.remove(listener);
+    }
+
     synchronized public void forceWrites() {
         doWrites(get(PropertyIdentifier.presentValue));
     }
@@ -298,12 +308,14 @@ public class ScheduleObject extends BACnetObject {
     synchronized void updatePresentValue() {
         final GregorianCalendar gc = new GregorianCalendar();
         gc.setTimeInMillis(getLocalDevice().getClock().millis());
+        if(LOG.isDebugEnabled()) {
+            LOG.debug("Updating present value at {}", gc.getTime());
+        }
         updatePresentValue(new DateTime(gc));
     }
 
     private void updatePresentValue(final DateTime now) {
         cancelRefresher();
-
         Primitive newValue;
         long nextCheck;
 
@@ -357,7 +369,11 @@ public class ScheduleObject extends BACnetObject {
         final java.util.Date nextRuntime = new java.util.Date(nextCheck);
         long delay = nextRuntime.getTime() - now.getGC().getTimeInMillis();
         presentValueRefersher = getLocalDevice().schedule(this::updatePresentValue, delay, TimeUnit.MILLISECONDS);
-        LOG.debug("Timer scheduled to run at {}", nextRuntime);
+        if(LOG.isDebugEnabled()) {
+            LOG.debug("Current timer {}", java.util.Date.from(getLocalDevice().getClock().instant()));
+            LOG.debug("Execution at {} setting Timer scheduled to run at {} having delay {}", now.getGC().getTime(), nextRuntime, delay);
+        }
+        scheduleListeners.stream().forEach(l -> l.scheduleChanged(now, newValue));
     }
 
     private static TimeValue getCurrentTimeValue(SequenceOf<TimeValue> schedule, DateTime now) {
@@ -518,5 +534,10 @@ public class ScheduleObject extends BACnetObject {
                 }
             }
         }
+    }
+
+    @FunctionalInterface
+    public interface ScheduleListener {
+        void scheduleChanged(DateTime dateTime, Primitive value);
     }
 }

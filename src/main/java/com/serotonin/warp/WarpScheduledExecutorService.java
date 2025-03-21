@@ -87,16 +87,26 @@ public class WarpScheduledExecutorService implements WarpTaskExecutingScheduledE
                     break;
                 }
                 task = tasks.get(0);
-                final long waitTime = task.getDelay(TimeUnit.MILLISECONDS);
+                final long waitTime = task.getDelay(TimeUnit.MILLISECONDS, dateTime.atZone(clock.getZone()).toInstant());
                 if (waitTime > 0) {
                     break;
                 }
                 // Remove the task
                 tasks.remove(0);
             }
+            //Execute the task without the lock
             if (!task.isCancelled()) {
                 // Execute the task
                 task.execute();
+                //TODO FIX ME, in order for us to be sure
+                // we have all the new tasks that were scheduled during
+                // this tasks execution we need to wait to make
+                // sure the tasks list has all the entries in it
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
     }
