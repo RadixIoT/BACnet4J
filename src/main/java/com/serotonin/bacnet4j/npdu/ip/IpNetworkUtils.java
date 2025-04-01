@@ -163,7 +163,7 @@ public class IpNetworkUtils {
             final List<InterfaceAddress> result = new ArrayList<>();
             for (final NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 for (final InterfaceAddress addr : iface.getInterfaceAddresses()) {
-                    if (!addr.getAddress().isLoopbackAddress() && addr.getAddress().isSiteLocalAddress())
+                    if (!addr.getAddress().isLoopbackAddress())
                         result.add(addr);
                 }
             }

@@ -459,7 +459,7 @@ public class IpNetwork extends Network implements Runnable {
     public static InetAddress getDefaultLocalInetAddress() throws UnknownHostException, SocketException {
         for (final NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
             for (final InetAddress addr : Collections.list(iface.getInetAddresses())) {
-                if (!addr.isLoopbackAddress() && addr.isSiteLocalAddress())
+                if (!addr.isLoopbackAddress())
                     return addr;
             }
         }
@@ -473,7 +473,7 @@ public class IpNetwork extends Network implements Runnable {
             final ArrayList<Address> result = new ArrayList<>();
             for (final NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 for (final InetAddress addr : Collections.list(iface.getInetAddresses())) {
-                    if (!addr.isLoopbackAddress() && addr.isSiteLocalAddress())
+                    if (!addr.isLoopbackAddress())
                         result.add(getAddress(addr));
                 }
             }
