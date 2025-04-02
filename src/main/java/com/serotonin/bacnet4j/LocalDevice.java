@@ -28,30 +28,6 @@
  */
 package com.serotonin.bacnet4j;
 
-import java.time.Clock;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.cache.CachePolicies;
 import com.serotonin.bacnet4j.cache.RemoteEntityCache;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
@@ -73,7 +49,7 @@ import com.serotonin.bacnet4j.persistence.IPersistence;
 import com.serotonin.bacnet4j.persistence.NullPersistence;
 import com.serotonin.bacnet4j.service.VendorServiceKey;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedRequestService;
-import com.serotonin.bacnet4j.service.confirmed.DeviceCommunicationControlRequest.EnableDisable;
+import com.serotonin.bacnet4j.service.confirmed.DeviceCommunicationControlRequest;
 import com.serotonin.bacnet4j.service.unconfirmed.IAmRequest;
 import com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedCovNotificationRequest;
 import com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedRequestService;
@@ -97,10 +73,31 @@ import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.RemoteDeviceDiscoverer;
 import com.serotonin.bacnet4j.util.RemoteDeviceFinder;
-import com.serotonin.bacnet4j.util.RemoteDeviceFinder.RemoteDeviceFuture;
+import com.serotonin.scheduler.ScheduledExecutorServiceVariablePool;
+import com.serotonin.warp.WarpUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import lohbihler.warp.WarpScheduledExecutorService;
-import lohbihler.warp.WarpUtils;
+import java.time.Clock;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Enhancements:
@@ -110,7 +107,7 @@ import lohbihler.warp.WarpUtils;
  */
 public class LocalDevice implements AutoCloseable {
     static final Logger LOG = LoggerFactory.getLogger(LocalDevice.class);
-    public static final String VERSION = "6.0.0";
+    public static final String VERSION = "7.0.0";
 
     private final Transport transport;
 
@@ -150,7 +147,7 @@ public class LocalDevice implements AutoCloseable {
     /**
      * The clock used for all timing, except for Object.wait and Thread.sleep calls.
      */
-    private Clock clock = Clock.systemUTC();
+    protected final Clock clock;
 
     private boolean initialized;
 
@@ -174,7 +171,7 @@ public class LocalDevice implements AutoCloseable {
     // Reinitialize device handler
     private ReinitializeDeviceHandler reinitializeDeviceHandler = new DefaultReinitializeDeviceHandler();
 
-    private ScheduledExecutorService timer;
+    private final ScheduledExecutorService timer;
 
     //Callback if other devices have the same id like us
     private Consumer<Address> sameDeviceIdCallback;
@@ -187,7 +184,22 @@ public class LocalDevice implements AutoCloseable {
     // Default persistence to null.
     private IPersistence persistence = new NullPersistence();
 
+
     public LocalDevice(final int deviceNumber, final Transport transport) {
+        this(deviceNumber, transport, Clock.systemUTC());
+    }
+
+    public LocalDevice(final int deviceNumber, final Transport transport, Clock clock) {
+        this.clock = clock;
+        this.timer =  new ScheduledExecutorServiceVariablePool(clock);
+        this.transport = transport;
+        transport.setLocalDevice(this);
+        afterInstatiation(deviceNumber);
+    }
+
+    public LocalDevice(final int deviceNumber, Transport transport, Clock clock, ScheduledExecutorService timer) {
+        this.clock = clock;
+        this.timer = timer;
         this.transport = transport;
         transport.setLocalDevice(this);
         afterInstatiation(deviceNumber);
@@ -203,19 +215,8 @@ public class LocalDevice implements AutoCloseable {
         }
     }
 
-    public LocalDevice withClock(final Clock clock) {
-        setClock(clock);
-        return this;
-    }
-
     public Clock getClock() {
         return clock;
-    }
-
-    public void setClock(final Clock clock) {
-        if (initialized)
-            throw new IllegalStateException("Clock needs to be set before LocalDevice is initialized");
-        this.clock = clock;
     }
 
     public DeviceObject getDeviceObject() {
@@ -268,12 +269,12 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public void addPrivateTransferHandler(final int vendorId, final int serviceNumber,
-            final PrivateTransferHandler handler) {
+                                          final PrivateTransferHandler handler) {
         privateTransferHandlers.put(new VendorServiceKey(vendorId, serviceNumber), handler);
     }
 
     public PrivateTransferHandler getPrivateTransferHandler(final UnsignedInteger vendorId,
-            final UnsignedInteger serviceNumber) {
+                                                            final UnsignedInteger serviceNumber) {
         return privateTransferHandlers.get(new VendorServiceKey(vendorId, serviceNumber));
     }
 
@@ -314,7 +315,6 @@ public class LocalDevice implements AutoCloseable {
     public synchronized LocalDevice initialize(final RestartReason lastRestartReason) throws Exception {
         deviceObject.writePropertyInternal(PropertyIdentifier.lastRestartReason, lastRestartReason);
 
-        timer = createScheduledExecutorService();
         transport.initialize();
         initialized = true;
 
@@ -334,7 +334,7 @@ public class LocalDevice implements AutoCloseable {
                     @Override
                     public void iAmReceived(final RemoteDevice d) {
                         LOG.info("Device id {} is not available", d.getInstanceNumber());
-                        idList.remove(new Integer(d.getInstanceNumber()));
+                        idList.remove(Integer.valueOf(d.getInstanceNumber()));
                     }
                 };
 
@@ -393,15 +393,6 @@ public class LocalDevice implements AutoCloseable {
         return this;
     }
 
-    /**
-     * Create a ScheduledExecutorService for use by the local device
-     * @return
-     * @see java.util.concurrent.ScheduledExecutorService
-     */
-    protected ScheduledExecutorService createScheduledExecutorService() {
-        return new WarpScheduledExecutorService(clock);
-    }
-
     public synchronized void terminate() {
         if (timer != null) {
             timer.shutdown();
@@ -437,7 +428,7 @@ public class LocalDevice implements AutoCloseable {
      * Schedules the given command for later execution.
      */
     public ScheduledFuture<?> scheduleAtFixedRate(final Runnable command, final long initialDelay, final long period,
-            final TimeUnit unit) {
+                                                  final TimeUnit unit) {
         return timer.scheduleAtFixedRate(command, initialDelay, period, unit);
     }
 
@@ -445,7 +436,7 @@ public class LocalDevice implements AutoCloseable {
      * Schedules the given command for later execution.
      */
     public ScheduledFuture<?> scheduleWithFixedDelay(final Runnable command, final long initialDelay, final long delay,
-            final TimeUnit unit) {
+                                                     final TimeUnit unit) {
         return timer.scheduleWithFixedDelay(command, initialDelay, delay, unit);
     }
 
@@ -650,7 +641,7 @@ public class LocalDevice implements AutoCloseable {
      * @param unit
      */
     public void getRemoteDevice(final int instanceNumber, final Consumer<RemoteDevice> callback,
-            final Runnable timeoutCallback, final Runnable finallyCallback, final long timeout, final TimeUnit unit) {
+                                final Runnable timeoutCallback, final Runnable finallyCallback, final long timeout, final TimeUnit unit) {
         Objects.requireNonNull(callback);
 
         // Check for a cached instance.
@@ -696,10 +687,10 @@ public class LocalDevice implements AutoCloseable {
      * @param instanceNumber
      * @return the remote device future
      */
-    public RemoteDeviceFuture getRemoteDevice(final int instanceNumber) {
-        return new RemoteDeviceFuture() {
+    public RemoteDeviceFinder.RemoteDeviceFuture getRemoteDevice(final int instanceNumber) {
+        return new RemoteDeviceFinder.RemoteDeviceFuture() {
             private RemoteDevice remoteDevice;
-            private RemoteDeviceFuture future;
+            private RemoteDeviceFinder.RemoteDeviceFuture future;
 
             {
                 // Check for a cached instance
@@ -766,7 +757,7 @@ public class LocalDevice implements AutoCloseable {
      * the timeout will be based upon the first thread that made the request, meaning that
      * subsequent threads may experience a shorter timeout than requested.
      */
-    private final Map<Integer, RemoteDeviceFuture> futures = new HashMap<>();
+    private final Map<Integer, RemoteDeviceFinder.RemoteDeviceFuture> futures = new HashMap<>();
 
     /**
      * Returns the remote device for the given instanceNumber. If a cached instance is not found the finder will be used
@@ -789,7 +780,7 @@ public class LocalDevice implements AutoCloseable {
         RemoteDevice rd = getCachedRemoteDevice(instanceNumber);
 
         if (rd == null) {
-            RemoteDeviceFuture future;
+            RemoteDeviceFinder.RemoteDeviceFuture future;
             synchronized (futures) {
                 // Check if there is an existing future for the device.
                 future = futures.get(instanceNumber);
@@ -865,11 +856,11 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public RemoteDeviceDiscoverer startRemoteDeviceDiscovery() {
-        return startRemoteDeviceDiscovery(CacheUpdate.NEVER, null);
+        return startRemoteDeviceDiscovery(LocalDevice.CacheUpdate.NEVER, null);
     }
 
     public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(final Consumer<RemoteDevice> callback) {
-        return startRemoteDeviceDiscovery(CacheUpdate.NEVER, callback);
+        return startRemoteDeviceDiscovery(LocalDevice.CacheUpdate.NEVER, callback);
     }
 
     /**
@@ -880,7 +871,7 @@ public class LocalDevice implements AutoCloseable {
      * @param callback optional client callback
      * @return the discoverer, which must be stopped by the caller
      */
-    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(CacheUpdate cacheUpdate, final Consumer<RemoteDevice> callback) {
+    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(LocalDevice.CacheUpdate cacheUpdate, final Consumer<RemoteDevice> callback) {
         final RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(this, discoveredDevice -> {
             // Cache the device.
             remoteDeviceCache.putEntity(discoveredDevice.getInstanceNumber(), discoveredDevice,
@@ -895,7 +886,7 @@ public class LocalDevice implements AutoCloseable {
         return discoverer;
     }
 
-    private Predicate<RemoteDevice> getExpirationCheck(CacheUpdate cacheUpdate) {
+    private Predicate<RemoteDevice> getExpirationCheck(LocalDevice.CacheUpdate cacheUpdate) {
         switch (cacheUpdate) {
             case ALWAYS:
                 return d -> true;
@@ -986,12 +977,12 @@ public class LocalDevice implements AutoCloseable {
     // Get properties
 
     public <T extends Encodable> T getCachedRemoteProperty(final int did, final ObjectIdentifier oid,
-            final PropertyIdentifier pid) {
+                                                           final PropertyIdentifier pid) {
         return getCachedRemoteProperty(did, oid, pid, null);
     }
 
     public <T extends Encodable> T getCachedRemoteProperty(final int did, final ObjectIdentifier oid,
-            final PropertyIdentifier pid, final UnsignedInteger pin) {
+                                                           final PropertyIdentifier pid, final UnsignedInteger pin) {
         final RemoteDevice rd = getCachedRemoteDevice(did);
         if (rd == null)
             return null;
@@ -1002,12 +993,12 @@ public class LocalDevice implements AutoCloseable {
     // Set properties
 
     public void setCachedRemoteProperty(final int did, final ObjectIdentifier oid, final PropertyIdentifier pid,
-            final Encodable value) {
+                                        final Encodable value) {
         setCachedRemoteProperty(did, oid, pid, null, value);
     }
 
     public void setCachedRemoteProperty(final int did, final ObjectIdentifier oid, final PropertyIdentifier pid,
-            final UnsignedInteger pin, final Encodable value) {
+                                        final UnsignedInteger pin, final Encodable value) {
         if (value instanceof ErrorClassAndCode) {
             final ErrorClassAndCode e = (ErrorClassAndCode) value;
             if (ErrorClass.device.equals(e.getErrorClass())) {
@@ -1027,12 +1018,12 @@ public class LocalDevice implements AutoCloseable {
     // Remove properties
 
     public <T extends Encodable> T removeCachedRemoteProperty(final int did, final ObjectIdentifier oid,
-            final PropertyIdentifier pid) {
+                                                              final PropertyIdentifier pid) {
         return removeCachedRemoteProperty(did, oid, pid, null);
     }
 
     public <T extends Encodable> T removeCachedRemoteProperty(final int did, final ObjectIdentifier oid,
-            final PropertyIdentifier pid, final UnsignedInteger pin) {
+                                                              final PropertyIdentifier pid, final UnsignedInteger pin) {
         final RemoteDevice rd = getCachedRemoteDevice(did);
         if (rd == null)
             return null;
@@ -1062,7 +1053,7 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public void send(final RemoteDevice d, final ConfirmedRequestService serviceRequest,
-            final ResponseConsumer consumer) {
+                     final ResponseConsumer consumer) {
         ensureInitialized();
         //        validateSupportedService(d, serviceRequest);
         transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(), serviceRequest,
@@ -1070,7 +1061,7 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public void send(final Address address, final ConfirmedRequestService serviceRequest,
-            final ResponseConsumer consumer) {
+                     final ResponseConsumer consumer) {
         ensureInitialized();
         final RemoteDevice d = getCachedRemoteDevice(address);
         if (d == null) {
@@ -1123,18 +1114,18 @@ public class LocalDevice implements AutoCloseable {
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     private final Object communicationControlMonitor = new Object();
-    private EnableDisable communicationControlState = EnableDisable.enable;
+    private DeviceCommunicationControlRequest.EnableDisable communicationControlState = DeviceCommunicationControlRequest.EnableDisable.enable;
     private ScheduledFuture<?> communicationControlFuture;
 
-    public void setCommunicationControl(final EnableDisable enableDisable, final int minutes) {
+    public void setCommunicationControl(final DeviceCommunicationControlRequest.EnableDisable enableDisable, final int minutes) {
         synchronized (communicationControlMonitor) {
             communicationControlState = enableDisable;
             cancelCommunicationControlFuture();
-            if (enableDisable.isOneOf(EnableDisable.disableInitiation, EnableDisable.disable)) {
+            if (enableDisable.isOneOf(DeviceCommunicationControlRequest.EnableDisable.disableInitiation, DeviceCommunicationControlRequest.EnableDisable.disable)) {
                 if (minutes > 0) {
                     communicationControlFuture = schedule(() -> {
                         synchronized (communicationControlMonitor) {
-                            communicationControlState = EnableDisable.enable;
+                            communicationControlState = DeviceCommunicationControlRequest.EnableDisable.enable;
                             communicationControlFuture = null;
                         }
                     }, minutes, TimeUnit.MINUTES);
@@ -1150,7 +1141,7 @@ public class LocalDevice implements AutoCloseable {
         }
     }
 
-    public EnableDisable getCommunicationControlState() {
+    public DeviceCommunicationControlRequest.EnableDisable getCommunicationControlState() {
         return communicationControlState;
     }
 
@@ -1229,6 +1220,4 @@ public class LocalDevice implements AutoCloseable {
             });
         }
     }
-
-
 }

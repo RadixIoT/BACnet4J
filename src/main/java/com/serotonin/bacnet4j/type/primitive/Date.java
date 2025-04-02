@@ -28,9 +28,6 @@
  */
 package com.serotonin.bacnet4j.type.primitive;
 
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.enums.DayOfWeek;
 import com.serotonin.bacnet4j.enums.Month;
@@ -38,6 +35,9 @@ import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.type.DateMatchable;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
+
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 
 public class Date extends Primitive implements Comparable<Date>, DateMatchable {
     public static final Date MINIMUM_DATE = new Date(0, Month.JANUARY, 1, null);
@@ -86,6 +86,7 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
     public Date(final LocalDevice localDevice) {
         final GregorianCalendar gc = new GregorianCalendar();
         gc.setTimeInMillis(localDevice.getClock().millis());
+
         resetTo(gc);
     }
 

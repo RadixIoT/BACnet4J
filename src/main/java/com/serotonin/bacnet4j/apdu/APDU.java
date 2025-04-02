@@ -34,7 +34,7 @@ import com.serotonin.bacnet4j.npdu.NPCI.NetworkPriority;
 import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
-abstract public class APDU {
+public abstract class APDU {
     public static APDU createAPDU(final ServicesSupported services, final ByteQueue queue) throws BACnetException {
         // Get the first byte. The 4 high-order bits will tell us the type of PDU this is.
         byte type = queue.peek(0);
@@ -59,15 +59,15 @@ abstract public class APDU {
         throw new IllegalPduTypeException(Byte.toString(type));
     }
 
-    abstract public byte getPduType();
+    public abstract byte getPduType();
 
-    abstract public void write(ByteQueue queue);
+    public abstract void write(ByteQueue queue);
 
     protected int getShiftedTypeId(final byte typeId) {
         return typeId << 4;
     }
 
-    abstract public boolean expectsReply();
+    public abstract boolean expectsReply();
 
     public NetworkPriority getNetworkPriority() {
         return null;

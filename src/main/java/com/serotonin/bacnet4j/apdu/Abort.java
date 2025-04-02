@@ -119,9 +119,7 @@ public class Abort extends AckAPDU {
         }       
         if (originalInvokeId != other.originalInvokeId)
             return false;
-        if (server != other.server)
-            return false;
-        return true;
+        return server == other.server;
     }
 
     @Override

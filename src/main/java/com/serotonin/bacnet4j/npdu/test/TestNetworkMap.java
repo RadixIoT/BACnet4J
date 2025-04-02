@@ -1,15 +1,15 @@
 package com.serotonin.bacnet4j.npdu.test;
 
+import com.serotonin.bacnet4j.type.constructed.Address;
+
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.serotonin.bacnet4j.type.constructed.Address;
+public class TestNetworkMap<T extends AbstractTestNetwork> implements Iterable<T> {
+    private final Map<Address, T> instances = new ConcurrentHashMap<>();
 
-public class TestNetworkMap implements Iterable<TestNetwork> {
-    private final Map<Address, TestNetwork> instances = new ConcurrentHashMap<>();
-
-    public void add(final Address address, final TestNetwork network) {
+    public void add(final Address address, final T network) {
         if (instances.containsKey(address))
             throw new IllegalStateException("Network map already contains key " + address);
         instances.put(address, network);
@@ -21,12 +21,12 @@ public class TestNetworkMap implements Iterable<TestNetwork> {
         instances.remove(address);
     }
 
-    public TestNetwork get(final Address address) {
+    public T get(final Address address) {
         return instances.get(address);
     }
 
     @Override
-    public Iterator<TestNetwork> iterator() {
+    public Iterator<T> iterator() {
         return instances.values().iterator();
     }
 }

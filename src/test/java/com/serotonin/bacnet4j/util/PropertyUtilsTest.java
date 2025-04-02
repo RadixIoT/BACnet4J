@@ -1,14 +1,5 @@
 package com.serotonin.bacnet4j.util;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.event.IAmListener;
@@ -29,6 +20,14 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 public class PropertyUtilsTest {
     private final TestNetworkMap map = new TestNetworkMap();
@@ -103,8 +102,6 @@ public class PropertyUtilsTest {
         final DeviceObjectPropertyValues callbackValues = new DeviceObjectPropertyValues();
         final ReadListener callback = (progress, deviceId, oid, pid, pin, value) -> {
             callbackValues.add(deviceId, oid, pid, pin, value);
-            //            System.out.println("progress=" + progress + ", did=" + deviceId + ", oid=" + oid + ", pid=" + pid + ", pin="
-            //                    + pin + ", value=" + value);
             return false;
         };
 

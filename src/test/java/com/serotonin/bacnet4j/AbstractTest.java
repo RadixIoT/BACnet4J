@@ -1,41 +1,53 @@
 package com.serotonin.bacnet4j;
 
+import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
+import com.serotonin.bacnet4j.type.constructed.PropertyValue;
+import com.serotonin.bacnet4j.type.constructed.SequenceOf;
+import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.util.DiscoveryUtils;
+import com.serotonin.warp.WarpClock;
 import org.junit.After;
 import org.junit.Before;
 
-import com.serotonin.bacnet4j.npdu.test.TestNetwork;
-import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
-import com.serotonin.bacnet4j.transport.DefaultTransport;
-import com.serotonin.bacnet4j.util.DiscoveryUtils;
+import java.util.concurrent.ScheduledExecutorService;
 
-import lohbihler.warp.WarpClock;
+import static org.junit.Assert.fail;
 
 /**
  * Common base class for tests that use real local devices and a warp clock.
  *
  * @author Matthew
  */
-abstract public class AbstractTest {
+abstract public class AbstractTest implements SynchronousLocalDeviceInitializer {
     protected static final int TIMEOUT = 500;
 
-    private final TestNetworkMap map = new TestNetworkMap();
-    protected final WarpClock clock = new WarpClock();
-    protected final LocalDevice d1 = new LocalDevice(1,
-            new DefaultTransport(new TestNetwork(map, 1, 0).withTimeout(TIMEOUT))).withClock(clock);
-    protected final LocalDevice d2 = new LocalDevice(2,
-            new DefaultTransport(new TestNetwork(map, 2, 0).withTimeout(TIMEOUT))).withClock(clock);
-    protected final LocalDevice d3 = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0)))
-            .withClock(clock);
-    protected final LocalDevice d4 = new LocalDevice(4, new DefaultTransport(new TestNetwork(map, 4, 0)))
-            .withClock(clock);
+    private TestNetworkMap map;
+    protected WarpClock clock;
+
+    protected LocalDevice d1;
+    protected ScheduledExecutorService d1Executor;
+
+    protected LocalDevice d2;
+    protected ScheduledExecutorService d2Executor;
+
+    protected LocalDevice d3;
+    protected ScheduledExecutorService d3Executor;
+
+    protected LocalDevice d4;
+    protected ScheduledExecutorService d4Executor;
+
     protected RemoteDevice rd1;
     protected RemoteDevice rd2;
     protected RemoteDevice rd3;
 
+    public AbstractTest() {
+
+    }
+
     @Before
     public void abstractBefore() throws Exception {
+        setup();
         beforeInit();
-
         d1.initialize();
         d2.initialize();
         d3.initialize();
@@ -65,10 +77,55 @@ abstract public class AbstractTest {
         afterInit();
     }
 
+    /**
+     * Setup the components for the tests
+     */
+    public void setup() {
+        this.map = new TestNetworkMap();
+        this.clock = getClock();
+        this.d1Executor = createExecutorService(clock);
+        this.d1 = new LocalDevice(1,
+                createTransport(createTestNetwork(map, 1, 0, TIMEOUT)), clock, d1Executor);
+
+        this.d2Executor = createExecutorService(clock);
+        this.d2 = new LocalDevice(2,
+                createTransport(createTestNetwork(map, 2, 0, TIMEOUT)), clock, d2Executor);
+
+        this.d3Executor = createExecutorService(clock);
+        this.d3 = new LocalDevice(3, createTransport(createTestNetwork(map, 3, 0)), clock, d3Executor);
+
+        this.d4Executor = createExecutorService(clock);
+        this.d4 = new LocalDevice(4, createTransport(createTestNetwork(map, 4, 0)), clock, d4Executor);
+    }
+
+    /**
+     * Helper for assertions, find a property in a sequence by the identifier, if it doesn't exist fail via assertion
+     * @param propertyIdentifier
+     * @param covProperties
+     * @return
+     */
+    protected PropertyValue findProperty(PropertyIdentifier propertyIdentifier, SequenceOf<PropertyValue> covProperties) {
+        for(PropertyValue propertyValue : covProperties) {
+            if(propertyIdentifier.equals(propertyValue.getPropertyIdentifier())) {
+                return propertyValue;
+            }
+        }
+        fail("Didn't find property " + propertyIdentifier.toString());
+        return null;
+    }
+
+    /**
+     * Before initializing devices and discovery for each test
+     * @throws Exception
+     */
     public void beforeInit() throws Exception {
         // Override as required
     }
 
+    /**
+     * After initializing devices and discovery for each test
+     * @throws Exception
+     */
     public void afterInit() throws Exception {
         // Override as required
     }

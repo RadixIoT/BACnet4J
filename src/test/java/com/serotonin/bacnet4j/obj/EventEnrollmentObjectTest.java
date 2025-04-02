@@ -78,7 +78,7 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Write a different normal value.
         av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.lampFailure);
@@ -86,7 +86,7 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         // Ensure that no notifications are sent.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Set an offnormal value and then set back to normal before the time delay.
         av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.activationFailure);
@@ -109,8 +109,8 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        Map<String, Object> notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -135,12 +135,12 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         // Allow the EE to poll
         clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
         clock.plus(500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
         // Allow the EE to poll
         clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
         clock.plus(700, TimeUnit.MILLISECONDS, 700, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -184,8 +184,8 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(false, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -223,7 +223,7 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Write a different normal value.
         av1.writePropertyInternal(PropertyIdentifier.minPresValue, new Real(45));
@@ -233,7 +233,7 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
         assertEquals(new StatusFlags(false, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
         // Ensure that no notifications are sent.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Write a fault value. Alarm will be sent.
         av1.writePropertyInternal(PropertyIdentifier.minPresValue, new Real(5));
@@ -243,8 +243,8 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, true, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        Map<String, Object> notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -276,8 +276,8 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, true, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -309,8 +309,8 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(false, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));

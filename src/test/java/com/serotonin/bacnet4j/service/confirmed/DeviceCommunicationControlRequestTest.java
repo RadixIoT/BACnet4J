@@ -1,13 +1,5 @@
 package com.serotonin.bacnet4j.service.confirmed;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
-
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.junit.Test;
-
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
@@ -32,6 +24,15 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
+import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 /**
  * All tests modify the communication control in device d1.
@@ -93,12 +94,10 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
 
         // Should also fail to send an IAm
         d1.send(rd2, d1.getIAm());
-        Thread.sleep(100);
         assertEquals(0, iamCount.get());
 
         // But should still respond to a WhoIs
         d2.send(rd1, new WhoIsRequest(1, 1));
-        Thread.sleep(100);
         assertEquals(1, iamCount.get());
 
         // Re-enable
@@ -190,6 +189,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
         d2.send(rd1, new DeviceCommunicationControlRequest(new UnsignedInteger(5), EnableDisable.disable, null)).get();
 
         // Fail to receive a request
+        AtomicReference<BACnetTimeoutException> timeoutException = new AtomicReference<>();
         try {
             final ServiceFuture future = d2.send(rd1,
                     new WritePropertyRequest(new ObjectIdentifier(ObjectType.device, 1), PropertyIdentifier.description,
@@ -203,12 +203,20 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
 
             future.get();
             fail("BACnetTimeoutException should have been thrown");
-        } catch (@SuppressWarnings("unused") final BACnetTimeoutException e) {
+        } catch (final BACnetTimeoutException e) {
             // Expected
+            timeoutException.set(e);
         }
+
+        //Assert that the exception was caught
+        assertNotNull(timeoutException.get());
 
         // Let the 5 minutes elapse.
         clock.plusMinutes(6);
+
+        //Ensure the comms are back up (after the 5 minutes)
+        //  we disabled d1 so we will check that here
+        TestUtils.assertTrueCondition(() -> d1.getCommunicationControlState() == EnableDisable.enable, 1000);
 
         // Receive a request. This time it too succeeds. Note that the value is already "a", because requests are
         // still processed, just not responded.

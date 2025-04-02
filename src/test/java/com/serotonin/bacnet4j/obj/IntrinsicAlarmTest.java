@@ -203,7 +203,7 @@ public class IntrinsicAlarmTest extends AbstractTest {
                 4);
 
         // Ensure that initialization did not cause notifications to be sent.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Write the off-normal value and wait 2 seconds for the state to change.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
@@ -220,8 +220,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.get(0);
+        assertEquals(1, listener.size());
+        final Map<String, Object> notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(bv.getId(), notif.get("eventObjectIdentifier"));
@@ -256,7 +256,7 @@ public class IntrinsicAlarmTest extends AbstractTest {
                 new BACnetArray<>(new UnsignedInteger(6), new UnsignedInteger(7)), //
                 new EventTransitionBits(true, true, true), NotifyType.event, 2);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Write a different normal value.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(2));
@@ -264,7 +264,7 @@ public class IntrinsicAlarmTest extends AbstractTest {
         // Ensure that no notifications are sent.
         clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.normal, mv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Set an alarm value and then set back to normal before the time delay.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(4));
@@ -283,8 +283,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(new StatusFlags(true, false, false, false), mv.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        Map<String, Object> notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(mv.getId(), notif.get("eventObjectIdentifier"));
@@ -305,8 +305,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(5));
         clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.offnormal, mv.readProperty(PropertyIdentifier.eventState)); // Still off-normal at this point.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(mv.getId(), notif.get("eventObjectIdentifier"));
@@ -330,7 +330,7 @@ public class IntrinsicAlarmTest extends AbstractTest {
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(5));
         clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.offnormal, mv.readProperty(PropertyIdentifier.eventState)); // Still off-normal.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Do a real state change. Write the normal value. After 2 seconds state will be normal again.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(2));
@@ -340,8 +340,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(EventState.normal, mv.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(mv.getId(), notif.get("eventObjectIdentifier"));
@@ -365,8 +365,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(mv.getId(), notif.get("eventObjectIdentifier"));
@@ -393,8 +393,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(mv.getId(), notif.get("eventObjectIdentifier"));
@@ -421,8 +421,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(mv.getId(), notif.get("eventObjectIdentifier"));
@@ -448,8 +448,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(new StatusFlags(true, false, false, false), mv.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        notif = listener.poll();
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(mv.getId(), notif.get("eventObjectIdentifier"));
@@ -488,8 +488,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a notification was received.
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        final Map<String, Object> notif = listener.poll();
         //        System.out.println(notif);
 
         // Get an alarm summary
@@ -531,8 +531,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
         // Will receive notification of the acknowledgement
         clock.plus(200, TimeUnit.MILLISECONDS, 200, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> ack = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        final Map<String, Object> ack = listener.poll();
         assertEquals(new UnsignedInteger(10), ack.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), ack.get("initiatingDevice"));
         assertEquals(bv.getId(), ack.get("eventObjectIdentifier"));
@@ -579,7 +579,7 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(EventState.normal, bv.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a notification was not received, since the recipient asked not to be notified
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.size());
 
         // Get an alarm summary
         alarmSummaryAck = d2.send(rd1, new GetAlarmSummaryRequest()).get();
@@ -624,8 +624,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a notification was received.
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        final Map<String, Object> notif = listener.poll();
         //        System.out.println(notif);
 
         final TimeStamp now = new TimeStamp(new DateTime(d1));
@@ -637,8 +637,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
         // Will receive notification of the acknowledgement
         clock.plus(200, TimeUnit.MILLISECONDS, 200, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> ack = listener.notifs.remove(0);
+        assertEquals(1, listener.size());
+        final Map<String, Object> ack = listener.poll();
         assertEquals(new UnsignedInteger(10), ack.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), ack.get("initiatingDevice"));
         assertEquals(bv.getId(), ack.get("eventObjectIdentifier"));

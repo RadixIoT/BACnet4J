@@ -46,11 +46,11 @@ abstract public class Network {
     private final int localNetworkNumber;
     private Transport transport;
 
-    public Network() {
+    protected Network() {
         this(0);
     }
 
-    public Network(final int localNetworkNumber) {
+    protected Network(final int localNetworkNumber) {
         this.localNetworkNumber = localNetworkNumber;
     }
 
@@ -66,13 +66,13 @@ abstract public class Network {
         return transport;
     }
 
-    abstract public long getBytesOut();
+    public abstract long getBytesOut();
 
-    abstract public long getBytesIn();
+    public abstract long getBytesIn();
 
-    abstract public NetworkIdentifier getNetworkIdentifier();
+    public abstract NetworkIdentifier getNetworkIdentifier();
 
-    abstract public MaxApduLength getMaxApduLength();
+    public abstract MaxApduLength getMaxApduLength();
 
     /**
      * Override as desired if you want to set the Source Address in outgoing messages
@@ -87,17 +87,17 @@ abstract public class Network {
         this.transport = transport;
     }
 
-    abstract public void terminate();
+    public abstract void terminate();
 
     public final Address getLocalBroadcastAddress() {
         return new Address(localNetworkNumber, getBroadcastMAC());
     }
 
-    abstract protected OctetString getBroadcastMAC();
+    protected abstract OctetString getBroadcastMAC();
 
-    abstract public Address[] getAllLocalAddresses();
+    public abstract Address[] getAllLocalAddresses();
 
-    abstract public Address getLoopbackAddress();
+    public abstract Address getLoopbackAddress();
 
     public final void sendAPDU(final Address recipient, final OctetString router, final APDU apdu,
             final boolean broadcast) throws BACnetException {
@@ -153,7 +153,7 @@ abstract public class Network {
         sendNPDU(recipient, router, npdu, broadcast, expectsReply);
     }
 
-    abstract public void sendNPDU(Address recipient, OctetString router, ByteQueue npdu, boolean broadcast,
+    public abstract void sendNPDU(Address recipient, OctetString router, ByteQueue npdu, boolean broadcast,
             boolean expectsReply) throws BACnetException;
 
     protected OctetString getDestination(final Address recipient, final OctetString link) {
@@ -183,7 +183,7 @@ abstract public class Network {
         }
     }
 
-    abstract protected NPDU handleIncomingDataImpl(ByteQueue queue, OctetString linkService) throws Exception;
+    protected abstract NPDU handleIncomingDataImpl(ByteQueue queue, OctetString linkService) throws Exception;
 
     public NPDU parseNpduData(final ByteQueue queue, final OctetString linkService) throws MessageValidationException {
         // Network layer protocol control information. See 6.2.2
