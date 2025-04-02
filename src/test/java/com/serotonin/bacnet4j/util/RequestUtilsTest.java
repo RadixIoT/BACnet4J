@@ -108,6 +108,11 @@ public class RequestUtilsTest {
                                 public <T extends AcknowledgementService> T get() throws BACnetException {
                                     return (T) ack;
                                 }
+
+                                @Override
+                                public <T extends AcknowledgementService> T get(long timeout) throws BACnetException {
+                                    return (T) ack;
+                                }
                             };
                         }
 

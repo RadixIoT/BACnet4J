@@ -54,18 +54,35 @@ public class ServiceFutureImpl implements ServiceFuture, ResponseConsumer {
     private volatile boolean done;
 
     @Override
-    public synchronized <T extends AcknowledgementService> T get() throws BACnetException {
+    public <T extends AcknowledgementService> T get() throws BACnetException {
+        return get(this, 0);
+    }
+
+    @Override
+    public <T extends AcknowledgementService> T get(long timeout) throws BACnetException {
+        return get(this, timeout);
+    }
+
+    private synchronized <T extends AcknowledgementService> T get(Object monitor, long timeout) throws BACnetException {
         if (done) {
             return result();
         }
 
-        ThreadUtils.wait(this);
+        if (timeout <= 0) {
+            ThreadUtils.wait(monitor);
+        } else {
+            ThreadUtils.wait(monitor, timeout);
+        }
 
         return result();
     }
 
     @SuppressWarnings("unchecked")
     private <T extends AcknowledgementService> T result() throws BACnetException {
+        if (!done) {
+            throw new BACnetTimeoutException("waiting timeout");
+        }
+
         if (ex != null) {
             // We want to preserve the original type of the exception, but not have
             // to have a big if/then/else chain to handle all of the exception types.
