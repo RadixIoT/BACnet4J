@@ -351,10 +351,10 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
     private static void doTriggers(final TrendLogMultipleObject tl, final int count) throws InterruptedException {
         int remaining = count;
         while (remaining > 0) {
-            if (tl.trigger())
-                remaining--;
-            Thread.sleep(20);
+            TestUtils.awaitCondition(tl::trigger, 5000);
+            remaining--;
         }
+        TestUtils.awaitCondition(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue(), 5000);
     }
 
     @SuppressWarnings("unchecked")
