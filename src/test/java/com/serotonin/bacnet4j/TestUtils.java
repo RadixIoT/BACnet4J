@@ -6,11 +6,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.time.Clock;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.BiPredicate;
+import java.util.function.BooleanSupplier;
 
 import org.junit.Assert;
 
@@ -19,7 +17,6 @@ import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.exception.ErrorAPDUException;
 import com.serotonin.bacnet4j.exception.RejectAPDUException;
-import com.serotonin.bacnet4j.obj.logBuffer.LogBuffer;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
@@ -116,8 +113,7 @@ public class TestUtils {
     @SafeVarargs
     public static <T> List<T> toList(final T... elements) {
         final List<T> result = new ArrayList<>(elements.length);
-        for (final T e : elements)
-            result.add(e);
+        result.addAll(Arrays.asList(elements));
         return result;
     }
 
@@ -138,7 +134,7 @@ public class TestUtils {
     }
 
     @FunctionalInterface
-    public static interface ServiceExceptionCommand {
+    public interface ServiceExceptionCommand {
         void call() throws BACnetServiceException;
     }
 
@@ -155,7 +151,7 @@ public class TestUtils {
     }
 
     @FunctionalInterface
-    public static interface RequestHandleExceptionCommand {
+    public interface RequestHandleExceptionCommand {
         void call() throws BACnetException;
     }
 
@@ -166,8 +162,7 @@ public class TestUtils {
             command.call();
             fail("BACnetException was expected");
         } catch (final BACnetException e) {
-            if (e instanceof ErrorAPDUException) {
-                final ErrorAPDUException eae = (ErrorAPDUException) e;
+            if (e instanceof ErrorAPDUException eae) {
                 assertErrorClassAndCode(eae.getError().getErrorClassAndCode(), errorClass, errorCode);
                 return (T) eae.getApdu().getError();
             }
@@ -176,15 +171,13 @@ public class TestUtils {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     public static void assertRejectAPDUException(final BACnetExceptionCommand command,
             final RejectReason rejectReason) {
         try {
             command.call();
             fail("BACnetException was expected");
         } catch (final BACnetException e) {
-            if (e instanceof RejectAPDUException) {
-                final RejectAPDUException eae = (RejectAPDUException) e;
+            if (e instanceof RejectAPDUException eae) {
                 Assert.assertEquals(rejectReason, eae.getApdu().getRejectReason());
             } else {
                 fail("RejectAPDUException was expected: " + e.getClass());
@@ -193,7 +186,7 @@ public class TestUtils {
     }
     
     @FunctionalInterface
-    public static interface BACnetExceptionCommand {
+    public interface BACnetExceptionCommand {
         void call() throws BACnetException;
     }
 
@@ -266,12 +259,8 @@ public class TestUtils {
 
     //
     // Size assurance. Uses busy wait with timeout to ensure that a collection reaches a certain size.
-    public static void assertSize(final LogBuffer<?> buffer, final int size, final int wait) {
-        assertSize(() -> buffer.size(), size, wait);
-    }
-
     public static void assertSize(final Collection<?> collection, final int size, final int wait) {
-        assertSize(() -> collection.size(), size, wait);
+        assertSize(collection::size, size, wait);
     }
 
     private static void assertSize(final SizeRetriever thingWithSize, final int size, final int wait) {
@@ -290,5 +279,18 @@ public class TestUtils {
     @FunctionalInterface
     interface SizeRetriever {
         int size();
+    }
+
+    public static void awaitCondition(BooleanSupplier condition, long timeoutMs) {
+        final long deadline = Clock.systemUTC().millis() + timeoutMs;
+        while (true) {
+            if (condition.getAsBoolean()) {
+                return;
+            }
+            if (deadline < Clock.systemUTC().millis()) {
+                fail("awaitCondition timed out");
+            }
+            ThreadUtils.sleep(2);
+        }
     }
 }

@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
+import com.serotonin.bacnet4j.type.constructed.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,19 +21,7 @@ import com.serotonin.bacnet4j.obj.mixin.ReadOnlyPropertyMixin;
 import com.serotonin.bacnet4j.obj.mixin.event.IntrinsicReportingMixin;
 import com.serotonin.bacnet4j.obj.mixin.event.eventAlgo.BufferReadyAlgo;
 import com.serotonin.bacnet4j.type.Encodable;
-import com.serotonin.bacnet4j.type.constructed.BACnetArray;
-import com.serotonin.bacnet4j.type.constructed.DateTime;
-import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
-import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
-import com.serotonin.bacnet4j.type.constructed.LogData;
 import com.serotonin.bacnet4j.type.constructed.LogData.LogDataElement;
-import com.serotonin.bacnet4j.type.constructed.LogMultipleRecord;
-import com.serotonin.bacnet4j.type.constructed.LogStatus;
-import com.serotonin.bacnet4j.type.constructed.PropertyReference;
-import com.serotonin.bacnet4j.type.constructed.PropertyValue;
-import com.serotonin.bacnet4j.type.constructed.SequenceOf;
-import com.serotonin.bacnet4j.type.constructed.StatusFlags;
-import com.serotonin.bacnet4j.type.constructed.ValueSource;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.EventState;
@@ -175,8 +165,32 @@ public class TrendLogMultipleObject extends BACnetObject {
         return logDisabled;
     }
 
+    /**
+     * @deprecated This method return a buffer that may not be thread-safe. Use {@link #doWithBuffer} instead.
+     */
+    @Deprecated
     public LogBuffer<LogMultipleRecord> getBuffer() {
         return buffer;
+    }
+
+    public void doWithBuffer(Consumer<LogBuffer<LogMultipleRecord>> consumer) {
+        synchronized (buffer) {
+            consumer.accept(buffer);
+        }
+    }
+
+    public int getRecordCount() {
+        // Synchronize the buffer before requesting the size because we don't know the implementation of the buffer,
+        // and whether the operation is atomic or not.
+        synchronized (buffer) {
+            return buffer.size();
+        }
+    }
+
+    public LogMultipleRecord getRecord(int index) {
+        synchronized (buffer) {
+            return buffer.get(index);
+        }
     }
 
     public void setEnabled(final boolean enabled) {
