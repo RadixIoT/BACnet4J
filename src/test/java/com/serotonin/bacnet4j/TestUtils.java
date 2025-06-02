@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiPredicate;
+import java.util.function.BooleanSupplier;
 
 import org.junit.Assert;
 
@@ -291,4 +292,30 @@ public class TestUtils {
     interface SizeRetriever {
         int size();
     }
+
+    @FunctionalInterface
+    public interface BooleanSupplierWithException {
+        boolean getAsBoolean() throws Exception;
+    }
+
+    public static void awaitCondition(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
+        final long deadline = Clock.systemUTC().millis() + timeoutMs;
+        while (true) {
+            if (condition.getAsBoolean()) {
+                return;
+            }
+            if (deadline < Clock.systemUTC().millis()) {
+                fail("awaitCondition timed out");
+            }
+            ThreadUtils.sleep(2);
+        }
+    }
+
+    public static boolean equalsRegardingNull(Object expected, Object actual) {
+        if (expected == null) {
+            return actual == null;
+        }
+        return expected.equals(actual);
+    }
+
 }
