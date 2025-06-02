@@ -162,7 +162,8 @@ public class TestUtils {
             command.call();
             fail("BACnetException was expected");
         } catch (final BACnetException e) {
-            if (e instanceof ErrorAPDUException eae) {
+            if (e instanceof ErrorAPDUException) {
+                final ErrorAPDUException eae = (ErrorAPDUException) e;
                 assertErrorClassAndCode(eae.getError().getErrorClassAndCode(), errorClass, errorCode);
                 return (T) eae.getApdu().getError();
             }
@@ -177,7 +178,8 @@ public class TestUtils {
             command.call();
             fail("BACnetException was expected");
         } catch (final BACnetException e) {
-            if (e instanceof RejectAPDUException eae) {
+            if (e instanceof RejectAPDUException) {
+                final RejectAPDUException eae = (RejectAPDUException) e;
                 Assert.assertEquals(rejectReason, eae.getApdu().getRejectReason());
             } else {
                 fail("RejectAPDUException was expected: " + e.getClass());
