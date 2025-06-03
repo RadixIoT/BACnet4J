@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -116,8 +117,7 @@ public class TestUtils {
     @SafeVarargs
     public static <T> List<T> toList(final T... elements) {
         final List<T> result = new ArrayList<>(elements.length);
-        for (final T e : elements)
-            result.add(e);
+        result.addAll(Arrays.asList(elements));
         return result;
     }
 
@@ -138,7 +138,7 @@ public class TestUtils {
     }
 
     @FunctionalInterface
-    public static interface ServiceExceptionCommand {
+    public interface ServiceExceptionCommand {
         void call() throws BACnetServiceException;
     }
 
@@ -155,7 +155,7 @@ public class TestUtils {
     }
 
     @FunctionalInterface
-    public static interface RequestHandleExceptionCommand {
+    public interface RequestHandleExceptionCommand {
         void call() throws BACnetException;
     }
 
@@ -176,7 +176,6 @@ public class TestUtils {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     public static void assertRejectAPDUException(final BACnetExceptionCommand command,
             final RejectReason rejectReason) {
         try {
@@ -193,7 +192,7 @@ public class TestUtils {
     }
     
     @FunctionalInterface
-    public static interface BACnetExceptionCommand {
+    public interface BACnetExceptionCommand {
         void call() throws BACnetException;
     }
 
@@ -267,7 +266,7 @@ public class TestUtils {
     //
     // Size assurance. Uses busy wait with timeout to ensure that a collection reaches a certain size.
     public static void assertSize(final LogBuffer<?> buffer, final int size, final int wait) {
-        assertSize(() -> buffer.size(), size, wait);
+        assertSize(buffer::size, size, wait);
     }
 
     public static void assertSize(final Collection<?> collection, final int size, final int wait) {
