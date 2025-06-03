@@ -1,8 +1,7 @@
 package com.serotonin.bacnet4j.obj;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 import java.util.Map;
 import java.util.TimeZone;
@@ -12,8 +11,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
@@ -55,8 +52,6 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.RequestUtils;
 
 public class DeviceObjectTest extends AbstractTest {
-    static final Logger LOG = LoggerFactory.getLogger(DeviceObjectTest.class);
-
     private AnalogValueObject av0;
 
     @Override
@@ -165,8 +160,8 @@ public class DeviceObjectTest extends AbstractTest {
         assertEquals(new DateTime(d1), d2Time.get());
         assertEquals(d2Time.get().getTime().getHundredthInDay(), adjustedHundredths);
 
-        assertEquals(false, d2Utc.get());
-        assertEquals(true, d3Utc.get());
+        assertFalse(d2Utc.get());
+        assertTrue(d3Utc.get());
     }
 
     @Test
@@ -200,8 +195,8 @@ public class DeviceObjectTest extends AbstractTest {
         TimeStamp ts = new TimeStamp(new DateTime(d1));
         Thread.sleep(40);
 
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        final Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(UnsignedInteger.ZERO, notif.get("subscriberProcessIdentifier"));
         assertEquals(d1.getId(), notif.get("monitoredObjectIdentifier"));
         assertEquals(UnsignedInteger.ZERO, notif.get("timeRemaining"));
@@ -228,15 +223,15 @@ public class DeviceObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         dev.supportIntrinsicReporting(7, new EventTransitionBits(true, true, true), NotifyType.event);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Write a fault reliability value.
         dev.writePropertyInternal(PropertyIdentifier.reliability, Reliability.memberFault);
         assertEquals(EventState.fault, dev.readProperty(PropertyIdentifier.eventState));
         Thread.sleep(100);
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        final Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(dev.getId(), notif.get("eventObjectIdentifier"));
@@ -245,14 +240,14 @@ public class DeviceObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(7), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(5), notif.get("priority"));
         assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.event, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));
         assertEquals(EventState.fault, notif.get("toState"));
         assertEquals(
                 new NotificationParameters(new ChangeOfReliabilityNotif(Reliability.memberFault,
-                        new StatusFlags(true, true, false, false), new SequenceOf<PropertyValue>())),
+                        new StatusFlags(true, true, false, false), new SequenceOf<>())),
                 notif.get("eventValues"));
     }
 }

@@ -1,6 +1,7 @@
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.util.Map;
 
@@ -52,7 +53,7 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Issue an alert from the AV.
         ae.issueAlert(av0.getId(), 123, //
@@ -65,8 +66,8 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
         assertEquals(EventState.normal, ae.readProperty(PropertyIdentifier.eventState)); // Still normal. Always normal.
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        final Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(ae.getId(), notif.get("eventObjectIdentifier"));
@@ -75,7 +76,7 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(55), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(201), notif.get("priority"));
         assertEquals(EventType.extended, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));

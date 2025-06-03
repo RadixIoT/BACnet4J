@@ -22,7 +22,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class EventNotifListener extends DeviceEventAdapter {
     static final Logger LOG = LoggerFactory.getLogger(EventNotifListener.class);
 
-    public final List<Map<String, Object>> notifs = new ArrayList<>();
+    private final List<Map<String, Object>> notifs = new ArrayList<>();
 
     @Override
     public void eventNotificationReceived(final UnsignedInteger processIdentifier,
@@ -48,5 +48,21 @@ public class EventNotifListener extends DeviceEventAdapter {
         notif.put("toState", toState);
         notif.put("eventValues", eventValues);
         notifs.add(notif);
+    }
+
+    public int getNotifCount() {
+        return notifs.size();
+    }
+
+    public Map<String, Object> getNotif(final int index) {
+        return notifs.get(index);
+    }
+
+    public Map<String, Object> removeNotif(final int index) {
+        return notifs.remove(index);
+    }
+
+    public void clearNotifs() {
+        notifs.clear();
     }
 }

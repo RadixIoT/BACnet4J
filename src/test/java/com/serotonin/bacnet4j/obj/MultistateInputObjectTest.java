@@ -1,14 +1,13 @@
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
@@ -36,8 +35,6 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class MultistateInputObjectTest extends AbstractTest {
-    static final Logger LOG = LoggerFactory.getLogger(MultistateInputObjectTest.class);
-
     private MultistateInputObject mi;
     private NotificationClassObject nc;
 
@@ -80,7 +77,7 @@ public class MultistateInputObjectTest extends AbstractTest {
                 new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
         Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
         assertEquals(new UnsignedInteger(1), mi.get(PropertyIdentifier.presentValue));
@@ -94,8 +91,8 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, false, false, false), mi.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(mi.getId(), notif.get("eventObjectIdentifier"));
@@ -104,7 +101,7 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(100), notif.get("priority"));
         assertEquals(EventType.changeOfState, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));
@@ -121,8 +118,8 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(false, false, false, false), mi.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(mi.getId(), notif.get("eventObjectIdentifier"));
@@ -131,7 +128,7 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(200), notif.get("priority"));
         assertEquals(EventType.changeOfState, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.offnormal, notif.get("fromState"));
@@ -165,7 +162,7 @@ public class MultistateInputObjectTest extends AbstractTest {
         // Ensure that initializing the event enrollment object didn't fire any notifications.
         Thread.sleep(40);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         //
         // Go to off normal.
@@ -181,8 +178,8 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -191,7 +188,7 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(100), notif.get("priority"));
         assertEquals(EventType.changeOfState, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));
@@ -213,8 +210,8 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -223,7 +220,7 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(200), notif.get("priority"));
         assertEquals(EventType.changeOfState, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.offnormal, notif.get("fromState"));
@@ -248,7 +245,7 @@ public class MultistateInputObjectTest extends AbstractTest {
                 new EventTransitionBits(true, true, true), NotifyType.alarm, null);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
         Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
         assertEquals(new UnsignedInteger(1), mi.get(PropertyIdentifier.presentValue));
@@ -260,8 +257,8 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, true, false, false), mi.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(mi.getId(), notif.get("eventObjectIdentifier"));
@@ -270,7 +267,7 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(5), notif.get("priority"));
         assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));
@@ -288,8 +285,8 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(false, false, false, false), mi.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(mi.getId(), notif.get("eventObjectIdentifier"));
@@ -298,7 +295,7 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(200), notif.get("priority"));
         assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.fault, notif.get("fromState"));

@@ -4,8 +4,7 @@ import static com.serotonin.bacnet4j.type.enumerated.BinaryPV.active;
 import static com.serotonin.bacnet4j.type.enumerated.BinaryPV.inactive;
 import static com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier.presentValue;
 import static com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier.priorityArray;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -16,7 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.type.AmbiguousValue;
-import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.Destination;
@@ -51,13 +49,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
     @Override
     public void afterInit() throws Exception {
         obj = new BinaryOutputObject(d1, 0, "boName1", BinaryPV.inactive, false, Polarity.normal, BinaryPV.inactive);
-        obj.addListener(new BACnetObjectListener() {
-            @Override
-            public void propertyChange(final PropertyIdentifier pid, final Encodable oldValue,
-                    final Encodable newValue) {
-                LOG.debug("{} changed from {} to {}", pid, oldValue, newValue);
-            }
-        });
+        obj.addListener((pid, oldValue, newValue) -> LOG.debug("{} changed from {} to {}", pid, oldValue, newValue));
 
         nc = new NotificationClassObject(d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false));
     }
@@ -172,7 +164,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
                 NotifyType.alarm, 12);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
         Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
         assertEquals(BinaryPV.inactive, obj.get(PropertyIdentifier.presentValue));
@@ -187,8 +179,8 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, false, false, false), obj.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(obj.getId(), notif.get("eventObjectIdentifier"));
@@ -197,7 +189,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(100), notif.get("priority"));
         assertEquals(EventType.commandFailure, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));
@@ -216,8 +208,8 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(false, false, false, false), obj.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(obj.getId(), notif.get("eventObjectIdentifier"));
@@ -226,7 +218,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(200), notif.get("priority"));
         assertEquals(EventType.commandFailure, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.offnormal, notif.get("fromState"));
@@ -259,7 +251,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         // Ensure that initializing the event enrollment object didn't fire any notifications.
         Thread.sleep(40);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         //
         // Go to high limit.
@@ -275,8 +267,8 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -285,7 +277,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(100), notif.get("priority"));
         assertEquals(EventType.commandFailure, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));
@@ -309,8 +301,8 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -319,7 +311,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(200), notif.get("priority"));
         assertEquals(EventType.commandFailure, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.offnormal, notif.get("fromState"));

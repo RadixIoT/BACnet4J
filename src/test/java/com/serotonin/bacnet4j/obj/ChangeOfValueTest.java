@@ -1,14 +1,9 @@
 package com.serotonin.bacnet4j.obj;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
 import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.TestUtils;
@@ -41,9 +36,9 @@ import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.Utils;
 
-public class ChangeOfValueTest extends AbstractTest {
-    static final Logger LOG = LoggerFactory.getLogger(ChangeOfValueTest.class);
+import static org.junit.Assert.*;
 
+public class ChangeOfValueTest extends AbstractTest {
     @Test
     public void objectCovErrors() throws Exception {
         try {
@@ -127,7 +122,7 @@ public class ChangeOfValueTest extends AbstractTest {
                 .readProperty(PropertyIdentifier.activeCovSubscriptions);
         assertEquals(1, deviceList.getCount());
         final CovSubscription subscription = deviceList.getBase1(1);
-        assertEquals(null, subscription.getCovIncrement());
+        assertNull(subscription.getCovIncrement());
         assertEquals(Boolean.TRUE, subscription.getIssueConfirmedNotifications());
         assertEquals(new ObjectPropertyReference(av.getId(), PropertyIdentifier.presentValue),
                 subscription.getMonitoredPropertyReference());
@@ -136,8 +131,8 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Subscribing should have caused a notification to be sent.
         Thread.sleep(50);
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(4), notif.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(av.getId(), notif.get("monitoredObjectIdentifier"));
@@ -150,8 +145,8 @@ public class ChangeOfValueTest extends AbstractTest {
         // Write a new value that will trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(20));
         Thread.sleep(100);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(4), notif.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(av.getId(), notif.get("monitoredObjectIdentifier"));
@@ -164,18 +159,18 @@ public class ChangeOfValueTest extends AbstractTest {
         // Write a new value that won't trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(21));
         Thread.sleep(100);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Change a value that is not monitored
         av.writePropertyInternal(PropertyIdentifier.objectName, new CharacterString("av0-new-name"));
         Thread.sleep(100);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Change a different value that is monitored
         av.writePropertyInternal(PropertyIdentifier.outOfService, Boolean.TRUE);
         Thread.sleep(100);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.presentValue, new Real(21)), //
@@ -188,8 +183,8 @@ public class ChangeOfValueTest extends AbstractTest {
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(24));
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(25));
         Thread.sleep(100);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.presentValue, new Real(25)), //
@@ -200,7 +195,7 @@ public class ChangeOfValueTest extends AbstractTest {
         clock.plusSeconds(3);
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(40));
         Thread.sleep(100);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
     }
 
     @Test
@@ -220,7 +215,7 @@ public class ChangeOfValueTest extends AbstractTest {
                 .readProperty(PropertyIdentifier.activeCovSubscriptions);
         assertEquals(1, deviceList.getCount());
         final CovSubscription subscription = deviceList.getBase1(1);
-        assertEquals(null, subscription.getCovIncrement());
+        assertNull(subscription.getCovIncrement());
         assertEquals(Boolean.TRUE, subscription.getIssueConfirmedNotifications());
         assertEquals(new ObjectPropertyReference(av.getId(), PropertyIdentifier.presentValue),
                 subscription.getMonitoredPropertyReference());
@@ -252,7 +247,7 @@ public class ChangeOfValueTest extends AbstractTest {
                 .readProperty(PropertyIdentifier.activeCovSubscriptions);
         assertEquals(1, deviceList.getCount());
         final CovSubscription subscription = deviceList.getBase1(1);
-        assertEquals(null, subscription.getCovIncrement());
+        assertNull(subscription.getCovIncrement());
         assertEquals(Boolean.FALSE, subscription.getIssueConfirmedNotifications());
         assertEquals(new ObjectPropertyReference(av.getId(), PropertyIdentifier.statusFlags),
                 subscription.getMonitoredPropertyReference());
@@ -261,8 +256,8 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Subscribing should have caused a notification to be sent.
         Thread.sleep(50);
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(4), notif.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(av.getId(), notif.get("monitoredObjectIdentifier"));
@@ -275,8 +270,8 @@ public class ChangeOfValueTest extends AbstractTest {
         // Write a new value to a different monitored property. That will trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(20));
         Thread.sleep(100);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(4), notif.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(av.getId(), notif.get("monitoredObjectIdentifier"));
@@ -289,13 +284,13 @@ public class ChangeOfValueTest extends AbstractTest {
         // Write a new value to an unmonitored property. That will not trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.highLimit, new Real(60));
         Thread.sleep(100);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Write a change to the status flags.
         av.writePropertyInternal(PropertyIdentifier.reliability, Reliability.memberFault);
         Thread.sleep(100);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(4), notif.get("subscriberProcessIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(av.getId(), notif.get("monitoredObjectIdentifier"));
@@ -372,81 +367,81 @@ public class ChangeOfValueTest extends AbstractTest {
         // Subscribing should have caused a notification to be sent.
         Thread.sleep(50);
 
-        assertEquals(4, listener2.notifs.size());
+        assertEquals(4, listener2.getNotifCount());
 
-        assertEquals(new UnsignedInteger(4), listener2.notifs.get(0).get("subscriberProcessIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), listener2.notifs.get(0).get("initiatingDevice"));
-        assertEquals(av0.getId(), listener2.notifs.get(0).get("monitoredObjectIdentifier"));
+        assertEquals(new UnsignedInteger(4), listener2.getNotif(0).get("subscriberProcessIdentifier"));
+        assertEquals(rd1.getObjectIdentifier(), listener2.getNotif(0).get("initiatingDevice"));
+        assertEquals(av0.getId(), listener2.getNotif(0).get("monitoredObjectIdentifier"));
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
-                listener2.notifs.get(0).get("listOfValues"));
+                listener2.getNotif(0).get("listOfValues"));
 
-        assertEquals(new UnsignedInteger(5), listener2.notifs.get(1).get("subscriberProcessIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), listener2.notifs.get(1).get("initiatingDevice"));
-        assertEquals(av0.getId(), listener2.notifs.get(1).get("monitoredObjectIdentifier"));
+        assertEquals(new UnsignedInteger(5), listener2.getNotif(1).get("subscriberProcessIdentifier"));
+        assertEquals(rd1.getObjectIdentifier(), listener2.getNotif(1).get("initiatingDevice"));
+        assertEquals(av0.getId(), listener2.getNotif(1).get("monitoredObjectIdentifier"));
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.presentValue, new Real(10)),
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
-                listener2.notifs.get(1).get("listOfValues"));
+                listener2.getNotif(1).get("listOfValues"));
 
-        assertEquals(new UnsignedInteger(6), listener2.notifs.get(2).get("subscriberProcessIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), listener2.notifs.get(2).get("initiatingDevice"));
-        assertEquals(av1.getId(), listener2.notifs.get(2).get("monitoredObjectIdentifier"));
+        assertEquals(new UnsignedInteger(6), listener2.getNotif(2).get("subscriberProcessIdentifier"));
+        assertEquals(rd1.getObjectIdentifier(), listener2.getNotif(2).get("initiatingDevice"));
+        assertEquals(av1.getId(), listener2.getNotif(2).get("monitoredObjectIdentifier"));
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, true)),
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, true))),
-                listener2.notifs.get(2).get("listOfValues"));
+                listener2.getNotif(2).get("listOfValues"));
 
-        assertEquals(new UnsignedInteger(7), listener2.notifs.get(3).get("subscriberProcessIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), listener2.notifs.get(3).get("initiatingDevice"));
-        assertEquals(av1.getId(), listener2.notifs.get(3).get("monitoredObjectIdentifier"));
+        assertEquals(new UnsignedInteger(7), listener2.getNotif(3).get("subscriberProcessIdentifier"));
+        assertEquals(rd1.getObjectIdentifier(), listener2.getNotif(3).get("initiatingDevice"));
+        assertEquals(av1.getId(), listener2.getNotif(3).get("monitoredObjectIdentifier"));
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.presentValue, new Real(10)),
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, true))),
-                listener2.notifs.get(3).get("listOfValues"));
+                listener2.getNotif(3).get("listOfValues"));
 
-        assertEquals(4, listener3.notifs.size());
+        assertEquals(4, listener3.getNotifCount());
 
-        assertEquals(new UnsignedInteger(4), listener3.notifs.get(0).get("subscriberProcessIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), listener3.notifs.get(0).get("initiatingDevice"));
-        assertEquals(av0.getId(), listener3.notifs.get(0).get("monitoredObjectIdentifier"));
+        assertEquals(new UnsignedInteger(4), listener3.getNotif(0).get("subscriberProcessIdentifier"));
+        assertEquals(rd1.getObjectIdentifier(), listener3.getNotif(0).get("initiatingDevice"));
+        assertEquals(av0.getId(), listener3.getNotif(0).get("monitoredObjectIdentifier"));
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
-                listener3.notifs.get(0).get("listOfValues"));
+                listener3.getNotif(0).get("listOfValues"));
 
-        assertEquals(new UnsignedInteger(5), listener3.notifs.get(1).get("subscriberProcessIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), listener3.notifs.get(1).get("initiatingDevice"));
-        assertEquals(av0.getId(), listener3.notifs.get(1).get("monitoredObjectIdentifier"));
+        assertEquals(new UnsignedInteger(5), listener3.getNotif(1).get("subscriberProcessIdentifier"));
+        assertEquals(rd1.getObjectIdentifier(), listener3.getNotif(1).get("initiatingDevice"));
+        assertEquals(av0.getId(), listener3.getNotif(1).get("monitoredObjectIdentifier"));
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.presentValue, new Real(10)),
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
-                listener3.notifs.get(1).get("listOfValues"));
+                listener3.getNotif(1).get("listOfValues"));
 
-        assertEquals(new UnsignedInteger(6), listener3.notifs.get(2).get("subscriberProcessIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), listener3.notifs.get(2).get("initiatingDevice"));
-        assertEquals(av1.getId(), listener3.notifs.get(2).get("monitoredObjectIdentifier"));
+        assertEquals(new UnsignedInteger(6), listener3.getNotif(2).get("subscriberProcessIdentifier"));
+        assertEquals(rd1.getObjectIdentifier(), listener3.getNotif(2).get("initiatingDevice"));
+        assertEquals(av1.getId(), listener3.getNotif(2).get("monitoredObjectIdentifier"));
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, true)),
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, true))),
-                listener3.notifs.get(2).get("listOfValues"));
+                listener3.getNotif(2).get("listOfValues"));
 
-        assertEquals(new UnsignedInteger(7), listener3.notifs.get(3).get("subscriberProcessIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), listener3.notifs.get(3).get("initiatingDevice"));
-        assertEquals(av1.getId(), listener3.notifs.get(3).get("monitoredObjectIdentifier"));
+        assertEquals(new UnsignedInteger(7), listener3.getNotif(3).get("subscriberProcessIdentifier"));
+        assertEquals(rd1.getObjectIdentifier(), listener3.getNotif(3).get("initiatingDevice"));
+        assertEquals(av1.getId(), listener3.getNotif(3).get("monitoredObjectIdentifier"));
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.presentValue, new Real(10)),
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, true))),
-                listener3.notifs.get(3).get("listOfValues"));
+                listener3.getNotif(3).get("listOfValues"));
 
         // Wait a bit and make sure the remaining times were updated.
         clock.plusSeconds(12);
@@ -516,8 +511,8 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Subscribing should have caused a notification to be sent.
         Thread.sleep(50);
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.units, EngineeringUnits.amperes),
@@ -527,8 +522,8 @@ public class ChangeOfValueTest extends AbstractTest {
         // Write a new value to the property. That will trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.ampereSeconds);
         Thread.sleep(100);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.units, EngineeringUnits.ampereSeconds),
@@ -547,7 +542,7 @@ public class ChangeOfValueTest extends AbstractTest {
         final CovNotifListener listener = new CovNotifListener();
         d2.getEventHandler().addListener(listener);
 
-        // Write a new present value to set up all of the commandable values.
+        // Write a new present value to set up all the commandable values.
         final ValueSource vs = new ValueSource(new Address(new byte[] { 2 }));
         av.writeProperty(vs, PropertyIdentifier.presentValue, new Real(11));
         final TimeStamp setTime = new TimeStamp(new DateTime(d1));
@@ -558,11 +553,11 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Subscribing should have caused a notification to be sent.
         Thread.sleep(50);
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         SequenceOf<PropertyValue> values = (SequenceOf<PropertyValue>) notif.get("listOfValues");
         // Ensure that the last command time looks like the set time.
-        TimeStamp lastCommandTime = (TimeStamp) values.getBase1(4).getValue();
+        TimeStamp lastCommandTime = values.getBase1(4).getValue();
         TestUtils.assertEquals(setTime, lastCommandTime, 2);
         assertEquals(
                 new SequenceOf<>( //
@@ -576,17 +571,17 @@ public class ChangeOfValueTest extends AbstractTest {
         // Write a new value to a different property. That will not trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.ampereSeconds);
         Thread.sleep(50);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Write a new value to the present value. This will trigger three notifications because multiple values
         // will be updated.
         av.writeProperty(vs, PropertyIdentifier.presentValue, new Real(15));
         Thread.sleep(60);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         values = (SequenceOf<PropertyValue>) notif.get("listOfValues");
         // Ensure that the last command time looks like the set time.
-        lastCommandTime = (TimeStamp) values.getBase1(4).getValue();
+        lastCommandTime = values.getBase1(4).getValue();
         assertEquals(
                 new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.presentValue, new Real(15)),

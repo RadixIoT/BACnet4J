@@ -291,4 +291,23 @@ public class TestUtils {
     interface SizeRetriever {
         int size();
     }
+
+    @FunctionalInterface
+    public interface BooleanSupplierWithException {
+        boolean getAsBoolean() throws Exception;
+    }
+
+    public static void awaitCondition(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
+        final long deadline = Clock.systemUTC().millis() + timeoutMs;
+        while (true) {
+            if (condition.getAsBoolean()) {
+                return;
+            }
+            if (deadline < Clock.systemUTC().millis()) {
+                fail("awaitCondition timed out");
+            }
+            ThreadUtils.sleep(2);
+        }
+    }
+
 }

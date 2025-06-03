@@ -1,13 +1,12 @@
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.TestUtils;
@@ -50,8 +49,6 @@ import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class LifeSafetyZoneObjectTest extends AbstractTest {
-    static final Logger LOG = LoggerFactory.getLogger(LifeSafetyZoneObjectTest.class);
-
     private LifeSafetyZoneObject lsz;
     private NotificationClassObject nc;
     private EventNotifListener listener;
@@ -81,7 +78,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
         Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
         assertEquals(LifeSafetyState.quiet, lsz.get(PropertyIdentifier.presentValue));
@@ -96,8 +93,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, false, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
@@ -106,7 +103,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(100), notif.get("priority"));
         assertEquals(EventType.changeOfLifeSafety, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));
@@ -125,8 +122,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(false, false, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
@@ -135,7 +132,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(200), notif.get("priority"));
         assertEquals(EventType.changeOfLifeSafety, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.lifeSafetyAlarm, notif.get("fromState"));
@@ -161,8 +158,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         clock.plus(1, TimeUnit.MILLISECONDS, 1, TimeUnit.MILLISECONDS, 0, 80);
         assertEquals(EventState.offnormal, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
-        listener.notifs.clear();
+        assertEquals(1, listener.getNotifCount());
+        listener.clearNotifs();
 
         // Return to normal. After 12s the notification will be sent.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.quiet);
@@ -170,8 +167,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(EventState.offnormal, lsz.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
         clock.plus(1, TimeUnit.MILLISECONDS, 1, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
-        listener.notifs.clear();
+        assertEquals(1, listener.getNotifCount());
+        listener.clearNotifs();
     }
 
     /**
@@ -189,13 +186,13 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
         clock.plus(4999, TimeUnit.MILLISECONDS, 4999, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Change the mode. Notification should be sent immediately.
         lsz.writePropertyInternal(PropertyIdentifier.mode, LifeSafetyMode.fast);
         Thread.sleep(40);
         assertEquals(EventState.offnormal, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
+        assertEquals(1, listener.getNotifCount());
     }
 
     /**
@@ -212,20 +209,20 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testSupervisory);
         clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
-        listener.notifs.clear();
+        assertEquals(1, listener.getNotifCount());
+        listener.clearNotifs();
 
         // Set the same lifeSafetyAlarm and advance the clock to past the the time delay. No notification should be sent.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testSupervisory);
         clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Change to a different lifeSafetyAlarm and advance the clock to past the the time delay.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.tamper);
         clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
+        assertEquals(1, listener.getNotifCount());
     }
 
     @SuppressWarnings("unchecked")
@@ -239,7 +236,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
         Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
         assertEquals(LifeSafetyState.quiet, lsz.get(PropertyIdentifier.presentValue));
@@ -251,8 +248,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         Thread.sleep(40);
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
@@ -261,7 +258,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(5), notif.get("priority"));
         assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));
@@ -271,10 +268,10 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(0).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.faultAlarm,
                 LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
-        assertEquals(null, cor.getPropertyValues().get(0).getPriority());
+        assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.on), cor.getPropertyValues().get(1));
         assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
                 cor.getPropertyValues().get(2));
@@ -285,8 +282,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         Thread.sleep(40);
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
@@ -295,7 +292,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(5), notif.get("priority"));
         assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.fault, notif.get("fromState"));
@@ -305,10 +302,10 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(0).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.faultAlarm,
                 LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
-        assertEquals(null, cor.getPropertyValues().get(0).getPriority());
+        assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.fast), cor.getPropertyValues().get(1));
         assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
                 cor.getPropertyValues().get(2));
@@ -319,7 +316,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         Thread.sleep(40);
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         //
         // Write a different fault state.
@@ -327,8 +324,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         Thread.sleep(40);
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
@@ -337,7 +334,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(5), notif.get("priority"));
         assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.fault, notif.get("fromState"));
@@ -347,10 +344,10 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(0).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.fault,
                 LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
-        assertEquals(null, cor.getPropertyValues().get(0).getPriority());
+        assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.fast), cor.getPropertyValues().get(1));
         assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
                 cor.getPropertyValues().get(2));
@@ -363,9 +360,9 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         Thread.sleep(40);
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(2, listener.notifs.size());
+        assertEquals(2, listener.getNotifCount());
 
-        notif = listener.notifs.remove(0);
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
@@ -374,7 +371,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(200), notif.get("priority"));
         assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.fault, notif.get("fromState"));
@@ -384,15 +381,15 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(false, false, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(0).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.active,
                 LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
-        assertEquals(null, cor.getPropertyValues().get(0).getPriority());
+        assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.fast), cor.getPropertyValues().get(1));
         assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
                 cor.getPropertyValues().get(2));
 
-        notif = listener.notifs.remove(0);
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
@@ -401,7 +398,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(200), notif.get("priority"));
         assertEquals(EventType.changeOfLifeSafety, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));
@@ -431,7 +428,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         // Ensure that initializing the event enrollment object didn't fire any notifications.
         Thread.sleep(40);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         //
         // Go to alarm value
@@ -447,8 +444,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -457,7 +454,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(100), notif.get("priority"));
         assertEquals(EventType.changeOfLifeSafety, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));
@@ -474,8 +471,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -484,7 +481,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(100), notif.get("priority"));
         assertEquals(EventType.changeOfLifeSafety, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.offnormal, notif.get("fromState"));
@@ -502,8 +499,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -512,7 +509,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(5), notif.get("priority"));
         assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.offnormal, notif.get("fromState"));
@@ -524,10 +521,10 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new PropertyValue(PropertyIdentifier.objectPropertyReference, pvRef),
                 cor.getPropertyValues().get(0));
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(1).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(1).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(1).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.fault.intValue(),
                 ((Enumerated) cor.getPropertyValues().get(1).getValue()).intValue());
-        assertEquals(null, cor.getPropertyValues().get(1).getPriority());
+        assertNull(cor.getPropertyValues().get(1).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.reliability, Reliability.noFaultDetected),
                 cor.getPropertyValues().get(2));
         assertEquals(new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
@@ -541,8 +538,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
@@ -551,7 +548,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(200), notif.get("priority"));
         assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.fault, notif.get("fromState"));
@@ -563,10 +560,10 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new PropertyValue(PropertyIdentifier.objectPropertyReference, pvRef),
                 cor.getPropertyValues().get(0));
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(1).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(1).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(1).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.blocked.intValue(),
                 ((Enumerated) cor.getPropertyValues().get(1).getValue()).intValue());
-        assertEquals(null, cor.getPropertyValues().get(1).getPriority());
+        assertNull(cor.getPropertyValues().get(1).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.reliability, Reliability.noFaultDetected),
                 cor.getPropertyValues().get(2));
         assertEquals(new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
@@ -587,8 +584,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
                 new SubscribeCOVRequest(new UnsignedInteger(987), lsz.getId(), Boolean.FALSE, new UnsignedInteger(600)))
                 .get();
         Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(987), notif.get("subscriberProcessIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(lsz.getId(), notif.get("monitoredObjectIdentifier"));
@@ -605,8 +602,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.blocked);
         Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(987), notif.get("subscriberProcessIdentifier"));
         assertEquals(d1.getId(), notif.get("initiatingDevice"));
         assertEquals(lsz.getId(), notif.get("monitoredObjectIdentifier"));

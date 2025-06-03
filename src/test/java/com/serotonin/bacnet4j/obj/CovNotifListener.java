@@ -17,7 +17,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class CovNotifListener extends DeviceEventAdapter {
     static final Logger LOG = LoggerFactory.getLogger(CovNotifListener.class);
 
-    public final List<Map<String, Object>> notifs = new ArrayList<>();
+    private final List<Map<String, Object>> notifs = new ArrayList<>();
 
     @Override
     public void covNotificationReceived(final UnsignedInteger subscriberProcessIdentifier,
@@ -32,5 +32,21 @@ public class CovNotifListener extends DeviceEventAdapter {
         notif.put("timeRemaining", timeRemaining);
         notif.put("listOfValues", listOfValues);
         notifs.add(notif);
+    }
+
+    public int getNotifCount() {
+        return notifs.size();
+    }
+
+    public Map<String, Object> getNotif(final int index) {
+        return notifs.get(index);
+    }
+
+    public Map<String, Object> removeNotif(final int index) {
+        return notifs.remove(index);
+    }
+
+    public void clearNotifs() {
+        notifs.clear();
     }
 }

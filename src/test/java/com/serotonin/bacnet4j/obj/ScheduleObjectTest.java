@@ -1,6 +1,7 @@
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -180,7 +181,7 @@ public class ScheduleObjectTest extends AbstractTest {
 
         final SequenceOf<SpecialEvent> exceptionSchedule = new SequenceOf<>( //
                 new SpecialEvent(new CalendarEntry(new Date(-1, null, -1, DayOfWeek.WEDNESDAY)),
-                        new SequenceOf<TimeValue>(), new UnsignedInteger(6)) // Wednesdays
+                        new SequenceOf<>(), new UnsignedInteger(6)) // Wednesdays
         );
         final SequenceOf<DeviceObjectPropertyReference> listOfObjectPropertyReferences = new SequenceOf<>( //
                 new DeviceObjectPropertyReference(av1.getId(), PropertyIdentifier.presentValue, null, null) //
@@ -190,15 +191,15 @@ public class ScheduleObjectTest extends AbstractTest {
         so.supportIntrinsicReporting(7, new EventTransitionBits(true, true, true), NotifyType.alarm);
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Write a fault reliability value.
         so.writePropertyInternal(PropertyIdentifier.reliability, Reliability.memberFault);
         assertEquals(EventState.fault, so.readProperty(PropertyIdentifier.eventState));
         Thread.sleep(100);
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
+        assertEquals(1, listener.getNotifCount());
+        final Map<String, Object> notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
         assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
         assertEquals(so.getId(), notif.get("eventObjectIdentifier"));
@@ -207,14 +208,14 @@ public class ScheduleObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(7), notif.get("notificationClass"));
         assertEquals(new UnsignedInteger(5), notif.get("priority"));
         assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
+        assertNull(notif.get("messageText"));
         assertEquals(NotifyType.alarm, notif.get("notifyType"));
         assertEquals(Boolean.FALSE, notif.get("ackRequired"));
         assertEquals(EventState.normal, notif.get("fromState"));
         assertEquals(EventState.fault, notif.get("toState"));
         assertEquals(
                 new NotificationParameters(new ChangeOfReliabilityNotif(Reliability.memberFault,
-                        new StatusFlags(true, true, false, false), new SequenceOf<PropertyValue>())),
+                        new StatusFlags(true, true, false, false), new SequenceOf<>())),
                 notif.get("eventValues"));
     }
 
@@ -239,7 +240,7 @@ public class ScheduleObjectTest extends AbstractTest {
         // Ensure that the list is empty.
         SequenceOf<Destination> list = RequestUtils.getProperty(d2, rd1, so.getId(),
                 PropertyIdentifier.listOfObjectPropertyReferences);
-        assertEquals(list, new SequenceOf<>());
+        assertEquals(new SequenceOf<>(), list);
 
         // Add a few elements.
         final AddListElementRequest aler = new AddListElementRequest(so.getId(),
@@ -313,12 +314,10 @@ public class ScheduleObjectTest extends AbstractTest {
 
         //
         // Entries in the list of property references must reference properties of this type
-        TestUtils.assertBACnetServiceException(() -> {
-            new ScheduleObject(d1, 0, "sch0", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE), null,
-                    new SequenceOf<>(), BinaryPV.inactive,
-                    new SequenceOf<>(new DeviceObjectPropertyReference(1, av.getId(), PropertyIdentifier.presentValue)),
-                    12, false);
-        }, ErrorClass.property, ErrorCode.invalidDataType);
+        TestUtils.assertBACnetServiceException(() -> new ScheduleObject(d1, 0, "sch0", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE), null,
+                new SequenceOf<>(), BinaryPV.inactive,
+                new SequenceOf<>(new DeviceObjectPropertyReference(1, av.getId(), PropertyIdentifier.presentValue)),
+                12, false), ErrorClass.property, ErrorCode.invalidDataType);
 
         //
         // Time value entries in the weekly and exception schedules must be of this type
