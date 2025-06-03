@@ -7,7 +7,18 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import com.serotonin.bacnet4j.type.constructed.*;
+import com.serotonin.bacnet4j.type.constructed.BACnetArray;
+import com.serotonin.bacnet4j.type.constructed.DateTime;
+import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
+import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
+import com.serotonin.bacnet4j.type.constructed.LogData;
+import com.serotonin.bacnet4j.type.constructed.LogMultipleRecord;
+import com.serotonin.bacnet4j.type.constructed.LogStatus;
+import com.serotonin.bacnet4j.type.constructed.PropertyReference;
+import com.serotonin.bacnet4j.type.constructed.PropertyValue;
+import com.serotonin.bacnet4j.type.constructed.SequenceOf;
+import com.serotonin.bacnet4j.type.constructed.StatusFlags;
+import com.serotonin.bacnet4j.type.constructed.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -173,6 +184,11 @@ public class TrendLogMultipleObject extends BACnetObject {
         return buffer;
     }
 
+    /**
+     * Allows the consumer to work with the buffer in a thread-safe manner.
+     *
+     * @param consumer the work to do while synchronized.
+     */
     public void doWithBuffer(Consumer<LogBuffer<LogMultipleRecord>> consumer) {
         synchronized (buffer) {
             consumer.accept(buffer);
