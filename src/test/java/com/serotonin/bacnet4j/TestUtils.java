@@ -6,10 +6,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.time.Clock;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.BiPredicate;
 
 import org.junit.Assert;
@@ -290,5 +287,47 @@ public class TestUtils {
     @FunctionalInterface
     interface SizeRetriever {
         int size();
+    }
+    public interface BooleanSupplierWithException {
+        boolean getAsBoolean() throws Exception;
+    }
+
+    public static void awaitTrue(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
+        if (await(condition, timeoutMs)) {
+            return;
+        }
+        fail("awaitTrue timed out");
+    }
+
+    public static boolean equalsRegardingNull(Object expected, Object actual) {
+        if (expected == null) {
+            return actual == null;
+        }
+        return expected.equals(actual);
+    }
+
+    @FunctionalInterface
+    public interface EncodableSupplierWithException {
+        Encodable get() throws Exception;
+    }
+
+    public static void awaitEquals(final EncodableSupplierWithException supplier, Encodable constant, long timeoutMs) throws Exception {
+        if (await(() -> equalsRegardingNull(supplier.get(), constant), timeoutMs)) {
+            return;
+        }
+        fail("awaitEquals timed out. Wanted "+ constant + " but last value was "+ supplier.get());
+    }
+
+    public static boolean await(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
+        final long deadline = Clock.systemUTC().millis() + timeoutMs;
+        while (true) {
+            if (condition.getAsBoolean()) {
+                return true;
+            }
+            if (deadline < Clock.systemUTC().millis()) {
+                return false;
+            }
+            ThreadUtils.sleep(2);
+        }
     }
 }
