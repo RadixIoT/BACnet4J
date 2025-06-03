@@ -6,7 +6,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.time.Clock;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.BiPredicate;
 
 import org.junit.Assert;
@@ -32,7 +35,7 @@ import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 
 public class TestUtils {
     public static <T, U> void assertListEqualsIgnoreOrder(final List<T> expectedList, final List<U> actualList,
-            final BiPredicate<T, U> predicate) {
+                                                          final BiPredicate<T, U> predicate) {
         Assert.assertEquals(expectedList.size(), actualList.size());
         final List<U> actualListCopy = new ArrayList<>(actualList);
         for (final T expected : expectedList) {
@@ -268,7 +271,7 @@ public class TestUtils {
     }
 
     public static void assertSize(final Collection<?> collection, final int size, final int wait) {
-        assertSize(() -> collection.size(), size, wait);
+        assertSize(collection::size, size, wait);
     }
 
     private static void assertSize(final SizeRetriever thingWithSize, final int size, final int wait) {
