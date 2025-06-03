@@ -1,15 +1,20 @@
 package com.serotonin.bacnet4j.obj;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
+
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import com.serotonin.bacnet4j.TestUtils;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.RemoteDevice;
+import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.service.acknowledgement.GetAlarmSummaryAck;
 import com.serotonin.bacnet4j.service.acknowledgement.GetAlarmSummaryAck.AlarmSummary;
 import com.serotonin.bacnet4j.service.acknowledgement.GetEnrollmentSummaryAck;
@@ -47,8 +52,6 @@ import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
-
-import static org.junit.Assert.*;
 
 public class IntrinsicAlarmTest extends AbstractTest {
     static final Logger LOG = LoggerFactory.getLogger(IntrinsicAlarmTest.class);

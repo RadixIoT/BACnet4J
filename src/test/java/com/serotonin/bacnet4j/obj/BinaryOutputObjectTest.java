@@ -4,7 +4,9 @@ import static com.serotonin.bacnet4j.type.enumerated.BinaryPV.active;
 import static com.serotonin.bacnet4j.type.enumerated.BinaryPV.inactive;
 import static com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier.presentValue;
 import static com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier.priorityArray;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
