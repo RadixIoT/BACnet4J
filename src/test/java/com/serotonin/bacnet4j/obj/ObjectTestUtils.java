@@ -3,8 +3,11 @@ package com.serotonin.bacnet4j.obj;
 import static org.junit.Assert.fail;
 
 import java.time.Clock;
+import java.util.Deque;
 import java.util.LinkedList;
-import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
@@ -14,22 +17,19 @@ public class ObjectTestUtils {
      * Test utility to wait for a specific value to be written to an object.
      */
     public static class ObjectWriteNotifier<T extends BACnetObject> extends AbstractMixin {
+        static final Logger LOG = LoggerFactory.getLogger(ObjectWriteNotifier.class);
+
         private final T bo;
-        private final boolean debug;
-        private final List<WrittenProperty> writtenProperties = new LinkedList<>();
+        private final Deque<WrittenProperty> writtenProperties = new LinkedList<>();
 
         /**
          * You can call this directly, but you probably want to use createObjectWriteNotifier below.
          *
          * @param bo the object to which to listen
-         * @param debug whether debugging messages should be written to stdout. This is done instead of logging because
-         *              logging requires extra work to enable messages to be seen, which also includes the logging of a
-         *              lot of other messages.
          */
-        public ObjectWriteNotifier(T bo, boolean debug) {
+        public ObjectWriteNotifier(T bo) {
             super(bo);
             this.bo = bo;
-            this.debug = debug;
         }
 
         /**
@@ -47,6 +47,7 @@ public class ObjectTestUtils {
          * the test.
          */
         public void clear() {
+            LOG.debug("DEBUG: written properties cleared");
             synchronized (this) {
                 writtenProperties.clear();
             }
@@ -54,9 +55,7 @@ public class ObjectTestUtils {
 
         @Override
         protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
-            if (debug) {
-                System.out.println("DEBUG: PropertyWritten: "+ bo.getId() +", pid: "+ pid +", oldValue: "+ oldValue +", newValue: "+ newValue);
-            }
+            LOG.debug("PropertyWritten: {}, pid: {}, oldValue: {}, newValue: {}", bo.getId(), pid, oldValue, newValue);
             synchronized (this) {
                 // Write all written properties to the list of seen writes.
                 writtenProperties.add(new WrittenProperty(pid, newValue));
@@ -67,14 +66,12 @@ public class ObjectTestUtils {
         /**
          * Wait until a given property has a given value written to it, or until the wait time has expired.
          *
-         * @param pid the property identifier for which to watch
+         * @param pid      the property identifier for which to watch
          * @param newValue the value for which to watch
          * @param waitTime how long to wait. If time expires an AssertionException is throws via the fail method.
          */
         public void waitFor(PropertyIdentifier pid, Encodable newValue, long waitTime) {
-            if (debug) {
-                System.out.println("DEBUG: waitFor in "+ bo.getId() +", for pid: "+ pid +", newValue: "+ newValue);
-            }
+            LOG.debug("waitFor in {}, for pid: {}, newValue: {}", bo.getId(), pid, newValue);
             synchronized (this) {
                 long startTime = Clock.systemUTC().millis();
                 long deadline = startTime + waitTime;
@@ -85,23 +82,18 @@ public class ObjectTestUtils {
                             fail("Timeout waiting for property write of " + pid + " to " + newValue);
                         } else {
                             try {
-                                if (debug) {
-                                    System.out.println("DEBUG: Waiting at least "+ thisWait +"ms in "+ bo.getId() +", for pid: "+ pid +", newValue: "+ newValue);
-                                }
+                                LOG.debug("Waiting at least {}ms in {}, for pid: {}, newValue: {}", thisWait,
+                                        bo.getId(), pid, newValue);
                                 wait(thisWait);
                             } catch (final InterruptedException e) {
-                                if (debug) {
-                                    System.out.println("DEBUG: Wait interrupted");
-                                }
-                                // Ignore
+                                LOG.debug("Wait interrupted");
                             }
                         }
                     } else {
-                        WrittenProperty wp = writtenProperties.remove(0);
+                        WrittenProperty wp = writtenProperties.poll();
                         if (wp.pid == pid && wp.newValue.equals(newValue)) {
-                            if (debug) {
-                                System.out.println("DEBUG "+ bo.getId() +" waited for "+ (Clock.systemUTC().millis() - startTime) +" ms for "+ pid);
-                            }
+                            LOG.debug("{} waited for {}ms for pid: {}, newValue: {}", bo.getId(),
+                                    Clock.systemUTC().millis() - startTime, pid, newValue);
                             return;
                         }
                     }
@@ -121,27 +113,16 @@ public class ObjectTestUtils {
     }
 
     /**
-     * Convenience method for setting up a property write notifier without debugging.
+     * Convenience method for setting up a property write notifier.
      *
-     * @param bo the object to which to listen.
-     * @return the newly created notifier
+     * @param bo  the object to which to listen.
      * @param <T> the type of BACnetObject to which is being listened
+     * @return the newly created notifier
      */
     public static <T extends BACnetObject> ObjectWriteNotifier<T> createObjectWriteNotifier(T bo) {
-        return createObjectWriteNotifier(bo, false);
-    }
-
-    /**
-     * Convenience method for setting up a property write notifier
-     *
-     * @param bo the object to which to listen.
-     * @param debug true if debugging messages should be written.
-     * @return the newly created notifier
-     * @param <T> the type of BACnetObject to which is being listened
-     */
-    public static <T extends BACnetObject> ObjectWriteNotifier<T> createObjectWriteNotifier(T bo, boolean debug) {
-        ObjectWriteNotifier<T> notifier = new ObjectWriteNotifier<>(bo, debug);
-        bo.addMixin(notifier);
+        ObjectWriteNotifier<T> notifier = new ObjectWriteNotifier<>(bo);
+        // Always add the mixin at the front so that it never missed updates.
+        bo.addMixin(0, notifier);
         return notifier;
     }
 }

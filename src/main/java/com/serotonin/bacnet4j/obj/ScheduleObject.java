@@ -175,8 +175,9 @@ public class ScheduleObject extends BACnetObject {
             final Primitive scheduleDefault = get(PropertyIdentifier.scheduleDefault);
             final SequenceOf<DeviceObjectPropertyReference> refs = value.getValue();
             for (final DeviceObjectPropertyReference ref : refs) {
-                final ObjectPropertyTypeDefinition def = ObjectProperties.getObjectPropertyTypeDefinition(
-                        ref.getObjectIdentifier().getObjectType(), ref.getPropertyIdentifier());
+                final ObjectPropertyTypeDefinition def =
+                        ObjectProperties.getObjectPropertyTypeDefinition(ref.getObjectIdentifier().getObjectType(),
+                                ref.getPropertyIdentifier());
                 if (def != null) {
                     boolean isNull = scheduleDefault.getClass().equals(Null.class);
                     if (!isNull && scheduleDefault.getClass() != def.getPropertyTypeDefinition().getClazz()) {
@@ -190,8 +191,9 @@ public class ScheduleObject extends BACnetObject {
             final BACnetArray<DailySchedule> weeklySchedule = value.getValue();
             for (final DailySchedule daily : weeklySchedule) {
                 for (final TimeValue timeValue : daily.getDaySchedule()) {
-                    boolean isNull = timeValue.getValue().getClass().equals(Null.class) || scheduleDefault.getClass().equals(Null.class);
-                    if (!isNull &&  scheduleDefault.getClass() != timeValue.getValue().getClass()) {
+                    boolean isNull = timeValue.getValue().getClass().equals(Null.class) || scheduleDefault.getClass()
+                            .equals(Null.class);
+                    if (!isNull && scheduleDefault.getClass() != timeValue.getValue().getClass()) {
                         throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
                     }
                     if (!timeValue.getTime().isFullySpecified()) {
@@ -205,8 +207,9 @@ public class ScheduleObject extends BACnetObject {
             final SequenceOf<SpecialEvent> exceptionSchedule = value.getValue();
             for (final SpecialEvent specialEvent : exceptionSchedule) {
                 for (final TimeValue timeValue : specialEvent.getListOfTimeValues()) {
-                    boolean isNull = timeValue.getValue().getClass().equals(Null.class) || scheduleDefault.getClass().equals(Null.class);
-                    if (!isNull &&  scheduleDefault.getClass() != timeValue.getValue().getClass()) {
+                    boolean isNull = timeValue.getValue().getClass().equals(Null.class) || scheduleDefault.getClass()
+                            .equals(Null.class);
+                    if (!isNull && scheduleDefault.getClass() != timeValue.getValue().getClass()) {
                         throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
                     }
                     if (!timeValue.getTime().isFullySpecified()) {
@@ -221,10 +224,8 @@ public class ScheduleObject extends BACnetObject {
     /**
      * Starts the internal periodic writer.
      *
-     * @param delay
-     *            the delay before the first execution, in milliseconds.
-     * @param period
-     *            the period between executions, in milliseconds.
+     * @param delay  the delay before the first execution, in milliseconds.
+     * @param period the period between executions, in milliseconds.
      */
     public void startPeriodicWriter(final long delay, final long period) {
         if (delay < 0)
@@ -233,8 +234,7 @@ public class ScheduleObject extends BACnetObject {
             throw new IllegalArgumentException("period cannot be < 1");
 
         cancelPeriodicWriter();
-        periodicWriter = getLocalDevice().scheduleAtFixedRate(this::forceWrites, delay, period,
-                TimeUnit.MILLISECONDS);
+        periodicWriter = getLocalDevice().scheduleAtFixedRate(this::forceWrites, delay, period, TimeUnit.MILLISECONDS);
         LOG.debug("Periodic writer started");
     }
 
@@ -384,12 +384,13 @@ public class ScheduleObject extends BACnetObject {
 
     private static TimeValue getNextTimeValue(TimeValue currentTv, SequenceOf<TimeValue> schedule, DateTime now) {
         TimeValue nextTv = null;
-        if (currentTv != null) nextTv = new TimeValue(currentTv.getTime(), currentTv.getValue());
+        if (currentTv != null)
+            nextTv = new TimeValue(currentTv.getTime(), currentTv.getValue());
 
         int tvIndex = schedule.getCount();
         for (; tvIndex > 0; tvIndex--) {
             final TimeValue tv = schedule.getBase1(tvIndex);
-            if (nextTv == null && isBeginningOfDay(now)){
+            if (nextTv == null && isBeginningOfDay(now)) {
                 nextTv = tv;
             }
             if (nextTv != null && currentTv != null) {
@@ -421,10 +422,8 @@ public class ScheduleObject extends BACnetObject {
 
     private static boolean isBeginningOfDay(final DateTime now) {
         final GregorianCalendar gc = now.getGC();
-        return gc.get(Calendar.HOUR_OF_DAY) == 0 &&
-                gc.get(Calendar.MINUTE) == 0 &&
-                gc.get(Calendar.SECOND) == 0 &&
-                gc.get(Calendar.MILLISECOND) == 0;
+        return gc.get(Calendar.HOUR_OF_DAY) == 0 && gc.get(Calendar.MINUTE) == 0 && gc.get(
+                Calendar.SECOND) == 0 && gc.get(Calendar.MILLISECOND) == 0;
     }
 
     private static long timeOf(final Date date, final TimeValue tv) {
@@ -477,8 +476,8 @@ public class ScheduleObject extends BACnetObject {
     }
 
     void doWrites(final Encodable value) {
-        final SequenceOf<DeviceObjectPropertyReference> listOfObjectPropertyReferences = get(
-                PropertyIdentifier.listOfObjectPropertyReferences);
+        final SequenceOf<DeviceObjectPropertyReference> listOfObjectPropertyReferences =
+                get(PropertyIdentifier.listOfObjectPropertyReferences);
         final UnsignedInteger priorityForWriting = get(PropertyIdentifier.priorityForWriting);
 
         // Send the write requests.
@@ -502,8 +501,9 @@ public class ScheduleObject extends BACnetObject {
 
                 try {
                     final RemoteDevice d = getLocalDevice().getRemoteDevice(devId.getInstanceNumber()).get();
-                    final WritePropertyRequest req = new WritePropertyRequest(oid, dopr.getPropertyIdentifier(),
-                            dopr.getPropertyArrayIndex(), value, priorityForWriting);
+                    final WritePropertyRequest req =
+                            new WritePropertyRequest(oid, dopr.getPropertyIdentifier(), dopr.getPropertyArrayIndex(),
+                                    value, priorityForWriting);
                     getLocalDevice().send(d, req, new ResponseConsumer() {
                         @Override
                         public void success(final AcknowledgementService ack) {
