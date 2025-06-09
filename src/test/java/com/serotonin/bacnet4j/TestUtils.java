@@ -12,7 +12,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiPredicate;
-import java.util.function.BooleanSupplier;
 
 import org.junit.Assert;
 
@@ -36,7 +35,7 @@ import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 
 public class TestUtils {
     public static <T, U> void assertListEqualsIgnoreOrder(final List<T> expectedList, final List<U> actualList,
-                                                          final BiPredicate<T, U> predicate) {
+            final BiPredicate<T, U> predicate) {
         Assert.assertEquals(expectedList.size(), actualList.size());
         final List<U> actualListCopy = new ArrayList<>(actualList);
         for (final T expected : expectedList) {
@@ -187,10 +186,10 @@ public class TestUtils {
                 Assert.assertEquals(rejectReason, eae.getApdu().getRejectReason());
             } else {
                 fail("RejectAPDUException was expected: " + e.getClass());
-            }            
+            }
         }
     }
-    
+
     @FunctionalInterface
     public interface BACnetExceptionCommand {
         void call() throws BACnetException;
@@ -287,14 +286,71 @@ public class TestUtils {
         int size();
     }
 
-    public static void awaitCondition(BooleanSupplier condition, long timeoutMs) {
+
+    public interface BooleanSupplierWithException {
+        boolean getAsBoolean() throws Exception;
+    }
+
+    public static void awaitTrue(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
+        if (await(condition, true, timeoutMs)) {
+            return;
+        }
+        fail("awaitTrue timed out");
+    }
+
+    public static void awaitFalse(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
+        if (await(condition, false, timeoutMs)) {
+            return;
+        }
+        fail("awaitFalse timed out");
+    }
+
+    public static boolean equalsRegardingNull(Object expected, Object actual) {
+        if (expected == null) {
+            return actual == null;
+        }
+        return expected.equals(actual);
+    }
+
+    @FunctionalInterface
+    public interface IntSupplierWithException {
+        int get() throws Exception;
+    }
+
+    public static void awaitEquals(final IntSupplierWithException supplier, int constant, long timeoutMs)
+            throws Exception {
+        if (await(() -> supplier.get() == constant, true, timeoutMs)) {
+            return;
+        }
+        fail("awaitEquals timed out. Wanted " + constant + " but last value was " + supplier.get());
+    }
+
+    @FunctionalInterface
+    public interface EncodableSupplierWithException {
+        Encodable get() throws Exception;
+    }
+
+    public static void awaitEquals(final EncodableSupplierWithException supplier, Encodable constant, long timeoutMs)
+            throws Exception {
+        if (await(() -> equalsRegardingNull(supplier.get(), constant), true, timeoutMs)) {
+            return;
+        }
+        fail("awaitEquals timed out. Wanted " + constant + " but last value was " + supplier.get());
+    }
+
+    public static boolean await(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
+        return await(condition, true, timeoutMs);
+    }
+
+    public static boolean await(BooleanSupplierWithException condition, boolean value, long timeoutMs)
+            throws Exception {
         final long deadline = Clock.systemUTC().millis() + timeoutMs;
         while (true) {
-            if (condition.getAsBoolean()) {
-                return;
+            if (condition.getAsBoolean() == value) {
+                return true;
             }
             if (deadline < Clock.systemUTC().millis()) {
-                fail("awaitCondition timed out");
+                return false;
             }
             ThreadUtils.sleep(2);
         }

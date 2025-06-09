@@ -6,7 +6,6 @@ import static org.junit.Assert.assertNull;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 
-import com.serotonin.bacnet4j.type.primitive.Boolean;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,7 +15,6 @@ import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.enums.Month;
 import com.serotonin.bacnet4j.exception.BACnetException;
-import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.obj.AnalogInputObject;
@@ -44,6 +42,7 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Date;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
@@ -75,21 +74,21 @@ public class ReadRangeRequestTest {
      */
     @Test
     public void networkRead() throws Exception {
-        final SequenceOf<Recipient> recipients = new SequenceOf<>(
-                new Recipient(new ObjectIdentifier(ObjectType.device, 1)),
-                new Recipient(new ObjectIdentifier(ObjectType.device, 2)),
-                new Recipient(new ObjectIdentifier(ObjectType.device, 3)),
-                new Recipient(new ObjectIdentifier(ObjectType.device, 4)),
-                new Recipient(new ObjectIdentifier(ObjectType.device, 5)),
-                new Recipient(new ObjectIdentifier(ObjectType.device, 6)));
+        final SequenceOf<Recipient> recipients =
+                new SequenceOf<>(new Recipient(new ObjectIdentifier(ObjectType.device, 1)),
+                        new Recipient(new ObjectIdentifier(ObjectType.device, 2)),
+                        new Recipient(new ObjectIdentifier(ObjectType.device, 3)),
+                        new Recipient(new ObjectIdentifier(ObjectType.device, 4)),
+                        new Recipient(new ObjectIdentifier(ObjectType.device, 5)),
+                        new Recipient(new ObjectIdentifier(ObjectType.device, 6)));
         d1.getObject(d1.getId()).writePropertyInternal(PropertyIdentifier.restartNotificationRecipients, recipients);
 
         final LocalDevice d2 = new LocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 0))).initialize();
 
         final RemoteDevice rd1 = d2.getRemoteDeviceBlocking(1);
-        final ReadRangeAck ack = d2
-                .send(rd1, new ReadRangeRequest(d1.getId(), PropertyIdentifier.restartNotificationRecipients, null))
-                .get();
+        final ReadRangeAck ack =
+                d2.send(rd1, new ReadRangeRequest(d1.getId(), PropertyIdentifier.restartNotificationRecipients, null))
+                        .get();
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
         assertEquals(PropertyIdentifier.restartNotificationRecipients, ack.getPropertyIdentifier());
@@ -109,16 +108,17 @@ public class ReadRangeRequestTest {
     public void trendLogMultiple() throws Exception {
         final WarpClock clock = new WarpClock();
 
-        final LocalDevice d11 = new LocalDevice(11, new DefaultTransport(new TestNetwork(map, 11, 0))).withClock(clock)
-                .initialize();
+        final LocalDevice d11 =
+                new LocalDevice(11, new DefaultTransport(new TestNetwork(map, 11, 0))).withClock(clock).initialize();
         final AnalogInputObject ai = new AnalogInputObject(d11, 0, "ai", 12, EngineeringUnits.noUnits, false);
 
-        final LocalDevice d12 = new LocalDevice(12, new DefaultTransport(new TestNetwork(map, 12, 0))).withClock(clock)
-                .initialize();
-        final TrendLogMultipleObject tl = new TrendLogMultipleObject(d12, 0, "tlm", new LinkedListLogBuffer<>(), true,
-                DateTime.UNSPECIFIED, DateTime.UNSPECIFIED,
-                new BACnetArray<>(new DeviceObjectPropertyReference(11, ai.getId(), PropertyIdentifier.presentValue)),
-                0, false, 100);
+        final LocalDevice d12 =
+                new LocalDevice(12, new DefaultTransport(new TestNetwork(map, 12, 0))).withClock(clock).initialize();
+        final TrendLogMultipleObject tl =
+                new TrendLogMultipleObject(d12, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                        DateTime.UNSPECIFIED, new BACnetArray<>(
+                        new DeviceObjectPropertyReference(11, ai.getId(), PropertyIdentifier.presentValue)), 0, false,
+                        100);
 
         final RemoteDevice rd12 = d11.getRemoteDeviceBlocking(12);
         final DateTime now = new DateTime(clock.millis());
@@ -127,16 +127,15 @@ public class ReadRangeRequestTest {
         doTriggers(tl, 11);
 
         // Read the buffer.
-        final ReadRangeAck ack = d11.send(rd12, new ReadRangeRequest(tl.getId(), PropertyIdentifier.logBuffer, null))
-                .get();
+        final ReadRangeAck ack =
+                d11.send(rd12, new ReadRangeRequest(tl.getId(), PropertyIdentifier.logBuffer, null)).get();
 
         assertEquals(tl.getId(), ack.getObjectIdentifier());
         assertEquals(PropertyIdentifier.logBuffer, ack.getPropertyIdentifier());
         assertNull(ack.getPropertyArrayIndex());
         assertEquals(new ResultFlags(true, true, false), ack.getResultFlags());
         assertEquals(new UnsignedInteger(11), ack.getItemCount());
-        assertEquals(
-                new SequenceOf<>( //
+        assertEquals(new SequenceOf<>( //
                         new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
                         new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
                         new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
@@ -152,13 +151,13 @@ public class ReadRangeRequestTest {
         assertNull(ack.getFirstSequenceNumber());
     }
 
-    private static void doTriggers(final TrendLogMultipleObject tl, final int count) {
+    private static void doTriggers(final TrendLogMultipleObject tl, final int count) throws Exception {
         int remaining = count;
         while (remaining > 0) {
-            TestUtils.awaitCondition(tl::trigger, 5000);
+            TestUtils.await(tl::trigger, 5000);
             remaining--;
         }
-        TestUtils.awaitCondition(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue(), 5000);
+        TestUtils.await(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue(), 5000);
     }
 
     /**
@@ -173,8 +172,8 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(800, 300))
-                .handle(d1, null);
+        final ReadRangeAck ack =
+                (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(800, 300)).handle(d1, null);
 
         data = new SequenceOf<>(200);
         for (int i = 0; i < 200; i++)
@@ -201,8 +200,9 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(1000, -1000))
-                .handle(d1, null);
+        final ReadRangeAck ack =
+                (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(1000, -1000)).handle(d1,
+                        null);
 
         data = new SequenceOf<>(200);
         for (int i = 0; i < 200; i++)
@@ -229,8 +229,9 @@ public class ReadRangeRequestTest {
             data.add(createLogRecord(now, 2001 + i));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
-                new BySequenceNumber(2800, 300)).handle(d1, null);
+        final ReadRangeAck ack =
+                (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new BySequenceNumber(2800, 300)).handle(d1,
+                        null);
 
         data = new SequenceOf<>(200);
         for (int i = 0; i < 200; i++)
@@ -257,8 +258,9 @@ public class ReadRangeRequestTest {
             data.add(createLogRecord(now, 2001 + i));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
-                new BySequenceNumber(3000, -1000)).handle(d1, null);
+        final ReadRangeAck ack =
+                (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new BySequenceNumber(3000, -1000)).handle(d1,
+                        null);
 
         data = new SequenceOf<>(200);
         for (int i = 0; i < 200; i++)
@@ -290,7 +292,7 @@ public class ReadRangeRequestTest {
 
         final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
                 new ByTime(new DateTime(new Date(2013, Month.MARCH, 18, null), new Time(13, 59, 0, 0)), 300)).handle(d1,
-                        null);
+                null);
 
         data = new SequenceOf<>(200);
         gc.set(2013, Calendar.MARCH, 18, 14, 0, 0);
@@ -324,8 +326,8 @@ public class ReadRangeRequestTest {
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
         final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
-                new ByTime(new DateTime(new Date(1991, Month.NOVEMBER, 17, null), new Time(19, 20, 0, 0)), 300))
-                        .handle(d1, null);
+                new ByTime(new DateTime(new Date(1991, Month.NOVEMBER, 17, null), new Time(19, 20, 0, 0)), 300)).handle(
+                d1, null);
 
         data = new SequenceOf<>(200);
         gc.set(2013, Calendar.MARCH, 18, 1, 1, 0);
@@ -359,8 +361,8 @@ public class ReadRangeRequestTest {
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
         final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
-                new ByTime(new DateTime(new Date(2013, Month.MARCH, 18, null), new Time(17, 40, 0, 0)), -1000))
-                        .handle(d1, null);
+                new ByTime(new DateTime(new Date(2013, Month.MARCH, 18, null), new Time(17, 40, 0, 0)), -1000)).handle(
+                d1, null);
 
         data = new SequenceOf<>(200);
         gc.set(2013, Calendar.MARCH, 18, 14, 20, 0);
@@ -380,66 +382,69 @@ public class ReadRangeRequestTest {
 
     @Test
     public void validations() {
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(new ObjectIdentifier(ObjectType.accessCredential, 0), pid, null).handle(d1, null),
-                ErrorClass.object, ErrorCode.unknownObject);
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(new ObjectIdentifier(ObjectType.accessCredential, 0), pid, null).handle(d1,
+                        null), ErrorClass.object, ErrorCode.unknownObject);
 
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), pid, null).handle(d1, null),
+        TestUtils.assertRequestHandleException(() -> new ReadRangeRequest(d1.getId(), pid, null).handle(d1, null),
                 ErrorClass.property, ErrorCode.unknownProperty);
 
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), PropertyIdentifier.all, null).handle(d1, null),
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.all, null).handle(d1, null),
                 ErrorClass.services, ErrorCode.parameterOutOfRange);
 
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), pid, UnsignedInteger.ZERO).handle(d1, null),
-                ErrorClass.services, ErrorCode.parameterOutOfRange);
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(d1.getId(), pid, UnsignedInteger.ZERO).handle(d1, null), ErrorClass.services,
+                ErrorCode.parameterOutOfRange);
 
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), pid, new UnsignedInteger(1), new ByPosition(1, 0)).handle(d1, null),
-                ErrorClass.services, ErrorCode.parameterOutOfRange);
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(d1.getId(), pid, new UnsignedInteger(1), new ByPosition(1, 0)).handle(d1,
+                        null), ErrorClass.services, ErrorCode.parameterOutOfRange);
 
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, new UnsignedInteger(1)).handle(d1, null),
-                ErrorClass.property, ErrorCode.unknownProperty);
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, new UnsignedInteger(1)).handle(d1,
+                        null), ErrorClass.property, ErrorCode.unknownProperty);
 
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null).handle(d1, null),
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null).handle(d1, null),
                 ErrorClass.property, ErrorCode.unknownProperty);
     }
 
     @Test
     public void moreValidations() {
         d1.writePropertyInternal(PropertyIdentifier.logBuffer, UnsignedInteger.ZERO);
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null).handle(d1, null),
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null).handle(d1, null),
                 ErrorClass.services, ErrorCode.propertyIsNotAList);
 
         d1.writePropertyInternal(PropertyIdentifier.logBuffer, new LinkedListLogBuffer<>());
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, new UnsignedInteger(1)).handle(d1, null),
-                ErrorClass.property, ErrorCode.propertyIsNotAnArray);
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, new UnsignedInteger(1)).handle(d1,
+                        null), ErrorClass.property, ErrorCode.propertyIsNotAnArray);
 
         d1.writePropertyInternal(PropertyIdentifier.logBuffer, new SequenceOf<>(UnsignedInteger.ZERO));
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null, new BySequenceNumber(1, 1)).handle(d1, null),
-                ErrorClass.property, ErrorCode.datatypeNotSupported);
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null,
+                        new BySequenceNumber(1, 1)).handle(d1, null), ErrorClass.property,
+                ErrorCode.datatypeNotSupported);
 
         d1.writePropertyInternal(PropertyIdentifier.logBuffer, new SequenceOf<>(UnsignedInteger.ZERO));
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null, new ByTime(DateTime.UNSPECIFIED, 1)).handle(d1, null),
-                ErrorClass.property, ErrorCode.datatypeNotSupported);
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null,
+                        new ByTime(DateTime.UNSPECIFIED, 1)).handle(d1, null), ErrorClass.property,
+                ErrorCode.datatypeNotSupported);
 
         d1.writePropertyInternal(PropertyIdentifier.logBuffer, new SequenceOf<>(UnsignedInteger.ZERO));
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null, new ByTime(new DateTime(d1), 1)).handle(d1, null),
-                ErrorClass.property, ErrorCode.datatypeNotSupported);
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null,
+                        new ByTime(new DateTime(d1), 1)).handle(d1, null), ErrorClass.property,
+                ErrorCode.datatypeNotSupported);
 
         d1.writePropertyInternal(PropertyIdentifier.logBuffer, new SequenceOf<>(new SequencedNotTimestamped()));
-        TestUtils.assertRequestHandleException(() ->
-                new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null, new ByTime(new DateTime(d1), 1)).handle(d1, null),
-                ErrorClass.property, ErrorCode.datatypeNotSupported);
+        TestUtils.assertRequestHandleException(
+                () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null,
+                        new ByTime(new DateTime(d1), 1)).handle(d1, null), ErrorClass.property,
+                ErrorCode.datatypeNotSupported);
     }
 
     /**
@@ -489,8 +494,8 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(800, 150))
-                .handle(d1, null);
+        final ReadRangeAck ack =
+                (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(800, 150)).handle(d1, null);
 
         data = new SequenceOf<>(150);
         for (int i = 0; i < 150; i++)
@@ -512,8 +517,8 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(0, 150))
-                .handle(d1, null);
+        final ReadRangeAck ack =
+                (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(0, 150)).handle(d1, null);
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
         assertEquals(pid, ack.getPropertyIdentifier());
@@ -531,8 +536,8 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(1001, 150))
-                .handle(d1, null);
+        final ReadRangeAck ack =
+                (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(1001, 150)).handle(d1, null);
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
         assertEquals(pid, ack.getPropertyIdentifier());
@@ -573,8 +578,9 @@ public class ReadRangeRequestTest {
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
         // Too low
-        ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new BySequenceNumber(50, 300))
-                .handle(d1, null);
+        ReadRangeAck ack =
+                (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new BySequenceNumber(50, 300)).handle(d1,
+                        null);
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
         assertEquals(pid, ack.getPropertyIdentifier());
@@ -609,7 +615,7 @@ public class ReadRangeRequestTest {
 
         final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
                 new ByTime(new DateTime(new Date(2013, Month.MARCH, 18, null), new Time(1, 15, 30, 0)), -10)).handle(d1,
-                        null);
+                null);
 
         data = new SequenceOf<>(10);
         gc.set(2013, Calendar.MARCH, 18, 1, 6, 0);
@@ -640,7 +646,7 @@ public class ReadRangeRequestTest {
         // Too low
         ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
                 new ByTime(new DateTime(new Date(2013, Month.MARCH, 18, null), new Time(1, 1, 0, 0)), -10)).handle(d1,
-                        null);
+                null);
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
         assertEquals(pid, ack.getPropertyIdentifier());
@@ -653,7 +659,7 @@ public class ReadRangeRequestTest {
         // Too high
         ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
                 new ByTime(new DateTime(new Date(2013, Month.MARCH, 18, null), new Time(1, 20, 0, 0)), 10)).handle(d1,
-                        null);
+                null);
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
         assertEquals(pid, ack.getPropertyIdentifier());
@@ -671,8 +677,8 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(951, 100))
-                .handle(d1, null);
+        final ReadRangeAck ack =
+                (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(951, 100)).handle(d1, null);
 
         data = new SequenceOf<>(50);
         for (int i = 0; i < 50; i++)
@@ -694,8 +700,8 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(50, -100))
-                .handle(d1, null);
+        final ReadRangeAck ack =
+                (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(50, -100)).handle(d1, null);
 
         data = new SequenceOf<>(50);
         for (int i = 0; i < 50; i++)

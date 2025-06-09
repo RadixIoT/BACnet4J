@@ -1,9 +1,9 @@
 package com.serotonin.bacnet4j.obj;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +22,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class EventNotifListener extends DeviceEventAdapter {
     static final Logger LOG = LoggerFactory.getLogger(EventNotifListener.class);
 
-    public final List<Map<String, Object>> notifs = new ArrayList<>();
+    public final List<Map<String, Object>> notifs = new CopyOnWriteArrayList<>();
 
     @Override
     public void eventNotificationReceived(final UnsignedInteger processIdentifier,
