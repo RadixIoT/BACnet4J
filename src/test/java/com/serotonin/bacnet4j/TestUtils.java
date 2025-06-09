@@ -287,10 +287,21 @@ public class TestUtils {
     }
 
 
+    /**
+     * Supplier that returns a boolean and can throw an exception doing so.
+     */
+    @FunctionalInterface
     public interface BooleanSupplierWithException {
         boolean getAsBoolean() throws Exception;
     }
 
+    /**
+     * A utility to busy-wait up to a given timeout for the given condition to become true.
+     *
+     * @param condition the condition to which to wait
+     * @param timeoutMs the maximum amount of time to wait
+     * @throws Exception the exception if any that the condition threw
+     */
     public static void awaitTrue(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
         if (await(condition, true, timeoutMs)) {
             return;
@@ -298,6 +309,13 @@ public class TestUtils {
         fail("awaitTrue timed out");
     }
 
+    /**
+     * Utility to busy-wait up to a given timeout for the given condition to become false.
+     *
+     * @param condition the condition to which to wait
+     * @param timeoutMs the maximum amount of time to wait
+     * @throws Exception the exception if any thrown by the condition
+     */
     public static void awaitFalse(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
         if (await(condition, false, timeoutMs)) {
             return;
@@ -305,6 +323,13 @@ public class TestUtils {
         fail("awaitFalse timed out");
     }
 
+    /**
+     * Lifted from Assert to test whether a given object pair are either both null or equal.
+     *
+     * @param expected the expected value
+     * @param actual   the value to check
+     * @return true if they are both null or equal, false otherwise
+     */
     public static boolean equalsRegardingNull(Object expected, Object actual) {
         if (expected == null) {
             return actual == null;
@@ -312,11 +337,22 @@ public class TestUtils {
         return expected.equals(actual);
     }
 
+    /**
+     * Supplier that returns an int and can throw an exception doing so.
+     */
     @FunctionalInterface
     public interface IntSupplierWithException {
         int get() throws Exception;
     }
 
+    /**
+     * Utility to busy-wait up to a given timeout for the given supplier to supply a value that matches that given.
+     *
+     * @param supplier  the supplier the value of which to check
+     * @param constant  the value to match
+     * @param timeoutMs the maximum amount of time to wait
+     * @throws Exception the exception if any thrown by the supplier
+     */
     public static void awaitEquals(final IntSupplierWithException supplier, int constant, long timeoutMs)
             throws Exception {
         if (await(() -> supplier.get() == constant, true, timeoutMs)) {
@@ -325,11 +361,22 @@ public class TestUtils {
         fail("awaitEquals timed out. Wanted " + constant + " but last value was " + supplier.get());
     }
 
+    /**
+     * Supplier that returns an Encodable and can throw an exception doing so.
+     */
     @FunctionalInterface
     public interface EncodableSupplierWithException {
         Encodable get() throws Exception;
     }
 
+    /**
+     * Utility to busy-wait up to a given timeout for the given supplier to supply a value that matches that given.
+     *
+     * @param supplier  the supplier the value of which to check
+     * @param constant  the value to match
+     * @param timeoutMs the maximum amount of time to wait
+     * @throws Exception the exception if any thrown by the supplier
+     */
     public static void awaitEquals(final EncodableSupplierWithException supplier, Encodable constant, long timeoutMs)
             throws Exception {
         if (await(() -> equalsRegardingNull(supplier.get(), constant), true, timeoutMs)) {
@@ -342,6 +389,15 @@ public class TestUtils {
         return await(condition, true, timeoutMs);
     }
 
+    /**
+     * Utility that will "busy-wait" up to a given timeout for a condition to match the given value.
+     *
+     * @param condition the condition to which to wait
+     * @param value     the value the condition should match
+     * @param timeoutMs the maximum amount of time to wait
+     * @return true if the condition was matched, false otherwise
+     * @throws Exception the exception if any thrown by the condition
+     */
     public static boolean await(BooleanSupplierWithException condition, boolean value, long timeoutMs)
             throws Exception {
         final long deadline = Clock.systemUTC().millis() + timeoutMs;
