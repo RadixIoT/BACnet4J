@@ -8,7 +8,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
@@ -182,21 +181,21 @@ public class BinaryOutputObjectTest extends AbstractTest {
 
         // Ensure that a proper looking event notification was received.
         assertEquals(1, listener.getNotifCount());
-        Map<String, Object> notif = listener.removeNotif(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(obj.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) obj.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.offnormal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(100), notif.get("priority"));
-        assertEquals(EventType.commandFailure, notif.get("eventType"));
-        assertNull(notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.offnormal, notif.get("toState"));
-        CommandFailureNotif commandFailure = ((NotificationParameters) notif.get("eventValues")).getParameter();
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(obj.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) obj.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.offnormal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(100), notif.priority());
+        assertEquals(EventType.commandFailure, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.offnormal, notif.toState());
+        CommandFailureNotif commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
         assertEquals(BinaryPV.inactive, AmbiguousValue.convertTo(commandFailure.getCommandValue(), BinaryPV.class));
         assertEquals(new StatusFlags(true, false, false, false), commandFailure.getStatusFlags());
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), BinaryPV.class));
@@ -204,28 +203,29 @@ public class BinaryOutputObjectTest extends AbstractTest {
         // Return to normal. After 12s the notification will be sent.
         obj.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
         clock.plus(11500, TimeUnit.MILLISECONDS, 11500, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal, obj.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
+        assertEquals(EventState.offnormal,
+                obj.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
         clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.normal, obj.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), obj.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
         assertEquals(1, listener.getNotifCount());
-        notif = listener.removeNotif(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(obj.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) obj.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(200), notif.get("priority"));
-        assertEquals(EventType.commandFailure, notif.get("eventType"));
-        assertNull(notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.offnormal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
-        commandFailure = ((NotificationParameters) notif.get("eventValues")).getParameter();
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(obj.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) obj.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(200), notif.priority());
+        assertEquals(EventType.commandFailure, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.offnormal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
+        commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getCommandValue(), BinaryPV.class));
         assertEquals(new StatusFlags(false, false, false, false), commandFailure.getStatusFlags());
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), BinaryPV.class));
@@ -234,8 +234,8 @@ public class BinaryOutputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReporting() throws Exception {
-        final DeviceObjectPropertyReference ref = new DeviceObjectPropertyReference(1, obj.getId(),
-                PropertyIdentifier.presentValue);
+        final DeviceObjectPropertyReference ref =
+                new DeviceObjectPropertyReference(1, obj.getId(), PropertyIdentifier.presentValue);
         final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(new CommandFailure(new UnsignedInteger(30),
                         new DeviceObjectPropertyReference(1, obj.getId(), PropertyIdentifier.feedbackValue))),
@@ -270,21 +270,21 @@ public class BinaryOutputObjectTest extends AbstractTest {
 
         // Ensure that a proper looking event notification was received.
         assertEquals(1, listener.getNotifCount());
-        Map<String, Object> notif = listener.removeNotif(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.offnormal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(100), notif.get("priority"));
-        assertEquals(EventType.commandFailure, notif.get("eventType"));
-        assertNull(notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.offnormal, notif.get("toState"));
-        CommandFailureNotif commandFailure = ((NotificationParameters) notif.get("eventValues")).getParameter();
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.offnormal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(100), notif.priority());
+        assertEquals(EventType.commandFailure, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.offnormal, notif.toState());
+        CommandFailureNotif commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
         assertEquals(BinaryPV.inactive, AmbiguousValue.convertTo(commandFailure.getCommandValue(), BinaryPV.class));
         assertEquals(new StatusFlags(false, false, false, false), commandFailure.getStatusFlags());
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), BinaryPV.class));
@@ -304,21 +304,21 @@ public class BinaryOutputObjectTest extends AbstractTest {
 
         // Ensure that a proper looking event notification was received.
         assertEquals(1, listener.getNotifCount());
-        notif = listener.removeNotif(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(200), notif.get("priority"));
-        assertEquals(EventType.commandFailure, notif.get("eventType"));
-        assertNull(notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.offnormal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
-        commandFailure = ((NotificationParameters) notif.get("eventValues")).getParameter();
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(200), notif.priority());
+        assertEquals(EventType.commandFailure, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.offnormal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
+        commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getCommandValue(), BinaryPV.class));
         assertEquals(new StatusFlags(false, false, false, false), commandFailure.getStatusFlags());
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), BinaryPV.class));
