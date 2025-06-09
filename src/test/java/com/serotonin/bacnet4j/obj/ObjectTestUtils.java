@@ -101,14 +101,7 @@ public class ObjectTestUtils {
             }
         }
 
-        static class WrittenProperty {
-            PropertyIdentifier pid;
-            Encodable newValue;
-
-            WrittenProperty(PropertyIdentifier pid, Encodable newValue) {
-                this.pid = pid;
-                this.newValue = newValue;
-            }
+        record WrittenProperty(PropertyIdentifier pid, Encodable newValue) {
         }
     }
 
