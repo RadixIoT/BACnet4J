@@ -1,6 +1,8 @@
 package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -11,8 +13,10 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.AbstractTest;
+import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.enums.DayOfWeek;
 import com.serotonin.bacnet4j.enums.Month;
+import com.serotonin.bacnet4j.obj.ObjectTestUtils.ObjectWriteNotifier;
 import com.serotonin.bacnet4j.service.confirmed.AddListElementRequest;
 import com.serotonin.bacnet4j.service.confirmed.RemoveListElementRequest;
 import com.serotonin.bacnet4j.service.confirmed.WritePropertyMultipleRequest;
@@ -21,6 +25,7 @@ import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.constructed.CalendarEntry;
 import com.serotonin.bacnet4j.type.constructed.DailySchedule;
 import com.serotonin.bacnet4j.type.constructed.DateRange;
+import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.Destination;
 import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
 import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
@@ -60,7 +65,6 @@ public class ScheduleObjectTest extends AbstractTest {
     @Test
     public void fullTest() throws Exception {
         // Not really a full test. The effective period could be better.
-
         clock.set(2115, java.time.Month.MAY, 1, 12, 0, 0);
 
         final AnalogValueObject av0 =
@@ -70,35 +74,44 @@ public class ScheduleObjectTest extends AbstractTest {
 
         final Primitive defaultScheduledValue = new Real(999);
         final ScheduleObject so = createScheduleObject(av0, av1, defaultScheduledValue);
+        final ObjectWriteNotifier<ScheduleObject> soNotifier = ObjectTestUtils.createObjectWriteNotifier(so);
 
-        Thread.sleep(100); // Let the requests be received.
-        Assert.assertEquals(new Real(14), so.get(PropertyIdentifier.presentValue));
-        Assert.assertEquals(new Real(14), av0.get(PropertyIdentifier.presentValue));
-        Assert.assertEquals(new Real(14), av1.get(PropertyIdentifier.presentValue));
+        awaitEquals(() -> so.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), new Real(14), 5000);
 
         // Start actual tests.
-        testTime(so, av0, av1, java.time.Month.MAY, 1, 17, 0, new Real(15)); // Wednesday
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 0, 0, defaultScheduledValue); // Thursday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 9, 0, new Real(16)); // Thursday
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 20, 0, new Real(17)); // Thursday
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 0, 0, defaultScheduledValue); // Friday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 13, 0,
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 1, 17, 0, new Real(15)); // Wednesday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 0, 0,
+                defaultScheduledValue); // Thursday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 9, 0, new Real(16)); // Thursday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 20, 0, new Real(17)); // Thursday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 0, 0,
+                defaultScheduledValue); // Friday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 13, 0,
                 new Real(22)); // Exception schedule at 13:00 with priority 7
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 14, 0,
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 14, 0,
                 new Real(23)); // Exception schedule at 14:00 with priority 7
-        testTime(so, av0, av1, java.time.Month.MAY, 4, 0, 0, defaultScheduledValue); // Saturday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 5, 0, 0, defaultScheduledValue); // Sunday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 0, 0, defaultScheduledValue); // Monday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 8, 0, new Real(10)); // Monday
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 17, 0, new Real(11));  // Monday
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 0, 0, defaultScheduledValue); // Tuesday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 8, 0, new Real(12)); // Tuesday
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 17, 0, new Null()); // Null schedule from weekly schedule
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 0, 0, defaultScheduledValue); // Wednesday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 10, 30,
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 4, 0, 0,
+                defaultScheduledValue); // Saturday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 5, 0, 0,
+                defaultScheduledValue); // Sunday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 0, 0,
+                defaultScheduledValue); // Monday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 8, 0, new Real(10)); // Monday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 17, 0, new Real(11));  // Monday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 0, 0,
+                defaultScheduledValue); // Tuesday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 8, 0, new Real(12)); // Tuesday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 17, 0, new Null()); // Null schedule from weekly schedule
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 0, 0,
+                defaultScheduledValue); // Wednesday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 10, 30,
                 new Real(24)); // Exception schedule at 10:30 with priority 6
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 17, 0, new Null());  // Null schedule from exception schedule
-        testTime(so, av0, av1, java.time.Month.MAY, 9, 0, 0, defaultScheduledValue); // Thursday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 17, 0,
+                new Null());  // Null schedule from exception schedule
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 9, 0, 0,
+                defaultScheduledValue); // Thursday beginning of the day
     }
 
     @Test
@@ -112,60 +125,79 @@ public class ScheduleObjectTest extends AbstractTest {
 
         final Primitive defaultScheduledValue = new Null();
         final ScheduleObject so = createScheduleObject(av0, av1, defaultScheduledValue);
+        final ObjectWriteNotifier<ScheduleObject> soNotifier = ObjectTestUtils.createObjectWriteNotifier(so);
 
-        Thread.sleep(100); // Let the requests be received.
-        Assert.assertEquals(new Real(14), so.get(PropertyIdentifier.presentValue));
-        Assert.assertEquals(new Real(14), av0.get(PropertyIdentifier.presentValue));
-        Assert.assertEquals(new Real(14), av1.get(PropertyIdentifier.presentValue));
+        awaitEquals(() -> so.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), new Real(14), 5000);
 
         // Start actual tests.
-        testTime(so, av0, av1, java.time.Month.MAY, 1, 17, 0, new Real(15)); // Wednesday
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 0, 0, defaultScheduledValue); // Thursday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 9, 0, new Real(16)); // Thursday
-        testTime(so, av0, av1, java.time.Month.MAY, 2, 20, 0, new Real(17)); // Thursday
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 0, 0, defaultScheduledValue); // Friday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 13, 0,
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 1, 17, 0, new Real(15)); // Wednesday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 0, 0,
+                defaultScheduledValue); // Thursday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 9, 0, new Real(16)); // Thursday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 20, 0, new Real(17)); // Thursday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 0, 0,
+                defaultScheduledValue); // Friday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 13, 0,
                 new Real(22)); // Exception schedule at 13:00 with priority 7
-        testTime(so, av0, av1, java.time.Month.MAY, 3, 14, 0,
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 14, 0,
                 new Real(23)); // Exception schedule at 14:00 with priority 7
-        testTime(so, av0, av1, java.time.Month.MAY, 4, 0, 0, defaultScheduledValue); // Saturday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 5, 0, 0, defaultScheduledValue); // Sunday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 0, 0, defaultScheduledValue); // Monday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 8, 0, new Real(10)); // Monday
-        testTime(so, av0, av1, java.time.Month.MAY, 6, 17, 0, new Real(11));  // Monday
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 0, 0, defaultScheduledValue); // Tuesday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 8, 0, new Real(12)); // Tuesday
-        testTime(so, av0, av1, java.time.Month.MAY, 7, 17, 0, new Null()); // Null schedule from weekly schedule
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 0, 0, defaultScheduledValue); // Wednesday beginning of the day
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 10, 30,
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 4, 0, 0,
+                defaultScheduledValue); // Saturday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 5, 0, 0,
+                defaultScheduledValue); // Sunday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 0, 0,
+                defaultScheduledValue); // Monday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 8, 0, new Real(10)); // Monday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 17, 0, new Real(11));  // Monday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 0, 0,
+                defaultScheduledValue); // Tuesday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 8, 0, new Real(12)); // Tuesday
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 17, 0, new Null()); // Null schedule from weekly schedule
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 0, 0,
+                defaultScheduledValue); // Wednesday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 10, 30,
                 new Real(24)); // Exception schedule at 10:30 with priority 6
-        testTime(so, av0, av1, java.time.Month.MAY, 8, 17, 0, new Null());  // Null schedule from exception schedule
-        testTime(so, av0, av1, java.time.Month.MAY, 9, 0, 0, defaultScheduledValue); // Thursday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 17, 0,
+                new Null());  // Null schedule from exception schedule
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 9, 0, 0,
+                defaultScheduledValue); // Thursday beginning of the day
     }
 
-    private void testTime(final ScheduleObject so, final AnalogValueObject av0, final AnalogValueObject av1,
-            final java.time.Month month, final int day, final int hour, final int min, final Primitive scheduledValue)
-            throws Exception {
+    private void testTime(final ObjectWriteNotifier<ScheduleObject> so, final AnalogValueObject av0,
+            final AnalogValueObject av1, final java.time.Month month, final int day, final int hour, final int min,
+            final Primitive scheduledValue) throws Exception {
+        so.clear();
         clock.set(2115, month, day, hour, min, 0);
-        Thread.sleep(100); // Let the requests be received.
+
+        // Wait until the schedule has completed the update. We do this because in some cases the values have not
+        // changed, and so the awaits below will complete immediately, which ultimately can cause another time update
+        // to be called before the previous one has finished, which then results in missed updates.
+        awaitTrue(() -> {
+            DateTime lastUpdateTime = so.obj().getLastUpdateTime();
+            return lastUpdateTime.getDate().getMonth().getId() == month.getValue() && lastUpdateTime.getDate()
+                    .getDay() == day && lastUpdateTime.getTime().getHour() == hour && lastUpdateTime.getTime()
+                    .getMinute() == min;
+        }, 5000);
 
         if (scheduledValue.getClass().equals(Null.class)) {
-            final Primitive scheduleDefault = so.readProperty(PropertyIdentifier.scheduleDefault);
+            final Primitive scheduleDefault = so.obj().readProperty(PropertyIdentifier.scheduleDefault);
             if (scheduleDefault.getClass().equals(Null.class)) {
-                Assert.assertEquals(new Null(), so.get(PropertyIdentifier.presentValue));
-                Assert.assertEquals(av0.readProperty(PropertyIdentifier.relinquishDefault),
-                        av0.get(PropertyIdentifier.presentValue));
-                Assert.assertEquals(av1.readProperty(PropertyIdentifier.relinquishDefault),
-                        av1.get(PropertyIdentifier.presentValue));
+                so.waitFor(PropertyIdentifier.presentValue, new Null(), 5000);
+                awaitEquals(() -> av0.get(PropertyIdentifier.presentValue),
+                        av0.readProperty(PropertyIdentifier.relinquishDefault), 5000);
+                awaitEquals(() -> av1.get(PropertyIdentifier.presentValue),
+                        av1.readProperty(PropertyIdentifier.relinquishDefault), 5000);
             } else {
-                Assert.assertEquals(scheduleDefault, so.get(PropertyIdentifier.presentValue));
-                Assert.assertEquals(scheduleDefault, av0.get(PropertyIdentifier.presentValue));
-                Assert.assertEquals(scheduleDefault, av1.get(PropertyIdentifier.presentValue));
+                so.waitFor(PropertyIdentifier.presentValue, scheduleDefault, 5000);
+                awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), scheduleDefault, 5000);
+                awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), scheduleDefault, 5000);
             }
         } else {
-            Assert.assertEquals(scheduledValue, so.get(PropertyIdentifier.presentValue));
-            Assert.assertEquals(scheduledValue, av0.get(PropertyIdentifier.presentValue));
-            Assert.assertEquals(scheduledValue, av1.get(PropertyIdentifier.presentValue));
+            so.waitFor(PropertyIdentifier.presentValue, scheduledValue, 5000);
+            awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), scheduledValue, 5000);
+            awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), scheduledValue, 5000);
         }
     }
 
@@ -185,7 +217,7 @@ public class ScheduleObjectTest extends AbstractTest {
         final AnalogValueObject av1 =
                 new AnalogValueObject(d1, 1, "av1", 99, EngineeringUnits.amperesPerMeter, false).supportCommandable(-1);
 
-        final SequenceOf<SpecialEvent> exceptionSchedule = new SequenceOf<>( //
+        final SequenceOf<SpecialEvent> exceptionSchedule = new SequenceOf<>(
                 new SpecialEvent(new CalendarEntry(new Date(-1, null, -1, DayOfWeek.WEDNESDAY)), new SequenceOf<>(),
                         new UnsignedInteger(6)) // Wednesdays
         );
@@ -203,9 +235,9 @@ public class ScheduleObjectTest extends AbstractTest {
         // Write a fault reliability value.
         so.writePropertyInternal(PropertyIdentifier.reliability, Reliability.memberFault);
         assertEquals(EventState.fault, so.readProperty(PropertyIdentifier.eventState));
-        Thread.sleep(100);
+
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        TestUtils.awaitEquals(listener::getNotifCount, 1, 5000);
         final EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -257,19 +289,19 @@ public class ScheduleObjectTest extends AbstractTest {
                         new SequenceOf<>(local1, remote10));
         d2.send(rd1, aler).get();
         list = RequestUtils.getProperty(d2, rd1, so.getId(), PropertyIdentifier.listOfObjectPropertyReferences);
-        assertEquals(list, new SequenceOf<>(local1, remote10));
+        assertEquals(new SequenceOf<>(local1, remote10), list);
 
         // Write one more.
         d2.send(rd1, new AddListElementRequest(so.getId(), PropertyIdentifier.listOfObjectPropertyReferences, null,
                 new SequenceOf<>(remote11))).get();
         list = RequestUtils.getProperty(d2, rd1, so.getId(), PropertyIdentifier.listOfObjectPropertyReferences);
-        assertEquals(list, new SequenceOf<>(local1, remote10, remote11));
+        assertEquals(new SequenceOf<>(local1, remote10, remote11), list);
 
         // Remove some.
         d2.send(rd1, new RemoveListElementRequest(so.getId(), PropertyIdentifier.listOfObjectPropertyReferences, null,
                 new SequenceOf<Encodable>(remote10, local1))).get();
         list = RequestUtils.getProperty(d2, rd1, so.getId(), PropertyIdentifier.listOfObjectPropertyReferences);
-        assertEquals(list, new SequenceOf<>(remote11));
+        assertEquals(new SequenceOf<>(remote11), list);
     }
 
     @Test
@@ -407,7 +439,7 @@ public class ScheduleObjectTest extends AbstractTest {
 
     private ScheduleObject createScheduleObject(AnalogValueObject av0, AnalogValueObject av1, Primitive scheduleDefault)
             throws Exception {
-        final SequenceOf<CalendarEntry> dateList = new SequenceOf<>( //
+        final SequenceOf<CalendarEntry> dateList = new SequenceOf<>(
                 new CalendarEntry(new Date(-1, null, -1, DayOfWeek.FRIDAY)), // Every Friday.
                 new CalendarEntry(
                         new DateRange(new Date(-1, Month.NOVEMBER, -1, null), new Date(-1, Month.FEBRUARY, -1, null))),
@@ -430,7 +462,7 @@ public class ScheduleObjectTest extends AbstractTest {
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(12)),
                         new TimeValue(new Time(17, 0, 0, 0), new Null()))), //
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(17, 0, 0, 0), new Real(15)),
-                        new TimeValue(new Time(8, 0, 0, 0), new Real(14)))), // TimValue is in wrong order
+                        new TimeValue(new Time(8, 0, 0, 0), new Real(14)))), // TimeValue is in wrong order
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(9, 0, 0, 0), new Real(16)),
                         new TimeValue(new Time(20, 0, 0, 0), new Real(17)))), //
                 new DailySchedule(new SequenceOf<>(new TimeValue(new Time(9, 0, 0, 0), new Real(18)),
