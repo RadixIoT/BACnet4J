@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -116,8 +117,7 @@ public class TestUtils {
     @SafeVarargs
     public static <T> List<T> toList(final T... elements) {
         final List<T> result = new ArrayList<>(elements.length);
-        for (final T e : elements)
-            result.add(e);
+        result.addAll(Arrays.asList(elements));
         return result;
     }
 
@@ -138,7 +138,7 @@ public class TestUtils {
     }
 
     @FunctionalInterface
-    public static interface ServiceExceptionCommand {
+    public interface ServiceExceptionCommand {
         void call() throws BACnetServiceException;
     }
 
@@ -155,7 +155,7 @@ public class TestUtils {
     }
 
     @FunctionalInterface
-    public static interface RequestHandleExceptionCommand {
+    public interface RequestHandleExceptionCommand {
         void call() throws BACnetException;
     }
 
@@ -176,7 +176,6 @@ public class TestUtils {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     public static void assertRejectAPDUException(final BACnetExceptionCommand command,
             final RejectReason rejectReason) {
         try {
@@ -188,12 +187,12 @@ public class TestUtils {
                 Assert.assertEquals(rejectReason, eae.getApdu().getRejectReason());
             } else {
                 fail("RejectAPDUException was expected: " + e.getClass());
-            }            
+            }
         }
     }
-    
+
     @FunctionalInterface
-    public static interface BACnetExceptionCommand {
+    public interface BACnetExceptionCommand {
         void call() throws BACnetException;
     }
 
@@ -267,11 +266,11 @@ public class TestUtils {
     //
     // Size assurance. Uses busy wait with timeout to ensure that a collection reaches a certain size.
     public static void assertSize(final LogBuffer<?> buffer, final int size, final int wait) {
-        assertSize(() -> buffer.size(), size, wait);
+        assertSize(buffer::size, size, wait);
     }
 
     public static void assertSize(final Collection<?> collection, final int size, final int wait) {
-        assertSize(() -> collection.size(), size, wait);
+        assertSize(collection::size, size, wait);
     }
 
     private static void assertSize(final SizeRetriever thingWithSize, final int size, final int wait) {
@@ -290,5 +289,131 @@ public class TestUtils {
     @FunctionalInterface
     interface SizeRetriever {
         int size();
+    }
+
+
+    /**
+     * Supplier that returns a boolean and can throw an exception doing so.
+     */
+    @FunctionalInterface
+    public interface BooleanSupplierWithException {
+        boolean getAsBoolean() throws Exception;
+    }
+
+    /**
+     * A utility to busy-wait up to a given timeout for the given condition to become true.
+     *
+     * @param condition the condition to which to wait
+     * @param timeoutMs the maximum amount of time to wait
+     * @throws Exception the exception if any that the condition threw
+     */
+    public static void awaitTrue(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
+        if (await(condition, true, timeoutMs)) {
+            return;
+        }
+        fail("awaitTrue timed out");
+    }
+
+    /**
+     * Utility to busy-wait up to a given timeout for the given condition to become false.
+     *
+     * @param condition the condition to which to wait
+     * @param timeoutMs the maximum amount of time to wait
+     * @throws Exception the exception if any thrown by the condition
+     */
+    public static void awaitFalse(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
+        if (await(condition, false, timeoutMs)) {
+            return;
+        }
+        fail("awaitFalse timed out");
+    }
+
+    /**
+     * Lifted from Assert to test whether a given object pair are either both null or equal.
+     *
+     * @param expected the expected value
+     * @param actual   the value to check
+     * @return true if they are both null or equal, false otherwise
+     */
+    public static boolean equalsRegardingNull(Object expected, Object actual) {
+        if (expected == null) {
+            return actual == null;
+        }
+        return expected.equals(actual);
+    }
+
+    /**
+     * Supplier that returns an int and can throw an exception doing so.
+     */
+    @FunctionalInterface
+    public interface IntSupplierWithException {
+        int get() throws Exception;
+    }
+
+    /**
+     * Utility to busy-wait up to a given timeout for the given supplier to supply a value that matches that given.
+     *
+     * @param supplier  the supplier the value of which to check
+     * @param constant  the value to match
+     * @param timeoutMs the maximum amount of time to wait
+     * @throws Exception the exception if any thrown by the supplier
+     */
+    public static void awaitEquals(final IntSupplierWithException supplier, int constant, long timeoutMs)
+            throws Exception {
+        if (await(() -> supplier.get() == constant, true, timeoutMs)) {
+            return;
+        }
+        fail("awaitEquals timed out. Wanted " + constant + " but last value was " + supplier.get());
+    }
+
+    /**
+     * Supplier that returns an Encodable and can throw an exception doing so.
+     */
+    @FunctionalInterface
+    public interface EncodableSupplierWithException {
+        Encodable get() throws Exception;
+    }
+
+    /**
+     * Utility to busy-wait up to a given timeout for the given supplier to supply a value that matches that given.
+     *
+     * @param supplier  the supplier the value of which to check
+     * @param constant  the value to match
+     * @param timeoutMs the maximum amount of time to wait
+     * @throws Exception the exception if any thrown by the supplier
+     */
+    public static void awaitEquals(final EncodableSupplierWithException supplier, Encodable constant, long timeoutMs)
+            throws Exception {
+        if (await(() -> equalsRegardingNull(supplier.get(), constant), true, timeoutMs)) {
+            return;
+        }
+        fail("awaitEquals timed out. Wanted " + constant + " but last value was " + supplier.get());
+    }
+
+    public static boolean await(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
+        return await(condition, true, timeoutMs);
+    }
+
+    /**
+     * Utility that will "busy-wait" up to a given timeout for a condition to match the given value.
+     *
+     * @param condition the condition to which to wait
+     * @param value     the value the condition should match
+     * @param timeoutMs the maximum amount of time to wait
+     * @return true if the condition was matched, false otherwise
+     * @throws Exception the exception if any thrown by the condition
+     */
+    public static boolean await(BooleanSupplierWithException condition, boolean value, long timeoutMs)
+            throws Exception {
+        final long deadline = Clock.systemUTC().millis() + timeoutMs;
+        while (true) {
+            if (condition.getAsBoolean() == value) {
+                return true;
+            }
+            if (deadline < Clock.systemUTC().millis()) {
+                return false;
+            }
+            ThreadUtils.sleep(2);
+        }
     }
 }

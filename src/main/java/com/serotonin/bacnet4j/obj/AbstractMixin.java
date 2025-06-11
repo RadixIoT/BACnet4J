@@ -111,7 +111,7 @@ public class AbstractMixin {
      *
      * @param valueSource
      * @param value
-     * @return true of the validation was handled, false otherwise.
+     * @return true if the validation was handled, false otherwise.
      * @throws BACnetServiceException
      *             if the property was so bad that an exception had to be thrown
      */
@@ -125,7 +125,7 @@ public class AbstractMixin {
      *
      * @param valueSource
      * @param value
-     * @return true of the write was handled, false otherwise.
+     * @return true if the write was handled, false otherwise.
      * @throws BACnetServiceException
      */
     protected boolean writeProperty(final ValueSource valueSource, final PropertyValue value)
