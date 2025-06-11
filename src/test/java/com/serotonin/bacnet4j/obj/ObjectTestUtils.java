@@ -3,8 +3,9 @@ package com.serotonin.bacnet4j.obj;
 import static org.junit.Assert.fail;
 
 import java.time.Clock;
-import java.util.Deque;
-import java.util.LinkedList;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +21,7 @@ public class ObjectTestUtils {
         static final Logger LOG = LoggerFactory.getLogger(ObjectWriteNotifier.class);
 
         private final T bo;
-        private final Deque<WrittenProperty> writtenProperties = new LinkedList<>();
+        private final BlockingQueue<WrittenProperty> writtenProperties = new LinkedBlockingQueue<>();
 
         /**
          * You can call this directly, but you probably want to use createObjectWriteNotifier below.
@@ -48,19 +49,13 @@ public class ObjectTestUtils {
          */
         public void clear() {
             LOG.debug("DEBUG: written properties cleared");
-            synchronized (this) {
-                writtenProperties.clear();
-            }
+            writtenProperties.clear();
         }
 
         @Override
         protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
             LOG.debug("PropertyWritten: {}, pid: {}, oldValue: {}, newValue: {}", bo.getId(), pid, oldValue, newValue);
-            synchronized (this) {
-                // Write all written properties to the list of seen writes.
-                writtenProperties.add(new WrittenProperty(pid, newValue));
-                notifyAll();
-            }
+            writtenProperties.add(new WrittenProperty(pid, newValue));
         }
 
         /**
@@ -72,31 +67,17 @@ public class ObjectTestUtils {
          */
         public void waitFor(PropertyIdentifier pid, Encodable newValue, long waitTime) {
             LOG.debug("waitFor in {}, for pid: {}, newValue: {}", bo.getId(), pid, newValue);
-            synchronized (this) {
-                long startTime = Clock.systemUTC().millis();
-                long deadline = startTime + waitTime;
-                while (true) {
-                    if (writtenProperties.isEmpty()) {
-                        long thisWait = deadline - Clock.systemUTC().millis();
-                        if (thisWait <= 0) {
-                            fail("Timeout waiting for property write of " + pid + " to " + newValue);
-                        } else {
-                            try {
-                                LOG.debug("Waiting at least {}ms in {}, for pid: {}, newValue: {}", thisWait,
-                                        bo.getId(), pid, newValue);
-                                wait(thisWait);
-                            } catch (final InterruptedException e) {
-                                LOG.debug("Wait interrupted");
-                            }
-                        }
-                    } else {
-                        WrittenProperty wp = writtenProperties.poll();
-                        if (wp.pid == pid && wp.newValue.equals(newValue)) {
-                            LOG.debug("{} waited for {}ms for pid: {}, newValue: {}", bo.getId(),
-                                    Clock.systemUTC().millis() - startTime, pid, newValue);
-                            return;
-                        }
+            long startTime = Clock.systemUTC().millis();
+            while (true) {
+                try {
+                    WrittenProperty wp = writtenProperties.poll(waitTime, TimeUnit.MILLISECONDS);
+                    if (wp.pid == pid && wp.newValue.equals(newValue)) {
+                        LOG.debug("{} waited for {}ms for pid: {}, newValue: {}", bo.getId(),
+                                Clock.systemUTC().millis() - startTime, pid, newValue);
+                        return;
                     }
+                } catch (InterruptedException e) {
+                    fail("Timeout waiting for property write of " + pid + " to " + newValue);
                 }
             }
         }
