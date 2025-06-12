@@ -3,7 +3,6 @@ package com.serotonin.bacnet4j.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
 
 import org.junit.After;
 import org.junit.Before;
@@ -11,8 +10,6 @@ import org.junit.Test;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
-import com.serotonin.bacnet4j.event.IAmListener;
-import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.obj.BinaryValueObject;
@@ -43,12 +40,12 @@ public class PropertyUtilsTest {
     @Before
     public void before() throws Exception {
         // Create the local devices
-        d1 = createLocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 20))).initialize();
-        d2 = createLocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 30))).initialize();
-        d3 = createLocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 40))).initialize();
-        d4 = createLocalDevice(4, new DefaultTransport(new TestNetwork(map, 4, 50))).initialize();
-        d5 = createLocalDevice(5, new DefaultTransport(new TestNetwork(map, 5, 60))).initialize();
-        d6 = createLocalDevice(6, new DefaultTransport(new TestNetwork(map, 6, 70))).initialize();
+        d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 20))).initialize();
+        d2 = new LocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 30))).initialize();
+        d3 = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 40))).initialize();
+        d4 = new LocalDevice(4, new DefaultTransport(new TestNetwork(map, 4, 50))).initialize();
+        d5 = new LocalDevice(5, new DefaultTransport(new TestNetwork(map, 5, 60))).initialize();
+        d6 = new LocalDevice(6, new DefaultTransport(new TestNetwork(map, 6, 70))).initialize();
 
         // Set up objects
         addObjects(d2);
@@ -61,14 +58,14 @@ public class PropertyUtilsTest {
     private static void addObjects(final LocalDevice d) throws Exception {
         final int id = d.getInstanceNumber();
         d.writePropertyInternal(PropertyIdentifier.objectName, str("d" + id));
-        new BinaryValueObject(d, 0, "ai0", BinaryPV.active, false)
-                .writePropertyInternal(PropertyIdentifier.inactiveText, str("inactiveText"))
+        new BinaryValueObject(d, 0, "ai0", BinaryPV.active, false).writePropertyInternal(
+                        PropertyIdentifier.inactiveText, str("inactiveText"))
                 .writePropertyInternal(PropertyIdentifier.activeText, str("activeText"));
-        new BinaryValueObject(d, 1, "ai1", BinaryPV.inactive, false)
-                .writePropertyInternal(PropertyIdentifier.inactiveText, str("inactiveText"))
+        new BinaryValueObject(d, 1, "ai1", BinaryPV.inactive, false).writePropertyInternal(
+                        PropertyIdentifier.inactiveText, str("inactiveText"))
                 .writePropertyInternal(PropertyIdentifier.activeText, str("activeText"));
-        new BinaryValueObject(d, 2, "ai2", BinaryPV.active, false)
-                .writePropertyInternal(PropertyIdentifier.inactiveText, str("inactiveText"))
+        new BinaryValueObject(d, 2, "ai2", BinaryPV.active, false).writePropertyInternal(
+                        PropertyIdentifier.inactiveText, str("inactiveText"))
                 .writePropertyInternal(PropertyIdentifier.activeText, str("activeText"));
     }
 
@@ -103,8 +100,6 @@ public class PropertyUtilsTest {
         final DeviceObjectPropertyValues callbackValues = new DeviceObjectPropertyValues();
         final ReadListener callback = (progress, deviceId, oid, pid, pin, value) -> {
             callbackValues.add(deviceId, oid, pid, pin, value);
-            //            System.out.println("progress=" + progress + ", did=" + deviceId + ", oid=" + oid + ", pid=" + pid + ", pin="
-            //                    + pin + ", value=" + value);
             return false;
         };
 
@@ -227,12 +222,11 @@ public class PropertyUtilsTest {
                 .add(5, ObjectType.binaryValue, 2, PropertyIdentifier.inactiveText, null, str("inactiveText")) //
                 .add(5, ObjectType.binaryValue, 2, PropertyIdentifier.activeText, null, str("activeText")) //
                 .add(6, ObjectType.device, 6, PropertyIdentifier.objectName, null, str("d6")) //
-                .add(6, ObjectType.device, 6, PropertyIdentifier.objectList, null,
-                        new SequenceOf<>( //
-                                new ObjectIdentifier(ObjectType.device, 6), //
-                                new ObjectIdentifier(ObjectType.binaryValue, 0), //
-                                new ObjectIdentifier(ObjectType.binaryValue, 1), //
-                                new ObjectIdentifier(ObjectType.binaryValue, 2))) //
+                .add(6, ObjectType.device, 6, PropertyIdentifier.objectList, null, new SequenceOf<>( //
+                        new ObjectIdentifier(ObjectType.device, 6), //
+                        new ObjectIdentifier(ObjectType.binaryValue, 0), //
+                        new ObjectIdentifier(ObjectType.binaryValue, 1), //
+                        new ObjectIdentifier(ObjectType.binaryValue, 2))) //
                 .add(6, ObjectType.binaryValue, 0, PropertyIdentifier.inactiveText, null, str("inactiveText")) //
                 .add(6, ObjectType.binaryValue, 0, PropertyIdentifier.activeText, null, str("activeText")) //
                 .add(6, ObjectType.binaryValue, 1, PropertyIdentifier.inactiveText, null, str("inactiveText")) //
@@ -269,8 +263,6 @@ public class PropertyUtilsTest {
         final DeviceObjectPropertyValues callbackValues = new DeviceObjectPropertyValues();
         final ReadListener callback = (progress, deviceId, oid, pid, pin, value) -> {
             callbackValues.add(deviceId, oid, pid, pin, value);
-            //            System.out.println("progress=" + progress + ", did=" + deviceId + ", oid=" + oid + ", pid=" + pid + ", pin="
-            //                    + pin + ", value=" + value);
             return false;
         };
 
@@ -312,7 +304,7 @@ public class PropertyUtilsTest {
         assertEquals(expectedValues, actualValues);
         assertEquals(str("d6"),
                 d1.getCachedRemoteProperty(6, oid(ObjectType.device, 6), PropertyIdentifier.objectName));
-        assertEquals(new OctetString(new byte[] { 6 }), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
+        assertEquals(new OctetString(new byte[] {6}), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
 
         // Change the network address of the device.
         d6.terminate();
@@ -322,7 +314,7 @@ public class PropertyUtilsTest {
         // Give time for the IAm to be processed.
         Thread.sleep(300);
 
-        assertEquals(new OctetString(new byte[] { 16 }), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
+        assertEquals(new OctetString(new byte[] {16}), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
     }
 
     /**
@@ -341,7 +333,7 @@ public class PropertyUtilsTest {
         assertEquals(expectedValues, actualValues);
         assertEquals(str("d6"),
                 d1.getCachedRemoteProperty(6, oid(ObjectType.device, 6), PropertyIdentifier.objectName));
-        assertEquals(new OctetString(new byte[] { 6 }), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
+        assertEquals(new OctetString(new byte[] {6}), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
 
         // Change the network address of the device.
         d6.terminate();
@@ -367,7 +359,7 @@ public class PropertyUtilsTest {
         DiscoveryUtils.getExtendedDeviceInformation(d1, rd6);
         assertEquals(str("d6"),
                 d1.getCachedRemoteProperty(6, oid(ObjectType.device, 6), PropertyIdentifier.objectName));
-        assertEquals(new OctetString(new byte[] { 16 }), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
+        assertEquals(new OctetString(new byte[] {16}), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
     }
 
     @Test
@@ -379,7 +371,8 @@ public class PropertyUtilsTest {
 
         final DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.systemStatus, null, DeviceStatus.operational) //
-                .add(2, ObjectType.device, 2, PropertyIdentifier.maxApduLengthAccepted, null, new UnsignedInteger(1476)) //
+                .add(2, ObjectType.device, 2, PropertyIdentifier.maxApduLengthAccepted, null,
+                        new UnsignedInteger(1476)) //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.vendorName, null,
                         str("Infinite Automation Systems, Inc."));
 
@@ -397,7 +390,8 @@ public class PropertyUtilsTest {
 
         final DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.systemStatus, null, DeviceStatus.operational) //
-                .add(2, ObjectType.device, 2, PropertyIdentifier.maxApduLengthAccepted, null, new UnsignedInteger(1476)) //
+                .add(2, ObjectType.device, 2, PropertyIdentifier.maxApduLengthAccepted, null,
+                        new UnsignedInteger(1476)) //
                 .add(2, ObjectType.analogInput, 2, PropertyIdentifier.vendorName, null,
                         new ErrorClassAndCode(ErrorClass.object, ErrorCode.unknownObject));
 
@@ -405,18 +399,4 @@ public class PropertyUtilsTest {
 
         assertEquals(expectedValues, actualValues);
     }
-
-    private LocalDevice createLocalDevice(int deviceNumber, DefaultTransport defaultTransport) {
-        LocalDevice localDevice = new LocalDevice(deviceNumber, defaultTransport);
-        IAmListener listener = (RemoteDevice d) -> {
-            try {
-                DiscoveryUtils.getExtendedDeviceInformation(localDevice, d);
-            } catch (BACnetException e) {
-                fail(e.getMessage());
-            }
-        };
-        localDevice.getEventHandler().addListener(listener);
-        return localDevice;
-    }
-
 }
