@@ -92,7 +92,7 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
                         new ObjectIdentifier(ObjectType.device, ObjectIdentifier.UNINITIALIZED)));
     }
 
-    private void assertRecordCount(TrendLogMultipleObject tl, int expectedSize) throws Exception {
+    private void awaitRecordCount(TrendLogMultipleObject tl, int expectedSize) throws Exception {
         awaitEquals(tl::getRecordCount, expectedSize, 5000);
     }
 
@@ -156,7 +156,7 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         clock.plus(minutes, MINUTES, 0);
         LOG.debug("poll: {}", clock.instant());
 
-        assertRecordCount(tl, 3);
+        awaitRecordCount(tl, 3);
         assertEquals(3, tl.getRecordCount());
         final LogMultipleRecord record2 = tl.getRecord(2);
         assertEquals(2, record2.getTimestamp().getTime().getMinute());
@@ -175,7 +175,7 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
 
         // Wait for the polling to finish.
         //        Thread.sleep(100);
-        assertRecordCount(tl, 4);
+        awaitRecordCount(tl, 4);
         final LogMultipleRecord record3 = tl.getRecord(3);
         assertEquals(4, record3.getSequenceNumber());
         assertEquals(5, record3.getLogData().getData().size());
