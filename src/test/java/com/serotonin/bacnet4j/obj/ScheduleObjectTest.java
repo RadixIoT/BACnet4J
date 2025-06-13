@@ -1,11 +1,13 @@
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -74,9 +76,9 @@ public class ScheduleObjectTest extends AbstractTest {
         final ScheduleObject so = createScheduleObject(av0, av1, defaultScheduledValue);
         final ObjectWriteNotifier<ScheduleObject> soNotifier = ObjectTestUtils.createObjectWriteNotifier(so);
 
-        TestUtils.awaitEquals(() -> so.get(PropertyIdentifier.presentValue), new Real(14), 5000);
-        TestUtils.awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), new Real(14), 5000);
-        TestUtils.awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(() -> so.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), new Real(14), 5000);
 
         // Start actual tests.
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 1, 17, 0, new Real(15)); // Wednesday
@@ -125,9 +127,9 @@ public class ScheduleObjectTest extends AbstractTest {
         final ScheduleObject so = createScheduleObject(av0, av1, defaultScheduledValue);
         final ObjectWriteNotifier<ScheduleObject> soNotifier = ObjectTestUtils.createObjectWriteNotifier(so);
 
-        TestUtils.awaitEquals(() -> so.get(PropertyIdentifier.presentValue), new Real(14), 5000);
-        TestUtils.awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), new Real(14), 5000);
-        TestUtils.awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(() -> so.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), new Real(14), 5000);
 
         // Start actual tests.
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 1, 17, 0, new Real(15)); // Wednesday
@@ -172,7 +174,7 @@ public class ScheduleObjectTest extends AbstractTest {
         // Wait until the schedule has completed the update. We do this because in some cases the values have not
         // changed, and so the awaits below will complete immediately, which ultimately can cause another time update
         // to be called before the previous one has finished, which then results in missed updates.
-        TestUtils.awaitTrue(() -> {
+        awaitTrue(() -> {
             DateTime lastUpdateTime = so.obj().getLastUpdateTime();
             return lastUpdateTime.getDate().getMonth().getId() == month.getValue() && lastUpdateTime.getDate()
                     .getDay() == day && lastUpdateTime.getTime().getHour() == hour && lastUpdateTime.getTime()
@@ -183,19 +185,19 @@ public class ScheduleObjectTest extends AbstractTest {
             final Primitive scheduleDefault = so.obj().readProperty(PropertyIdentifier.scheduleDefault);
             if (scheduleDefault.getClass().equals(Null.class)) {
                 so.waitFor(PropertyIdentifier.presentValue, new Null(), 5000);
-                TestUtils.awaitEquals(() -> av0.get(PropertyIdentifier.presentValue),
+                awaitEquals(() -> av0.get(PropertyIdentifier.presentValue),
                         av0.readProperty(PropertyIdentifier.relinquishDefault), 5000);
-                TestUtils.awaitEquals(() -> av1.get(PropertyIdentifier.presentValue),
+                awaitEquals(() -> av1.get(PropertyIdentifier.presentValue),
                         av1.readProperty(PropertyIdentifier.relinquishDefault), 5000);
             } else {
                 so.waitFor(PropertyIdentifier.presentValue, scheduleDefault, 5000);
-                TestUtils.awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), scheduleDefault, 5000);
-                TestUtils.awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), scheduleDefault, 5000);
+                awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), scheduleDefault, 5000);
+                awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), scheduleDefault, 5000);
             }
         } else {
             so.waitFor(PropertyIdentifier.presentValue, scheduledValue, 5000);
-            TestUtils.awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), scheduledValue, 5000);
-            TestUtils.awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), scheduledValue, 5000);
+            awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), scheduledValue, 5000);
+            awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), scheduledValue, 5000);
         }
     }
 
@@ -215,7 +217,7 @@ public class ScheduleObjectTest extends AbstractTest {
         final AnalogValueObject av1 =
                 new AnalogValueObject(d1, 1, "av1", 99, EngineeringUnits.amperesPerMeter, false).supportCommandable(-1);
 
-        final SequenceOf<SpecialEvent> exceptionSchedule = new SequenceOf<>( //
+        final SequenceOf<SpecialEvent> exceptionSchedule = new SequenceOf<>(
                 new SpecialEvent(new CalendarEntry(new Date(-1, null, -1, DayOfWeek.WEDNESDAY)), new SequenceOf<>(),
                         new UnsignedInteger(6)) // Wednesdays
         );
@@ -228,31 +230,31 @@ public class ScheduleObjectTest extends AbstractTest {
         so.supportIntrinsicReporting(7, new EventTransitionBits(true, true, true), NotifyType.alarm);
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Write a fault reliability value.
         so.writePropertyInternal(PropertyIdentifier.reliability, Reliability.memberFault);
         assertEquals(EventState.fault, so.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        TestUtils.awaitTrue(() -> listener.notifs.size() == 1, 5000);
-        final Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(so.getId(), notif.get("eventObjectIdentifier"));
+        TestUtils.awaitEquals(listener::getNotifCount, 1, 5000);
+        final EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(so.getId(), notif.eventObjectIdentifier());
         assertEquals(((BACnetArray<TimeStamp>) so.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
-                EventState.fault.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(7), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(5), notif.get("priority"));
-        assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertNull(notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.fault, notif.get("toState"));
+                EventState.fault.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(7), notif.notificationClass());
+        assertEquals(new UnsignedInteger(5), notif.priority());
+        assertEquals(EventType.changeOfReliability, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.fault, notif.toState());
         assertEquals(new NotificationParameters(
                 new ChangeOfReliabilityNotif(Reliability.memberFault, new StatusFlags(true, true, false, false),
-                        new SequenceOf<>())), notif.get("eventValues"));
+                        new SequenceOf<>())), notif.eventValues());
     }
 
     /**
@@ -358,7 +360,7 @@ public class ScheduleObjectTest extends AbstractTest {
 
         //
         // Entries in the list of property references must reference properties of this type
-        TestUtils.assertBACnetServiceException(
+        assertBACnetServiceException(
                 () -> new ScheduleObject(d1, 0, "sch0", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE), null,
                         new SequenceOf<>(), BinaryPV.inactive, new SequenceOf<>(
                         new DeviceObjectPropertyReference(1, av.getId(), PropertyIdentifier.presentValue)), 12, false),
@@ -366,7 +368,7 @@ public class ScheduleObjectTest extends AbstractTest {
 
         //
         // Time value entries in the weekly and exception schedules must be of this type
-        TestUtils.assertBACnetServiceException(() -> {
+        assertBACnetServiceException(() -> {
             final BACnetArray<DailySchedule> weekly = new BACnetArray<>( //
                     new DailySchedule(new SequenceOf<>(new TimeValue(new Time(d1), new Real(0)))), //
                     new DailySchedule(new SequenceOf<>()), //
@@ -379,7 +381,7 @@ public class ScheduleObjectTest extends AbstractTest {
                     new SequenceOf<>(), BinaryPV.inactive, new SequenceOf<>(), 12, false);
         }, ErrorClass.property, ErrorCode.invalidDataType);
 
-        TestUtils.assertBACnetServiceException(() -> {
+        assertBACnetServiceException(() -> {
             final SequenceOf<SpecialEvent> exceptions = new SequenceOf<>( //
                     new SpecialEvent(new CalendarEntry(new Date(d1)),
                             new SequenceOf<>(new TimeValue(new Time(d1), new Real(0))), new UnsignedInteger(10)));
@@ -389,7 +391,7 @@ public class ScheduleObjectTest extends AbstractTest {
 
         //
         // Time values must have times that are fully specific.
-        TestUtils.assertBACnetServiceException(() -> {
+        assertBACnetServiceException(() -> {
             final BACnetArray<DailySchedule> weekly = new BACnetArray<>( //
                     new DailySchedule(new SequenceOf<>(new TimeValue(Time.UNSPECIFIED, BinaryPV.active))), //
                     new DailySchedule(new SequenceOf<>()), //
@@ -402,7 +404,7 @@ public class ScheduleObjectTest extends AbstractTest {
                     new SequenceOf<>(), BinaryPV.inactive, new SequenceOf<>(), 12, false);
         }, ErrorClass.property, ErrorCode.invalidConfigurationData);
 
-        TestUtils.assertBACnetServiceException(() -> {
+        assertBACnetServiceException(() -> {
             final SequenceOf<SpecialEvent> exceptions = new SequenceOf<>( //
                     new SpecialEvent(new CalendarEntry(new Date(d1)),
                             new SequenceOf<>(new TimeValue(new Time(20, Time.UNSPECIFIC, 0, 0), BinaryPV.active)),
@@ -413,7 +415,7 @@ public class ScheduleObjectTest extends AbstractTest {
 
         //
         // Validation for data type change
-        TestUtils.assertBACnetServiceException(() -> {
+        assertBACnetServiceException(() -> {
             BinaryValueObject bv1 = new BinaryValueObject(d1, 1, "bv1", BinaryPV.inactive, false);
             final BACnetArray<DailySchedule> weekly = new BACnetArray<>( //
                     new DailySchedule(new SequenceOf<>(new TimeValue(new Time(d1), BinaryPV.active))), //
@@ -437,7 +439,7 @@ public class ScheduleObjectTest extends AbstractTest {
 
     private ScheduleObject createScheduleObject(AnalogValueObject av0, AnalogValueObject av1, Primitive scheduleDefault)
             throws Exception {
-        final SequenceOf<CalendarEntry> dateList = new SequenceOf<>( //
+        final SequenceOf<CalendarEntry> dateList = new SequenceOf<>(
                 new CalendarEntry(new Date(-1, null, -1, DayOfWeek.FRIDAY)), // Every Friday.
                 new CalendarEntry(
                         new DateRange(new Date(-1, Month.NOVEMBER, -1, null), new Date(-1, Month.FEBRUARY, -1, null))),
