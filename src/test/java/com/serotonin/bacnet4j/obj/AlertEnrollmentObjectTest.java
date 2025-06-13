@@ -1,8 +1,7 @@
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.assertEquals;
-
-import java.util.Map;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
@@ -52,7 +51,7 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Issue an alert from the AV.
         ae.issueAlert(av0.getId(), 123, //
@@ -65,21 +64,21 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
         assertEquals(EventState.normal, ae.readProperty(PropertyIdentifier.eventState)); // Still normal. Always normal.
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(ae.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) ae.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(55), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(201), notif.get("priority"));
-        assertEquals(EventType.extended, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
+        assertEquals(1, listener.getNotifCount());
+        final EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(ae.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) ae.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(55), notif.notificationClass());
+        assertEquals(new UnsignedInteger(201), notif.priority());
+        assertEquals(EventType.extended, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
         assertEquals(new NotificationParameters(new ExtendedNotif( //
                 d1.get(PropertyIdentifier.vendorIdentifier), //
                 new UnsignedInteger(123), //
@@ -87,8 +86,7 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
                         new Parameter(av0.getId()), //
                         new Parameter(new Real(234)), //
                         new Parameter(new CharacterString("some string")), //
-                        new Parameter(new Double(3.14))))),
-                notif.get("eventValues"));
+                        new Parameter(new Double(3.14))))), notif.eventValues());
 
         // Make sure the list of properties looks right.
         final SequenceOf<PropertyIdentifier> propertyList = ae.readProperty(PropertyIdentifier.propertyList);

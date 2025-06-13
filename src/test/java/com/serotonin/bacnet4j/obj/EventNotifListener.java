@@ -1,9 +1,7 @@
 package com.serotonin.bacnet4j.obj;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +20,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class EventNotifListener extends DeviceEventAdapter {
     static final Logger LOG = LoggerFactory.getLogger(EventNotifListener.class);
 
-    public final List<Map<String, Object>> notifs = new ArrayList<>();
+    private final List<Notif> notifs = new CopyOnWriteArrayList<>();
 
     @Override
     public void eventNotificationReceived(final UnsignedInteger processIdentifier,
@@ -32,21 +30,39 @@ public class EventNotifListener extends DeviceEventAdapter {
             final Boolean ackRequired, final EventState fromState, final EventState toState,
             final NotificationParameters eventValues) {
         LOG.debug("Event notification received.");
+        notifs.add(new Notif(processIdentifier, initiatingDevice, eventObjectIdentifier, timeStamp, notificationClass,
+                priority, eventType, messageText, notifyType, ackRequired, fromState, toState, eventValues));
+    }
 
-        final Map<String, Object> notif = new HashMap<>();
-        notif.put("processIdentifier", processIdentifier);
-        notif.put("initiatingDevice", initiatingDevice);
-        notif.put("eventObjectIdentifier", eventObjectIdentifier);
-        notif.put("timeStamp", timeStamp);
-        notif.put("notificationClass", notificationClass);
-        notif.put("priority", priority);
-        notif.put("eventType", eventType);
-        notif.put("messageText", messageText);
-        notif.put("notifyType", notifyType);
-        notif.put("ackRequired", ackRequired);
-        notif.put("fromState", fromState);
-        notif.put("toState", toState);
-        notif.put("eventValues", eventValues);
-        notifs.add(notif);
+    public record Notif(UnsignedInteger processIdentifier, ObjectIdentifier initiatingDevice,
+                        ObjectIdentifier eventObjectIdentifier, TimeStamp timeStamp, UnsignedInteger notificationClass,
+                        UnsignedInteger priority, EventType eventType, CharacterString messageText,
+                        NotifyType notifyType, Boolean ackRequired, EventState fromState, EventState toState,
+                        NotificationParameters eventValues) {
+    }
+
+
+    public int getNotifCount() {
+        return notifs.size();
+    }
+
+    public Notif getNotif() {
+        return getNotif(0);
+    }
+
+    public Notif getNotif(int index) {
+        return notifs.get(index);
+    }
+
+    public Notif removeNotif() {
+        return notifs.remove(0);
+    }
+
+    public Notif removeNotif(int index) {
+        return notifs.remove(index);
+    }
+
+    public void clearNotifs() {
+        notifs.clear();
     }
 }

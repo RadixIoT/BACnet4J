@@ -4,12 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.TestUtils;
@@ -53,8 +50,6 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
  * @author Matthew
  */
 public class AccumulatorObjectTest extends AbstractTest {
-    static final Logger LOG = LoggerFactory.getLogger(AccumulatorObjectTest.class);
-
     private AccumulatorObject a;
     private NotificationClassObject nc;
 
@@ -87,7 +82,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         a.supportIntrinsicReporting(50, 30, 60, 20, 3, new UnsignedInteger(5), 54, new LimitEnable(true, true),
                 new EventTransitionBits(true, true, true), NotifyType.event);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Advance the clock half a second so that pulses are out of time with scheduled tasks.
         clock.plusMillis(500);
@@ -102,7 +97,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(40), a.readProperty(PropertyIdentifier.pulseRate));
         assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         // Ensure that no notifications are sent.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         //
         // Write pulses to go out of range value and then set back to normal before the time delay.
@@ -123,96 +118,91 @@ public class AccumulatorObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, false, false, false), a.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(a.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) a.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.offnormal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(54), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(100), notif.get("priority"));
-        assertEquals(EventType.unsignedRange, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.lowLimit, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(new UnsignedRangeNotif(new UnsignedInteger(28),
-                        new StatusFlags(true, false, false, false), new UnsignedInteger(30))),
-                notif.get("eventValues"));
+        assertEquals(1, listener.getNotifCount());
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(a.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) a.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.offnormal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(54), notif.notificationClass());
+        assertEquals(new UnsignedInteger(100), notif.priority());
+        assertEquals(EventType.unsignedRange, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.lowLimit, notif.toState());
+        assertEquals(new NotificationParameters(
+                new UnsignedRangeNotif(new UnsignedInteger(28), new StatusFlags(true, false, false, false),
+                        new UnsignedInteger(30))), notif.eventValues());
 
         // Disable low limit checking. Will return to normal immediately.
         a.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(false, true));
         assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState));
         Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(a.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) a.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(54), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(200), notif.get("priority"));
-        assertEquals(EventType.unsignedRange, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.lowLimit, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(new UnsignedRangeNotif(new UnsignedInteger(28),
-                        new StatusFlags(false, false, false, false), new UnsignedInteger(30))),
-                notif.get("eventValues"));
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(a.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) a.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(54), notif.notificationClass());
+        assertEquals(new UnsignedInteger(200), notif.priority());
+        assertEquals(EventType.unsignedRange, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.lowLimit, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
+        assertEquals(new NotificationParameters(
+                new UnsignedRangeNotif(new UnsignedInteger(28), new StatusFlags(false, false, false, false),
+                        new UnsignedInteger(30))), notif.eventValues());
 
         // Re-enable low limit checking. Will return to low-limit after 3s.
         a.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(true, true));
         assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState));
         doPulses(27, 27, 27, 27);
         assertEquals(EventState.lowLimit, a.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(EventType.unsignedRange, notif.get("eventType"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.lowLimit, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(new UnsignedRangeNotif(new UnsignedInteger(27),
-                        new StatusFlags(true, false, false, false), new UnsignedInteger(30))),
-                notif.get("eventValues"));
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif();
+        assertEquals(EventType.unsignedRange, notif.eventType());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.lowLimit, notif.toState());
+        assertEquals(new NotificationParameters(
+                new UnsignedRangeNotif(new UnsignedInteger(27), new StatusFlags(true, false, false, false),
+                        new UnsignedInteger(30))), notif.eventValues());
 
         // Go past the fault high limit. Will change to fault immediately.
         doPulses(61);
         assertEquals(EventState.fault, a.readProperty(PropertyIdentifier.eventState));
         Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(EventState.lowLimit, notif.get("fromState"));
-        assertEquals(EventState.fault, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif();
+        assertEquals(EventState.lowLimit, notif.fromState());
+        assertEquals(EventState.fault, notif.toState());
+        assertEquals(new NotificationParameters(
                         new ChangeOfReliabilityNotif(Reliability.overRange, new StatusFlags(true, true, false, false),
                                 new SequenceOf<>( //
                                         new PropertyValue(PropertyIdentifier.pulseRate, new UnsignedInteger(61)), //
                                         new PropertyValue(PropertyIdentifier.presentValue, new UnsignedInteger(110))))),
-                notif.get("eventValues"));
+                notif.eventValues());
 
         // Reduce to normal. Return to normal immediately.
         doPulses(52);
         assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState));
         Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(EventState.fault, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(new ChangeOfReliabilityNotif(Reliability.noFaultDetected,
-                        new StatusFlags(false, false, false, false),
-                        new SequenceOf<>( //
-                                new PropertyValue(PropertyIdentifier.pulseRate, new UnsignedInteger(52)), //
-                                new PropertyValue(PropertyIdentifier.presentValue, new UnsignedInteger(116))))),
-                notif.get("eventValues"));
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif();
+        assertEquals(EventState.fault, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
+        assertEquals(new NotificationParameters(
+                        new ChangeOfReliabilityNotif(Reliability.noFaultDetected, new StatusFlags(false, false, false, false),
+                                new SequenceOf<>( //
+                                        new PropertyValue(PropertyIdentifier.pulseRate, new UnsignedInteger(52)), //
+                                        new PropertyValue(PropertyIdentifier.presentValue, new UnsignedInteger(116))))),
+                notif.eventValues());
 
         // Remove the object.
         d1.removeObject(a.getId());
@@ -243,16 +233,13 @@ public class AccumulatorObjectTest extends AbstractTest {
     @Test
     public void propertyConformanceEditableWhenOutOfService() throws BACnetServiceException {
         // Should not be writable while in service
-        TestUtils.assertBACnetServiceException(
-                () -> a.writeProperty(null,
+        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.presentValue, null, new UnsignedInteger(51), null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(
-                () -> a.writeProperty(null,
+        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.pulseRate, null, new UnsignedInteger(51), null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(
-                () -> a.writeProperty(null,
+        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.reliability, null, Reliability.overRange, null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
 
@@ -265,26 +252,18 @@ public class AccumulatorObjectTest extends AbstractTest {
 
     @Test
     public void propertyConformanceReadOnly() {
-        TestUtils.assertBACnetServiceException(
-                () -> a.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.eventMessageTexts, new UnsignedInteger(2),
-                                new CharacterString("should fail"), null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(
-                () -> a.writeProperty(null,
+        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.eventMessageTexts, new UnsignedInteger(2),
+                        new CharacterString("should fail"), null)), ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.valueChangeTime, null, DateTime.UNSPECIFIED, null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(
-                () -> a.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.loggingRecord, new UnsignedInteger(2),
-                                new CharacterString("should fail"), null)),
+        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.loggingRecord, new UnsignedInteger(2),
+                        new CharacterString("should fail"), null)), ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.limitMonitoringInterval, null, new UnsignedInteger(51), null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils
-                .assertBACnetServiceException(
-                        () -> a.writeProperty(null,
-                                new PropertyValue(PropertyIdentifier.limitMonitoringInterval, null,
-                                        new UnsignedInteger(51), null)),
-                        ErrorClass.property, ErrorCode.writeAccessDenied);
     }
 
     @Test
@@ -330,13 +309,13 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Default the pulse rate
         a.set(PropertyIdentifier.pulseRate, new UnsignedInteger(40));
 
-        final DeviceObjectPropertyReference ref = new DeviceObjectPropertyReference(1, a.getId(),
-                PropertyIdentifier.pulseRate);
+        final DeviceObjectPropertyReference ref =
+                new DeviceObjectPropertyReference(1, a.getId(), PropertyIdentifier.pulseRate);
         final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(
                         new UnsignedRange(new UnsignedInteger(3), new UnsignedInteger(30), new UnsignedInteger(50))),
-                new EventTransitionBits(true, true, true), 54, 100, null,
-                new FaultParameter(new FaultOutOfRange(new FaultNormalValue(new UnsignedInteger(20)),
+                new EventTransitionBits(true, true, true), 54, 100, null, new FaultParameter(
+                new FaultOutOfRange(new FaultNormalValue(new UnsignedInteger(20)),
                         new FaultNormalValue(new UnsignedInteger(60)))));
 
         // Set up the notification destination
@@ -351,7 +330,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Ensure that initializing the event enrollment object didn't fire any notifications.
         Thread.sleep(40);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Go to high limit.
         doPulses(53, 53, 53, 53, 53);
@@ -360,25 +339,24 @@ public class AccumulatorObjectTest extends AbstractTest {
         assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
         assertEquals(new StatusFlags(true, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.highLimit.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(54), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(100), notif.get("priority"));
-        assertEquals(EventType.unsignedRange, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.highLimit, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(new UnsignedRangeNotif(new UnsignedInteger(53),
-                        new StatusFlags(false, false, false, false), new UnsignedInteger(50))),
-                notif.get("eventValues"));
+        assertEquals(1, listener.getNotifCount());
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.highLimit.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(54), notif.notificationClass());
+        assertEquals(new UnsignedInteger(100), notif.priority());
+        assertEquals(EventType.unsignedRange, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.highLimit, notif.toState());
+        assertEquals(new NotificationParameters(
+                new UnsignedRangeNotif(new UnsignedInteger(53), new StatusFlags(false, false, false, false),
+                        new UnsignedInteger(50))), notif.eventValues());
 
         // Go to a fault value.
         doPulses(10, 10);
@@ -388,35 +366,34 @@ public class AccumulatorObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, true, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.fault.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(54), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(5), notif.get("priority"));
-        assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.highLimit, notif.get("fromState"));
-        assertEquals(EventState.fault, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(
-                        new ChangeOfReliabilityNotif(Reliability.underRange, new StatusFlags(true, true, false, false),
-                                new SequenceOf<>(new PropertyValue(PropertyIdentifier.objectPropertyReference, ref),
-                                        new PropertyValue(PropertyIdentifier.pulseRate, new UnsignedInteger(10)),
-                                        new PropertyValue(PropertyIdentifier.statusFlags,
-                                                new StatusFlags(false, false, false, false))))),
-                notif.get("eventValues"));
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.fault.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(54), notif.notificationClass());
+        assertEquals(new UnsignedInteger(5), notif.priority());
+        assertEquals(EventType.changeOfReliability, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.highLimit, notif.fromState());
+        assertEquals(EventState.fault, notif.toState());
+        assertEquals(new NotificationParameters(
+                new ChangeOfReliabilityNotif(Reliability.underRange, new StatusFlags(true, true, false, false),
+                        new SequenceOf<>(new PropertyValue(PropertyIdentifier.objectPropertyReference, ref),
+                                new PropertyValue(PropertyIdentifier.pulseRate, new UnsignedInteger(10)),
+                                new PropertyValue(PropertyIdentifier.statusFlags,
+                                        new StatusFlags(false, false, false, false))))), notif.eventValues());
     }
 
     @Test
     public void construction() throws Exception {
-        final AccumulatorObject a1 = new AccumulatorObject(d1, 1, "a1", 456, 0, EngineeringUnits.amperes, false,
-                new Scale(new Real(1)), new Prescale(new UnsignedInteger(2), new UnsignedInteger(15)), 200, 1);
+        final AccumulatorObject a1 =
+                new AccumulatorObject(d1, 1, "a1", 456, 0, EngineeringUnits.amperes, false, new Scale(new Real(1)),
+                        new Prescale(new UnsignedInteger(2), new UnsignedInteger(15)), 200, 1);
         assertEquals(new UnsignedInteger(456), a1.get(PropertyIdentifier.presentValue));
     }
 
@@ -429,10 +406,9 @@ public class AccumulatorObjectTest extends AbstractTest {
 
         //
         // The object defaults to read only. Ensure that the properties cannot be written.
-        TestUtils.assertBACnetServiceException(
-                () -> a.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.valueBeforeChange, UnsignedInteger.ZERO)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.valueBeforeChange, UnsignedInteger.ZERO)), ErrorClass.property,
+                ErrorCode.writeAccessDenied);
         TestUtils.assertBACnetServiceException(
                 () -> a.writeProperty(null, new PropertyValue(PropertyIdentifier.valueSet, UnsignedInteger.ZERO)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
@@ -455,10 +431,9 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Set to allow valueSet
         a.supportValueWrite(ValueSetWrite.valueSet);
 
-        TestUtils.assertBACnetServiceException(
-                () -> a.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.valueBeforeChange, UnsignedInteger.ZERO)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.valueBeforeChange, UnsignedInteger.ZERO)), ErrorClass.property,
+                ErrorCode.writeAccessDenied);
 
         a.writeProperty(null, new PropertyValue(PropertyIdentifier.valueSet, new UnsignedInteger(13)));
         assertEquals(new UnsignedInteger(13), a.get(PropertyIdentifier.presentValue));
