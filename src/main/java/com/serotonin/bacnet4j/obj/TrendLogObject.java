@@ -3,6 +3,7 @@ package com.serotonin.bacnet4j.obj;
 import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -204,8 +205,33 @@ public class TrendLogObject extends BACnetObject {
         return logDisabled;
     }
 
+    /**
+     * @deprecated This method return a buffer that may not be thread-safe. Use {@link #doWithBuffer} instead.
+     * This method will be removed in a future major version.
+     */
+    @Deprecated
     public LogBuffer<LogRecord> getBuffer() {
         return buffer;
+    }
+
+    public void doWithBuffer(Consumer<LogBuffer<LogRecord>> consumer) {
+        synchronized (buffer) {
+            consumer.accept(buffer);
+        }
+    }
+
+    public int getRecordCount() {
+        // Synchronize the buffer before requesting the size because we don't know the implementation of the buffer,
+        // and whether the operation is atomic or not.
+        synchronized (buffer) {
+            return buffer.size();
+        }
+    }
+
+    public LogRecord getRecord(int index) {
+        synchronized (buffer) {
+            return buffer.get(index);
+        }
     }
 
     public void setEnabled(final boolean enabled) {

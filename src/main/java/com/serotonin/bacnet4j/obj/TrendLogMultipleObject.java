@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -175,8 +176,37 @@ public class TrendLogMultipleObject extends BACnetObject {
         return logDisabled;
     }
 
+    /**
+     * @deprecated This method return a buffer that may not be thread-safe. Use {@link #doWithBuffer} instead.
+     */
+    @Deprecated
     public LogBuffer<LogMultipleRecord> getBuffer() {
         return buffer;
+    }
+
+    /**
+     * Allows the consumer to work with the buffer in a thread-safe manner.
+     *
+     * @param consumer the work to do while synchronized.
+     */
+    public void doWithBuffer(Consumer<LogBuffer<LogMultipleRecord>> consumer) {
+        synchronized (buffer) {
+            consumer.accept(buffer);
+        }
+    }
+
+    public int getRecordCount() {
+        // Synchronize the buffer before requesting the size because we don't know the implementation of the buffer,
+        // and whether the operation is atomic or not.
+        synchronized (buffer) {
+            return buffer.size();
+        }
+    }
+
+    public LogMultipleRecord getRecord(int index) {
+        synchronized (buffer) {
+            return buffer.get(index);
+        }
     }
 
     public void setEnabled(final boolean enabled) {

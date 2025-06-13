@@ -20,7 +20,6 @@ import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.exception.ErrorAPDUException;
 import com.serotonin.bacnet4j.exception.RejectAPDUException;
-import com.serotonin.bacnet4j.obj.logBuffer.LogBuffer;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
@@ -265,25 +264,8 @@ public class TestUtils {
 
     //
     // Size assurance. Uses busy wait with timeout to ensure that a collection reaches a certain size.
-    public static void assertSize(final LogBuffer<?> buffer, final int size, final int wait) {
-        assertSize(buffer::size, size, wait);
-    }
-
-    public static void assertSize(final Collection<?> collection, final int size, final int wait) {
-        assertSize(collection::size, size, wait);
-    }
-
-    private static void assertSize(final SizeRetriever thingWithSize, final int size, final int wait) {
-        final long deadline = Clock.systemUTC().millis() + wait;
-        while (true) {
-            if (thingWithSize.size() == size) {
-                return;
-            }
-            if (deadline < Clock.systemUTC().millis()) {
-                fail("Expected collection size of " + size + ", but was " + thingWithSize.size());
-            }
-            ThreadUtils.sleep(2);
-        }
+    public static void assertSize(final Collection<?> collection, final int size, final int wait) throws Exception {
+        awaitEquals(collection::size, size, wait);
     }
 
     @FunctionalInterface

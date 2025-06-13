@@ -154,8 +154,7 @@ public class AtomicWriteFileRequestTest {
             final AtomicReadFileAck rack = (AtomicReadFileAck) new AtomicReadFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicReadFileRequest.StreamAccess(
                             new SignedInteger(919), new UnsignedInteger(16))).handle(d1, null);
-            assertEquals(
-                    new OctetString(new byte[] { 'z', '\r', '\n', 0, 0, 0, 0, 0, 0, 0, 0, '!', '@', '#', '$', '%' }),
+            assertEquals(new OctetString(new byte[] {'z', '\r', '\n', 0, 0, 0, 0, 0, 0, 0, 0, '!', '@', '#', '$', '%'}),
                     rack.getStreamAccess().getFileData());
 
             d1.removeObject(f1.getId());
@@ -205,11 +204,10 @@ public class AtomicWriteFileRequestTest {
             final FileObject f1 = new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.RecordAccess(
-                            new SignedInteger(0), new UnsignedInteger(3),
-                            new SequenceOf<>( //
-                                    new OctetString("Write 1".getBytes()), //
-                                    new OctetString("Write 2".getBytes()), //
-                                    new OctetString("Write 3".getBytes())))).handle(d1, null);
+                            new SignedInteger(0), new UnsignedInteger(3), new SequenceOf<>( //
+                            new OctetString("Write 1".getBytes()), //
+                            new OctetString("Write 2".getBytes()), //
+                            new OctetString("Write 3".getBytes())))).handle(d1, null);
             assertEquals(true, wack.isRecordAccess());
             assertEquals(new SignedInteger(0), wack.getFileStart());
 
@@ -217,13 +215,11 @@ public class AtomicWriteFileRequestTest {
             final AtomicReadFileAck rack = (AtomicReadFileAck) new AtomicReadFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicReadFileRequest.RecordAccess(
                             new SignedInteger(0), new UnsignedInteger(4))).handle(d1, null);
-            assertEquals(
-                    new SequenceOf<>( //
+            assertEquals(new SequenceOf<>( //
                             new OctetString("Write 1".getBytes()), //
                             new OctetString("Write 2".getBytes()), //
                             new OctetString("Write 3".getBytes()), //
-                            new OctetString(
-                                    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzX".getBytes())),
+                            new OctetString("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzX".getBytes())),
                     rack.getRecordAccess().getFileRecordData());
             assertEquals(new UnsignedInteger(14), f1.readProperty(PropertyIdentifier.recordCount, null));
 
@@ -235,11 +231,10 @@ public class AtomicWriteFileRequestTest {
             final FileObject f1 = new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.RecordAccess(
-                            new SignedInteger(12), new UnsignedInteger(3),
-                            new SequenceOf<>( //
-                                    new OctetString("Write 1".getBytes()), //
-                                    new OctetString("Write 2".getBytes()), //
-                                    new OctetString("Write 3".getBytes())))).handle(d1, null);
+                            new SignedInteger(12), new UnsignedInteger(3), new SequenceOf<>( //
+                            new OctetString("Write 1".getBytes()), //
+                            new OctetString("Write 2".getBytes()), //
+                            new OctetString("Write 3".getBytes())))).handle(d1, null);
             assertEquals(true, wack.isRecordAccess());
             assertEquals(new SignedInteger(12), wack.getFileStart());
 
@@ -262,11 +257,10 @@ public class AtomicWriteFileRequestTest {
             final FileObject f1 = new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.RecordAccess(
-                            new SignedInteger(16), new UnsignedInteger(3),
-                            new SequenceOf<>( //
-                                    new OctetString("Write 1".getBytes()), //
-                                    new OctetString("Write 2".getBytes()), //
-                                    new OctetString("Write 3".getBytes())))).handle(d1, null);
+                            new SignedInteger(16), new UnsignedInteger(3), new SequenceOf<>( //
+                            new OctetString("Write 1".getBytes()), //
+                            new OctetString("Write 2".getBytes()), //
+                            new OctetString("Write 3".getBytes())))).handle(d1, null);
             assertEquals(true, wack.isRecordAccess());
             assertEquals(new SignedInteger(16), wack.getFileStart());
 
@@ -286,17 +280,17 @@ public class AtomicWriteFileRequestTest {
 
             d1.removeObject(f1.getId());
         });
+        
 
         // Do a legitimate write appending
         doInCopy((file) -> {
             final FileObject f1 = new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.RecordAccess(
-                            new SignedInteger(-1), new UnsignedInteger(3),
-                            new SequenceOf<>( //
-                                    new OctetString("Write 1".getBytes()), //
-                                    new OctetString("Write 2".getBytes()), //
-                                    new OctetString("Write 3".getBytes())))).handle(d1, null);
+                            new SignedInteger(-1), new UnsignedInteger(3), new SequenceOf<>( //
+                            new OctetString("Write 1".getBytes()), //
+                            new OctetString("Write 2".getBytes()), //
+                            new OctetString("Write 3".getBytes())))).handle(d1, null);
             assertEquals(true, wack.isRecordAccess());
             assertEquals(new SignedInteger(14), wack.getFileStart());
 
@@ -320,7 +314,7 @@ public class AtomicWriteFileRequestTest {
     public void modificationDate() throws Exception {
         doInCopy((file) -> {
             final long originalTime = file.lastModified();
-            Thread.sleep(1);
+            Thread.sleep(1); // Ensures that the time changes from  the original
             final FileObject f1 = new FileObject(d1, 1, "test", new StreamAccess(file));
             new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.StreamAccess(
