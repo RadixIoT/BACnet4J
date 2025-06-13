@@ -1,18 +1,15 @@
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-import java.util.Map;
-
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.service.confirmed.SubscribeCOVPropertyRequest;
 import com.serotonin.bacnet4j.service.confirmed.SubscribeCOVRequest;
@@ -49,8 +46,6 @@ import com.serotonin.bacnet4j.type.primitive.SignedInteger;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class PulseConverterObjectTest extends AbstractTest {
-    static final Logger LOG = LoggerFactory.getLogger(AccumulatorObjectTest.class);
-
     private PulseConverterObject pc;
     private NotificationClassObject nc;
 
@@ -81,7 +76,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         pc.supportIntrinsicReporting(70, 30, 3, 10, null, 54, new LimitEnable(true, true),
                 new EventTransitionBits(true, true, true), NotifyType.event);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // strictly required by the time delay.
         pc.pulse();
@@ -90,7 +85,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         assertEquals(new DateTime(d1), pc.readProperty(PropertyIdentifier.updateTime));
         assertEquals(EventState.normal, pc.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         // Ensure that no notifications are sent.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         //
         // Write pulses to go out of range.
@@ -102,23 +97,24 @@ public class PulseConverterObjectTest extends AbstractTest {
 
         // Ensure that a proper looking event notification was received.
         Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(pc.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) pc.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.offnormal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(54), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(100), notif.get("priority"));
-        assertEquals(EventType.outOfRange, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.highLimit, notif.get("toState"));
-        assertEquals(new NotificationParameters(new OutOfRangeNotif(new Real(75),
-                new StatusFlags(true, false, false, false), new Real(3), new Real(70))), notif.get("eventValues"));
+        assertEquals(1, listener.getNotifCount());
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(pc.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) pc.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.offnormal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(54), notif.notificationClass());
+        assertEquals(new UnsignedInteger(100), notif.priority());
+        assertEquals(EventType.outOfRange, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.highLimit, notif.toState());
+        assertEquals(new NotificationParameters(
+                new OutOfRangeNotif(new Real(75), new StatusFlags(true, false, false, false), new Real(3),
+                        new Real(70))), notif.eventValues());
 
         //
         // Use adjust value to put back into normal.
@@ -133,31 +129,30 @@ public class PulseConverterObjectTest extends AbstractTest {
         // Ensure that after 9 seconds we are still in high limit.
         clock.plusSeconds(9);
         assertEquals(EventState.highLimit, pc.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         clock.plusSeconds(2);
         Thread.sleep(40);
         assertEquals(EventState.normal, pc.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), pc.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(pc.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) pc.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(54), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(200), notif.get("priority"));
-        assertEquals(EventType.outOfRange, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.highLimit, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(new OutOfRangeNotif(new Real(30),
-                        new StatusFlags(false, false, false, false), new Real(3), new Real(70))),
-                notif.get("eventValues"));
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(pc.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) pc.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(54), notif.notificationClass());
+        assertEquals(new UnsignedInteger(200), notif.priority());
+        assertEquals(EventType.outOfRange, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.highLimit, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
+        assertEquals(new NotificationParameters(
+                new OutOfRangeNotif(new Real(30), new StatusFlags(false, false, false, false), new Real(3),
+                        new Real(70))), notif.eventValues());
 
         // Remove the object
         d1.removeObject(pc.getId());
@@ -184,10 +179,9 @@ public class PulseConverterObjectTest extends AbstractTest {
     @Test
     public void propertyConformanceEditableWhenOutOfService() throws BACnetServiceException {
         // Should not be writable while in service
-        TestUtils.assertBACnetServiceException(
-                () -> pc.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.presentValue, null, new Real(51), null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> pc.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.presentValue, null, new Real(51), null)), ErrorClass.property,
+                ErrorCode.writeAccessDenied);
 
         // Should be writable while out of service.
         pc.writeProperty(null, PropertyIdentifier.outOfService, Boolean.TRUE);
@@ -196,25 +190,18 @@ public class PulseConverterObjectTest extends AbstractTest {
 
     @Test
     public void propertyConformanceReadOnly() {
-        TestUtils.assertBACnetServiceException(
-                () -> pc.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.count, null, DateTime.UNSPECIFIED, null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(
-                () -> pc.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.updateTime, new UnsignedInteger(2),
-                                new CharacterString("should fail"), null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(
-                () -> pc.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.ackedTransitions, new UnsignedInteger(2),
-                                new CharacterString("should fail"), null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(
-                () -> pc.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.eventMessageTexts, new UnsignedInteger(2),
-                                new CharacterString("should fail"), null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> pc.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.count, null, DateTime.UNSPECIFIED, null)), ErrorClass.property,
+                ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> pc.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.updateTime, new UnsignedInteger(2),
+                        new CharacterString("should fail"), null)), ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> pc.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.ackedTransitions, new UnsignedInteger(2),
+                        new CharacterString("should fail"), null)), ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> pc.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.eventMessageTexts, new UnsignedInteger(2),
+                        new CharacterString("should fail"), null)), ErrorClass.property, ErrorCode.writeAccessDenied);
     }
 
     @Test
@@ -278,24 +265,24 @@ public class PulseConverterObjectTest extends AbstractTest {
         //
         // Subscribe for notifications. Doing so should cause an initial notification to be sent.
         d2.send(rd1,
-                new SubscribeCOVRequest(new UnsignedInteger(987), pc.getId(), Boolean.FALSE, new UnsignedInteger(600)))
+                        new SubscribeCOVRequest(new UnsignedInteger(987), pc.getId(), Boolean.FALSE, new UnsignedInteger(600)))
                 .get();
         Thread.sleep(60);
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(987), notif.get("subscriberProcessIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(pc.getId(), notif.get("monitoredObjectIdentifier"));
-        assertEquals(new UnsignedInteger(600), notif.get("timeRemaining"));
+        assertEquals(1, listener.getNotifCount());
+        CovNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(pc.getId(), notif.monitoredObjectIdentifier());
+        assertEquals(new UnsignedInteger(600), notif.timeRemaining());
         assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, new Real(0)),
                 new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
-                new PropertyValue(PropertyIdentifier.updateTime, new DateTime(d1))), notif.get("listOfValues"));
+                new PropertyValue(PropertyIdentifier.updateTime, new DateTime(d1))), notif.listOfValues());
 
         //
         // Add a pulse. No notification should be sent.
         pc.pulse();
         Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         //
         // Add another pulse. Now a notification should be sent. Advance the clock to test time remaining
@@ -303,15 +290,15 @@ public class PulseConverterObjectTest extends AbstractTest {
         clock.plusMinutes(2);
         pc.pulse();
         Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(987), notif.get("subscriberProcessIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(pc.getId(), notif.get("monitoredObjectIdentifier"));
-        assertEquals(new UnsignedInteger(480), notif.get("timeRemaining"));
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(pc.getId(), notif.monitoredObjectIdentifier());
+        assertEquals(new UnsignedInteger(480), notif.timeRemaining());
         assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, new Real(15)),
                 new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
-                new PropertyValue(PropertyIdentifier.updateTime, new DateTime(d1))), notif.get("listOfValues"));
+                new PropertyValue(PropertyIdentifier.updateTime, new DateTime(d1))), notif.listOfValues());
     }
 
     @Test
@@ -326,33 +313,32 @@ public class PulseConverterObjectTest extends AbstractTest {
         //
         // Subscribe for notifications. Doing so should cause an initial notification to be sent.
         d2.send(rd1,
-                new SubscribeCOVRequest(new UnsignedInteger(988), pc.getId(), Boolean.FALSE, new UnsignedInteger(6000)))
+                        new SubscribeCOVRequest(new UnsignedInteger(988), pc.getId(), Boolean.FALSE, new UnsignedInteger(6000)))
                 .get();
         Thread.sleep(60);
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(988), notif.get("subscriberProcessIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(pc.getId(), notif.get("monitoredObjectIdentifier"));
-        assertEquals(new UnsignedInteger(6000), notif.get("timeRemaining"));
+        assertEquals(1, listener.getNotifCount());
+        CovNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(988), notif.subscriberProcessIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(pc.getId(), notif.monitoredObjectIdentifier());
+        assertEquals(new UnsignedInteger(6000), notif.timeRemaining());
         assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, new Real(0)),
                 new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
-                new PropertyValue(PropertyIdentifier.updateTime, new DateTime(d1))), notif.get("listOfValues"));
+                new PropertyValue(PropertyIdentifier.updateTime, new DateTime(d1))), notif.listOfValues());
 
         //
         // Subscribe to a property as well to ensure that periodic notification are not sent.
         d2.send(rd1, new SubscribeCOVPropertyRequest(new UnsignedInteger(989), pc.getId(), Boolean.TRUE,
                 new UnsignedInteger(6000), new PropertyReference(PropertyIdentifier.reliability), null)).get();
-        TestUtils.assertSize(listener.notifs, 1, 500);
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(989), notif.get("subscriberProcessIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(pc.getId(), notif.get("monitoredObjectIdentifier"));
-        assertEquals(new UnsignedInteger(6000), notif.get("timeRemaining"));
-        assertEquals(
-                new SequenceOf<>(new PropertyValue(PropertyIdentifier.reliability, Reliability.noFaultDetected),
+        awaitEquals(listener::getNotifCount, 1, 5000);
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(989), notif.subscriberProcessIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(pc.getId(), notif.monitoredObjectIdentifier());
+        assertEquals(new UnsignedInteger(6000), notif.timeRemaining());
+        assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.reliability, Reliability.noFaultDetected),
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
-                notif.get("listOfValues"));
+                notif.listOfValues());
 
         //
         // Advance the clock 40s and add a pulse. No notification should be sent.
@@ -360,20 +346,20 @@ public class PulseConverterObjectTest extends AbstractTest {
         final DateTime ts2 = new DateTime(d1);
         pc.pulse();
         Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         //
         // Advance the clock 21s. The periodic notification should be received.
         clock.plusSeconds(21);
-        TestUtils.assertSize(listener.notifs, 1, 500);
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(988), notif.get("subscriberProcessIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(pc.getId(), notif.get("monitoredObjectIdentifier"));
-        assertEquals(new UnsignedInteger(5939), notif.get("timeRemaining"));
+        awaitEquals(listener::getNotifCount, 1, 5000);
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(988), notif.subscriberProcessIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(pc.getId(), notif.monitoredObjectIdentifier());
+        assertEquals(new UnsignedInteger(5939), notif.timeRemaining());
         assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, new Real(7.5F)),
                 new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
-                new PropertyValue(PropertyIdentifier.updateTime, ts2)), notif.get("listOfValues"));
+                new PropertyValue(PropertyIdentifier.updateTime, ts2)), notif.listOfValues());
 
         //
         // Add another pulse. No notification should be sent because the tolerance was reset by the period notification.
@@ -381,37 +367,34 @@ public class PulseConverterObjectTest extends AbstractTest {
         final DateTime ts3 = new DateTime(d1);
         pc.pulse();
         Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         //
         // Change the COV period to 3m, and ensure that no notifications are sent before that time.
         pc.writePropertyInternal(PropertyIdentifier.covPeriod, new UnsignedInteger(180));
         clock.plusSeconds(179);
         Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Advance the time to get a periodic notification.
         clock.plusSeconds(1);
-        TestUtils.assertSize(listener.notifs, 1, 500);
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(988), notif.get("subscriberProcessIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(pc.getId(), notif.get("monitoredObjectIdentifier"));
-        assertEquals(new UnsignedInteger(5729), notif.get("timeRemaining"));
+        awaitEquals(listener::getNotifCount, 1, 5000);
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(988), notif.subscriberProcessIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(pc.getId(), notif.monitoredObjectIdentifier());
+        assertEquals(new UnsignedInteger(5729), notif.timeRemaining());
         assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, new Real(15F)),
                 new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
-                new PropertyValue(PropertyIdentifier.updateTime, ts3)), notif.get("listOfValues"));
+                new PropertyValue(PropertyIdentifier.updateTime, ts3)), notif.listOfValues());
     }
 
     @Test
     public void polling() throws Exception {
         // Ensure that before the support is indicated, the property is not writable.
-        TestUtils.assertBACnetServiceException(
-                () -> pc.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.inputReference,
-                                new ObjectPropertyReference(new ObjectIdentifier(ObjectType.accumulator, 0),
-                                        PropertyIdentifier.presentValue))),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> pc.writeProperty(null, new PropertyValue(PropertyIdentifier.inputReference,
+                new ObjectPropertyReference(new ObjectIdentifier(ObjectType.accumulator, 0),
+                        PropertyIdentifier.presentValue))), ErrorClass.property, ErrorCode.writeAccessDenied);
 
         pc.supportInputReference(new ObjectPropertyReference(new ObjectIdentifier(ObjectType.accumulator, 0),
                 PropertyIdentifier.presentValue), 5000);
@@ -482,7 +465,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         assertEquals(new Real(375), pc.get(PropertyIdentifier.presentValue));
 
         //
-        // Change back to in service, add some pulses, advance the clock, and check that all of the pulses
+        // Change back to in service, add some pulses, advance the clock, and check that all the pulses
         // were added in.
         pc.writePropertyInternal(PropertyIdentifier.outOfService, Boolean.FALSE);
         a.pulses(50);

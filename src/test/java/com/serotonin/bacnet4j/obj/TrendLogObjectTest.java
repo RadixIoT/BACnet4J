@@ -13,7 +13,6 @@ import static org.junit.Assert.assertTrue;
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
@@ -128,7 +127,6 @@ public class TrendLogObjectTest extends AbstractTest {
 
         // Advance the clock another minute to poll again.
         clock.plus(1, MINUTES, 0);
-
         awaitEquals(tl::getRecordCount, 3, 5000);
 
         final LogRecord record3 = tl.getRecord(2);
@@ -352,7 +350,7 @@ public class TrendLogObjectTest extends AbstractTest {
         // Write 4 triggers and make sure no notification was sent.
         doTriggers(tl, 4);
         assertEquals(4, tl.getRecordCount());
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.recordCount));
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.totalRecordCount));
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.recordsSinceNotification));
@@ -361,26 +359,25 @@ public class TrendLogObjectTest extends AbstractTest {
         //
         // Write one more and make sure a notification was received.
         doTriggers(tl, 1);
-        assertEquals(5, tl.getRecordCount());
         awaitEquals(tl::getRecordCount, 5, 5000);
-        awaitEquals(listener.notifs::size, 1, 5000);
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(27), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(tl.getId(), notif.get("eventObjectIdentifier"));
+        awaitEquals(listener::getNotifCount, 1, 5000);
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(27), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(tl.getId(), notif.eventObjectIdentifier());
         assertEquals(((BACnetArray<TimeStamp>) tl.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
-                EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(23), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(3), notif.get("priority"));
-        assertEquals(EventType.bufferReady, notif.get("eventType"));
-        assertNull(notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(23), notif.notificationClass());
+        assertEquals(new UnsignedInteger(3), notif.priority());
+        assertEquals(EventType.bufferReady, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
         assertEquals(new NotificationParameters(
                 new BufferReadyNotif(new DeviceObjectPropertyReference(1, tl.getId(), PropertyIdentifier.logBuffer),
-                        UnsignedInteger.ZERO, new UnsignedInteger(5))), notif.get("eventValues"));
+                        UnsignedInteger.ZERO, new UnsignedInteger(5))), notif.eventValues());
 
         // Validate the internally maintained values.
         assertEquals(new UnsignedInteger(5), tl.get(PropertyIdentifier.recordCount));
@@ -392,26 +389,24 @@ public class TrendLogObjectTest extends AbstractTest {
         // Write another 5 triggers and ensure that the notification looks ok.
         doTriggers(tl, 5);
         awaitEquals(tl::getRecordCount, 10, 5000);
-        awaitEquals(listener.notifs::size, 1, 5000);
-        assertEquals(10, tl.getRecordCount());
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(27), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(tl.getId(), notif.get("eventObjectIdentifier"));
+        awaitEquals(listener::getNotifCount, 1, 5000);
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(27), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(tl.getId(), notif.eventObjectIdentifier());
         assertEquals(((BACnetArray<TimeStamp>) tl.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
-                EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(23), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(3), notif.get("priority"));
-        assertEquals(EventType.bufferReady, notif.get("eventType"));
-        assertNull(notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(23), notif.notificationClass());
+        assertEquals(new UnsignedInteger(3), notif.priority());
+        assertEquals(EventType.bufferReady, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
         assertEquals(new NotificationParameters(
                 new BufferReadyNotif(new DeviceObjectPropertyReference(1, tl.getId(), PropertyIdentifier.logBuffer),
-                        new UnsignedInteger(5), new UnsignedInteger(10))), notif.get("eventValues"));
+                        new UnsignedInteger(5), new UnsignedInteger(10))), notif.eventValues());
 
         // Validate the internally maintained values.
         assertEquals(new UnsignedInteger(10), tl.get(PropertyIdentifier.recordCount));
@@ -425,25 +420,25 @@ public class TrendLogObjectTest extends AbstractTest {
         tl.set(PropertyIdentifier.totalRecordCount, new UnsignedInteger(0xFFFFFFFDL));
         doTriggers(tl, 5);
         awaitEquals(tl::getRecordCount, 15, 5000);
-        awaitEquals(listener.notifs::size, 1, 5000);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(27), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(tl.getId(), notif.get("eventObjectIdentifier"));
+        awaitEquals(listener::getNotifCount, 1, 5000);
+        assertEquals(1, listener.getNotifCount());
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(27), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(tl.getId(), notif.eventObjectIdentifier());
         assertEquals(((BACnetArray<TimeStamp>) tl.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
-                EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(23), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(3), notif.get("priority"));
-        assertEquals(EventType.bufferReady, notif.get("eventType"));
-        assertNull(notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(23), notif.notificationClass());
+        assertEquals(new UnsignedInteger(3), notif.priority());
+        assertEquals(EventType.bufferReady, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
         assertEquals(new NotificationParameters(
                 new BufferReadyNotif(new DeviceObjectPropertyReference(1, tl.getId(), PropertyIdentifier.logBuffer),
-                        new UnsignedInteger(0xFFFFFFFDL), new UnsignedInteger(3))), notif.get("eventValues"));
+                        new UnsignedInteger(0xFFFFFFFDL), new UnsignedInteger(3))), notif.eventValues());
 
         // Validate the internally maintained values.
         assertEquals(new UnsignedInteger(15), tl.get(PropertyIdentifier.recordCount));
@@ -496,51 +491,51 @@ public class TrendLogObjectTest extends AbstractTest {
         Thread.sleep(500);
 
         // Ensure that there are no notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Trigger another notification so that a notification is sent.
         doTriggers(tl, 1);
         clock.plusSeconds(1);
-        awaitEquals(listener.notifs::size, 1, 5000);
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(28), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
+        awaitEquals(listener::getNotifCount, 1, 5000);
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(28), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
         assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
-                EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(23), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(3), notif.get("priority"));
-        assertEquals(EventType.bufferReady, notif.get("eventType"));
-        assertNull(notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(23), notif.notificationClass());
+        assertEquals(new UnsignedInteger(3), notif.priority());
+        assertEquals(EventType.bufferReady, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
         assertEquals(new NotificationParameters(
                 new BufferReadyNotif(new DeviceObjectPropertyReference(1, tl.getId(), PropertyIdentifier.logBuffer),
-                        UnsignedInteger.ZERO, new UnsignedInteger(3))), notif.get("eventValues"));
+                        UnsignedInteger.ZERO, new UnsignedInteger(3))), notif.eventValues());
 
         // Trigger another batch of updates. One notification should be sent.
         doTriggers(tl, 7);
         clock.plusSeconds(1);
-        awaitEquals(listener.notifs::size, 1, 5000);
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(28), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
+        awaitEquals(listener::getNotifCount, 1, 5000);
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(28), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
         assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
-                EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(23), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(3), notif.get("priority"));
-        assertEquals(EventType.bufferReady, notif.get("eventType"));
-        assertNull(notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(23), notif.notificationClass());
+        assertEquals(new UnsignedInteger(3), notif.priority());
+        assertEquals(EventType.bufferReady, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
         assertEquals(new NotificationParameters(
                 new BufferReadyNotif(new DeviceObjectPropertyReference(1, tl.getId(), PropertyIdentifier.logBuffer),
-                        new UnsignedInteger(3), new UnsignedInteger(10))), notif.get("eventValues"));
+                        new UnsignedInteger(3), new UnsignedInteger(10))), notif.eventValues());
     }
 
     @Test
@@ -802,25 +797,25 @@ public class TrendLogObjectTest extends AbstractTest {
                         NotifyType.event).withCov(100, new ClientCov(Null.instance));
 
         // Wait for the notification.
-        awaitEquals(listener.notifs::size, 1, 5000);
+        awaitEquals(listener::getNotifCount, 1, 5000);
 
         // Validate notification
-        final Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(27), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(tl.getId(), notif.get("eventObjectIdentifier"));
+        final EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(27), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(tl.getId(), notif.eventObjectIdentifier());
         assertEquals(((BACnetArray<TimeStamp>) tl.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
-                EventState.fault.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(23), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(2), notif.get("priority"));
-        assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertNull(notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.fault, notif.get("toState"));
+                EventState.fault.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(23), notif.notificationClass());
+        assertEquals(new UnsignedInteger(2), notif.priority());
+        assertEquals(EventType.changeOfReliability, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.fault, notif.toState());
         assertEquals(new NotificationParameters(
                 new ChangeOfReliabilityNotif(Reliability.configurationError, new StatusFlags(true, true, false, false),
-                        new SequenceOf<>())), notif.get("eventValues"));
+                        new SequenceOf<>())), notif.eventValues());
     }
 }
