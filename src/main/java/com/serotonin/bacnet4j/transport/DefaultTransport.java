@@ -291,6 +291,7 @@ public class DefaultTransport implements Transport, Runnable {
         if (EnableDisable.enable.equals(localDevice.getCommunicationControlState())) {
             outgoing.add(new OutgoingConfirmed(address, maxAPDULengthAccepted, segmentationSupported, service, consumer,
                     new Exception()));
+            consumer.queued();
             ThreadUtils.notifySync(pauseLock);
         } else {
             // Communication has been disabled as the result of a DeviceCommunicationControlRequest. The consumer
@@ -403,6 +404,7 @@ public class DefaultTransport implements Transport, Runnable {
 
             ctx.setOriginalApdu(apdu);
             sendForResponse(key, ctx);
+            consumer.sent();
         }
 
         @Override
@@ -536,43 +538,46 @@ public class DefaultTransport implements Transport, Runnable {
     private void receiveImpl(final NPDU in) {
         if (in.isNetworkMessage()) {
             switch (in.getNetworkMessageType()) {
-            case 0x1: // I-Am-Router-To-Network
-            case 0x2: // I-Could-Be-Router-To-Network
-                final ByteQueue data = in.getNetworkMessageData();
-                while (data.size() > 1) {
-                    final int nn = data.popU2B();
-                    LOG.debug("Adding network router {} for network {}", in.getFrom().getMacAddress(), nn);
-                    networkRouters.put(nn, in.getFrom().getMacAddress());
-                }
-                break;
-            case 0x3: // Reject-Message-To-Network
-                String reason;
-                final int reasonCode = in.getNetworkMessageData().popU1B();
-                if (reasonCode == 0)
-                    reason = "Other error";
-                else if (reasonCode == 1)
-                    reason = "The router is not directly connected to DNET and cannot find a router to DNET on any " //
-                            + "directly connected network using Who-Is-Router-To-Network messages.";
-                else if (reasonCode == 2)
-                    reason = "The router is busy and unable to accept messages for the specified DNET at the " //
-                            + "present time.";
-                else if (reasonCode == 3)
-                    reason = "It is an unknown network layer message type. The DNET returned in this case is a " //
-                            + "local matter.";
-                else if (reasonCode == 4)
-                    reason = "The message is too long to be routed to this DNET.";
-                else if (reasonCode == 5)
-                    reason = "The source message was rejected due to a BACnet security error and that error cannot " //
-                            + " be forwarded to the source device. See Clause 24.12.1.1 for more details on the " //
-                            + "generation of Reject-Message-To-Network messages indicating this reason.";
-                else if (reasonCode == 6)
-                    reason = "The source message was rejected due to errors in the addressing. The length of the " //
-                            + "DADR or SADR was determined to be invalid.";
-                else
-                    reason = "Unknown reason code";
-                LOG.warn("Received Reject-Message-To-Network with reason '{}': {}", reasonCode, reason);
-                break;
-            default:
+                case 0x1: // I-Am-Router-To-Network
+                case 0x2: // I-Could-Be-Router-To-Network
+                    final ByteQueue data = in.getNetworkMessageData();
+                    while (data.size() > 1) {
+                        final int nn = data.popU2B();
+                        LOG.debug("Adding network router {} for network {}", in.getFrom().getMacAddress(), nn);
+                        networkRouters.put(nn, in.getFrom().getMacAddress());
+                    }
+                    break;
+                case 0x3: // Reject-Message-To-Network
+                    String reason;
+                    final int reasonCode = in.getNetworkMessageData().popU1B();
+                    if (reasonCode == 0)
+                        reason = "Other error";
+                    else if (reasonCode == 1)
+                        reason = "The router is not directly connected to DNET and cannot find a router to DNET on any "
+                                //
+                                + "directly connected network using Who-Is-Router-To-Network messages.";
+                    else if (reasonCode == 2)
+                        reason = "The router is busy and unable to accept messages for the specified DNET at the " //
+                                + "present time.";
+                    else if (reasonCode == 3)
+                        reason = "It is an unknown network layer message type. The DNET returned in this case is a " //
+                                + "local matter.";
+                    else if (reasonCode == 4)
+                        reason = "The message is too long to be routed to this DNET.";
+                    else if (reasonCode == 5)
+                        reason = "The source message was rejected due to a BACnet security error and that error cannot "
+                                //
+                                + " be forwarded to the source device. See Clause 24.12.1.1 for more details on the " //
+                                + "generation of Reject-Message-To-Network messages indicating this reason.";
+                    else if (reasonCode == 6)
+                        reason =
+                                "The source message was rejected due to errors in the addressing. The length of the " //
+                                        + "DADR or SADR was determined to be invalid.";
+                    else
+                        reason = "Unknown reason code";
+                    LOG.warn("Received Reject-Message-To-Network with reason '{}': {}", reasonCode, reason);
+                    break;
+                default:
             }
         } else {
             receiveAPDU(in);
@@ -605,7 +610,8 @@ public class DefaultTransport implements Transport, Runnable {
                 } catch (final BACnetException e1) {
                     LOG.warn("Error sending error response", e1);
                 }
-                LOG.warn("Receiving a confirmed service request that ist not supported or available. TYPE_ID '{}'", confAPDU.getServiceChoice());
+                LOG.warn("Receiving a confirmed service request that ist not supported or available. TYPE_ID '{}'",
+                        confAPDU.getServiceChoice());
                 return;
             }
 
@@ -725,8 +731,9 @@ public class DefaultTransport implements Transport, Runnable {
                     LOG.debug("Sending ack for segment {}, key={}", lastSeq, key);
 
                     // Send an acknowledgement
-                    network.sendAPDU(key.getAddress(), key.getLinkService(), new SegmentACK(false, !key.isFromServer(),
-                            msg.getInvokeId(), lastSeq, windowSize, !segmentWindow.isMessageComplete()), false);
+                    network.sendAPDU(key.getAddress(), key.getLinkService(),
+                            new SegmentACK(false, !key.isFromServer(), msg.getInvokeId(), lastSeq, windowSize,
+                                    !segmentWindow.isMessageComplete()), false);
 
                     // Append the window onto the original response.
                     for (final Segmentable segment : segmentWindow.getSegments()) {
@@ -799,8 +806,8 @@ public class DefaultTransport implements Transport, Runnable {
         int sequenceNumber = ctx.getLastIdSent();
         while (remaining > 0 && ctx.getServiceData().size() > 0) {
             final ByteQueue segData = ctx.getNextSegment();
-            final APDU segment = ctx.getSegmentTemplate().clone(ctx.getServiceData().size() > 0, ++sequenceNumber,
-                    ack.getActualWindowSize(), segData);
+            final APDU segment = ctx.getSegmentTemplate()
+                    .clone(ctx.getServiceData().size() > 0, ++sequenceNumber, ack.getActualWindowSize(), segData);
 
             LOG.debug("Sending segment {} for {}", sequenceNumber, key);
             try {
@@ -891,19 +898,19 @@ public class DefaultTransport implements Transport, Runnable {
             response.write(serviceData);
 
             // Check if we need to segment the message.
-            if (serviceData.size() > request.getMaxApduLengthAccepted().getMaxLengthInt()
-                    - ComplexACK.getHeaderSize(false)) {
-                final int maxServiceData = request.getMaxApduLengthAccepted().getMaxLengthInt()
-                        - ComplexACK.getHeaderSize(true);
+            if (serviceData.size() > request.getMaxApduLengthAccepted().getMaxLengthInt() - ComplexACK.getHeaderSize(
+                    false)) {
+                final int maxServiceData =
+                        request.getMaxApduLengthAccepted().getMaxLengthInt() - ComplexACK.getHeaderSize(true);
                 // Check if the device can accept what we want to send.
                 if (!request.isSegmentedResponseAccepted()) {
-                    LOG.warn("Response too big to send to device without segmentation");                   
-                    throw new BACnetAbortException(AbortReason.bufferOverflow);         
+                    LOG.warn("Response too big to send to device without segmentation");
+                    throw new BACnetAbortException(AbortReason.bufferOverflow);
                 }
                 final int segmentsRequired = serviceData.size() / maxServiceData + 1;
                 if (segmentsRequired > request.getMaxSegmentsAccepted().getMaxSegments() || segmentsRequired > 255) {
                     LOG.warn("Response too big to send to device; too many segments required");
-                    throw new BACnetAbortException(AbortReason.bufferOverflow); 
+                    throw new BACnetAbortException(AbortReason.bufferOverflow);
                 }
                 LOG.debug("Sending confirmed response as segmented with {} segments", segmentsRequired);
                 // Prepare the segmenting session.
@@ -970,8 +977,7 @@ public class DefaultTransport implements Transport, Runnable {
                                 network.sendAPDU(key.getAddress(), key.getLinkService(),
                                         new SegmentACK(true, key.isFromServer(), key.getInvokeId(),
                                                 ctx.getSegmentWindow().getLatestSequenceId(),
-                                                ctx.getSegmentWindow().getWindowSize(), true),
-                                        false);
+                                                ctx.getSegmentWindow().getWindowSize(), true), false);
                             } catch (final BACnetException ex) {
                                 ctx.useConsumer((consumer) -> consumer.ex(ex));
                             }
