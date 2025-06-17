@@ -291,7 +291,9 @@ public class DefaultTransport implements Transport, Runnable {
         if (EnableDisable.enable.equals(localDevice.getCommunicationControlState())) {
             outgoing.add(new OutgoingConfirmed(address, maxAPDULengthAccepted, segmentationSupported, service, consumer,
                     new Exception()));
-            consumer.queued();
+            if (consumer != null) {
+                consumer.queued();
+            }
             ThreadUtils.notifySync(pauseLock);
         } else {
             // Communication has been disabled as the result of a DeviceCommunicationControlRequest. The consumer
@@ -404,7 +406,9 @@ public class DefaultTransport implements Transport, Runnable {
 
             ctx.setOriginalApdu(apdu);
             sendForResponse(key, ctx);
-            consumer.sent();
+            if (consumer != null) {
+                consumer.sent();
+            }
         }
 
         @Override
@@ -659,7 +663,7 @@ public class DefaultTransport implements Transport, Runnable {
             }
         } else {
             // Must be an acknowledgement
-            LOG.debug("incomingApdu: recieved an acknowledgement from {}", from);
+            LOG.debug("incomingApdu: received an acknowledgement from {}", from);
 
             final AckAPDU ack = (AckAPDU) apdu;
             final UnackedMessageKey key = new UnackedMessageKey(from, linkService, ack.getOriginalInvokeId(),
