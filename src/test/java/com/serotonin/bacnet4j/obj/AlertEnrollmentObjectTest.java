@@ -1,12 +1,14 @@
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.assertListEqualsIgnoreOrder;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.AbstractTest;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.constructed.Destination;
 import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
@@ -60,11 +62,10 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
                 new Parameter(new Double(3.14)));
 
         // Wait for the alarm to be sent
-        Thread.sleep(100);
+        awaitEquals(listener::getNotifCount, 1, 5000);
         assertEquals(EventState.normal, ae.readProperty(PropertyIdentifier.eventState)); // Still normal. Always normal.
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         final EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -90,7 +91,7 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
 
         // Make sure the list of properties looks right.
         final SequenceOf<PropertyIdentifier> propertyList = ae.readProperty(PropertyIdentifier.propertyList);
-        TestUtils.assertListEqualsIgnoreOrder(TestUtils.toList( //
+        assertListEqualsIgnoreOrder(toList( //
                 PropertyIdentifier.presentValue, //
                 PropertyIdentifier.eventState, //
                 PropertyIdentifier.eventDetectionEnable, //

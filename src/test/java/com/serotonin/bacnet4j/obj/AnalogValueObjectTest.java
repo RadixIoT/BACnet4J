@@ -1,6 +1,7 @@
 package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -104,9 +105,9 @@ public class AnalogValueObjectTest extends AbstractTest {
 
         // Disable low limit checking. Will return to normal immediately.
         av.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(false, true));
+        awaitEquals(listener::getNotifCount, 1, 5000);
         assertEquals(EventState.normal, av.readProperty(PropertyIdentifier.eventState));
-        Thread.sleep(40);
-        assertEquals(1, listener.getNotifCount());
+        //        Thread.sleep(40);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());

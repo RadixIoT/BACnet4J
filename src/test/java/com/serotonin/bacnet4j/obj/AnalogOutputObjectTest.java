@@ -1,5 +1,6 @@
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -9,7 +10,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.AbstractTest;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkUtils;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
@@ -63,7 +63,7 @@ public class AnalogOutputObjectTest extends AbstractTest {
         ao.supportIntrinsicReporting(60, 17, 100, 20, 5, new LimitEnable(true, true),
                 new EventTransitionBits(true, true, true), NotifyType.alarm, 180);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(40);
+        Thread.sleep(500);
         assertEquals(0, listener.getNotifCount());
 
         // Do a real state change. Write an out of range value. After 60s the alarm will be raised.
@@ -131,7 +131,7 @@ public class AnalogOutputObjectTest extends AbstractTest {
     @Test
     public void propertyConformanceEditableWhenOutOfService() throws BACnetServiceException {
         // Should not be writable while in service
-        TestUtils.assertBACnetServiceException(() -> ao.writeProperty(null,
+        assertBACnetServiceException(() -> ao.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.reliability, null, Reliability.unreliableOther, null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
 
@@ -189,8 +189,8 @@ public class AnalogOutputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReporting() throws Exception {
-        final DeviceObjectPropertyReference ref =
-                new DeviceObjectPropertyReference(1, ao.getId(), PropertyIdentifier.presentValue);
+        final DeviceObjectPropertyReference ref = new DeviceObjectPropertyReference(1, ao.getId(),
+                PropertyIdentifier.presentValue);
         final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(new OutOfRange(new UnsignedInteger(30), new Real(40), new Real(60), new Real(2))),
                 new EventTransitionBits(true, true, true), 17, 1000, null, null);
@@ -205,7 +205,7 @@ public class AnalogOutputObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        Thread.sleep(40);
+        Thread.sleep(500);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 

@@ -1,6 +1,7 @@
 package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -108,9 +109,8 @@ public class AnalogInputObjectTest extends AbstractTest {
 
         // Disable low limit checking. Will return to normal immediately.
         ai.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(false, true));
+        awaitEquals(listener::getNotifCount, 1, 5000);
         assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState));
-        Thread.sleep(100);
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -199,12 +199,12 @@ public class AnalogInputObjectTest extends AbstractTest {
 
         // Write a fault value.
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(-5));
-        Thread.sleep(40);
+        awaitEquals(listener::getNotifCount, 1, 5000);
+
         assertEquals(EventState.fault, ai.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), ai.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         final EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());

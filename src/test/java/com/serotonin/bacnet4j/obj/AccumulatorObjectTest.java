@@ -1,5 +1,7 @@
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -9,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.AbstractTest;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.AccumulatorObject.ValueSetWrite;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
@@ -140,8 +141,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Disable low limit checking. Will return to normal immediately.
         a.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(false, true));
         assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState));
-        Thread.sleep(40);
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(listener::getNotifCount, 1, 5000);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -177,7 +177,6 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Go past the fault high limit. Will change to fault immediately.
         doPulses(61);
         assertEquals(EventState.fault, a.readProperty(PropertyIdentifier.eventState));
-        Thread.sleep(40);
         assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(EventState.lowLimit, notif.fromState());
@@ -192,7 +191,6 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Reduce to normal. Return to normal immediately.
         doPulses(52);
         assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState));
-        Thread.sleep(40);
         assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(EventState.fault, notif.fromState());
@@ -233,13 +231,13 @@ public class AccumulatorObjectTest extends AbstractTest {
     @Test
     public void propertyConformanceEditableWhenOutOfService() throws BACnetServiceException {
         // Should not be writable while in service
-        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+        assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.presentValue, null, new UnsignedInteger(51), null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+        assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.pulseRate, null, new UnsignedInteger(51), null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+        assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.reliability, null, Reliability.overRange, null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
 
@@ -252,16 +250,16 @@ public class AccumulatorObjectTest extends AbstractTest {
 
     @Test
     public void propertyConformanceReadOnly() {
-        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+        assertBACnetServiceException(() -> a.writeProperty(null,
                 new PropertyValue(PropertyIdentifier.eventMessageTexts, new UnsignedInteger(2),
                         new CharacterString("should fail"), null)), ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+        assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.valueChangeTime, null, DateTime.UNSPECIFIED, null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+        assertBACnetServiceException(() -> a.writeProperty(null,
                 new PropertyValue(PropertyIdentifier.loggingRecord, new UnsignedInteger(2),
                         new CharacterString("should fail"), null)), ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+        assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.limitMonitoringInterval, null, new UnsignedInteger(51), null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
     }
@@ -309,8 +307,8 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Default the pulse rate
         a.set(PropertyIdentifier.pulseRate, new UnsignedInteger(40));
 
-        final DeviceObjectPropertyReference ref =
-                new DeviceObjectPropertyReference(1, a.getId(), PropertyIdentifier.pulseRate);
+        final DeviceObjectPropertyReference ref = new DeviceObjectPropertyReference(1, a.getId(),
+                PropertyIdentifier.pulseRate);
         final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(
                         new UnsignedRange(new UnsignedInteger(3), new UnsignedInteger(30), new UnsignedInteger(50))),
@@ -328,18 +326,17 @@ public class AccumulatorObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        Thread.sleep(40);
+        Thread.sleep(500);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 
         // Go to high limit.
         doPulses(53, 53, 53, 53, 53);
-        Thread.sleep(40);
+        awaitEquals(listener::getNotifCount, 1, 5000);
         assertEquals(EventState.highLimit, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
         assertEquals(new StatusFlags(true, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -360,7 +357,6 @@ public class AccumulatorObjectTest extends AbstractTest {
 
         // Go to a fault value.
         doPulses(10, 10);
-        Thread.sleep(60);
         assertEquals(EventState.fault, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(Reliability.underRange, ee.readProperty(PropertyIdentifier.reliability));
         assertEquals(new StatusFlags(true, true, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
@@ -391,9 +387,8 @@ public class AccumulatorObjectTest extends AbstractTest {
 
     @Test
     public void construction() throws Exception {
-        final AccumulatorObject a1 =
-                new AccumulatorObject(d1, 1, "a1", 456, 0, EngineeringUnits.amperes, false, new Scale(new Real(1)),
-                        new Prescale(new UnsignedInteger(2), new UnsignedInteger(15)), 200, 1);
+        final AccumulatorObject a1 = new AccumulatorObject(d1, 1, "a1", 456, 0, EngineeringUnits.amperes, false,
+                new Scale(new Real(1)), new Prescale(new UnsignedInteger(2), new UnsignedInteger(15)), 200, 1);
         assertEquals(new UnsignedInteger(456), a1.get(PropertyIdentifier.presentValue));
     }
 
@@ -406,10 +401,10 @@ public class AccumulatorObjectTest extends AbstractTest {
 
         //
         // The object defaults to read only. Ensure that the properties cannot be written.
-        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+        assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.valueBeforeChange, UnsignedInteger.ZERO)), ErrorClass.property,
                 ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(
+        assertBACnetServiceException(
                 () -> a.writeProperty(null, new PropertyValue(PropertyIdentifier.valueSet, UnsignedInteger.ZERO)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
 
@@ -417,7 +412,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Set to allow valueBeforeChange
         a.supportValueWrite(ValueSetWrite.valueBeforeChange);
 
-        TestUtils.assertBACnetServiceException(
+        assertBACnetServiceException(
                 () -> a.writeProperty(null, new PropertyValue(PropertyIdentifier.valueSet, UnsignedInteger.ZERO)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
 
@@ -431,7 +426,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Set to allow valueSet
         a.supportValueWrite(ValueSetWrite.valueSet);
 
-        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null,
+        assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.valueBeforeChange, UnsignedInteger.ZERO)), ErrorClass.property,
                 ErrorCode.writeAccessDenied);
 
