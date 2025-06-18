@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2015 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.npdu.mstp;
 
 import java.io.InputStream;
@@ -131,7 +130,7 @@ public class MasterNode extends MstpNode {
 
     /**
      * @param maxInfoFrames
-     *            the maxInfoFrames to set
+     *                      the maxInfoFrames to set
      */
     public void setMaxInfoFrames(final int maxInfoFrames) {
         if (maxInfoFrames < 1)
@@ -247,8 +246,8 @@ public class MasterNode extends MstpNode {
             // ReceivedUnwantedFrame
             if (LOG.isDebugEnabled())
                 LOG.debug(thisStation + " idle:Unknown frame type");
-        } else if (frame.broadcast()
-                && type.oneOf(FrameType.token, FrameType.bacnetDataExpectingReply, FrameType.testRequest)) {
+        } else if (frame.broadcast() && type.oneOf(FrameType.token, FrameType.bacnetDataExpectingReply,
+                FrameType.testRequest)) {
             // ReceivedUnwantedFrame
             if (LOG.isDebugEnabled())
                 LOG.debug("idle:ReceiveUnwantedFrame Frame type should not be broadcast: " + type);
@@ -274,15 +273,15 @@ public class MasterNode extends MstpNode {
                 LOG.debug("idle:ReceivedPFM (" + frame.getSourceAddress() + ")");
             }
             sendFrame(FrameType.replyToPollForMaster, frame.getSourceAddress());
-        } else if (frame.forStationOrBroadcast(thisStation)
-                && type.oneOf(FrameType.bacnetDataNotExpectingReply, FrameType.testResponse)) {
+        } else if (frame.forStationOrBroadcast(thisStation) && type.oneOf(FrameType.bacnetDataNotExpectingReply,
+                FrameType.testResponse)) {
             // ReceivedDataNoReply
             if (LOG.isDebugEnabled()) {
                 LOG.debug("idle:ReceivedDataNoReply (" + frame.getSourceAddress() + ")");
             }
             receivedDataNoReply(frame);
-        } else if (frame.forStation(thisStation)
-                && type.oneOf(FrameType.bacnetDataExpectingReply, FrameType.testRequest)) {
+        } else if (frame.forStation(thisStation) && type.oneOf(FrameType.bacnetDataExpectingReply,
+                FrameType.testRequest)) {
             // ReceivedDataNeedingReply
             if (LOG.isDebugEnabled()) {
                 LOG.debug("idle:ReceivedDataNeedingReply (" + frame.getSourceAddress() + ")");
@@ -500,7 +499,7 @@ public class MasterNode extends MstpNode {
             state = MasterNodeState.idle;
             activity = true;
         } else if (silence >= delay && silence < delay + Constants.SLOT // Silence is in this master's slot.
-                // Silence is beyond all slots.
+        // Silence is beyond all slots.
                 || silence > Constants.NO_TOKEN + Constants.SLOT * (maxMaster + 1)) {
             // GenerateToken
             pollStation = adjacentStation(thisStation);
@@ -540,7 +539,8 @@ public class MasterNode extends MstpNode {
             } else {
                 // ReceivedUnexpectedFrame
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug(thisStation + " pollForMaster:ReceivedUnexpectedFrame (" + frame.getSourceAddress()  + ")");
+                    LOG.debug(thisStation + " pollForMaster:ReceivedUnexpectedFrame (" + frame
+                            .getSourceAddress() + ")");
                 }
                 receivedValidFrame = false;
                 state = MasterNodeState.idle;

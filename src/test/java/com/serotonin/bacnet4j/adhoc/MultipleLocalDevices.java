@@ -1,7 +1,28 @@
 /*
- * Copyright (C) 2021 Radix IoT LLC. All rights reserved.
- * @Author Terry Packer
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
  *
+ * Copyright (C) 2021 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
  */
 
 package com.serotonin.bacnet4j.adhoc;
@@ -24,7 +45,7 @@ import com.serotonin.bacnet4j.util.DiscoveryUtils;
 
 /**
  * This example will only work if the underlying implementation of the java DatagramSocket supports receiving
- *   broadcasts on addresses other than the wildcard address. i.e. Windows
+ * broadcasts on addresses other than the wildcard address. i.e. Windows
  */
 public class MultipleLocalDevices {
 
@@ -35,15 +56,15 @@ public class MultipleLocalDevices {
         String bindAddress2 = "192.168.1.100";
 
         //Configure the first network, ensure we set reuse address
-        IpNetwork networkOne = new IpNetworkBuilder()
-                .withLocalBindAddress(bindAddress1)
-                .withBroadcast("255.255.255.255", 24)
-                .withLocalNetworkNumber(1).withPort(47808).withReuseAddress(false).build();
+        IpNetwork networkOne = new IpNetworkBuilder().withLocalBindAddress(bindAddress1).withBroadcast(
+                "255.255.255.255", 24).withLocalNetworkNumber(1).withPort(47808).withReuseAddress(false).build();
         Transport transportOne = new DefaultTransport(networkOne);
         LocalDevice localDeviceOne = new LocalDevice(1, transportOne);
 
-        localDeviceOne.getDeviceObject().writePropertyInternal(PropertyIdentifier.objectName, new CharacterString("DeviceOne"));
-        localDeviceOne.getDeviceObject().writePropertyInternal(PropertyIdentifier.modelName, new CharacterString("BACnet4J"));
+        localDeviceOne.getDeviceObject().writePropertyInternal(PropertyIdentifier.objectName, new CharacterString(
+                "DeviceOne"));
+        localDeviceOne.getDeviceObject().writePropertyInternal(PropertyIdentifier.modelName, new CharacterString(
+                "BACnet4J"));
 
         //Create listener
         IAmListener listenerOne = (RemoteDevice d) -> {
@@ -57,15 +78,15 @@ public class MultipleLocalDevices {
 
         localDeviceOne.getEventHandler().addListener(listenerOne);
 
-        IpNetwork networkTwo = new IpNetworkBuilder()
-                .withLocalBindAddress(bindAddress2)
-                .withBroadcast("255.255.255.255", 24)
-                .withLocalNetworkNumber(1).withPort(47808).withReuseAddress(false).build();
+        IpNetwork networkTwo = new IpNetworkBuilder().withLocalBindAddress(bindAddress2).withBroadcast(
+                "255.255.255.255", 24).withLocalNetworkNumber(1).withPort(47808).withReuseAddress(false).build();
         Transport transportTwo = new DefaultTransport(networkTwo);
         LocalDevice localDeviceTwo = new LocalDevice(2, transportTwo);
 
-        localDeviceTwo.getDeviceObject().writePropertyInternal(PropertyIdentifier.objectName, new CharacterString("DeviceTwo"));
-        localDeviceTwo.getDeviceObject().writePropertyInternal(PropertyIdentifier.modelName, new CharacterString("BACnet4J"));
+        localDeviceTwo.getDeviceObject().writePropertyInternal(PropertyIdentifier.objectName, new CharacterString(
+                "DeviceTwo"));
+        localDeviceTwo.getDeviceObject().writePropertyInternal(PropertyIdentifier.modelName, new CharacterString(
+                "BACnet4J"));
 
         //Create listener
         IAmListener listenerTwo = (RemoteDevice d) -> {

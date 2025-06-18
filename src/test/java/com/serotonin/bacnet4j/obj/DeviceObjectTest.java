@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
@@ -117,8 +144,8 @@ public class DeviceObjectTest extends AbstractTest {
         final CountDownLatch latch = new CountDownLatch(2);
 
         // Set up time sync for every 4 hours aligned with a 5 minute offset.
-        d1.getDeviceObject().supportTimeSynchronization(new SequenceOf<>(new Recipient(d2.getId())),
-                new SequenceOf<>(new Recipient(d3.getId())), 240, true, 5);
+        d1.getDeviceObject().supportTimeSynchronization(new SequenceOf<>(new Recipient(d2.getId())), new SequenceOf<>(
+                new Recipient(d3.getId())), 240, true, 5);
 
         // Add listeners to d2 and d3
         final AtomicReference<DateTime> d2Time = new AtomicReference<>();
@@ -158,8 +185,8 @@ public class DeviceObjectTest extends AbstractTest {
         assertNotNull(d3Time.get());
 
         final int offsetHundredths = TimeZone.getDefault().getOffset(clock.millis()) / 10;
-        final int adjustedHundredths =
-                (d3Time.get().getTime().getHundredthInDay() + offsetHundredths + 8_640_000) % 8_640_000;
+        final int adjustedHundredths = (d3Time.get().getTime()
+                .getHundredthInDay() + offsetHundredths + 8_640_000) % 8_640_000;
         assertEquals(new DateTime(d1), d2Time.get());
         assertEquals(d2Time.get().getTime().getHundredthInDay(), adjustedHundredths);
 
@@ -173,16 +200,16 @@ public class DeviceObjectTest extends AbstractTest {
 
         assertEquals(new Date(d1), d1.getDeviceObject().readProperty(PropertyIdentifier.localDate));
         assertEquals(new Time(d1), d1.getDeviceObject().readProperty(PropertyIdentifier.localTime));
-        assertEquals(new SignedInteger(tz.getOffset(clock.millis()) / 1000 / 60),
-                d1.getDeviceObject().readProperty(PropertyIdentifier.utcOffset));
-        assertEquals(Boolean.valueOf(tz.inDaylightTime(new java.util.Date(clock.millis()))),
-                d1.getDeviceObject().readProperty(PropertyIdentifier.daylightSavingsStatus));
+        assertEquals(new SignedInteger(tz.getOffset(clock.millis()) / 1000 / 60), d1.getDeviceObject().readProperty(
+                PropertyIdentifier.utcOffset));
+        assertEquals(Boolean.valueOf(tz.inDaylightTime(new java.util.Date(clock.millis()))), d1.getDeviceObject()
+                .readProperty(PropertyIdentifier.daylightSavingsStatus));
 
         d1.getRemoteDevice(2).get();
         d1.getRemoteDevice(3).get();
-        assertEquals(new SequenceOf<>(new AddressBinding(d2.getId(), d2.getAllLocalAddresses()[0]),
-                        new AddressBinding(d3.getId(), d3.getAllLocalAddresses()[0])),
-                d1.getDeviceObject().readProperty(PropertyIdentifier.deviceAddressBinding));
+        assertEquals(new SequenceOf<>(new AddressBinding(d2.getId(), d2.getAllLocalAddresses()[0]), new AddressBinding(
+                d3.getId(), d3.getAllLocalAddresses()[0])), d1.getDeviceObject().readProperty(
+                        PropertyIdentifier.deviceAddressBinding));
     }
 
     @Test
@@ -204,17 +231,16 @@ public class DeviceObjectTest extends AbstractTest {
         assertEquals(UnsignedInteger.ZERO, notif.timeRemaining());
         assertEquals(d1.getId(), notif.initiatingDevice());
         assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.systemStatus, DeviceStatus.operational),
-                        new PropertyValue(PropertyIdentifier.timeOfDeviceRestart, ts),
-                        new PropertyValue(PropertyIdentifier.lastRestartReason, RestartReason.warmstart)),
-                notif.listOfValues());
+                new PropertyValue(PropertyIdentifier.timeOfDeviceRestart, ts), new PropertyValue(
+                        PropertyIdentifier.lastRestartReason, RestartReason.warmstart)), notif.listOfValues());
     }
 
     @SuppressWarnings("unchecked")
     @Test
     public void intrinsicAlarms() throws Exception {
         final DeviceObject dev = d1.getDeviceObject();
-        final NotificationClassObject nc =
-                new NotificationClassObject(d1, 7, "nc7", 100, 5, 200, new EventTransitionBits(false, false, false));
+        final NotificationClassObject nc = new NotificationClassObject(d1, 7, "nc7", 100, 5, 200,
+                new EventTransitionBits(false, false, false));
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.FALSE,
                 new EventTransitionBits(true, true, true)));
@@ -246,8 +272,7 @@ public class DeviceObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.fault, notif.toState());
-        assertEquals(new NotificationParameters(
-                new ChangeOfReliabilityNotif(Reliability.memberFault, new StatusFlags(true, true, false, false),
-                        new SequenceOf<>())), notif.eventValues());
+        assertEquals(new NotificationParameters(new ChangeOfReliabilityNotif(Reliability.memberFault, new StatusFlags(
+                true, true, false, false), new SequenceOf<>())), notif.eventValues());
     }
 }

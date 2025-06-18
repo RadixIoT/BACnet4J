@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j;
 
 import static org.junit.Assert.assertEquals;
@@ -16,10 +43,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import com.serotonin.bacnet4j.LocalDevice.CacheUpdate;
-import com.serotonin.bacnet4j.cache.CachePolicies;
-import com.serotonin.bacnet4j.cache.RemoteEntityCachePolicy;
-import com.serotonin.bacnet4j.util.RemoteDeviceDiscoverer;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.junit.After;
 import org.junit.Before;
@@ -27,6 +50,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.serotonin.bacnet4j.LocalDevice.CacheUpdate;
+import com.serotonin.bacnet4j.cache.CachePolicies;
+import com.serotonin.bacnet4j.cache.RemoteEntityCachePolicy;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
@@ -37,6 +63,7 @@ import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.util.DiscoveryUtils;
+import com.serotonin.bacnet4j.util.RemoteDeviceDiscoverer;
 import com.serotonin.bacnet4j.util.RemoteDeviceFinder.RemoteDeviceFuture;
 
 import lohbihler.warp.WarpClock;
@@ -70,7 +97,7 @@ public class LocalDeviceTest {
 
         RemoteDevice rd2 = d1.getRemoteDeviceBlocking(2);
         DiscoveryUtils.getExtendedDeviceInformation(d1, rd2);
-        
+
         // Ask for device 2 in two different threads.
         final MutableObject<RemoteDevice> rd21 = new MutableObject<>();
         final MutableObject<RemoteDevice> rd22 = new MutableObject<>();
@@ -123,8 +150,8 @@ public class LocalDeviceTest {
 
     @Test
     public void undefinedDeviceId() throws Exception {
-        final LocalDevice ld = new LocalDevice(ObjectIdentifier.UNINITIALIZED,
-                new DefaultTransport(new TestNetwork(map, 3, 10)));
+        final LocalDevice ld = new LocalDevice(ObjectIdentifier.UNINITIALIZED, new DefaultTransport(new TestNetwork(map,
+                3, 10)));
         ld.setClock(clock);
         new Thread(() -> clock.plus(200, TimeUnit.SECONDS, 10, TimeUnit.SECONDS, 10, 0)).start();
         ld.initialize();
@@ -206,8 +233,8 @@ public class LocalDeviceTest {
             cachePolicies.putDevicePolicy(1, RemoteEntityCachePolicy.EXPIRE_5_SECONDS);
             cachePolicies.putDevicePolicy(2, RemoteEntityCachePolicy.EXPIRE_1_MINUTE);
 
-            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(
-                    CacheUpdate.ALWAYS, results::add)) {
+            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(CacheUpdate.ALWAYS,
+                    results::add)) {
 
                 RemoteDevice response1 = poll(results);
                 RemoteDevice response2 = poll(results);
@@ -241,8 +268,8 @@ public class LocalDeviceTest {
             cachePolicies.putDevicePolicy(1, RemoteEntityCachePolicy.EXPIRE_5_SECONDS);
             cachePolicies.putDevicePolicy(2, RemoteEntityCachePolicy.EXPIRE_1_MINUTE);
 
-            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(
-                    CacheUpdate.IF_EXPIRED, results::add)) {
+            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(CacheUpdate.IF_EXPIRED,
+                    results::add)) {
 
                 RemoteDevice response1 = poll(results);
                 RemoteDevice response2 = poll(results);
@@ -278,8 +305,8 @@ public class LocalDeviceTest {
             cachePolicies.putDevicePolicy(1, RemoteEntityCachePolicy.EXPIRE_5_SECONDS);
             cachePolicies.putDevicePolicy(2, RemoteEntityCachePolicy.EXPIRE_1_MINUTE);
 
-            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(
-                    CacheUpdate.NEVER, results::add)) {
+            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(CacheUpdate.NEVER,
+                    results::add)) {
 
                 RemoteDevice response1 = poll(results);
                 RemoteDevice response2 = poll(results);
@@ -306,7 +333,8 @@ public class LocalDeviceTest {
         return results.poll(5, TimeUnit.SECONDS);
     }
 
-    private void containsRemoteDeviceOneAndTwo(RemoteDeviceDiscoverer discoverer, RemoteDevice remoteDeviceA, RemoteDevice remoteDeviceB) {
+    private void containsRemoteDeviceOneAndTwo(RemoteDeviceDiscoverer discoverer, RemoteDevice remoteDeviceA,
+            RemoteDevice remoteDeviceB) {
         assertNotNull(remoteDeviceA);
         assertNotNull(remoteDeviceB);
         assertTrue(remoteDeviceA.getInstanceNumber() == 1 || remoteDeviceA.getInstanceNumber() == 2);

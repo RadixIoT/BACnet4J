@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import java.util.ArrayList;
@@ -66,8 +93,9 @@ public class EventEnrollmentObject extends BACnetObject {
         // Validation
         if (objectPropertyReference.getPropertyIdentifier().isOneOf(PropertyIdentifier.all, PropertyIdentifier.required,
                 PropertyIdentifier.optional)) {
-            throw new IllegalArgumentException("PropertyIdentifier cannot be special identifier: "
-                    + objectPropertyReference.getPropertyIdentifier());
+            throw new IllegalArgumentException(
+                    "PropertyIdentifier cannot be special identifier: " + objectPropertyReference
+                            .getPropertyIdentifier());
         }
         final AbstractEventParameter aep = eventParameter.getChoice().getDatum();
         eventParameterReference = aep.getReference();
@@ -77,9 +105,9 @@ public class EventEnrollmentObject extends BACnetObject {
             // TODO allow different devices.
             if (!eventParameterReference.getDeviceIdentifier().equals(objectPropertyReference.getDeviceIdentifier())) {
                 throw new IllegalArgumentException(
-                        "Event parameter reference must use the same device as the object property reference: parameter="
-                                + eventParameterReference.getDeviceIdentifier() + ", property="
-                                + objectPropertyReference.getPropertyIdentifier());
+                        "Event parameter reference must use the same device as the object property reference: parameter=" + eventParameterReference
+                                .getDeviceIdentifier() + ", property=" + objectPropertyReference
+                                        .getPropertyIdentifier());
             }
         }
 
@@ -117,8 +145,8 @@ public class EventEnrollmentObject extends BACnetObject {
         if (faultParameter != null) {
             afp = (AbstractFaultParameter) faultParameter.getEntry().getDatum();
             faultAlgo = afp.createFaultAlgorithm();
-            Objects.requireNonNull(faultAlgo,
-                    "No algorithm defined for fault parameter type " + faultParameter.getClass());
+            Objects.requireNonNull(faultAlgo, "No algorithm defined for fault parameter type " + faultParameter
+                    .getClass());
 
             if (afp.getReferences() != null) {
                 faultParameterReferences = afp.getReferences();
@@ -128,9 +156,9 @@ public class EventEnrollmentObject extends BACnetObject {
                     // TODO allow different devices.
                     if (!faultRef.getDeviceIdentifier().equals(objectPropertyReference.getDeviceIdentifier())) {
                         throw new IllegalArgumentException(
-                                "Fault parameter reference must use the same device as the object property reference: parameter="
-                                        + faultRef.getDeviceIdentifier() + ", property="
-                                        + objectPropertyReference.getPropertyIdentifier());
+                                "Fault parameter reference must use the same device as the object property reference: parameter=" + faultRef
+                                        .getDeviceIdentifier() + ", property=" + objectPropertyReference
+                                                .getPropertyIdentifier());
                     }
                 }
             } else {
@@ -159,8 +187,8 @@ public class EventEnrollmentObject extends BACnetObject {
         monitoredPropertyReferences = new PropertyReferences();
 
         // Add the referenced value.
-        monitoredPropertyReferences.addIndex(objectPropertyReference.getObjectIdentifier(),
-                objectPropertyReference.getPropertyIdentifier(), objectPropertyReference.getPropertyArrayIndex());
+        monitoredPropertyReferences.addIndex(objectPropertyReference.getObjectIdentifier(), objectPropertyReference
+                .getPropertyIdentifier(), objectPropertyReference.getPropertyArrayIndex());
 
         // Add the additional monitored properties (Table 12-15.1)
         monitoredProperties = eventAlgo.getAdditionalMonitoredProperties();
@@ -169,8 +197,8 @@ public class EventEnrollmentObject extends BACnetObject {
 
         // Add the event parameter reference, if any.
         if (eventParameterReference != null) {
-            monitoredPropertyReferences.addIndex(eventParameterReference.getObjectIdentifier(),
-                    eventParameterReference.getPropertyIdentifier(), eventParameterReference.getPropertyArrayIndex());
+            monitoredPropertyReferences.addIndex(eventParameterReference.getObjectIdentifier(), eventParameterReference
+                    .getPropertyIdentifier(), eventParameterReference.getPropertyArrayIndex());
         }
 
         // Add the fault parameters references, if any.
@@ -266,8 +294,8 @@ public class EventEnrollmentObject extends BACnetObject {
                 final PropertyValues results = RequestUtils.readProperties(getLocalDevice(), rd,
                         monitoredPropertyReferences, false, null);
 
-                value = results.getNoErrorCheck(ref.getObjectIdentifier(),
-                        new PropertyReference(ref.getPropertyIdentifier(), ref.getPropertyArrayIndex()));
+                value = results.getNoErrorCheck(ref.getObjectIdentifier(), new PropertyReference(ref
+                        .getPropertyIdentifier(), ref.getPropertyArrayIndex()));
 
                 // Gather the additional properties
                 for (final PropertyIdentifier pid : monitoredProperties) {
@@ -277,14 +305,14 @@ public class EventEnrollmentObject extends BACnetObject {
                 // Get the event parameter
                 if (eventParameterReference != null) {
                     transferPropertyValue(results, additionalValues, eventParameterReference.getObjectIdentifier(),
-                            eventParameterReference.getPropertyIdentifier(),
-                            eventParameterReference.getPropertyArrayIndex());
+                            eventParameterReference.getPropertyIdentifier(), eventParameterReference
+                                    .getPropertyArrayIndex());
                 }
 
                 if (faultParameterReferences != null) {
                     for (final DeviceObjectPropertyReference faultRef : faultParameterReferences) {
-                        transferPropertyValue(results, additionalValues, faultRef.getObjectIdentifier(),
-                                faultRef.getPropertyIdentifier(), faultRef.getPropertyArrayIndex());
+                        transferPropertyValue(results, additionalValues, faultRef.getObjectIdentifier(), faultRef
+                                .getPropertyIdentifier(), faultRef.getPropertyArrayIndex());
                     }
                 }
             } catch (final BACnetException e) {
@@ -318,10 +346,9 @@ public class EventEnrollmentObject extends BACnetObject {
         }
 
         try {
-            additionalValues.put(
-                    new ObjectPropertyReference(bo.getId(), paramRef.getPropertyIdentifier(),
-                            paramRef.getPropertyArrayIndex()),
-                    bo.readProperty(paramRef.getPropertyIdentifier(), paramRef.getPropertyArrayIndex()));
+            additionalValues.put(new ObjectPropertyReference(bo.getId(), paramRef.getPropertyIdentifier(), paramRef
+                    .getPropertyArrayIndex()), bo.readProperty(paramRef.getPropertyIdentifier(), paramRef
+                            .getPropertyArrayIndex()));
         } catch (final BACnetServiceException e) {
             throw new PollException("Error getting property from local object at " + paramRef, e);
         }

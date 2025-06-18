@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import java.util.ArrayList;
@@ -60,8 +87,8 @@ public class NotificationForwarderObject extends BACnetObject {
         Objects.requireNonNull(portFilter);
 
         // Load values from persistence
-        SequenceOf<Destination> recipientList = getLocalDevice().getPersistence()
-                .loadSequenceOf(getPersistenceKey(PropertyIdentifier.recipientList), Destination.class);
+        SequenceOf<Destination> recipientList = getLocalDevice().getPersistence().loadSequenceOf(getPersistenceKey(
+                PropertyIdentifier.recipientList), Destination.class);
         if (recipientList == null) {
             recipientList = new SequenceOf<>();
         }
@@ -134,13 +161,12 @@ public class NotificationForwarderObject extends BACnetObject {
                 }
 
                 final Boolean localForwardingOnly = get(PropertyIdentifier.localForwardingOnly);
-                if (localForwardingOnly.booleanValue()
-                        && initiatingDeviceIdentifier.getInstanceNumber() != getLocalDevice().getInstanceNumber()) {
+                if (localForwardingOnly.booleanValue() && initiatingDeviceIdentifier
+                        .getInstanceNumber() != getLocalDevice().getInstanceNumber()) {
                     LOG.debug(
-                            "Event not forwarded because {} is configured for local forwarding only, "
-                                    + "the local device id is {}, and the event is from device {}",
-                            getId(), getLocalDevice().getInstanceNumber(),
-                            initiatingDeviceIdentifier.getInstanceNumber());
+                            "Event not forwarded because {} is configured for local forwarding only, " + "the local device id is {}, and the event is from device {}",
+                            getId(), getLocalDevice().getInstanceNumber(), initiatingDeviceIdentifier
+                                    .getInstanceNumber());
                     return;
                 }
 
@@ -159,8 +185,8 @@ public class NotificationForwarderObject extends BACnetObject {
                         LOG.debug("Sending {} to {}", notifyType, destination.getRecipient());
                         sendNotification(destination.getProcessIdentifier(), initiatingDeviceIdentifier,
                                 eventObjectIdentifier, timeStamp, notificationClass, priority, eventType, messageText,
-                                notifyType, ackRequired, fromState, toState, eventValues, address,
-                                destination.getIssueConfirmedNotifications());
+                                notifyType, ackRequired, fromState, toState, eventValues, address, destination
+                                        .getIssueConfirmedNotifications());
                     }
                 }
 
@@ -177,8 +203,8 @@ public class NotificationForwarderObject extends BACnetObject {
                     LOG.debug("Sending {} to {}", notifyType, subscription.getRecipient());
                     sendNotification(subscription.getProcessIdentifier(), initiatingDeviceIdentifier,
                             eventObjectIdentifier, timeStamp, notificationClass, priority, eventType, messageText,
-                            notifyType, ackRequired, fromState, toState, eventValues, address,
-                            subscription.getIssueConfirmedNotifications());
+                            notifyType, ackRequired, fromState, toState, eventValues, address, subscription
+                                    .getIssueConfirmedNotifications());
                 });
             }
         };
@@ -280,8 +306,8 @@ public class NotificationForwarderObject extends BACnetObject {
 
                             if (subscription == null) {
                                 // A new subscription. Create the instance for it.
-                                subscription = new Subscription(nextSubscriptionId.getAndIncrement(),
-                                        ens.getRecipient(), ens.getProcessIdentifier());
+                                subscription = new Subscription(nextSubscriptionId.getAndIncrement(), ens
+                                        .getRecipient(), ens.getProcessIdentifier());
                                 subscriptions.add(subscription);
                             }
                             // Update the subscription with the new values.
@@ -312,8 +338,8 @@ public class NotificationForwarderObject extends BACnetObject {
                 }
 
                 // Persist
-                getLocalDevice().getPersistence().saveEncodable(
-                        getPersistenceKey(PropertyIdentifier.subscribedRecipients), subscribedRecipients);
+                getLocalDevice().getPersistence().saveEncodable(getPersistenceKey(
+                        PropertyIdentifier.subscribedRecipients), subscribedRecipients);
 
                 // Consider the write handled.
                 return true;

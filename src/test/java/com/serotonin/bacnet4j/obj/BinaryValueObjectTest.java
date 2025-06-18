@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier.eventState;
@@ -136,14 +163,12 @@ public class BinaryValueObjectTest extends AbstractTest {
     public void propertyConformanceEditableWhenOutOfService() throws BACnetServiceException {
         // Should not be writable while in service
         bv.writeProperty(null, PropertyIdentifier.outOfService, Boolean.FALSE);
-        TestUtils.assertBACnetServiceException(
-                () -> bv.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.active, null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(
-                () -> bv.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.reliability, null, Reliability.overRange, null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertBACnetServiceException(() -> bv.writeProperty(null, new PropertyValue(
+                PropertyIdentifier.presentValue, null, BinaryPV.active, null)), ErrorClass.property,
+                ErrorCode.writeAccessDenied);
+        TestUtils.assertBACnetServiceException(() -> bv.writeProperty(null, new PropertyValue(
+                PropertyIdentifier.reliability, null, Reliability.overRange, null)), ErrorClass.property,
+                ErrorCode.writeAccessDenied);
 
         // Should be writable while out of service.
         bv.writeProperty(null, PropertyIdentifier.outOfService, Boolean.TRUE);
@@ -153,21 +178,15 @@ public class BinaryValueObjectTest extends AbstractTest {
 
     @Test
     public void propertyConformanceReadOnly() {
-        TestUtils.assertBACnetServiceException(
-                () -> bv.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.ackedTransitions, new UnsignedInteger(2),
-                                new CharacterString("should fail"), null)),
+        TestUtils.assertBACnetServiceException(() -> bv.writeProperty(null, new PropertyValue(
+                PropertyIdentifier.ackedTransitions, new UnsignedInteger(2), new CharacterString("should fail"), null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(
-                () -> bv.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.eventTimeStamps, new UnsignedInteger(2),
-                                new CharacterString("should fail"), null)),
+        TestUtils.assertBACnetServiceException(() -> bv.writeProperty(null, new PropertyValue(
+                PropertyIdentifier.eventTimeStamps, new UnsignedInteger(2), new CharacterString("should fail"), null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
-        TestUtils.assertBACnetServiceException(
-                () -> bv.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.eventMessageTexts, new UnsignedInteger(2),
-                                new CharacterString("should fail"), null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertBACnetServiceException(() -> bv.writeProperty(null, new PropertyValue(
+                PropertyIdentifier.eventMessageTexts, new UnsignedInteger(2), new CharacterString("should fail"),
+                null)), ErrorClass.property, ErrorCode.writeAccessDenied);
     }
 
     @Test
@@ -212,23 +231,20 @@ public class BinaryValueObjectTest extends AbstractTest {
         // When overridden, the present value is not settable
         bv.setOverridden(true);
         bv.writePropertyInternal(outOfService, Boolean.FALSE);
-        TestUtils.assertErrorAPDUException(
-                () -> RequestUtils.writeProperty(d2, rd1, bv.getId(), presentValue, BinaryPV.active),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertErrorAPDUException(() -> RequestUtils.writeProperty(d2, rd1, bv.getId(), presentValue,
+                BinaryPV.active), ErrorClass.property, ErrorCode.writeAccessDenied);
 
         // ... even when it is out of service.
         bv.setOverridden(true);
         bv.writePropertyInternal(outOfService, Boolean.TRUE);
-        TestUtils.assertErrorAPDUException(
-                () -> RequestUtils.writeProperty(d2, rd1, bv.getId(), presentValue, BinaryPV.active),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertErrorAPDUException(() -> RequestUtils.writeProperty(d2, rd1, bv.getId(), presentValue,
+                BinaryPV.active), ErrorClass.property, ErrorCode.writeAccessDenied);
 
         // When not overridden, the present value is not settable while not out of service.
         bv.setOverridden(false);
         bv.writePropertyInternal(outOfService, Boolean.FALSE);
-        TestUtils.assertErrorAPDUException(
-                () -> RequestUtils.writeProperty(d2, rd1, bv.getId(), presentValue, BinaryPV.active),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertErrorAPDUException(() -> RequestUtils.writeProperty(d2, rd1, bv.getId(), presentValue,
+                BinaryPV.active), ErrorClass.property, ErrorCode.writeAccessDenied);
 
         // ... but it is when the object is out of service.
         bv.setOverridden(false);
@@ -250,16 +266,14 @@ public class BinaryValueObjectTest extends AbstractTest {
         // When overridden, the present value is not settable
         bv.setOverridden(true);
         bv.writePropertyInternal(outOfService, Boolean.FALSE);
-        TestUtils.assertErrorAPDUException(
-                () -> RequestUtils.writeProperty(d2, rd1, bv.getId(), presentValue, BinaryPV.active),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertErrorAPDUException(() -> RequestUtils.writeProperty(d2, rd1, bv.getId(), presentValue,
+                BinaryPV.active), ErrorClass.property, ErrorCode.writeAccessDenied);
 
         // ... even when it is out of service.
         bv.setOverridden(true);
         bv.writePropertyInternal(outOfService, Boolean.TRUE);
-        TestUtils.assertErrorAPDUException(
-                () -> RequestUtils.writeProperty(d2, rd1, bv.getId(), presentValue, BinaryPV.active),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertErrorAPDUException(() -> RequestUtils.writeProperty(d2, rd1, bv.getId(), presentValue,
+                BinaryPV.active), ErrorClass.property, ErrorCode.writeAccessDenied);
 
         // When not overridden, the present value is writable while not out of service.
         bv.setOverridden(false);
@@ -285,8 +299,8 @@ public class BinaryValueObjectTest extends AbstractTest {
         // Set a value at priority 15.
         RequestUtils.writeProperty(d2, rd1, bv.getId(), presentValue, BinaryPV.active, 15);
         // Ensure the priority array looks right.
-        assertEquals(new PriorityArray().put(15, BinaryPV.active).put(16, BinaryPV.inactive),
-                bv.readProperty(priorityArray));
+        assertEquals(new PriorityArray().put(15, BinaryPV.active).put(16, BinaryPV.inactive), bv.readProperty(
+                priorityArray));
         // Ensure the present value looks right.
         assertEquals(BinaryPV.active, bv.readProperty(presentValue));
         // Ensure the present value looks right when read via service.

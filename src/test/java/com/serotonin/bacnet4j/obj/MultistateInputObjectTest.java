@@ -1,8 +1,34 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.TimeUnit;
 
@@ -110,8 +136,7 @@ public class MultistateInputObjectTest extends AbstractTest {
         // Return to normal. After 12s the notification will be sent.
         mi.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(3));
         clock.plus(11500, TimeUnit.MILLISECONDS, 11500, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal,
-                mi.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
+        assertEquals(EventState.offnormal, mi.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
         clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.normal, mi.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), mi.readProperty(PropertyIdentifier.statusFlags));
@@ -142,12 +167,11 @@ public class MultistateInputObjectTest extends AbstractTest {
         // Check the starting values.
         assertEquals(new UnsignedInteger(1), mi.get(PropertyIdentifier.presentValue));
 
-        final DeviceObjectPropertyReference ref =
-                new DeviceObjectPropertyReference(1, mi.getId(), PropertyIdentifier.presentValue);
+        final DeviceObjectPropertyReference ref = new DeviceObjectPropertyReference(1, mi.getId(),
+                PropertyIdentifier.presentValue);
         final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
-                new EventParameter(new ChangeOfState(new UnsignedInteger(30),
-                        new SequenceOf<>(new PropertyStates(new UnsignedInteger(4))))),
-                new EventTransitionBits(true, true, true), 17, 1000, null, null);
+                new EventParameter(new ChangeOfState(new UnsignedInteger(30), new SequenceOf<>(new PropertyStates(
+                        new UnsignedInteger(4))))), new EventTransitionBits(true, true, true), 17, 1000, null, null);
 
         // Set up the notification destination
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
@@ -239,9 +263,8 @@ public class MultistateInputObjectTest extends AbstractTest {
         final EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
-        mi.supportIntrinsicReporting(5, 17, new BACnetArray<>(),
-                new BACnetArray<>(new UnsignedInteger(4), new UnsignedInteger(5)),
-                new EventTransitionBits(true, true, true), NotifyType.alarm, null);
+        mi.supportIntrinsicReporting(5, 17, new BACnetArray<>(), new BACnetArray<>(new UnsignedInteger(4),
+                new UnsignedInteger(5)), new EventTransitionBits(true, true, true), NotifyType.alarm, null);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
         Thread.sleep(40);
         assertEquals(0, listener.getNotifCount());
@@ -271,10 +294,9 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.fault, notif.toState());
-        assertEquals(new NotificationParameters(
-                        new ChangeOfReliabilityNotif(Reliability.multiStateFault, new StatusFlags(true, true, false, false),
-                                new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, new UnsignedInteger(4))))),
-                notif.eventValues());
+        assertEquals(new NotificationParameters(new ChangeOfReliabilityNotif(Reliability.multiStateFault,
+                new StatusFlags(true, true, false, false), new SequenceOf<>(new PropertyValue(
+                        PropertyIdentifier.presentValue, new UnsignedInteger(4))))), notif.eventValues());
 
         // Return to normal. After 12s the notification will be sent.
         mi.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(2));
@@ -298,9 +320,8 @@ public class MultistateInputObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.fault, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        assertEquals(new NotificationParameters(
-                        new ChangeOfReliabilityNotif(Reliability.noFaultDetected, new StatusFlags(false, false, false, false),
-                                new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, new UnsignedInteger(2))))),
-                notif.eventValues());
+        assertEquals(new NotificationParameters(new ChangeOfReliabilityNotif(Reliability.noFaultDetected,
+                new StatusFlags(false, false, false, false), new SequenceOf<>(new PropertyValue(
+                        PropertyIdentifier.presentValue, new UnsignedInteger(2))))), notif.eventValues());
     }
 }

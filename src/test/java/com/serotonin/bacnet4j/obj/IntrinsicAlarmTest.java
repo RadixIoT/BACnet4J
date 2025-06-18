@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
@@ -83,8 +110,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(new EventTransitionBits(true, true, true), bv.readProperty(PropertyIdentifier.ackedTransitions));
         assertEquals(new BACnetArray<>(TimeStamp.UNSPECIFIED_DATETIME, TimeStamp.UNSPECIFIED_DATETIME,
                 TimeStamp.UNSPECIFIED_DATETIME), bv.readProperty(PropertyIdentifier.eventTimeStamps));
-        assertEquals(new BACnetArray<>(CharacterString.EMPTY, CharacterString.EMPTY, CharacterString.EMPTY),
-                bv.readProperty(PropertyIdentifier.eventMessageTexts));
+        assertEquals(new BACnetArray<>(CharacterString.EMPTY, CharacterString.EMPTY, CharacterString.EMPTY), bv
+                .readProperty(PropertyIdentifier.eventMessageTexts));
 
         // After the time delay, the event state should become off-normal, because the present value is the alarm state.
         clock.plus(2100, TimeUnit.MILLISECONDS, 2100, TimeUnit.MILLISECONDS, 0, 40);
@@ -211,9 +238,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), bv.readProperty(PropertyIdentifier.statusFlags));
         // It's uncertain what the timestamp will be, so just assert that it is no unspecified.
-        assertNotEquals(TimeStamp.UNSPECIFIED_DATETIME,
-                ((BACnetArray<TimeStamp>) bv.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
-                        EventState.offnormal.getTransitionIndex()));
+        assertNotEquals(TimeStamp.UNSPECIFIED_DATETIME, ((BACnetArray<TimeStamp>) bv.readProperty(
+                PropertyIdentifier.eventTimeStamps)).getBase1(EventState.offnormal.getTransitionIndex()));
         assertEquals(new EventTransitionBits(false, true, true), bv.readProperty(PropertyIdentifier.ackedTransitions));
         clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
 
@@ -302,8 +328,7 @@ public class IntrinsicAlarmTest extends AbstractTest {
         // Change to a different alarm value.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(5));
         clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal,
-                mv.readProperty(PropertyIdentifier.eventState)); // Still off-normal at this point.
+        assertEquals(EventState.offnormal, mv.readProperty(PropertyIdentifier.eventState)); // Still off-normal at this point.
         assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
@@ -379,10 +404,9 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(Boolean.TRUE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.fault, notif.toState());
-        assertEquals(new NotificationParameters(
-                        new ChangeOfReliabilityNotif(Reliability.multiStateFault, new StatusFlags(true, true, false, false),
-                                new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, new UnsignedInteger(7))))),
-                notif.eventValues());
+        assertEquals(new NotificationParameters(new ChangeOfReliabilityNotif(Reliability.multiStateFault,
+                new StatusFlags(true, true, false, false), new SequenceOf<>(new PropertyValue(
+                        PropertyIdentifier.presentValue, new UnsignedInteger(7))))), notif.eventValues());
 
         // Change to a different fault condition.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(6));
@@ -406,10 +430,9 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(Boolean.TRUE, notif.ackRequired());
         assertEquals(EventState.fault, notif.fromState());
         assertEquals(EventState.fault, notif.toState());
-        assertEquals(new NotificationParameters(
-                        new ChangeOfReliabilityNotif(Reliability.multiStateFault, new StatusFlags(true, true, false, false),
-                                new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, new UnsignedInteger(6))))),
-                notif.eventValues());
+        assertEquals(new NotificationParameters(new ChangeOfReliabilityNotif(Reliability.multiStateFault,
+                new StatusFlags(true, true, false, false), new SequenceOf<>(new PropertyValue(
+                        PropertyIdentifier.presentValue, new UnsignedInteger(6))))), notif.eventValues());
 
         // Change to an alarm condition. An immediate notification should be sent for the transition to normal.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(4));
@@ -433,10 +456,9 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(Boolean.TRUE, notif.ackRequired());
         assertEquals(EventState.fault, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        assertEquals(new NotificationParameters(
-                        new ChangeOfReliabilityNotif(Reliability.noFaultDetected, new StatusFlags(false, false, false, false),
-                                new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, new UnsignedInteger(4))))),
-                notif.eventValues());
+        assertEquals(new NotificationParameters(new ChangeOfReliabilityNotif(Reliability.noFaultDetected,
+                new StatusFlags(false, false, false, false), new SequenceOf<>(new PropertyValue(
+                        PropertyIdentifier.presentValue, new UnsignedInteger(4))))), notif.eventValues());
 
         // After the time delay the state will change to off-normal and a notification will be sent.
         clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
@@ -514,11 +536,10 @@ public class IntrinsicAlarmTest extends AbstractTest {
         assertEquals(new UnsignedInteger(200), eventSummary.getEventPriorities().getBase1(3));
 
         final TimeStamp now = new TimeStamp(new DateTime(d1));
-        final AcknowledgeAlarmRequest req =
-                new AcknowledgeAlarmRequest(notif.processIdentifier(), notif.eventObjectIdentifier(), notif.toState(),
-                        notif.timeStamp(), new CharacterString("spa"), now);
-        final RemoteDevice d =
-                d2.getCachedRemoteDevice(((ObjectIdentifier) notif.initiatingDevice()).getInstanceNumber());
+        final AcknowledgeAlarmRequest req = new AcknowledgeAlarmRequest(notif.processIdentifier(), notif
+                .eventObjectIdentifier(), notif.toState(), notif.timeStamp(), new CharacterString("spa"), now);
+        final RemoteDevice d = d2.getCachedRemoteDevice(((ObjectIdentifier) notif.initiatingDevice())
+                .getInstanceNumber());
         d2.send(d, req).get();
 
         // Will receive notification of the acknowledgement
@@ -652,8 +673,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         bv.supportIntrinsicReporting(1, 7, BinaryPV.active, new EventTransitionBits(true, true, true), NotifyType.alarm,
                 2);
 
-        GetEnrollmentSummaryRequest req =
-                new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all, null, null, null, null, null);
+        GetEnrollmentSummaryRequest req = new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all, null, null, null,
+                null, null);
         GetEnrollmentSummaryAck ack = d2.send(rd1, req).get();
         assertEquals(1, ack.getValues().getCount());
         final EnrollmentSummary e = ack.getValues().getBase1(1);
@@ -671,13 +692,13 @@ public class IntrinsicAlarmTest extends AbstractTest {
         ack = d2.send(rd1, req).get();
         assertEquals(0, ack.getValues().getCount());
 
-        req = new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all,
-                new RecipientProcess(new Recipient(rd2.getAddress()), new UnsignedInteger(10)), null, null, null, null);
+        req = new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all, new RecipientProcess(new Recipient(rd2
+                .getAddress()), new UnsignedInteger(10)), null, null, null, null);
         ack = d2.send(rd1, req).get();
         assertEquals(1, ack.getValues().getCount());
 
-        req = new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all,
-                new RecipientProcess(new Recipient(rd2.getAddress()), new UnsignedInteger(11)), null, null, null, null);
+        req = new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all, new RecipientProcess(new Recipient(rd2
+                .getAddress()), new UnsignedInteger(11)), null, null, null, null);
         ack = d2.send(rd1, req).get();
         assertEquals(0, ack.getValues().getCount());
 
@@ -713,18 +734,18 @@ public class IntrinsicAlarmTest extends AbstractTest {
         ack = d2.send(rd1, req).get();
         assertEquals(0, ack.getValues().getCount());
 
-        req = new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all, null, null, null,
-                new PriorityFilter(new UnsignedInteger(1), new UnsignedInteger(2)), null);
+        req = new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all, null, null, null, new PriorityFilter(
+                new UnsignedInteger(1), new UnsignedInteger(2)), null);
         ack = d2.send(rd1, req).get();
         assertEquals(0, ack.getValues().getCount());
 
-        req = new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all, null, null, null,
-                new PriorityFilter(new UnsignedInteger(1), new UnsignedInteger(250)), null);
+        req = new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all, null, null, null, new PriorityFilter(
+                new UnsignedInteger(1), new UnsignedInteger(250)), null);
         ack = d2.send(rd1, req).get();
         assertEquals(1, ack.getValues().getCount());
 
-        req = new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all, null, null, null,
-                new PriorityFilter(new UnsignedInteger(201), new UnsignedInteger(250)), null);
+        req = new GetEnrollmentSummaryRequest(AcknowledgmentFilter.all, null, null, null, new PriorityFilter(
+                new UnsignedInteger(201), new UnsignedInteger(250)), null);
         ack = d2.send(rd1, req).get();
         assertEquals(0, ack.getValues().getCount());
 

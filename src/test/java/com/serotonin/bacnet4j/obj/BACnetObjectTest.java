@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.fail;
@@ -37,14 +64,14 @@ public class BACnetObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        d2.writePropertyInternal(PropertyIdentifier.tags,
-                new BACnetArray<>( //
-                        new NameValue("tag1", DateTime.UNSPECIFIED), //
-                        new NameValue("tag2", new Real(234)), //
-                        new NameValue("tag2", Null.instance)));
-        d2.writePropertyInternal(PropertyIdentifier.forId(6789),
-                new BACnetArray<>(new Real(0), new Real(1), new Real(2)));
-        d2.writePropertyInternal(PropertyIdentifier.protocolVersion, new CharacterString(CharacterString.Encodings.ANSI_X3_4, "hxzy-1.01"));
+        d2.writePropertyInternal(PropertyIdentifier.tags, new BACnetArray<>( //
+                new NameValue("tag1", DateTime.UNSPECIFIED), //
+                new NameValue("tag2", new Real(234)), //
+                new NameValue("tag2", Null.instance)));
+        d2.writePropertyInternal(PropertyIdentifier.forId(6789), new BACnetArray<>(new Real(0), new Real(1), new Real(
+                2)));
+        d2.writePropertyInternal(PropertyIdentifier.protocolVersion, new CharacterString(
+                CharacterString.Encodings.ANSI_X3_4, "hxzy-1.01"));
     }
 
     @Test
@@ -73,15 +100,15 @@ public class BACnetObjectTest extends AbstractTest {
     public void definedArrayWriteElementIncorrectType() {
         // Write a primitive type instead of a NameValue
         TestUtils.assertErrorAPDUException(() -> {
-            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.tags, 3,
-                    new BitString(new boolean[] { false }));
+            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.tags, 3, new BitString(new boolean[] {
+                    false}));
         }, ErrorClass.property, ErrorCode.missingRequiredParameter);
     }
 
     @Test
     public void definedArrayWriteElementCorrectType() throws BACnetException {
-        RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.tags, 3,
-                new NameValue("t3", new Real(3.14F)));
+        RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.tags, 3, new NameValue("t3", new Real(
+                3.14F)));
         Assert.assertEquals(new BACnetArray<>( //
                 new NameValue("tag1", DateTime.UNSPECIFIED), //
                 new NameValue("tag2", new Real(234)), //
@@ -91,8 +118,8 @@ public class BACnetObjectTest extends AbstractTest {
     @Test
     public void definedArrayWriteIncorrectInnerType() {
         TestUtils.assertErrorAPDUException(() -> {
-            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.tags,
-                    new SequenceOf<>(new Real(-1), new Real(0), new Real(1)));
+            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.tags, new SequenceOf<>(new Real(-1),
+                    new Real(0), new Real(1)));
         }, ErrorClass.property, ErrorCode.missingRequiredParameter);
     }
 
@@ -105,10 +132,9 @@ public class BACnetObjectTest extends AbstractTest {
 
     @Test
     public void definedArrayWriteCorrectType() throws BACnetException {
-        RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.tags,
-                new SequenceOf<>( //
-                        new NameValue("t1", new CharacterString("v1")), //
-                        new NameValue("t2", DateTime.UNSPECIFIED)));
+        RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.tags, new SequenceOf<>( //
+                new NameValue("t1", new CharacterString("v1")), //
+                new NameValue("t2", DateTime.UNSPECIFIED)));
         Assert.assertEquals(new BACnetArray<>( //
                 new NameValue("t1", new CharacterString("v1")), //
                 new NameValue("t2", DateTime.UNSPECIFIED)), d2.get(PropertyIdentifier.tags));
@@ -118,16 +144,16 @@ public class BACnetObjectTest extends AbstractTest {
     public void undefinedArrayWrite() {
         // Fails because the property isn't parsable.
         TestUtils.assertErrorAPDUException(() -> {
-            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.forId(5678),
-                    new SequenceOf<>(new Real(-0.1f), new Real(0), new Real(0.1f)));
+            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.forId(5678), new SequenceOf<>(new Real(
+                    -0.1f), new Real(0), new Real(0.1f)));
         }, ErrorClass.property, ErrorCode.datatypeNotSupported);
     }
 
     @Test
     public void undefinedArrayWriteElementLowIndexDirect() {
         TestUtils.assertBACnetServiceException(() -> {
-            d2.getObject(d2.getId()).writeProperty(null,
-                    new PropertyValue(PropertyIdentifier.forId(6789), UnsignedInteger.ZERO, new Real(10), null));
+            d2.getObject(d2.getId()).writeProperty(null, new PropertyValue(PropertyIdentifier.forId(6789),
+                    UnsignedInteger.ZERO, new Real(10), null));
         }, ErrorClass.property, ErrorCode.invalidArrayIndex);
     }
 
@@ -153,8 +179,8 @@ public class BACnetObjectTest extends AbstractTest {
     @Test
     public void undefinedArrayWriteElement() throws BACnetException {
         RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.forId(6789), 2, new Real(10));
-        Assert.assertEquals(new BACnetArray<>(new Real(0), new Real(10), new Real(2)),
-                d2.get(PropertyIdentifier.forId(6789)));
+        Assert.assertEquals(new BACnetArray<>(new Real(0), new Real(10), new Real(2)), d2.get(PropertyIdentifier.forId(
+                6789)));
     }
 
     @Test
@@ -174,20 +200,20 @@ public class BACnetObjectTest extends AbstractTest {
                         new Recipient(new ObjectIdentifier(ObjectType.device, 11)), //
                         new Recipient(new ObjectIdentifier(ObjectType.device, 12)), //
                         new Recipient(new ObjectIdentifier(ObjectType.device, 13))));
-        Assert.assertEquals(
-                new SequenceOf<>( //
-                        new Recipient(new ObjectIdentifier(ObjectType.device, 10)), //
-                        new Recipient(new ObjectIdentifier(ObjectType.device, 11)), //
-                        new Recipient(new ObjectIdentifier(ObjectType.device, 12)), //
-                        new Recipient(new ObjectIdentifier(ObjectType.device, 13))),
-                d2.get(PropertyIdentifier.restartNotificationRecipients));
+        Assert.assertEquals(new SequenceOf<>( //
+                new Recipient(new ObjectIdentifier(ObjectType.device, 10)), //
+                new Recipient(new ObjectIdentifier(ObjectType.device, 11)), //
+                new Recipient(new ObjectIdentifier(ObjectType.device, 12)), //
+                new Recipient(new ObjectIdentifier(ObjectType.device, 13))), d2.get(
+                        PropertyIdentifier.restartNotificationRecipients));
     }
 
     @Test
     public void definedListWriteIncorrectType() {
         //Standard test 135.1-2013, 9.22.2.3
         TestUtils.assertErrorAPDUException(() -> {
-            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.utcTimeSynchronizationRecipients, new ObjectIdentifier(ObjectType.analogOutput, 1));
+            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.utcTimeSynchronizationRecipients,
+                    new ObjectIdentifier(ObjectType.analogOutput, 1));
         }, ErrorClass.property, ErrorCode.invalidDataType);
     }
 
@@ -195,28 +221,30 @@ public class BACnetObjectTest extends AbstractTest {
     public void primitiveWriteIncorrectType() {
         //Standard test 135.1-2013, 9.22.2.3
         TestUtils.assertErrorAPDUException(() -> {
-            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.backupFailureTimeout, new CharacterString("This is the wrong type"));
+            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.backupFailureTimeout,
+                    new CharacterString("This is the wrong type"));
         }, ErrorClass.property, ErrorCode.invalidDataType);
     }
 
     @Test
     public void primitiveReadIncorrectType() {
         //Standard test 135.1-2013, 9.22.2.3 only applies to writes
-        
-        try{
+
+        try {
             //Internally this gets converted to an UnsignedInteger on receipt of the response so I'm not sure how to assert the
             //  response is correct
             RequestUtils.readProperty(d1, rd2, d2.getId(), PropertyIdentifier.protocolVersion, null);
-        }catch(Exception e) {
+        } catch (Exception e) {
             fail(e.getMessage());
         }
     }
-    
+
     @Test
     public void writeOutOfRange() {
         //Standard test 135.1-2013, 9.22.2.4 - write a Unsigned16 with a value out of range.
         TestUtils.assertErrorAPDUException(() -> {
-            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.backupFailureTimeout, new Unsigned32(new BigInteger("4294967295")));
+            RequestUtils.writeProperty(d1, rd2, d2.getId(), PropertyIdentifier.backupFailureTimeout, new Unsigned32(
+                    new BigInteger("4294967295")));
         }, ErrorClass.property, ErrorCode.valueOutOfRange);
     }
 }

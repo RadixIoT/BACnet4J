@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.assertEquals;
@@ -34,8 +61,8 @@ public class AveragingObjectTest extends AbstractTest {
     @Override
     public void afterInit() throws Exception {
         // Poll every 5s
-        a = new AveragingObject(d1, 0, "a0", new DeviceObjectPropertyReference(1,
-                new ObjectIdentifier(ObjectType.device, 1), PropertyIdentifier.systemStatus), 60, 12);
+        a = new AveragingObject(d1, 0, "a0", new DeviceObjectPropertyReference(1, new ObjectIdentifier(
+                ObjectType.device, 1), PropertyIdentifier.systemStatus), 60, 12);
     }
 
     @Test
@@ -46,8 +73,8 @@ public class AveragingObjectTest extends AbstractTest {
         final AnalogInputObject ai = new AnalogInputObject(d1, 0, "ai0", 0, EngineeringUnits.noUnits, false);
 
         // Reference the present value of the analog input.
-        a.writeProperty(null, PropertyIdentifier.objectPropertyReference,
-                new DeviceObjectPropertyReference(1, ai.getId(), PropertyIdentifier.presentValue));
+        a.writeProperty(null, PropertyIdentifier.objectPropertyReference, new DeviceObjectPropertyReference(1, ai
+                .getId(), PropertyIdentifier.presentValue));
 
         assertEquals(new Real(Float.POSITIVE_INFINITY), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(DateTime.UNSPECIFIED, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
@@ -165,9 +192,8 @@ public class AveragingObjectTest extends AbstractTest {
 
     @Test
     public void propertyConformanceReadOnly() {
-        TestUtils.assertBACnetServiceException(
-                () -> a.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.validSamples, null, UnsignedInteger.ZERO, null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertBACnetServiceException(() -> a.writeProperty(null, new PropertyValue(
+                PropertyIdentifier.validSamples, null, UnsignedInteger.ZERO, null)), ErrorClass.property,
+                ErrorCode.writeAccessDenied);
     }
 }

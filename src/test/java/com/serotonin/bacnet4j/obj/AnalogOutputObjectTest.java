@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.assertEquals;
@@ -60,8 +87,8 @@ public class AnalogOutputObjectTest extends AbstractTest {
         final EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
-        ao.supportIntrinsicReporting(60, 17, 100, 20, 5, new LimitEnable(true, true),
-                new EventTransitionBits(true, true, true), NotifyType.alarm, 180);
+        ao.supportIntrinsicReporting(60, 17, 100, 20, 5, new LimitEnable(true, true), new EventTransitionBits(true,
+                true, true), NotifyType.alarm, 180);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
         Thread.sleep(40);
         assertEquals(0, listener.getNotifCount());
@@ -90,9 +117,8 @@ public class AnalogOutputObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.highLimit, notif.toState());
-        assertEquals(new NotificationParameters(
-                new OutOfRangeNotif(new Real(101), new StatusFlags(true, false, false, false), new Real(5),
-                        new Real(100))), notif.eventValues());
+        assertEquals(new NotificationParameters(new OutOfRangeNotif(new Real(101), new StatusFlags(true, false, false,
+                false), new Real(5), new Real(100))), notif.eventValues());
 
         // Return to normal. After 180s the notification will be sent.
         ao.writePropertyInternal(PropertyIdentifier.presentValue, new Real(94));
@@ -107,9 +133,8 @@ public class AnalogOutputObjectTest extends AbstractTest {
         notif = listener.removeNotif();
         assertEquals(EventState.highLimit, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        assertEquals(new NotificationParameters(
-                new OutOfRangeNotif(new Real(94), new StatusFlags(false, false, false, false), new Real(5),
-                        new Real(100))), notif.eventValues());
+        assertEquals(new NotificationParameters(new OutOfRangeNotif(new Real(94), new StatusFlags(false, false, false,
+                false), new Real(5), new Real(100))), notif.eventValues());
     }
 
     @Test
@@ -131,16 +156,16 @@ public class AnalogOutputObjectTest extends AbstractTest {
     @Test
     public void propertyConformanceEditableWhenOutOfService() throws BACnetServiceException {
         // Should not be writable while in service
-        TestUtils.assertBACnetServiceException(() -> ao.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.reliability, null, Reliability.unreliableOther, null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        TestUtils.assertBACnetServiceException(() -> ao.writeProperty(null, new PropertyValue(
+                PropertyIdentifier.reliability, null, Reliability.unreliableOther, null)), ErrorClass.property,
+                ErrorCode.writeAccessDenied);
 
         // Should be writable while out of service.
         ao.writeProperty(null, PropertyIdentifier.outOfService, Boolean.TRUE);
-        ao.writeProperty(new ValueSource(TestNetworkUtils.toAddress(1)),
-                new PropertyValue(PropertyIdentifier.presentValue, null, new Real(51), null));
-        ao.writeProperty(null,
-                new PropertyValue(PropertyIdentifier.reliability, null, Reliability.unreliableOther, null));
+        ao.writeProperty(new ValueSource(TestNetworkUtils.toAddress(1)), new PropertyValue(
+                PropertyIdentifier.presentValue, null, new Real(51), null));
+        ao.writeProperty(null, new PropertyValue(PropertyIdentifier.reliability, null, Reliability.unreliableOther,
+                null));
     }
 
     @Test
@@ -151,8 +176,8 @@ public class AnalogOutputObjectTest extends AbstractTest {
 
     @Test
     public void propertyConformanceRequiredWhenIntrinsicReporting() throws Exception {
-        ao.supportIntrinsicReporting(30, 17, 60, 40, 1, new LimitEnable(true, true),
-                new EventTransitionBits(true, true, true), NotifyType.alarm, 10);
+        ao.supportIntrinsicReporting(30, 17, 60, 40, 1, new LimitEnable(true, true), new EventTransitionBits(true, true,
+                true), NotifyType.alarm, 10);
         assertNotNull(ao.readProperty(PropertyIdentifier.timeDelay));
         assertNotNull(ao.readProperty(PropertyIdentifier.notificationClass));
         assertNotNull(ao.readProperty(PropertyIdentifier.highLimit));
@@ -189,8 +214,8 @@ public class AnalogOutputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReporting() throws Exception {
-        final DeviceObjectPropertyReference ref =
-                new DeviceObjectPropertyReference(1, ao.getId(), PropertyIdentifier.presentValue);
+        final DeviceObjectPropertyReference ref = new DeviceObjectPropertyReference(1, ao.getId(),
+                PropertyIdentifier.presentValue);
         final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(new OutOfRange(new UnsignedInteger(30), new Real(40), new Real(60), new Real(2))),
                 new EventTransitionBits(true, true, true), 17, 1000, null, null);
@@ -238,9 +263,8 @@ public class AnalogOutputObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.highLimit, notif.toState());
-        assertEquals(new NotificationParameters(
-                new OutOfRangeNotif(new Real(70), new StatusFlags(false, false, false, false), new Real(2),
-                        new Real(60))), notif.eventValues());
+        assertEquals(new NotificationParameters(new OutOfRangeNotif(new Real(70), new StatusFlags(false, false, false,
+                false), new Real(2), new Real(60))), notif.eventValues());
 
         //
         // Return to normal
@@ -271,8 +295,7 @@ public class AnalogOutputObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.highLimit, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        assertEquals(new NotificationParameters(
-                new OutOfRangeNotif(new Real(40), new StatusFlags(false, false, false, false), new Real(2),
-                        new Real(60))), notif.eventValues());
+        assertEquals(new NotificationParameters(new OutOfRangeNotif(new Real(40), new StatusFlags(false, false, false,
+                false), new Real(2), new Real(60))), notif.eventValues());
     }
 }

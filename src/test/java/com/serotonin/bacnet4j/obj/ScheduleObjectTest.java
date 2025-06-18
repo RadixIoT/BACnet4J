@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
@@ -67,10 +94,10 @@ public class ScheduleObjectTest extends AbstractTest {
         // Not really a full test. The effective period could be better.
         clock.set(2115, java.time.Month.MAY, 1, 12, 0, 0);
 
-        final AnalogValueObject av0 =
-                new AnalogValueObject(d2, 0, "av0", 98, EngineeringUnits.amperes, false).supportCommandable(-2);
-        final AnalogValueObject av1 =
-                new AnalogValueObject(d1, 1, "av1", 99, EngineeringUnits.amperesPerMeter, false).supportCommandable(-1);
+        final AnalogValueObject av0 = new AnalogValueObject(d2, 0, "av0", 98, EngineeringUnits.amperes, false)
+                .supportCommandable(-2);
+        final AnalogValueObject av1 = new AnalogValueObject(d1, 1, "av1", 99, EngineeringUnits.amperesPerMeter, false)
+                .supportCommandable(-1);
 
         final Primitive defaultScheduledValue = new Real(999);
         final ScheduleObject so = createScheduleObject(av0, av1, defaultScheduledValue);
@@ -82,46 +109,34 @@ public class ScheduleObjectTest extends AbstractTest {
 
         // Start actual tests.
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 1, 17, 0, new Real(15)); // Wednesday
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 0, 0,
-                defaultScheduledValue); // Thursday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 0, 0, defaultScheduledValue); // Thursday beginning of the day
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 9, 0, new Real(16)); // Thursday
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 20, 0, new Real(17)); // Thursday
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 0, 0,
-                defaultScheduledValue); // Friday beginning of the day
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 13, 0,
-                new Real(22)); // Exception schedule at 13:00 with priority 7
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 14, 0,
-                new Real(23)); // Exception schedule at 14:00 with priority 7
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 4, 0, 0,
-                defaultScheduledValue); // Saturday beginning of the day
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 5, 0, 0,
-                defaultScheduledValue); // Sunday beginning of the day
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 0, 0,
-                defaultScheduledValue); // Monday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 0, 0, defaultScheduledValue); // Friday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 13, 0, new Real(22)); // Exception schedule at 13:00 with priority 7
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 14, 0, new Real(23)); // Exception schedule at 14:00 with priority 7
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 4, 0, 0, defaultScheduledValue); // Saturday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 5, 0, 0, defaultScheduledValue); // Sunday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 0, 0, defaultScheduledValue); // Monday beginning of the day
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 8, 0, new Real(10)); // Monday
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 17, 0, new Real(11));  // Monday
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 0, 0,
-                defaultScheduledValue); // Tuesday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 0, 0, defaultScheduledValue); // Tuesday beginning of the day
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 8, 0, new Real(12)); // Tuesday
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 17, 0, new Null()); // Null schedule from weekly schedule
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 0, 0,
-                defaultScheduledValue); // Wednesday beginning of the day
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 10, 30,
-                new Real(24)); // Exception schedule at 10:30 with priority 6
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 17, 0,
-                new Null());  // Null schedule from exception schedule
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 9, 0, 0,
-                defaultScheduledValue); // Thursday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 0, 0, defaultScheduledValue); // Wednesday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 10, 30, new Real(24)); // Exception schedule at 10:30 with priority 6
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 17, 0, new Null());  // Null schedule from exception schedule
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 9, 0, 0, defaultScheduledValue); // Thursday beginning of the day
     }
 
     @Test
     public void nullScheduleDefaultTest() throws Exception {
         clock.set(2115, java.time.Month.MAY, 1, 12, 0, 0);
 
-        final AnalogValueObject av0 =
-                new AnalogValueObject(d2, 0, "av0", 98, EngineeringUnits.amperes, false).supportCommandable(-2);
-        final AnalogValueObject av1 =
-                new AnalogValueObject(d1, 1, "av1", 99, EngineeringUnits.amperesPerMeter, false).supportCommandable(-1);
+        final AnalogValueObject av0 = new AnalogValueObject(d2, 0, "av0", 98, EngineeringUnits.amperes, false)
+                .supportCommandable(-2);
+        final AnalogValueObject av1 = new AnalogValueObject(d1, 1, "av1", 99, EngineeringUnits.amperesPerMeter, false)
+                .supportCommandable(-1);
 
         final Primitive defaultScheduledValue = new Null();
         final ScheduleObject so = createScheduleObject(av0, av1, defaultScheduledValue);
@@ -133,36 +148,24 @@ public class ScheduleObjectTest extends AbstractTest {
 
         // Start actual tests.
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 1, 17, 0, new Real(15)); // Wednesday
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 0, 0,
-                defaultScheduledValue); // Thursday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 0, 0, defaultScheduledValue); // Thursday beginning of the day
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 9, 0, new Real(16)); // Thursday
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 2, 20, 0, new Real(17)); // Thursday
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 0, 0,
-                defaultScheduledValue); // Friday beginning of the day
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 13, 0,
-                new Real(22)); // Exception schedule at 13:00 with priority 7
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 14, 0,
-                new Real(23)); // Exception schedule at 14:00 with priority 7
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 4, 0, 0,
-                defaultScheduledValue); // Saturday beginning of the day
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 5, 0, 0,
-                defaultScheduledValue); // Sunday beginning of the day
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 0, 0,
-                defaultScheduledValue); // Monday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 0, 0, defaultScheduledValue); // Friday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 13, 0, new Real(22)); // Exception schedule at 13:00 with priority 7
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 3, 14, 0, new Real(23)); // Exception schedule at 14:00 with priority 7
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 4, 0, 0, defaultScheduledValue); // Saturday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 5, 0, 0, defaultScheduledValue); // Sunday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 0, 0, defaultScheduledValue); // Monday beginning of the day
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 8, 0, new Real(10)); // Monday
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 6, 17, 0, new Real(11));  // Monday
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 0, 0,
-                defaultScheduledValue); // Tuesday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 0, 0, defaultScheduledValue); // Tuesday beginning of the day
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 8, 0, new Real(12)); // Tuesday
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 7, 17, 0, new Null()); // Null schedule from weekly schedule
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 0, 0,
-                defaultScheduledValue); // Wednesday beginning of the day
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 10, 30,
-                new Real(24)); // Exception schedule at 10:30 with priority 6
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 17, 0,
-                new Null());  // Null schedule from exception schedule
-        testTime(soNotifier, av0, av1, java.time.Month.MAY, 9, 0, 0,
-                defaultScheduledValue); // Thursday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 0, 0, defaultScheduledValue); // Wednesday beginning of the day
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 10, 30, new Real(24)); // Exception schedule at 10:30 with priority 6
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 8, 17, 0, new Null());  // Null schedule from exception schedule
+        testTime(soNotifier, av0, av1, java.time.Month.MAY, 9, 0, 0, defaultScheduledValue); // Thursday beginning of the day
     }
 
     private void testTime(final ObjectWriteNotifier<ScheduleObject> so, final AnalogValueObject av0,
@@ -178,17 +181,17 @@ public class ScheduleObjectTest extends AbstractTest {
             DateTime lastUpdateTime = so.obj().getLastUpdateTime();
             return lastUpdateTime.getDate().getMonth().getId() == month.getValue() && lastUpdateTime.getDate()
                     .getDay() == day && lastUpdateTime.getTime().getHour() == hour && lastUpdateTime.getTime()
-                    .getMinute() == min;
+                            .getMinute() == min;
         }, 5000);
 
         if (scheduledValue.getClass().equals(Null.class)) {
             final Primitive scheduleDefault = so.obj().readProperty(PropertyIdentifier.scheduleDefault);
             if (scheduleDefault.getClass().equals(Null.class)) {
                 so.waitFor(PropertyIdentifier.presentValue, new Null(), 5000);
-                awaitEquals(() -> av0.get(PropertyIdentifier.presentValue),
-                        av0.readProperty(PropertyIdentifier.relinquishDefault), 5000);
-                awaitEquals(() -> av1.get(PropertyIdentifier.presentValue),
-                        av1.readProperty(PropertyIdentifier.relinquishDefault), 5000);
+                awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), av0.readProperty(
+                        PropertyIdentifier.relinquishDefault), 5000);
+                awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), av1.readProperty(
+                        PropertyIdentifier.relinquishDefault), 5000);
             } else {
                 so.waitFor(PropertyIdentifier.presentValue, scheduleDefault, 5000);
                 awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), scheduleDefault, 5000);
@@ -204,8 +207,8 @@ public class ScheduleObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void intrinsicAlarms() throws Exception {
-        final NotificationClassObject nc =
-                new NotificationClassObject(d1, 7, "nc7", 100, 5, 200, new EventTransitionBits(false, false, false));
+        final NotificationClassObject nc = new NotificationClassObject(d1, 7, "nc7", 100, 5, 200,
+                new EventTransitionBits(false, false, false));
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
@@ -214,19 +217,17 @@ public class ScheduleObjectTest extends AbstractTest {
         final EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
-        final AnalogValueObject av1 =
-                new AnalogValueObject(d1, 1, "av1", 99, EngineeringUnits.amperesPerMeter, false).supportCommandable(-1);
+        final AnalogValueObject av1 = new AnalogValueObject(d1, 1, "av1", 99, EngineeringUnits.amperesPerMeter, false)
+                .supportCommandable(-1);
 
-        final SequenceOf<SpecialEvent> exceptionSchedule = new SequenceOf<>(
-                new SpecialEvent(new CalendarEntry(new Date(-1, null, -1, DayOfWeek.WEDNESDAY)), new SequenceOf<>(),
-                        new UnsignedInteger(6)) // Wednesdays
+        final SequenceOf<SpecialEvent> exceptionSchedule = new SequenceOf<>(new SpecialEvent(new CalendarEntry(new Date(
+                -1, null, -1, DayOfWeek.WEDNESDAY)), new SequenceOf<>(), new UnsignedInteger(6)) // Wednesdays
         );
         final SequenceOf<DeviceObjectPropertyReference> listOfObjectPropertyReferences = new SequenceOf<>( //
                 new DeviceObjectPropertyReference(av1.getId(), PropertyIdentifier.presentValue, null, null) //
         );
-        final ScheduleObject so =
-                new ScheduleObject(d1, 0, "sch0", new DateRange(Date.UNSPECIFIED, Date.UNSPECIFIED), null,
-                        exceptionSchedule, new Real(8), listOfObjectPropertyReferences, 12, false);
+        final ScheduleObject so = new ScheduleObject(d1, 0, "sch0", new DateRange(Date.UNSPECIFIED, Date.UNSPECIFIED),
+                null, exceptionSchedule, new Real(8), listOfObjectPropertyReferences, 12, false);
         so.supportIntrinsicReporting(7, new EventTransitionBits(true, true, true), NotifyType.alarm);
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
@@ -252,9 +253,8 @@ public class ScheduleObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.fault, notif.toState());
-        assertEquals(new NotificationParameters(
-                new ChangeOfReliabilityNotif(Reliability.memberFault, new StatusFlags(true, true, false, false),
-                        new SequenceOf<>())), notif.eventValues());
+        assertEquals(new NotificationParameters(new ChangeOfReliabilityNotif(Reliability.memberFault, new StatusFlags(
+                true, true, false, false), new SequenceOf<>())), notif.eventValues());
     }
 
     /**
@@ -262,31 +262,27 @@ public class ScheduleObjectTest extends AbstractTest {
      */
     @Test
     public void listValues() throws Exception {
-        final ScheduleObject so =
-                new ScheduleObject(d1, 0, "sch0", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE), null,
-                        new SequenceOf<>(), new Real(8), new SequenceOf<>(), 12, false);
+        final ScheduleObject so = new ScheduleObject(d1, 0, "sch0", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE),
+                null, new SequenceOf<>(), new Real(8), new SequenceOf<>(), 12, false);
 
         // Add a few items to the list.
         final ObjectIdentifier oid = new ObjectIdentifier(ObjectType.analogInput, 0);
 
-        final DeviceObjectPropertyReference local1 =
-                new DeviceObjectPropertyReference(oid, PropertyIdentifier.presentValue, null, null);
-        final DeviceObjectPropertyReference remote10 =
-                new DeviceObjectPropertyReference(oid, PropertyIdentifier.presentValue, null,
-                        new ObjectIdentifier(ObjectType.device, 10));
-        final DeviceObjectPropertyReference remote11 =
-                new DeviceObjectPropertyReference(oid, PropertyIdentifier.presentValue, null,
-                        new ObjectIdentifier(ObjectType.device, 11));
+        final DeviceObjectPropertyReference local1 = new DeviceObjectPropertyReference(oid,
+                PropertyIdentifier.presentValue, null, null);
+        final DeviceObjectPropertyReference remote10 = new DeviceObjectPropertyReference(oid,
+                PropertyIdentifier.presentValue, null, new ObjectIdentifier(ObjectType.device, 10));
+        final DeviceObjectPropertyReference remote11 = new DeviceObjectPropertyReference(oid,
+                PropertyIdentifier.presentValue, null, new ObjectIdentifier(ObjectType.device, 11));
 
         // Ensure that the list is empty.
-        SequenceOf<Destination> list =
-                RequestUtils.getProperty(d2, rd1, so.getId(), PropertyIdentifier.listOfObjectPropertyReferences);
+        SequenceOf<Destination> list = RequestUtils.getProperty(d2, rd1, so.getId(),
+                PropertyIdentifier.listOfObjectPropertyReferences);
         assertEquals(new SequenceOf<>(), list);
 
         // Add a few elements.
-        final AddListElementRequest aler =
-                new AddListElementRequest(so.getId(), PropertyIdentifier.listOfObjectPropertyReferences, null,
-                        new SequenceOf<>(local1, remote10));
+        final AddListElementRequest aler = new AddListElementRequest(so.getId(),
+                PropertyIdentifier.listOfObjectPropertyReferences, null, new SequenceOf<>(local1, remote10));
         d2.send(rd1, aler).get();
         list = RequestUtils.getProperty(d2, rd1, so.getId(), PropertyIdentifier.listOfObjectPropertyReferences);
         assertEquals(new SequenceOf<>(local1, remote10), list);
@@ -306,38 +302,35 @@ public class ScheduleObjectTest extends AbstractTest {
 
     @Test
     public void changeDataType() throws Exception {
-        final AnalogValueObject av =
-                new AnalogValueObject(d1, 0, "av0", 98, EngineeringUnits.amperes, false).supportCommandable(-2);
+        final AnalogValueObject av = new AnalogValueObject(d1, 0, "av0", 98, EngineeringUnits.amperes, false)
+                .supportCommandable(-2);
         final BinaryValueObject bv = new BinaryValueObject(d1, 0, "bv0", BinaryPV.inactive, false);
 
-        final SequenceOf<SpecialEvent> binarySchedule = new SequenceOf<>(
-                new SpecialEvent(new CalendarEntry(new Date(-1, null, -1, DayOfWeek.WEDNESDAY)),
-                        new SequenceOf<>(new TimeValue(new Time(d1), BinaryPV.active)), new UnsignedInteger(1)));
-        final SequenceOf<SpecialEvent> analogSchedule = new SequenceOf<>(
-                new SpecialEvent(new CalendarEntry(new Date(-1, null, -1, DayOfWeek.WEDNESDAY)),
-                        new SequenceOf<>(new TimeValue(new Time(d1), new Real(2))), new UnsignedInteger(1)));
+        final SequenceOf<SpecialEvent> binarySchedule = new SequenceOf<>(new SpecialEvent(new CalendarEntry(new Date(-1,
+                null, -1, DayOfWeek.WEDNESDAY)), new SequenceOf<>(new TimeValue(new Time(d1), BinaryPV.active)),
+                new UnsignedInteger(1)));
+        final SequenceOf<SpecialEvent> analogSchedule = new SequenceOf<>(new SpecialEvent(new CalendarEntry(new Date(-1,
+                null, -1, DayOfWeek.WEDNESDAY)), new SequenceOf<>(new TimeValue(new Time(d1), new Real(2))),
+                new UnsignedInteger(1)));
 
-        final SequenceOf<DeviceObjectPropertyReference> binaryReferences =
-                new SequenceOf<>(new DeviceObjectPropertyReference(1, bv.getId(), PropertyIdentifier.presentValue));
-        final SequenceOf<DeviceObjectPropertyReference> analogReferences =
-                new SequenceOf<>(new DeviceObjectPropertyReference(1, av.getId(), PropertyIdentifier.presentValue));
+        final SequenceOf<DeviceObjectPropertyReference> binaryReferences = new SequenceOf<>(
+                new DeviceObjectPropertyReference(1, bv.getId(), PropertyIdentifier.presentValue));
+        final SequenceOf<DeviceObjectPropertyReference> analogReferences = new SequenceOf<>(
+                new DeviceObjectPropertyReference(1, av.getId(), PropertyIdentifier.presentValue));
 
         final BinaryPV binaryDefaultValue = BinaryPV.inactive;
         final Real analogDefaultValue = new Real(1);
 
-        final ScheduleObject so =
-                new ScheduleObject(d1, 1, "sch0", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE), null,
-                        binarySchedule, binaryDefaultValue, binaryReferences, 12, false);
+        final ScheduleObject so = new ScheduleObject(d1, 1, "sch0", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE),
+                null, binarySchedule, binaryDefaultValue, binaryReferences, 12, false);
 
         Assert.assertEquals(binaryDefaultValue, so.readProperty(PropertyIdentifier.scheduleDefault));
         Assert.assertEquals(binaryReferences, so.readProperty(PropertyIdentifier.listOfObjectPropertyReferences));
 
         final List<PropertyValue> propertyValues = new ArrayList<>();
-        propertyValues.add(new PropertyValue(PropertyIdentifier.listOfObjectPropertyReferences,
-                new SequenceOf<>())); // Reset listOfObjectPropertyReferences
+        propertyValues.add(new PropertyValue(PropertyIdentifier.listOfObjectPropertyReferences, new SequenceOf<>())); // Reset listOfObjectPropertyReferences
         propertyValues.add(new PropertyValue(PropertyIdentifier.scheduleDefault, new Null())); // Reset defaultSchedule
-        propertyValues.add(
-                new PropertyValue(PropertyIdentifier.exceptionSchedule, new SequenceOf<>())); // Reset exceptionSchedule
+        propertyValues.add(new PropertyValue(PropertyIdentifier.exceptionSchedule, new SequenceOf<>())); // Reset exceptionSchedule
 
         // Change the data type later
         propertyValues.add(new PropertyValue(PropertyIdentifier.exceptionSchedule, analogSchedule));
@@ -345,8 +338,8 @@ public class ScheduleObjectTest extends AbstractTest {
         propertyValues.add(new PropertyValue(PropertyIdentifier.listOfObjectPropertyReferences, analogReferences));
 
         final List<WriteAccessSpecification> specs = new ArrayList<>();
-        specs.add(new WriteAccessSpecification(new ObjectIdentifier(ObjectType.schedule, 1),
-                new SequenceOf<>(propertyValues)));
+        specs.add(new WriteAccessSpecification(new ObjectIdentifier(ObjectType.schedule, 1), new SequenceOf<>(
+                propertyValues)));
         d2.send(rd1, new WritePropertyMultipleRequest(new SequenceOf<>(specs))).get();
 
         Assert.assertEquals(analogDefaultValue, so.readProperty(PropertyIdentifier.scheduleDefault));
@@ -355,14 +348,13 @@ public class ScheduleObjectTest extends AbstractTest {
 
     @Test
     public void validations() throws Exception {
-        final AnalogValueObject av =
-                new AnalogValueObject(d2, 0, "av0", 98, EngineeringUnits.amperes, false).supportCommandable(-2);
+        final AnalogValueObject av = new AnalogValueObject(d2, 0, "av0", 98, EngineeringUnits.amperes, false)
+                .supportCommandable(-2);
 
         //
         // Entries in the list of property references must reference properties of this type
-        assertBACnetServiceException(
-                () -> new ScheduleObject(d1, 0, "sch0", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE), null,
-                        new SequenceOf<>(), BinaryPV.inactive, new SequenceOf<>(
+        assertBACnetServiceException(() -> new ScheduleObject(d1, 0, "sch0", new DateRange(Date.MINIMUM_DATE,
+                Date.MAXIMUM_DATE), null, new SequenceOf<>(), BinaryPV.inactive, new SequenceOf<>(
                         new DeviceObjectPropertyReference(1, av.getId(), PropertyIdentifier.presentValue)), 12, false),
                 ErrorClass.property, ErrorCode.invalidDataType);
 
@@ -383,8 +375,8 @@ public class ScheduleObjectTest extends AbstractTest {
 
         assertBACnetServiceException(() -> {
             final SequenceOf<SpecialEvent> exceptions = new SequenceOf<>( //
-                    new SpecialEvent(new CalendarEntry(new Date(d1)),
-                            new SequenceOf<>(new TimeValue(new Time(d1), new Real(0))), new UnsignedInteger(10)));
+                    new SpecialEvent(new CalendarEntry(new Date(d1)), new SequenceOf<>(new TimeValue(new Time(d1),
+                            new Real(0))), new UnsignedInteger(10)));
             new ScheduleObject(d1, 2, "sch2", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE), null, exceptions,
                     BinaryPV.inactive, new SequenceOf<>(), 12, false);
         }, ErrorClass.property, ErrorCode.invalidDataType);
@@ -406,9 +398,8 @@ public class ScheduleObjectTest extends AbstractTest {
 
         assertBACnetServiceException(() -> {
             final SequenceOf<SpecialEvent> exceptions = new SequenceOf<>( //
-                    new SpecialEvent(new CalendarEntry(new Date(d1)),
-                            new SequenceOf<>(new TimeValue(new Time(20, Time.UNSPECIFIC, 0, 0), BinaryPV.active)),
-                            new UnsignedInteger(10)));
+                    new SpecialEvent(new CalendarEntry(new Date(d1)), new SequenceOf<>(new TimeValue(new Time(20,
+                            Time.UNSPECIFIC, 0, 0), BinaryPV.active)), new UnsignedInteger(10)));
             new ScheduleObject(d1, 4, "sch4", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE), null, exceptions,
                     BinaryPV.inactive, new SequenceOf<>(), 12, false);
         }, ErrorClass.property, ErrorCode.invalidConfigurationData);
@@ -425,11 +416,9 @@ public class ScheduleObjectTest extends AbstractTest {
                     new DailySchedule(new SequenceOf<>()), //
                     new DailySchedule(new SequenceOf<>()), //
                     new DailySchedule(new SequenceOf<>()));
-            ScheduleObject so =
-                    new ScheduleObject(d1, 1, "sch5", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE), weekly,
-                            new SequenceOf<>(), BinaryPV.inactive, new SequenceOf<>(
-                            new DeviceObjectPropertyReference(1, bv1.getId(), PropertyIdentifier.presentValue)), 12,
-                            false);
+            ScheduleObject so = new ScheduleObject(d1, 1, "sch5", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE),
+                    weekly, new SequenceOf<>(), BinaryPV.inactive, new SequenceOf<>(new DeviceObjectPropertyReference(1,
+                            bv1.getId(), PropertyIdentifier.presentValue)), 12, false);
 
             // Try to change data type from binary to analog
             so.writeProperty(null, PropertyIdentifier.listOfObjectPropertyReferences, new SequenceOf<>(
@@ -439,13 +428,13 @@ public class ScheduleObjectTest extends AbstractTest {
 
     private ScheduleObject createScheduleObject(AnalogValueObject av0, AnalogValueObject av1, Primitive scheduleDefault)
             throws Exception {
-        final SequenceOf<CalendarEntry> dateList = new SequenceOf<>(
-                new CalendarEntry(new Date(-1, null, -1, DayOfWeek.FRIDAY)), // Every Friday.
-                new CalendarEntry(
-                        new DateRange(new Date(-1, Month.NOVEMBER, -1, null), new Date(-1, Month.FEBRUARY, -1, null))),
+        final SequenceOf<CalendarEntry> dateList = new SequenceOf<>(new CalendarEntry(new Date(-1, null, -1,
+                DayOfWeek.FRIDAY)), // Every Friday.
+                new CalendarEntry(new DateRange(new Date(-1, Month.NOVEMBER, -1, null), new Date(-1, Month.FEBRUARY, -1,
+                        null))),
                 // November to February
                 new CalendarEntry(new WeekNDay(Month.UNSPECIFIED, WeekOfMonth.days22to28, DayOfWeek.WEDNESDAY))
-                // The Wednesday during the 4th week of each month.
+        // The Wednesday during the 4th week of each month.
         );
 
         final CalendarObject co = new CalendarObject(d1, 0, "cal0", dateList);
@@ -456,17 +445,16 @@ public class ScheduleObjectTest extends AbstractTest {
         // Thursday 9:00 and 20:00
         // Friday 9:00 and 21:30
         // Saturday-Sunday -
-        final BACnetArray<DailySchedule> weeklySchedule = new BACnetArray<>(new DailySchedule(
-                new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(10)),
-                        new TimeValue(new Time(17, 0, 0, 0), new Real(11)))), //
-                new DailySchedule(new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(12)),
-                        new TimeValue(new Time(17, 0, 0, 0), new Null()))), //
-                new DailySchedule(new SequenceOf<>(new TimeValue(new Time(17, 0, 0, 0), new Real(15)),
-                        new TimeValue(new Time(8, 0, 0, 0), new Real(14)))), // TimeValue is in wrong order
-                new DailySchedule(new SequenceOf<>(new TimeValue(new Time(9, 0, 0, 0), new Real(16)),
-                        new TimeValue(new Time(20, 0, 0, 0), new Real(17)))), //
-                new DailySchedule(new SequenceOf<>(new TimeValue(new Time(9, 0, 0, 0), new Real(18)),
-                        new TimeValue(new Time(21, 30, 0, 0), new Real(19)))), //
+        final BACnetArray<DailySchedule> weeklySchedule = new BACnetArray<>(new DailySchedule(new SequenceOf<>(
+                new TimeValue(new Time(8, 0, 0, 0), new Real(10)), new TimeValue(new Time(17, 0, 0, 0), new Real(11)))), //
+                new DailySchedule(new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(12)), new TimeValue(
+                        new Time(17, 0, 0, 0), new Null()))), //
+                new DailySchedule(new SequenceOf<>(new TimeValue(new Time(17, 0, 0, 0), new Real(15)), new TimeValue(
+                        new Time(8, 0, 0, 0), new Real(14)))), // TimeValue is in wrong order
+                new DailySchedule(new SequenceOf<>(new TimeValue(new Time(9, 0, 0, 0), new Real(16)), new TimeValue(
+                        new Time(20, 0, 0, 0), new Real(17)))), //
+                new DailySchedule(new SequenceOf<>(new TimeValue(new Time(9, 0, 0, 0), new Real(18)), new TimeValue(
+                        new Time(21, 30, 0, 0), new Real(19)))), //
                 new DailySchedule(new SequenceOf<>()), //
                 new DailySchedule(new SequenceOf<>()));
 
@@ -474,19 +462,19 @@ public class ScheduleObjectTest extends AbstractTest {
         // Every Friday, November to February, The Wednesday during the 4th week of each month - 13:00 and 14:00 (Priority:7)
         // 8.th day of month and also Wednesday - 10:30 and 17:00 (Priority:6)
         final SequenceOf<SpecialEvent> exceptionSchedule = new SequenceOf<>(new SpecialEvent(co.getId(),
-                new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(20)),
-                        new TimeValue(new Time(22, 0, 0, 0), new Real(21))), new UnsignedInteger(10)), // Calendar
+                new SequenceOf<>(new TimeValue(new Time(8, 0, 0, 0), new Real(20)), new TimeValue(new Time(22, 0, 0, 0),
+                        new Real(21))), new UnsignedInteger(10)), // Calendar
                 new SpecialEvent(co.getId(), new SequenceOf<>(new TimeValue(new Time(14, 0, 0, 0), new Real(23)),
                         new TimeValue(new Time(13, 0, 0, 0), new Real(22))),  // TimValue is in wrong order
                         new UnsignedInteger(7)), // Calendar
-                new SpecialEvent(new CalendarEntry(new Date(-1, null, 8, DayOfWeek.WEDNESDAY)),
-                        new SequenceOf<>(new TimeValue(new Time(10, 30, 0, 0), new Real(24)),
-                                new TimeValue(new Time(17, 0, 0, 0), new Null())), new UnsignedInteger(6))
-                // 7th is a Wednesday
+                new SpecialEvent(new CalendarEntry(new Date(-1, null, 8, DayOfWeek.WEDNESDAY)), new SequenceOf<>(
+                        new TimeValue(new Time(10, 30, 0, 0), new Real(24)), new TimeValue(new Time(17, 0, 0, 0),
+                                new Null())), new UnsignedInteger(6))
+        // 7th is a Wednesday
         );
         final SequenceOf<DeviceObjectPropertyReference> listOfObjectPropertyReferences = new SequenceOf<>( //
-                new DeviceObjectPropertyReference(av0.getId(), PropertyIdentifier.presentValue, null,
-                        rd2.getObjectIdentifier()), //
+                new DeviceObjectPropertyReference(av0.getId(), PropertyIdentifier.presentValue, null, rd2
+                        .getObjectIdentifier()), //
                 new DeviceObjectPropertyReference(av1.getId(), PropertyIdentifier.presentValue, null, null) //
         );
 

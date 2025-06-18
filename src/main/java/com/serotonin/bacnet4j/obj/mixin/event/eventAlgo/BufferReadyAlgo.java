@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj.mixin.event.eventAlgo;
 
 import java.util.Map;
@@ -48,7 +75,7 @@ public class BufferReadyAlgo extends EventAlgorithm {
 
     @Override
     public PropertyIdentifier[] getAdditionalMonitoredProperties() {
-        return new PropertyIdentifier[] { PropertyIdentifier.statusFlags };
+        return new PropertyIdentifier[] {PropertyIdentifier.statusFlags};
     }
 
     @Override
@@ -99,8 +126,8 @@ public class BufferReadyAlgo extends EventAlgorithm {
     @Override
     public NotificationParameters getIntrinsicNotificationParameters(final EventState fromState,
             final EventState toState, final BACnetObject bo) {
-        return getNotificationParameters(logBufferReference, bo.get(previousCountProperty),
-                bo.get(monitoredValueProperty));
+        return getNotificationParameters(logBufferReference, bo.get(previousCountProperty), bo.get(
+                monitoredValueProperty));
     }
 
     @Override
@@ -110,9 +137,9 @@ public class BufferReadyAlgo extends EventAlgorithm {
             final Map<ObjectPropertyReference, Encodable> additionalValues, final AbstractEventParameter parameters) {
         // The log buffer reference can be made from the object property reference, substituting the PID with logBuffer.
         final DeviceObjectPropertyReference ref = bo.get(PropertyIdentifier.objectPropertyReference);
-        final DeviceObjectPropertyReference logBufferReference = new DeviceObjectPropertyReference(
-                ref.getObjectIdentifier(), PropertyIdentifier.logBuffer, ref.getPropertyArrayIndex(),
-                ref.getDeviceIdentifier());
+        final DeviceObjectPropertyReference logBufferReference = new DeviceObjectPropertyReference(ref
+                .getObjectIdentifier(), PropertyIdentifier.logBuffer, ref.getPropertyArrayIndex(), ref
+                        .getDeviceIdentifier());
 
         // The previous notification count can be pulled from the mutable value in the event parameters.
         final BufferReady p = (BufferReady) parameters;
@@ -124,7 +151,7 @@ public class BufferReadyAlgo extends EventAlgorithm {
     private static NotificationParameters getNotificationParameters(
             final DeviceObjectPropertyReference logBufferReference, final UnsignedInteger previousNotification,
             final UnsignedInteger currentNotification) {
-        return new NotificationParameters(
-                new BufferReadyNotif(logBufferReference, previousNotification, currentNotification));
+        return new NotificationParameters(new BufferReadyNotif(logBufferReference, previousNotification,
+                currentNotification));
     }
 }

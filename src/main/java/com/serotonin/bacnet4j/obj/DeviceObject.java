@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import java.util.Objects;
@@ -57,15 +84,14 @@ public class DeviceObject extends BACnetObject {
     public DeviceObject(final LocalDevice localDevice, final int instanceNumber) throws BACnetServiceException {
         super(localDevice, ObjectType.device, instanceNumber, "BACnet4J device " + instanceNumber);
 
-        writePropertyInternal(PropertyIdentifier.maxApduLengthAccepted,
-                new UnsignedInteger(MaxApduLength.UP_TO_1476.getMaxLengthInt()));
+        writePropertyInternal(PropertyIdentifier.maxApduLengthAccepted, new UnsignedInteger(MaxApduLength.UP_TO_1476
+                .getMaxLengthInt()));
         writePropertyInternal(PropertyIdentifier.vendorIdentifier, new UnsignedInteger(VENDOR_ID));
-        writePropertyInternal(PropertyIdentifier.vendorName,
-                new CharacterString("Infinite Automation Systems, Inc."));
+        writePropertyInternal(PropertyIdentifier.vendorName, new CharacterString("Infinite Automation Systems, Inc."));
         writePropertyInternal(PropertyIdentifier.segmentationSupported, Segmentation.segmentedBoth);
         writePropertyInternal(PropertyIdentifier.maxSegmentsAccepted, new UnsignedInteger(Integer.MAX_VALUE));
-        writePropertyInternal(PropertyIdentifier.apduSegmentTimeout,
-                new UnsignedInteger(Transport.DEFAULT_SEG_TIMEOUT));
+        writePropertyInternal(PropertyIdentifier.apduSegmentTimeout, new UnsignedInteger(
+                Transport.DEFAULT_SEG_TIMEOUT));
         writePropertyInternal(PropertyIdentifier.apduTimeout, new UnsignedInteger(Transport.DEFAULT_TIMEOUT));
         writePropertyInternal(PropertyIdentifier.numberOfApduRetries, new UnsignedInteger(Transport.DEFAULT_RETRIES));
         writePropertyInternal(PropertyIdentifier.objectList, new BACnetArray<ObjectIdentifier>());
@@ -189,8 +215,8 @@ public class DeviceObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.protocolVersion, new UnsignedInteger(1));
         writePropertyInternal(PropertyIdentifier.protocolRevision, new UnsignedInteger(19));
 
-        UnsignedInteger databaseRevision = getLocalDevice().getPersistence()
-                .loadEncodable(getPersistenceKey(PropertyIdentifier.databaseRevision), UnsignedInteger.class);
+        UnsignedInteger databaseRevision = getLocalDevice().getPersistence().loadEncodable(getPersistenceKey(
+                PropertyIdentifier.databaseRevision), UnsignedInteger.class);
         if (databaseRevision == null)
             databaseRevision = UnsignedInteger.ZERO;
         writePropertyInternal(PropertyIdentifier.databaseRevision, databaseRevision);
@@ -212,7 +238,7 @@ public class DeviceObject extends BACnetObject {
         set(PropertyIdentifier.localTime, new Time(getLocalDevice()));
         set(PropertyIdentifier.localDate, new Date(getLocalDevice()));
         set(PropertyIdentifier.daylightSavingsStatus, Boolean.FALSE);
-        
+
         // Mixins
         addMixin(new ActiveCovSubscriptionMixin(this));
         addMixin(new HasStatusFlagsMixin(this));
@@ -258,8 +284,8 @@ public class DeviceObject extends BACnetObject {
             final int offsetMillis = TimeZone.getDefault().getOffset(getLocalDevice().getClock().millis());
             writePropertyInternal(PropertyIdentifier.utcOffset, new SignedInteger(offsetMillis / 1000 / 60));
         } else if (pid.equals(PropertyIdentifier.daylightSavingsStatus)) {
-            final boolean dst = TimeZone.getDefault()
-                    .inDaylightTime(new java.util.Date(getLocalDevice().getClock().millis()));
+            final boolean dst = TimeZone.getDefault().inDaylightTime(new java.util.Date(getLocalDevice().getClock()
+                    .millis()));
             writePropertyInternal(PropertyIdentifier.daylightSavingsStatus, Boolean.valueOf(dst));
         } else if (pid.equals(PropertyIdentifier.deviceAddressBinding)) {
             final SequenceOf<AddressBinding> bindings = new SequenceOf<>();
@@ -293,8 +319,8 @@ public class DeviceObject extends BACnetObject {
             final Encodable newValue) {
         if (pid.equals(PropertyIdentifier.restartNotificationRecipients)) {
             // Persist the new list.
-            getLocalDevice().getPersistence()
-                    .saveEncodable(getPersistenceKey(PropertyIdentifier.restartNotificationRecipients), newValue);
+            getLocalDevice().getPersistence().saveEncodable(getPersistenceKey(
+                    PropertyIdentifier.restartNotificationRecipients), newValue);
         } else if (pid.equals(PropertyIdentifier.maxMaster)) {
             final MasterNode masterNode = getMasterNode();
             if (masterNode != null) {

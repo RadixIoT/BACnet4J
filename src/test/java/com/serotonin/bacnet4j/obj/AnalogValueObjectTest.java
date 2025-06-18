@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
@@ -53,8 +80,8 @@ public class AnalogValueObjectTest extends AbstractTest {
         final EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
-        av.supportIntrinsicReporting(1, 7, 100, 20, 5, 120, 0, new LimitEnable(true, true),
-                new EventTransitionBits(true, true, true), NotifyType.alarm, 2);
+        av.supportIntrinsicReporting(1, 7, 100, 20, 5, 120, 0, new LimitEnable(true, true), new EventTransitionBits(
+                true, true, true), NotifyType.alarm, 2);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
         assertEquals(0, listener.getNotifCount());
 
@@ -98,9 +125,8 @@ public class AnalogValueObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.lowLimit, notif.toState());
-        assertEquals(new NotificationParameters(
-                new OutOfRangeNotif(new Real(10), new StatusFlags(true, false, false, false), new Real(5),
-                        new Real(20))), notif.eventValues());
+        assertEquals(new NotificationParameters(new OutOfRangeNotif(new Real(10), new StatusFlags(true, false, false,
+                false), new Real(5), new Real(20))), notif.eventValues());
 
         // Disable low limit checking. Will return to normal immediately.
         av.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(false, true));
@@ -121,9 +147,8 @@ public class AnalogValueObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.lowLimit, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        assertEquals(new NotificationParameters(
-                new OutOfRangeNotif(new Real(10), new StatusFlags(false, false, false, false), new Real(5),
-                        new Real(20))), notif.eventValues());
+        assertEquals(new NotificationParameters(new OutOfRangeNotif(new Real(10), new StatusFlags(false, false, false,
+                false), new Real(5), new Real(20))), notif.eventValues());
 
         // Re-enable low limit checking. Will return to low-limit after 1 second.
         av.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(true, true));
@@ -135,9 +160,8 @@ public class AnalogValueObjectTest extends AbstractTest {
         assertEquals(EventType.outOfRange, notif.eventType());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.lowLimit, notif.toState());
-        assertEquals(new NotificationParameters(
-                new OutOfRangeNotif(new Real(10), new StatusFlags(true, false, false, false), new Real(5),
-                        new Real(20))), notif.eventValues());
+        assertEquals(new NotificationParameters(new OutOfRangeNotif(new Real(10), new StatusFlags(true, false, false,
+                false), new Real(5), new Real(20))), notif.eventValues());
 
         // Go to a high limit. Will change to high-limit after 1 second.
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(110));
@@ -148,9 +172,8 @@ public class AnalogValueObjectTest extends AbstractTest {
         notif = listener.removeNotif();
         assertEquals(EventState.lowLimit, notif.fromState());
         assertEquals(EventState.highLimit, notif.toState());
-        assertEquals(new NotificationParameters(
-                new OutOfRangeNotif(new Real(110), new StatusFlags(true, false, false, false), new Real(5),
-                        new Real(100))), notif.eventValues());
+        assertEquals(new NotificationParameters(new OutOfRangeNotif(new Real(110), new StatusFlags(true, false, false,
+                false), new Real(5), new Real(100))), notif.eventValues());
 
         // Reduce to within the deadband. No notification.
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(95));
@@ -172,15 +195,14 @@ public class AnalogValueObjectTest extends AbstractTest {
         notif = listener.removeNotif();
         assertEquals(EventState.highLimit, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        assertEquals(new NotificationParameters(
-                new OutOfRangeNotif(new Real(94), new StatusFlags(false, false, false, false), new Real(5),
-                        new Real(100))), notif.eventValues());
+        assertEquals(new NotificationParameters(new OutOfRangeNotif(new Real(94), new StatusFlags(false, false, false,
+                false), new Real(5), new Real(100))), notif.eventValues());
     }
 
     @Test
     public void propertyConformanceReadOnly() {
-        assertBACnetServiceException(() -> av.writeProperty(null,
-                new PropertyValue(PropertyIdentifier.eventMessageTexts, new UnsignedInteger(2),
-                        new CharacterString("should fail"), null)), ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> av.writeProperty(null, new PropertyValue(
+                PropertyIdentifier.eventMessageTexts, new UnsignedInteger(2), new CharacterString("should fail"),
+                null)), ErrorClass.property, ErrorCode.writeAccessDenied);
     }
 }
