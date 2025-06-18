@@ -624,7 +624,7 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public RemoteDevice getCachedRemoteDevice(final Address address) {
-        return remoteDeviceCache.getCachedEntity((rd) -> rd.getAddress().equals(address));
+        return remoteDeviceCache.getCachedEntity(rd -> rd.getAddress().equals(address));
     }
 
     public RemoteDevice removeCachedRemoteDevice(final int instanceNumber) {
@@ -660,7 +660,7 @@ public class LocalDevice implements AutoCloseable {
                 timeoutCallback.run();
             } else {
                 LOG.debug("Requesting the remote device from the remote device finder: {}", instanceNumber);
-                RemoteDeviceFinder.findDevice(this, instanceNumber, (cbrd) -> {
+                RemoteDeviceFinder.findDevice(this, instanceNumber, cbrd -> {
                     forgetDeviceTimeout(instanceNumber);
 
                     // Cache the device.
@@ -1005,8 +1005,7 @@ public class LocalDevice implements AutoCloseable {
 
     public void setCachedRemoteProperty(final int did, final ObjectIdentifier oid, final PropertyIdentifier pid,
             final UnsignedInteger pin, final Encodable value) {
-        if (value instanceof ErrorClassAndCode) {
-            final ErrorClassAndCode e = (ErrorClassAndCode) value;
+        if (value instanceof ErrorClassAndCode e) {
             if (ErrorClass.device.equals(e.getErrorClass())) {
                 // Don't cache devices if the error is about the device. In fact, delete the cached device.
                 remoteDeviceCache.removeEntity(did);
@@ -1223,9 +1222,7 @@ public class LocalDevice implements AutoCloseable {
     public void notifySameDeviceIdCallback(Address from) {
         if (sameDeviceIdCallback != null) {
             // Do this async
-            execute(() -> {
-                sameDeviceIdCallback.accept(from);
-            });
+            execute(() -> sameDeviceIdCallback.accept(from));
         }
     }
 

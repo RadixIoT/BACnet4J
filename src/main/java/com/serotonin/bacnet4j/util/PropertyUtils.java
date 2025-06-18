@@ -55,12 +55,11 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class PropertyUtils {
     static final Logger LOG = LoggerFactory.getLogger(PropertyUtils.class);
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Reading properties
-
-    /// /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Reading properties
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     public static DeviceObjectPropertyValues readProperties(final LocalDevice localDevice,
             final DeviceObjectPropertyReferences refs, final ReadListener callback) {
@@ -164,10 +163,8 @@ public class PropertyUtils {
             Runnable runnable;
             if (rd == null) {
                 // Initiate a device lookup
-                runnable = () -> {
-                    requestPropertiesFromDevice(localDevice, deviceId, timeoutToUse, propRefs, callback, result,
-                            completedProperties, totalProperties);
-                };
+                runnable = () -> requestPropertiesFromDevice(localDevice, deviceId, timeoutToUse, propRefs, callback,
+                        result, completedProperties, totalProperties);
             } else {
                 runnable = () -> {
                     // Try to get the properties from the cached device.
@@ -274,12 +271,11 @@ public class PropertyUtils {
         }
     }
 
-    //
-    //    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //    // Writing properties
-    //    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Writing properties
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
     //
     //    public static void writeProperties(final LocalDevice localDevice,
     //            final DeviceObjectPropertyReferenceValues values) {
