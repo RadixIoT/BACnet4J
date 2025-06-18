@@ -52,7 +52,6 @@ public class ServiceFutureImpl implements ServiceFuture, ResponseConsumer {
     private AckAPDU fail;
     private BACnetException ex;
     private volatile boolean done;
-    private volatile boolean complete;
     private volatile State state = State.NEW;
 
     @Override
@@ -81,12 +80,12 @@ public class ServiceFutureImpl implements ServiceFuture, ResponseConsumer {
             throw new BACnetException(ex.getMessage(), ex);
         }
         if (fail != null) {
-            if (fail instanceof com.serotonin.bacnet4j.apdu.Error)
-                throw new ErrorAPDUException((com.serotonin.bacnet4j.apdu.Error) fail);
-            else if (fail instanceof Reject)
-                throw new RejectAPDUException((Reject) fail);
-            else if (fail instanceof Abort)
-                throw new AbortAPDUException((Abort) fail);
+            if (fail instanceof com.serotonin.bacnet4j.apdu.Error error)
+                throw new ErrorAPDUException(error);
+            else if (fail instanceof Reject reject)
+                throw new RejectAPDUException(reject);
+            else if (fail instanceof Abort abort)
+                throw new AbortAPDUException(abort);
         }
         return (T) ack;
     }

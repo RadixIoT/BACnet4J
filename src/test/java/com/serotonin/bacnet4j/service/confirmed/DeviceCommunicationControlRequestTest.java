@@ -248,7 +248,6 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
             // We need to advance the clock because otherwise the request will never time out.
             // First give the transport a chance to send the request.
             awaitTrue(() -> future.getState() == ServiceFuture.State.SENT, 5000);
-            //            ThreadUtils.sleep(5);
             // Then advance past the timeout.
             clock.plusMillis(TIMEOUT + 1);
 
