@@ -20,7 +20,7 @@
         <url>https://www.infiniteautomation.com/</url>
     </organization>
     <properties>
-        <revision>7.0.0-SNAPSHOT</revision>
+        <revision>6.1.0-SNAPSHOT</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <additionalDeploymentRepositoryId>additional-deployment-repository</additionalDeploymentRepositoryId>
         <maven.compiler.release>17</maven.compiler.release>
