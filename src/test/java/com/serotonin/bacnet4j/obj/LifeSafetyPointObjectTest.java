@@ -1,10 +1,9 @@
 package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
@@ -70,7 +69,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
                 new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
@@ -79,14 +78,15 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
 
         // Do a state change. Write a value to indicate a change of state failure. After 5s the alarm will be raised.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.tamper);
-        clock.plus(4500, TimeUnit.MILLISECONDS, 4500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(4500);
+        quiesce();
         assertEquals(EventState.normal, lsp.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 80);
-        assertEquals(EventState.lifeSafetyAlarm, lsp.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(600);
+        awaitEquals(EventState.lifeSafetyAlarm, () -> lsp.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), lsp.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -106,15 +106,16 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
 
         // Return to normal. After 12s the notification will be sent.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.quiet);
-        clock.plus(11500, TimeUnit.MILLISECONDS, 11500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(11500);
+        quiesce();
         assertEquals(EventState.lifeSafetyAlarm,
                 lsp.readProperty(PropertyIdentifier.eventState)); // Still lifeSafetyAlarm at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.normal, lsp.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(600);
+        awaitEquals(EventState.normal, () -> lsp.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), lsp.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -144,21 +145,23 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
 
         // Do a state change. Write a value to indicate a change of state failure. After 5s the alarm will be raised.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
-        clock.plus(4999, TimeUnit.MILLISECONDS, 4999, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(4999);
+        quiesce();
         assertEquals(EventState.normal, lsp.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(1, TimeUnit.MILLISECONDS, 1, TimeUnit.MILLISECONDS, 0, 80);
+        clock.plusMillis(1);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, lsp.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
         listener.clearNotifs();
 
         // Return to normal. After 12s the notification will be sent.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.quiet);
-        clock.plus(11999, TimeUnit.MILLISECONDS, 11999, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(11999);
+        quiesce();
         assertEquals(EventState.offnormal,
                 lsp.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
-        clock.plus(1, TimeUnit.MILLISECONDS, 1, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, lsp.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
         listener.clearNotifs();
     }
 
@@ -175,13 +178,14 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
 
         // Write a value to indicate offnormal and advance the clock to just before the time delay.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
-        clock.plus(4999, TimeUnit.MILLISECONDS, 4999, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(4999);
+        quiesce();
         assertEquals(EventState.normal, lsp.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         assertEquals(0, listener.getNotifCount());
 
         // Change the mode. Notification should be sent immediately.
         lsp.writePropertyInternal(PropertyIdentifier.mode, LifeSafetyMode.fast);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, lsp.readProperty(PropertyIdentifier.eventState));
     }
 
@@ -195,24 +199,25 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
                 new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), null,
                 new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
 
-        // Write a value to indicate lifeSafetyAlarm and advance the clock to past the the time delay.
+        // Write a value to indicate lifeSafetyAlarm and advance the clock to past the time delay.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testSupervisory);
-        clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(5000);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.lifeSafetyAlarm, lsp.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
         listener.clearNotifs();
 
-        // Set the same lifeSafetyAlarm and advance the clock to past the the time delay. No notification should be sent.
+        // Set the same lifeSafetyAlarm and advance the clock to past the time delay. No notification should be sent.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testSupervisory);
-        clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(5000);
+        quiesce();
         assertEquals(EventState.lifeSafetyAlarm, lsp.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 
-        // Change to a different lifeSafetyAlarm and advance the clock to past the the time delay.
+        // Change to a different lifeSafetyAlarm and advance the clock to past the time delay.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.tamper);
-        clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(5000);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.lifeSafetyAlarm, lsp.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
     }
 
     @SuppressWarnings("unchecked")
@@ -225,7 +230,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
                 new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
@@ -235,7 +240,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         //
         // Write a fault value.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.faultAlarm);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, lsp.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsp.readProperty(PropertyIdentifier.statusFlags));
         EventNotifListener.Notif notif = listener.removeNotif();
@@ -268,7 +273,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         //
         // Write a different mode.
         lsp.writePropertyInternal(PropertyIdentifier.mode, LifeSafetyMode.fast);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, lsp.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsp.readProperty(PropertyIdentifier.statusFlags));
         notif = listener.removeNotif();
@@ -301,14 +306,15 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         //
         // Write the same fault state.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.faultAlarm);
-        awaitEquals(listener::getNotifCount, 0, 5000);
+        quiesce();
+        assertEquals(0, listener.getNotifCount());
         assertEquals(EventState.fault, lsp.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsp.readProperty(PropertyIdentifier.statusFlags));
 
         //
         // Write a different fault state.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.fault);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, lsp.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsp.readProperty(PropertyIdentifier.statusFlags));
         notif = listener.removeNotif();
@@ -343,7 +349,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         // 1) change of reliability from fault to normal
         // 2) change of life safety from normal to normal for the previous change in mode.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.active);
-        awaitEquals(listener::getNotifCount, 2, 5000);
+        awaitEquals(2, listener::getNotifCount);
         assertEquals(EventState.normal, lsp.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), lsp.readProperty(PropertyIdentifier.statusFlags));
 
@@ -409,24 +415,26 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
                                 modeRef)));
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        awaitEquals(() -> ee.readProperty(PropertyIdentifier.eventState), EventState.normal, 5000);
+        awaitEquals(EventState.normal, () -> ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 
         //
         // Go to alarm value
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until just before the time delay.
-        clock.plus(29500, TimeUnit.MILLISECONDS, 29500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(29500);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until after the time delay.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(600);
+        awaitEquals(EventState.offnormal, () -> ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -449,10 +457,10 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         // Change mode. Notification is sent immediately.
         lsp.writePropertyInternal(PropertyIdentifier.mode, LifeSafetyMode.disarmed);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -475,10 +483,10 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         // Go to fault value
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.fault);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -493,7 +501,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.offnormal, notif.fromState());
         assertEquals(EventState.fault, notif.toState());
-        ChangeOfReliabilityNotif cor = ((NotificationParameters) notif.eventValues()).getParameter();
+        ChangeOfReliabilityNotif cor = notif.eventValues().getParameter();
         assertEquals(Reliability.multiStateFault, cor.getReliability());
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(4, cor.getPropertyValues().size());
@@ -513,11 +521,11 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         // Return to normal
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.blocked);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -532,7 +540,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.fault, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        cor = ((NotificationParameters) notif.eventValues()).getParameter();
+        cor = notif.eventValues().getParameter();
         assertEquals(Reliability.noFaultDetected, cor.getReliability());
         assertEquals(new StatusFlags(false, false, false, false), cor.getStatusFlags());
         assertEquals(4, cor.getPropertyValues().size());
@@ -562,7 +570,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         d2.send(rd1,
                         new SubscribeCOVRequest(new UnsignedInteger(987), lsp.getId(), Boolean.FALSE, new UnsignedInteger(600)))
                 .get();
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         CovNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -578,7 +586,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         clock.plusMinutes(2);
 
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.blocked);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());

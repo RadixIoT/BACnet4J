@@ -1,6 +1,6 @@
 package com.serotonin.bacnet4j.obj;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -149,7 +149,7 @@ public class DeviceObjectTest extends AbstractTest {
         //clock.plusSeconds((60 - clock.get(ChronoField.SECOND_OF_MINUTE)) % 60);
         //Advance past 4hrs to make sure there is at least 1 change
         final int minutes = 240; //(1445 - clock.get(ChronoField.MINUTE_OF_DAY)) % 240;
-        clock.plus(minutes, MINUTES, 0);
+        clock.plusMinutes(minutes);
 
         latch.await(1, TimeUnit.SECONDS);
 
@@ -194,10 +194,11 @@ public class DeviceObjectTest extends AbstractTest {
         d1.terminate();
         // Restart the device.
         d1.initialize(RestartReason.warmstart);
-        TimeStamp ts = new TimeStamp(new DateTime(d1));
-        Thread.sleep(40);
+        // The time of device restart is set on device instantiation using the system clock, before the warp clock
+        // is set. So, we can't use the warp clock time here, but have to instead get the property from the device.
+        TimeStamp ts = d1.getDeviceObject().get(PropertyIdentifier.timeOfDeviceRestart);
 
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         CovNotifListener.Notif notif = listener.removeNotif();
         assertEquals(UnsignedInteger.ZERO, notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.monitoredObjectIdentifier());
@@ -229,9 +230,8 @@ public class DeviceObjectTest extends AbstractTest {
         // Write a fault reliability value.
         dev.writePropertyInternal(PropertyIdentifier.reliability, Reliability.memberFault);
         assertEquals(EventState.fault, dev.readProperty(PropertyIdentifier.eventState));
-        Thread.sleep(100);
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());

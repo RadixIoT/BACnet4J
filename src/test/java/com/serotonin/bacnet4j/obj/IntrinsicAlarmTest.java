@@ -1,12 +1,11 @@
 package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
-
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -87,8 +86,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
                 bv.readProperty(PropertyIdentifier.eventMessageTexts));
 
         // After the time delay, the event state should become off-normal, because the present value is the alarm state.
-        clock.plus(2100, TimeUnit.MILLISECONDS, 2100, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState)); // Now is off-normal.
+        clock.plusMillis(2100);
+        awaitEquals(EventState.offnormal, () -> bv.readProperty(PropertyIdentifier.eventState)); // Now is off-normal.
     }
 
     @Test
@@ -104,44 +103,52 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
         // Set the alarm value and then set it back to normal before the time delay.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
-        clock.plus(1000, TimeUnit.MILLISECONDS, 1000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1000);
+        quiesce();
         assertEquals(EventState.normal, bv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.inactive);
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.normal, bv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
 
         // Do a real state change. Write the alarm value. After 2 seconds the alarm will be raised.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
-        clock.plus(1000, TimeUnit.MILLISECONDS, 1000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1000);
+        quiesce();
         assertEquals(EventState.normal, bv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(1100);
+        awaitEquals(EventState.offnormal, () -> bv.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), bv.readProperty(PropertyIdentifier.statusFlags));
 
         // Write the normal value and then set it back to off-normal before the time delay.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.inactive);
-        clock.plus(3000, TimeUnit.MILLISECONDS, 3000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(3000);
+        quiesce();
         assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState)); // Still off-normal.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState)); // Still off-normal.
 
         // Do a real state change. Write the normal value. After 4 seconds state will be normal again.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.inactive);
-        clock.plus(3000, TimeUnit.MILLISECONDS, 3000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(3000);
+        quiesce();
         assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState)); // Still off-normal.
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.normal, bv.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(1100);
+        awaitEquals(EventState.normal, () -> bv.readProperty(PropertyIdentifier.eventState));
 
         // Set the alarm value and then set a fault state before the time delay.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
-        clock.plus(1000, TimeUnit.MILLISECONDS, 1000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1000);
+        quiesce();
         assertEquals(EventState.normal, bv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         bv.writePropertyInternal(PropertyIdentifier.reliability, Reliability.noOutput);
         assertEquals(EventState.fault, bv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         assertEquals(new StatusFlags(true, true, false, false), bv.readProperty(PropertyIdentifier.statusFlags));
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.fault, bv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
+        clock.plusMillis(1100);
+        awaitEquals(EventState.fault,
+                () -> bv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         assertEquals(new StatusFlags(true, true, false, false), bv.readProperty(PropertyIdentifier.statusFlags));
 
         // Remove the fault condition. After, the event state should immediately be off-normal.
@@ -157,8 +164,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
         // Write the offnormal value and wait 2 seconds for the state to change.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
-        clock.plus(2100, TimeUnit.MILLISECONDS, 2100, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(2100);
+        awaitEquals(EventState.offnormal, () -> bv.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), bv.readProperty(PropertyIdentifier.statusFlags));
 
         // Inhibit
@@ -167,21 +174,24 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
         // Write the normal value and wait 2 seconds: there should be no change.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.inactive);
-        clock.plus(2100, TimeUnit.MILLISECONDS, 2100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(2100);
+        quiesce();
         assertEquals(EventState.normal, bv.readProperty(PropertyIdentifier.eventState));
 
         // Write the offnormal value and wait 2 seconds: there should be no change.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
-        clock.plus(2100, TimeUnit.MILLISECONDS, 2100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(2100);
+        quiesce();
         assertEquals(EventState.normal, bv.readProperty(PropertyIdentifier.eventState));
 
         // Remove inhibition. After two seconds the state should become offnormal.
         bv.writePropertyInternal(PropertyIdentifier.eventAlgorithmInhibit, Boolean.FALSE);
         assertEquals(EventState.normal, bv.readProperty(PropertyIdentifier.eventState));
-        clock.plus(1000, TimeUnit.MILLISECONDS, 1000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1000);
+        quiesce();
         assertEquals(EventState.normal, bv.readProperty(PropertyIdentifier.eventState));
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(1100);
+        awaitEquals(EventState.offnormal, () -> bv.readProperty(PropertyIdentifier.eventState));
     }
 
     @SuppressWarnings("unchecked")
@@ -204,21 +214,20 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
         // Write the off-normal value and wait 2 seconds for the state to change.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
-        clock.plus(2100, TimeUnit.MILLISECONDS, 2100, TimeUnit.MILLISECONDS, 0, 40);
-        LOG.info("Finished waiting for state change");
+        clock.plusMillis(2100);
 
         // Validate states
-        assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState));
+        awaitEquals(EventState.offnormal, () -> bv.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), bv.readProperty(PropertyIdentifier.statusFlags));
         // It's uncertain what the timestamp will be, so just assert that it is no unspecified.
         assertNotEquals(TimeStamp.UNSPECIFIED_DATETIME,
                 ((BACnetArray<TimeStamp>) bv.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
                         EventState.offnormal.getTransitionIndex()));
         assertEquals(new EventTransitionBits(false, true, true), bv.readProperty(PropertyIdentifier.ackedTransitions));
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         final EventNotifListener.Notif notif = listener.getNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -260,28 +269,32 @@ public class IntrinsicAlarmTest extends AbstractTest {
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(2));
         assertEquals(EventState.normal, mv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         // Ensure that no notifications are sent.
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.normal, mv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         assertEquals(0, listener.getNotifCount());
 
         // Set an alarm value and then set back to normal before the time delay.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(4));
-        clock.plus(500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(500);
+        quiesce();
         assertEquals(EventState.normal, mv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(3));
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        quiesce();
         assertEquals(EventState.normal, mv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
 
         // Do a real state change. Write an alarm value. After 1 seconds the alarm will be raised.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(4));
-        clock.plus(500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(500);
+        quiesce();
         assertEquals(EventState.normal, mv.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, mv.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), mv.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -301,10 +314,10 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
         // Change to a different alarm value.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(5));
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal,
                 mv.readProperty(PropertyIdentifier.eventState)); // Still off-normal at this point.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -324,22 +337,25 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
         // Write a normal value and then set it back to the previous off-normal value before the time delay.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(1));
-        clock.plus(1000, TimeUnit.MILLISECONDS, 1000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1000);
+        quiesce();
         assertEquals(EventState.offnormal, mv.readProperty(PropertyIdentifier.eventState)); // Still off-normal.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(5));
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.offnormal, mv.readProperty(PropertyIdentifier.eventState)); // Still off-normal.
         assertEquals(0, listener.getNotifCount());
 
         // Do a real state change. Write the normal value. After 2 seconds state will be normal again.
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(2));
-        clock.plus(1000, TimeUnit.MILLISECONDS, 1000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1000);
+        quiesce();
         assertEquals(EventState.offnormal, mv.readProperty(PropertyIdentifier.eventState)); // Still off-normal.
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, mv.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -361,10 +377,10 @@ public class IntrinsicAlarmTest extends AbstractTest {
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(7));
         assertEquals(EventState.fault, mv.readProperty(PropertyIdentifier.eventState)); // Immediately fault.
         assertEquals(new StatusFlags(true, true, false, false), mv.readProperty(PropertyIdentifier.statusFlags));
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -388,10 +404,10 @@ public class IntrinsicAlarmTest extends AbstractTest {
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(6));
         assertEquals(EventState.fault, mv.readProperty(PropertyIdentifier.eventState)); // Immediately fault.
         assertEquals(new StatusFlags(true, true, false, false), mv.readProperty(PropertyIdentifier.statusFlags));
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -415,10 +431,10 @@ public class IntrinsicAlarmTest extends AbstractTest {
         mv.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(4));
         assertEquals(EventState.normal, mv.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), mv.readProperty(PropertyIdentifier.statusFlags));
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -439,12 +455,12 @@ public class IntrinsicAlarmTest extends AbstractTest {
                 notif.eventValues());
 
         // After the time delay the state will change to off-normal and a notification will be sent.
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, mv.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), mv.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -479,12 +495,11 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
         // Write the off-normal value and wait 2 seconds for the state to change.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
-        LOG.info("Finished waiting for state change");
+        clock.plusMillis(1100);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a notification was received.
-        assertEquals(1, listener.getNotifCount());
         final EventNotifListener.Notif notif = listener.removeNotif();
         //        System.out.println(notif);
 
@@ -522,8 +537,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
         d2.send(d, req).get();
 
         // Will receive notification of the acknowledgement
-        clock.plus(200, TimeUnit.MILLISECONDS, 200, TimeUnit.MILLISECONDS, 0, 40);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        clock.plusMillis(200);
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif ack = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), ack.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), ack.initiatingDevice());
@@ -566,8 +581,8 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
         // Write the normal value and wait 2 seconds for the state to change.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.inactive);
-        clock.plus(2100, TimeUnit.MILLISECONDS, 2100, TimeUnit.MILLISECONDS, 0, 40);
-        LOG.info("Finished waiting for state change");
+        clock.plusMillis(2100);
+        quiesce();
         assertEquals(EventState.normal, bv.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a notification was not received, since the recipient asked not to be notified
@@ -611,22 +626,20 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
         // Write the off-normal value and wait 2 seconds for the state to change.
         bv.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
-        LOG.info("Finished waiting for state change");
+        clock.plusMillis(1100);
+        // Ensure that a notification was received.
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, bv.readProperty(PropertyIdentifier.eventState));
 
-        // Ensure that a notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
-        //        System.out.println(notif);
 
         final TimeStamp now = new TimeStamp(new DateTime(d1));
         bv.acknowledgeAlarm(notif.processIdentifier(), notif.toState(), notif.timeStamp(), new CharacterString("spa"),
                 now);
 
         // Will receive notification of the acknowledgement
-        clock.plus(200, TimeUnit.MILLISECONDS, 200, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(1, listener.getNotifCount());
+        clock.plusMillis(200);
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif ack = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), ack.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), ack.initiatingDevice());

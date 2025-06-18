@@ -1,10 +1,10 @@
 package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
@@ -76,7 +76,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
                 new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(40);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
@@ -85,14 +85,15 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         // Do a state change. Write a value to indicate a change of state failure. After 5s the alarm will be raised.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.tamper);
-        clock.plus(4500, TimeUnit.MILLISECONDS, 4500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(4500);
+        quiesce();
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 80);
-        assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(600);
+        awaitEquals(EventState.lifeSafetyAlarm, () -> lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -112,15 +113,17 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         // Return to normal. After 12s the notification will be sent.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.quiet);
-        clock.plus(11500, TimeUnit.MILLISECONDS, 11500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(11500);
+        quiesce();
         assertEquals(EventState.lifeSafetyAlarm,
                 lsz.readProperty(PropertyIdentifier.eventState)); // Still lifeSafetyAlarm at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(new StatusFlags(false, false, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
+        clock.plusMillis(600);
+        awaitEquals(EventState.normal, () -> lsz.readProperty(PropertyIdentifier.eventState));
+        awaitEquals(new StatusFlags(false, false, false, false),
+                () -> lsz.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -150,21 +153,23 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         // Do a state change. Write a value to indicate a change of state failure. After 5s the alarm will be raised.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
-        clock.plus(4999, TimeUnit.MILLISECONDS, 4999, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(4999);
+        quiesce();
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(1, TimeUnit.MILLISECONDS, 1, TimeUnit.MILLISECONDS, 0, 80);
-        assertEquals(EventState.offnormal, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
+        clock.plusMillis(1);
+        awaitEquals(EventState.offnormal, () -> lsz.readProperty(PropertyIdentifier.eventState));
+        awaitEquals(1, listener::getNotifCount);
         listener.clearNotifs();
 
         // Return to normal. After 12s the notification will be sent.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.quiet);
-        clock.plus(11999, TimeUnit.MILLISECONDS, 11999, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(11999);
+        quiesce();
         assertEquals(EventState.offnormal,
                 lsz.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
-        clock.plus(1, TimeUnit.MILLISECONDS, 1, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
         listener.clearNotifs();
     }
 
@@ -181,15 +186,15 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         // Write a value to indicate offnormal and advance the clock to just before the time delay.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
-        clock.plus(4999, TimeUnit.MILLISECONDS, 4999, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(4999);
+        quiesce();
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         assertEquals(0, listener.getNotifCount());
 
         // Change the mode. Notification should be sent immediately.
         lsz.writePropertyInternal(PropertyIdentifier.mode, LifeSafetyMode.fast);
-        Thread.sleep(40);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
     }
 
     /**
@@ -204,22 +209,23 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         // Write a value to indicate lifeSafetyAlarm and advance the clock to past the the time delay.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testSupervisory);
-        clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
+        clock.plusMillis(5000);
+        awaitEquals(EventState.lifeSafetyAlarm, () -> lsz.readProperty(PropertyIdentifier.eventState));
+        awaitEquals(1, listener::getNotifCount);
         listener.clearNotifs();
 
         // Set the same lifeSafetyAlarm and advance the clock to past the the time delay. No notification should be sent.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testSupervisory);
-        clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(5000);
+        quiesce();
         assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 
         // Change to a different lifeSafetyAlarm and advance the clock to past the the time delay.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.tamper);
-        clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
+        clock.plusMillis(5000);
+        awaitEquals(EventState.lifeSafetyAlarm, () -> lsz.readProperty(PropertyIdentifier.eventState));
+        awaitEquals(1, listener::getNotifCount);
     }
 
     @SuppressWarnings("unchecked")
@@ -232,7 +238,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
                 new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(40);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
@@ -242,10 +248,10 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         //
         // Write a fault value.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.faultAlarm);
-        Thread.sleep(40);
+
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -276,10 +282,9 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         //
         // Write a different mode.
         lsz.writePropertyInternal(PropertyIdentifier.mode, LifeSafetyMode.fast);
-        Thread.sleep(40);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -310,7 +315,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         //
         // Write the same fault state.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.faultAlarm);
-        Thread.sleep(40);
+        quiesce();
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
         assertEquals(0, listener.getNotifCount());
@@ -318,10 +323,9 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         //
         // Write a different fault state.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.fault);
-        Thread.sleep(40);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -354,10 +358,9 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         // 1) change of reliability from fault to normal
         // 2) change of life safety from normal to normal for the previous change in mode.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.active);
-        Thread.sleep(40);
+        awaitEquals(2, listener::getNotifCount);
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(2, listener.getNotifCount());
 
         notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
@@ -421,7 +424,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
                                 modeRef)));
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        Thread.sleep(40);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 
@@ -429,17 +432,19 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         // Go to alarm value
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until just before the time delay.
-        clock.plus(29500, TimeUnit.MILLISECONDS, 29500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(29500);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until after the time delay.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(600);
+        awaitEquals(EventState.offnormal, () -> ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -462,10 +467,10 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         // Change mode. Notification is sent immediately.
         lsz.writePropertyInternal(PropertyIdentifier.mode, LifeSafetyMode.disarmed);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -488,10 +493,10 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         // Go to fault value
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.fault);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -526,11 +531,11 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         // Return to normal
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.blocked);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(1100);
+        awaitEquals(EventState.normal, () -> ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -575,8 +580,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         d2.send(rd1,
                         new SubscribeCOVRequest(new UnsignedInteger(987), lsz.getId(), Boolean.FALSE, new UnsignedInteger(600)))
                 .get();
-        Thread.sleep(40);
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         CovNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -592,8 +596,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         clock.plusMinutes(2);
 
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.blocked);
-        Thread.sleep(40);
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif(0);
         assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
