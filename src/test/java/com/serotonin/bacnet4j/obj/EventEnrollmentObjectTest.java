@@ -1,9 +1,9 @@
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
@@ -83,33 +83,40 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         // Write a different normal value.
         av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.lampFailure);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         // Ensure that no notifications are sent.
         assertEquals(0, listener.getNotifCount());
 
         // Set an offnormal value and then set back to normal before the time delay.
         av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.activationFailure);
-        clock.plus(500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(500);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.noFaultDetected);
         // Allow the EE to poll
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
+        quiesce();
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
 
         // Do a real state change. Write an offnormal value. After 1s the alarm will be raised.
         av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.communicationFailure);
-        clock.plus(500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(500);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         // Allow the EE to poll
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
+        quiesce();
+        clock.plusMillis(1100);
+        awaitEquals(1, listener::getNotifCount);
+
         assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -132,13 +139,16 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         // is not supported.
         av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.configurationError);
         // Allow the EE to poll
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
-        clock.plus(500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
+        quiesce();
+        clock.plusMillis(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
         // Allow the EE to poll
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
-        clock.plus(700, TimeUnit.MILLISECONDS, 700, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(1, listener.getNotifCount());
+        clock.plusMillis(100);
+        quiesce();
+        clock.plusMillis(700);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -160,32 +170,39 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         // Set a normal value and then set back to offnormal before the time delay.
         av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.overRange);
         // Allow the EE to poll
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
-        clock.plus(500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
+        quiesce();
+        clock.plusMillis(500);
+        quiesce();
         assertEquals(EventState.offnormal,
                 ee.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
         av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.activationFailure);
         // Allow the EE to poll
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
+        quiesce();
+        clock.plusMillis(600);
+        quiesce();
         assertEquals(EventState.offnormal,
                 ee.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
 
         // Do a real state change. Write a normal value. After 1s the notification will be sent.
         av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.tripped);
         // Allow the EE to poll
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
-        clock.plus(500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
+        quiesce();
+        clock.plusMillis(500);
+        quiesce();
         assertEquals(EventState.offnormal,
                 ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         // Allow the EE to poll
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
-        clock.plus(700, TimeUnit.MILLISECONDS, 700, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
+        quiesce();
+        clock.plusMillis(700);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -229,7 +246,8 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         // Write a different normal value.
         av1.writePropertyInternal(PropertyIdentifier.minPresValue, new Real(45));
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
         assertEquals(new StatusFlags(false, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
@@ -238,13 +256,13 @@ public class EventEnrollmentObjectTest extends AbstractTest {
 
         // Write a fault value. Alarm will be sent.
         av1.writePropertyInternal(PropertyIdentifier.minPresValue, new Real(5));
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(Reliability.underRange, ee.readProperty(PropertyIdentifier.reliability));
         assertEquals(new StatusFlags(true, true, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -269,13 +287,13 @@ public class EventEnrollmentObjectTest extends AbstractTest {
 
         // Write a different value. Another notification will be sent.
         av1.writePropertyInternal(PropertyIdentifier.minPresValue, new Real(95));
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(Reliability.overRange, ee.readProperty(PropertyIdentifier.reliability));
         assertEquals(new StatusFlags(true, true, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -300,13 +318,13 @@ public class EventEnrollmentObjectTest extends AbstractTest {
 
         // Write a normal value. Another notification will be sent.
         av1.writePropertyInternal(PropertyIdentifier.minPresValue, new Real(55));
-        clock.plus(100, TimeUnit.MILLISECONDS, 100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(100);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
         assertEquals(new StatusFlags(false, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());

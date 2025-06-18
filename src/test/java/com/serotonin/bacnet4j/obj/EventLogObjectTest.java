@@ -1,7 +1,9 @@
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.advanceClock;
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -14,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.AbstractTest;
+import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedEventNotificationRequest;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
@@ -143,7 +146,7 @@ public class EventLogObjectTest extends AbstractTest {
         // Write one more and make sure a notification was received.
         d2.send(rd1, n1).get();
         assertEquals(5, el.getBuffer().size());
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(27), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -176,7 +179,7 @@ public class EventLogObjectTest extends AbstractTest {
         d2.send(rd1, n1).get();
         d2.send(rd1, n1).get();
         assertEquals(10, el.getBuffer().size());
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(27), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -211,7 +214,7 @@ public class EventLogObjectTest extends AbstractTest {
         d2.send(rd1, n1).get();
         d2.send(rd1, n1).get();
         assertEquals(15, el.getBuffer().size());
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(27), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -267,7 +270,7 @@ public class EventLogObjectTest extends AbstractTest {
 
         // Give the EE a chance to poll.
         clock.plusSeconds(1);
-        Thread.sleep(300);
+        quiesce();
 
         // Ensure that there are no notifications.
         assertEquals(0, listener.getNotifCount());
@@ -275,8 +278,7 @@ public class EventLogObjectTest extends AbstractTest {
         // Trigger another notification so that a notification is sent.
         d2.send(rd1, n1).get();
         clock.plusSeconds(1);
-        Thread.sleep(300);
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(28), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -304,8 +306,7 @@ public class EventLogObjectTest extends AbstractTest {
         d2.send(rd1, n1).get();
         d2.send(rd1, n1).get();
         clock.plusSeconds(1);
-        Thread.sleep(300);
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(28), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -437,21 +438,21 @@ public class EventLogObjectTest extends AbstractTest {
         assertEquals(0, el.getBuffer().size());
 
         // Advance the time a bit and do some triggers.
-        clock.plus(3, TimeUnit.MINUTES, 1, TimeUnit.MINUTES, 0, 40);
+        advanceClock(clock, 3, TimeUnit.MINUTES, 1, TimeUnit.MINUTES, null, TestUtils::quiesce);
         assertTrue(el.isLogDisabled());
         d2.send(rd1, n2).get();
         d2.send(rd1, n2).get();
         assertEquals(0, el.getBuffer().size());
 
         // Advance the time past the start time and do some triggers.
-        clock.plus(3, TimeUnit.MINUTES, 1, TimeUnit.MINUTES, 0, 40);
+        advanceClock(clock, 3, TimeUnit.MINUTES, 1, TimeUnit.MINUTES, null, TestUtils::quiesce);
         assertFalse(el.isLogDisabled());
         d2.send(rd1, n2).get();
         d2.send(rd1, n2).get();
         assertEquals(2, el.getBuffer().size());
 
         // Advance the time past the stop time and do some triggers.
-        clock.plus(5, TimeUnit.MINUTES, 1, TimeUnit.MINUTES, 0, 40);
+        advanceClock(clock, 5, TimeUnit.MINUTES, 1, TimeUnit.MINUTES, null, TestUtils::quiesce);
         final DateTime now3 = new DateTime(clock.millis());
         assertTrue(el.isLogDisabled());
         assertEquals(3, el.getBuffer().size());
@@ -476,14 +477,14 @@ public class EventLogObjectTest extends AbstractTest {
         assertEquals(3, el.getBuffer().size());
 
         // Advance the time past the start time and do some triggers.
-        clock.plus(6, TimeUnit.MINUTES, 1, TimeUnit.MINUTES, 0, 40);
+        advanceClock(clock, 6, TimeUnit.MINUTES, 1, TimeUnit.MINUTES, null, TestUtils::quiesce);
         assertFalse(el.isLogDisabled());
         d2.send(rd1, n2).get();
         d2.send(rd1, n2).get();
         assertEquals(5, el.getBuffer().size());
 
         // Advance the time past the stop time and do some triggers.
-        clock.plus(5, TimeUnit.MINUTES, 1, TimeUnit.MINUTES, 0, 40);
+        advanceClock(clock, 5, TimeUnit.MINUTES, 1, TimeUnit.MINUTES, null, TestUtils::quiesce);
         assertTrue(el.isLogDisabled());
         assertEquals(6, el.getBuffer().size());
         d2.send(rd1, n2).get();
