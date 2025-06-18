@@ -246,26 +246,22 @@ public class PropertyUtils {
 
         final AtomicInteger remaining = new AtomicInteger(refs.size());
         try {
-            final ReadListener deviceCallback = new ReadListener() {
-                @Override
-                public boolean progress(final double deviceProgress, final int did, final ObjectIdentifier oid,
-                        final PropertyIdentifier pid, final UnsignedInteger pin, final Encodable value) {
-                    // Notify the callback
-                    remaining.decrementAndGet();
+            final ReadListener deviceCallback = (deviceProgress, did, oid, pid, pin, value) -> {
+                // Notify the callback
+                remaining.decrementAndGet();
 
-                    // Add to the result list.
-                    synchronized (result) {
-                        result.add(did, oid, pid, pin, value);
-                    }
-
-                    // Cache the retrieve objects and properties.
-                    rd.setObjectProperty(oid, pid, pin, value);
-
-                    final double progress = completedProperties.incrementAndGet() / totalProperties;
-                    if (callback == null)
-                        return false;
-                    return callback.progress(progress, did, oid, pid, pin, value);
+                // Add to the result list.
+                synchronized (result) {
+                    result.add(did, oid, pid, pin, value);
                 }
+
+                // Cache the retrieve objects and properties.
+                rd.setObjectProperty(oid, pid, pin, value);
+
+                final double progress = completedProperties.incrementAndGet() / totalProperties;
+                if (callback == null)
+                    return false;
+                return callback.progress(progress, did, oid, pid, pin, value);
             };
 
             // Request the rest of the properties.

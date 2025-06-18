@@ -895,14 +895,14 @@ public class LocalDevice implements AutoCloseable {
 
     private Predicate<RemoteDevice> getExpirationCheck(CacheUpdate cacheUpdate) {
         switch (cacheUpdate) {
-            case ALWAYS:
-                return d -> true;
-            case NEVER:
-                return d -> false;
-            case IF_EXPIRED:
-                return d -> remoteDeviceCache.getCachedEntity(d.getInstanceNumber()) == null;
-            default:
-                throw new IllegalArgumentException("Unknown value: " + cacheUpdate);
+        case ALWAYS:
+            return d -> true;
+        case NEVER:
+            return d -> false;
+        case IF_EXPIRED:
+            return d -> remoteDeviceCache.getCachedEntity(d.getInstanceNumber()) == null;
+        default:
+            throw new IllegalArgumentException("Unknown value: " + cacheUpdate);
         }
     }
 
@@ -926,7 +926,7 @@ public class LocalDevice implements AutoCloseable {
                 d.setAddress(address);
             } else {
                 Address newAddress = new Address(d.getAddress().getNetworkNumber().intValue(), address.getMacAddress());
-                LOG.debug("Not updating address without source info, newAddress={}, existingAddress={}", address,
+                LOG.debug("Not updating address without source info, newAddress={}, existingAddress={}", newAddress,
                         d.getAddress());
                 // This address can be from the source of the socket message (link service)
                 // and may not be what we really want to update here.  It was decided in 5.0.0
