@@ -6,11 +6,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 
 import org.junit.Assert;
@@ -32,6 +34,8 @@ import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
+
+import lohbihler.warp.WarpClock;
 
 public class TestUtils {
     public static <T, U> void assertListEqualsIgnoreOrder(final List<T> expectedList, final List<U> actualList,
@@ -165,8 +169,7 @@ public class TestUtils {
             command.call();
             fail("BACnetException was expected");
         } catch (final BACnetException e) {
-            if (e instanceof ErrorAPDUException) {
-                final ErrorAPDUException eae = (ErrorAPDUException) e;
+            if (e instanceof ErrorAPDUException eae) {
                 assertErrorClassAndCode(eae.getError().getErrorClassAndCode(), errorClass, errorCode);
                 return (T) eae.getApdu().getError();
             }
@@ -181,8 +184,7 @@ public class TestUtils {
             command.call();
             fail("BACnetException was expected");
         } catch (final BACnetException e) {
-            if (e instanceof RejectAPDUException) {
-                final RejectAPDUException eae = (RejectAPDUException) e;
+            if (e instanceof RejectAPDUException eae) {
                 Assert.assertEquals(rejectReason, eae.getApdu().getRejectReason());
             } else {
                 fail("RejectAPDUException was expected: " + e.getClass());
@@ -396,6 +398,71 @@ public class TestUtils {
                 return false;
             }
             ThreadUtils.sleep(2);
+        }
+    }
+
+    @FunctionalInterface
+    public interface RunnableWithException {
+        void run() throws Exception;
+    }
+
+    /**
+     * Lifted from the WarpClock.plus method, but instead of sleep intervals this uses runnables.
+     *
+     * @param clock       the clock to advance
+     * @param amount      the amount of time to advance
+     * @param unit        the unit of total time amount
+     * @param preAdvance  a function to run before each increment
+     * @param postAdvance a function to run after each increment, including after the total time has advanced
+     * @return the final datetime
+     */
+    public static LocalDateTime advanceClock(WarpClock clock, int amount, TimeUnit unit,
+            RunnableWithException preAdvance, RunnableWithException postAdvance) throws Exception {
+        return advanceClock(clock, amount, unit, 0, null, preAdvance, postAdvance);
+    }
+
+    /**
+     * Lifted from the WarpClock.plus method, but instead of sleep intervals this uses runnables.
+     *
+     * @param clock           the clock to advance
+     * @param totalAmount     the total amount of time to advance
+     * @param unit            the unit of total time amount
+     * @param incrementAmount the amount of time between each increment
+     * @param incrementUnit   the unit of time increment
+     * @param preAdvance      a function to run before each increment
+     * @param postAdvance     a function to run after each increment, including after the total time has advanced
+     * @return the final datetime
+     */
+    public static LocalDateTime advanceClock(WarpClock clock, int totalAmount, TimeUnit unit, int incrementAmount,
+            TimeUnit incrementUnit, RunnableWithException preAdvance, RunnableWithException postAdvance)
+            throws Exception {
+        long remainder = unit.toNanos(totalAmount);
+        long each = (incrementUnit == null ? unit : incrementUnit).toNanos(
+                incrementAmount == 0 ? (long) totalAmount : (long) incrementAmount);
+        LocalDateTime result = null;
+
+        try {
+            if (remainder <= 0L) {
+                preAdvance.run();
+                result = clock.plusNanos(0L);
+                postAdvance.run();
+            } else {
+                while (remainder > 0L) {
+                    long nanos = each;
+                    if (each > remainder) {
+                        nanos = remainder;
+                    }
+
+                    preAdvance.run();
+                    result = clock.plusNanos(nanos);
+                    remainder -= nanos;
+                    postAdvance.run();
+                }
+            }
+
+            return result;
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 }

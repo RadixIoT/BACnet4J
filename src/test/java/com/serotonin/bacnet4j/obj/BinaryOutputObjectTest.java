@@ -35,7 +35,6 @@ import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.eventParameter.CommandFailure;
 import com.serotonin.bacnet4j.type.eventParameter.EventParameter;
 import com.serotonin.bacnet4j.type.notificationParameters.CommandFailureNotif;
-import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -164,7 +163,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         obj.supportIntrinsicReporting(5, 17, BinaryPV.inactive, new EventTransitionBits(true, true, true),
                 NotifyType.alarm, 12);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(40);
+        Thread.sleep(500);
         assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
@@ -195,7 +194,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.offnormal, notif.toState());
-        CommandFailureNotif commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
+        CommandFailureNotif commandFailure = notif.eventValues().getParameter();
         assertEquals(BinaryPV.inactive, AmbiguousValue.convertTo(commandFailure.getCommandValue(), BinaryPV.class));
         assertEquals(new StatusFlags(true, false, false, false), commandFailure.getStatusFlags());
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), BinaryPV.class));
@@ -225,7 +224,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.offnormal, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
+        commandFailure = notif.eventValues().getParameter();
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getCommandValue(), BinaryPV.class));
         assertEquals(new StatusFlags(false, false, false, false), commandFailure.getStatusFlags());
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), BinaryPV.class));
@@ -251,7 +250,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        Thread.sleep(40);
+        Thread.sleep(500);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 
@@ -284,7 +283,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.offnormal, notif.toState());
-        CommandFailureNotif commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
+        CommandFailureNotif commandFailure = notif.eventValues().getParameter();
         assertEquals(BinaryPV.inactive, AmbiguousValue.convertTo(commandFailure.getCommandValue(), BinaryPV.class));
         assertEquals(new StatusFlags(false, false, false, false), commandFailure.getStatusFlags());
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), BinaryPV.class));
@@ -318,7 +317,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.offnormal, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
+        commandFailure = notif.eventValues().getParameter();
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getCommandValue(), BinaryPV.class));
         assertEquals(new StatusFlags(false, false, false, false), commandFailure.getStatusFlags());
         assertEquals(BinaryPV.active, AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), BinaryPV.class));
