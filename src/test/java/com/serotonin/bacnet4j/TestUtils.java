@@ -465,4 +465,12 @@ public class TestUtils {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * Sleep for a given period before continuing to ensure that nothing happens during that time. This is frequently
+     * used to ensure that notifications are not sent following some activity.
+     */
+    public static void quiesce() {
+        ThreadUtils.sleep(500);
+    }
 }
