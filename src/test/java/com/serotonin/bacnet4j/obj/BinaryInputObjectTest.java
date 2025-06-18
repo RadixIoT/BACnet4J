@@ -1,5 +1,6 @@
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -60,7 +61,7 @@ public class BinaryInputObjectTest extends AbstractTest {
         bi.supportIntrinsicReporting(5, 17, BinaryPV.active, new EventTransitionBits(true, true, true),
                 NotifyType.alarm, 12);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
@@ -143,7 +144,7 @@ public class BinaryInputObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        Thread.sleep(500);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 

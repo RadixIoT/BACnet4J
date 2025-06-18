@@ -3,6 +3,7 @@ package com.serotonin.bacnet4j.obj;
 import static com.serotonin.bacnet4j.TestUtils.assertEquals;
 import static com.serotonin.bacnet4j.TestUtils.assertListEqualsIgnoreOrder;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
@@ -153,12 +154,12 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Write a new value that won't trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(21));
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Change a value that is not monitored
         av.writePropertyInternal(PropertyIdentifier.objectName, new CharacterString("av0-new-name"));
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Change a different value that is monitored
@@ -185,7 +186,7 @@ public class ChangeOfValueTest extends AbstractTest {
         // Wait until the subscription expires and write a change that would trigger a notification.
         clock.plusSeconds(3);
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(40));
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
     }
 
@@ -270,7 +271,7 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Write a new value to an unmonitored property. That will not trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.highLimit, new Real(60));
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Write a change to the status flags.
@@ -548,7 +549,7 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Write a new value to a different property. That will not trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.ampereSeconds);
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Write a new value to the present value. This will trigger three notifications because multiple values

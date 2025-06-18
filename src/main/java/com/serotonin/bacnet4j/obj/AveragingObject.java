@@ -236,14 +236,14 @@ public class AveragingObject extends BACnetObject {
 
     record Sample(Primitive value, DateTime timestamp) {
         float getValue() {
-            if (value instanceof Boolean)
-                return ((Boolean) value).booleanValue() ? 1 : 0;
-            if (value instanceof SignedInteger)
-                return ((SignedInteger) value).intValue();
-            if (value instanceof UnsignedInteger)
-                return ((UnsignedInteger) value).intValue();
-            if (value instanceof Enumerated)
-                return ((Enumerated) value).intValue();
+            if (value instanceof Boolean v)
+                return v.booleanValue() ? 1 : 0;
+            if (value instanceof SignedInteger v)
+                return v.intValue();
+            if (value instanceof UnsignedInteger v)
+                return v.intValue();
+            if (value instanceof Enumerated v)
+                return v.intValue();
             return ((Real) value).floatValue();
         }
     }

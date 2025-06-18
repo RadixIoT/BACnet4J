@@ -25,7 +25,9 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 /**
  * @author Matthew
  */
-public class AveragingObjectTest extends AbstractTest {
+public class
+
+AveragingObjectTest extends AbstractTest {
     private AveragingObject a;
 
     @Override
