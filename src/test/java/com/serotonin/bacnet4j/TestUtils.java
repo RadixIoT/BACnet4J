@@ -8,12 +8,13 @@ import java.io.IOException;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiPredicate;
 
 import org.junit.Assert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
@@ -34,6 +35,8 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 
 public class TestUtils {
+    static final Logger LOG = LoggerFactory.getLogger(TestUtils.class);
+
     public static <T, U> void assertListEqualsIgnoreOrder(final List<T> expectedList, final List<U> actualList,
             final BiPredicate<T, U> predicate) {
         Assert.assertEquals(expectedList.size(), actualList.size());
@@ -165,8 +168,7 @@ public class TestUtils {
             command.call();
             fail("BACnetException was expected");
         } catch (final BACnetException e) {
-            if (e instanceof ErrorAPDUException) {
-                final ErrorAPDUException eae = (ErrorAPDUException) e;
+            if (e instanceof ErrorAPDUException eae) {
                 assertErrorClassAndCode(eae.getError().getErrorClassAndCode(), errorClass, errorCode);
                 return (T) eae.getApdu().getError();
             }
@@ -181,8 +183,7 @@ public class TestUtils {
             command.call();
             fail("BACnetException was expected");
         } catch (final BACnetException e) {
-            if (e instanceof RejectAPDUException) {
-                final RejectAPDUException eae = (RejectAPDUException) e;
+            if (e instanceof RejectAPDUException eae) {
                 Assert.assertEquals(rejectReason, eae.getApdu().getRejectReason());
             } else {
                 fail("RejectAPDUException was expected: " + e.getClass());
@@ -214,7 +215,7 @@ public class TestUtils {
         try {
             parsed = Encodable.read(queue, encodable.getClass());
         } catch (final BACnetException e) {
-            e.printStackTrace();
+            LOG.error("", e);
             fail(e.getMessage());
             return;
         }
@@ -237,7 +238,7 @@ public class TestUtils {
         try {
             parsed = Encodable.readSequenceOf(queue, innerType);
         } catch (final BACnetException e) {
-            e.printStackTrace();
+            LOG.error("", e);
             fail(e.getMessage());
             return;
         }
@@ -262,18 +263,6 @@ public class TestUtils {
         }
     }
 
-    //
-    // Size assurance. Uses busy wait with timeout to ensure that a collection reaches a certain size.
-    public static void assertSize(final Collection<?> collection, final int size, final int wait) throws Exception {
-        awaitEquals(collection::size, size, wait);
-    }
-
-    @FunctionalInterface
-    interface SizeRetriever {
-        int size();
-    }
-
-
     /**
      * Supplier that returns a boolean and can throw an exception doing so.
      */
@@ -285,9 +274,12 @@ public class TestUtils {
     /**
      * A utility to busy-wait up to a given timeout for the given condition to become true.
      *
-     * @param condition the condition to which to wait
-     * @param timeoutMs the maximum amount of time to wait
-     * @throws Exception the exception if any that the condition threw
+     * @param condition
+     *         the condition to which to wait
+     * @param timeoutMs
+     *         the maximum amount of time to wait
+     * @throws Exception
+     *         the exception if any that the condition threw
      */
     public static void awaitTrue(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
         if (await(condition, true, timeoutMs)) {
@@ -299,9 +291,12 @@ public class TestUtils {
     /**
      * Utility to busy-wait up to a given timeout for the given condition to become false.
      *
-     * @param condition the condition to which to wait
-     * @param timeoutMs the maximum amount of time to wait
-     * @throws Exception the exception if any thrown by the condition
+     * @param condition
+     *         the condition to which to wait
+     * @param timeoutMs
+     *         the maximum amount of time to wait
+     * @throws Exception
+     *         the exception if any thrown by the condition
      */
     public static void awaitFalse(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
         if (await(condition, false, timeoutMs)) {
@@ -313,8 +308,10 @@ public class TestUtils {
     /**
      * Lifted from Assert to test whether a given object pair are either both null or equal.
      *
-     * @param expected the expected value
-     * @param actual   the value to check
+     * @param expected
+     *         the expected value
+     * @param actual
+     *         the value to check
      * @return true if they are both null or equal, false otherwise
      */
     public static boolean equalsRegardingNull(Object expected, Object actual) {
@@ -335,10 +332,14 @@ public class TestUtils {
     /**
      * Utility to busy-wait up to a given timeout for the given supplier to supply a value that matches that given.
      *
-     * @param supplier  the supplier the value of which to check
-     * @param constant  the value to match
-     * @param timeoutMs the maximum amount of time to wait
-     * @throws Exception the exception if any thrown by the supplier
+     * @param supplier
+     *         the supplier the value of which to check
+     * @param constant
+     *         the value to match
+     * @param timeoutMs
+     *         the maximum amount of time to wait
+     * @throws Exception
+     *         the exception if any thrown by the supplier
      */
     public static void awaitEquals(final IntSupplierWithException supplier, int constant, long timeoutMs)
             throws Exception {
@@ -359,10 +360,14 @@ public class TestUtils {
     /**
      * Utility to busy-wait up to a given timeout for the given supplier to supply a value that matches that given.
      *
-     * @param supplier  the supplier the value of which to check
-     * @param constant  the value to match
-     * @param timeoutMs the maximum amount of time to wait
-     * @throws Exception the exception if any thrown by the supplier
+     * @param supplier
+     *         the supplier the value of which to check
+     * @param constant
+     *         the value to match
+     * @param timeoutMs
+     *         the maximum amount of time to wait
+     * @throws Exception
+     *         the exception if any thrown by the supplier
      */
     public static void awaitEquals(final EncodableSupplierWithException supplier, Encodable constant, long timeoutMs)
             throws Exception {
@@ -379,11 +384,15 @@ public class TestUtils {
     /**
      * Utility that will "busy-wait" up to a given timeout for a condition to match the given value.
      *
-     * @param condition the condition to which to wait
-     * @param value     the value the condition should match
-     * @param timeoutMs the maximum amount of time to wait
+     * @param condition
+     *         the condition to which to wait
+     * @param value
+     *         the value the condition should match
+     * @param timeoutMs
+     *         the maximum amount of time to wait
      * @return true if the condition was matched, false otherwise
-     * @throws Exception the exception if any thrown by the condition
+     * @throws Exception
+     *         the exception if any thrown by the condition
      */
     public static boolean await(BooleanSupplierWithException condition, boolean value, long timeoutMs)
             throws Exception {
