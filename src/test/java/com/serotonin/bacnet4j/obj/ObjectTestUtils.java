@@ -59,6 +59,16 @@ public class ObjectTestUtils {
         }
 
         /**
+         * Convenience method that defaults the wait time to 5 seconds.
+         *
+         * @param pid      the property identifier for which to watch
+         * @param newValue the value for which to watch, or null for any value.
+         */
+        public void waitFor(PropertyIdentifier pid, Encodable newValue) {
+            waitFor(pid, newValue, 5000);
+        }
+
+        /**
          * Wait until a given property has a given value written to it, or until the wait time has expired.
          *
          * @param pid      the property identifier for which to watch

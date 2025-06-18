@@ -1,5 +1,6 @@
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static com.serotonin.bacnet4j.type.enumerated.BinaryPV.active;
 import static com.serotonin.bacnet4j.type.enumerated.BinaryPV.inactive;
@@ -8,8 +9,6 @@ import static com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier.priority
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
-
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -93,9 +92,9 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(active, RequestUtils.getProperty(d2, rd1, obj.getId(), presentValue));
 
         // e), f) Wait for the timer to expire. Starts min off timer for 4s
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
         LOG.debug("e,f");
-        assertEquals(new PriorityArray().put(6, inactive).put(7, inactive), pa);
+        awaitEquals(new PriorityArray().put(6, inactive).put(7, inactive), () -> pa);
         assertEquals(inactive, RequestUtils.getProperty(d2, rd1, obj.getId(), presentValue));
 
         // Going off on our own now...
@@ -103,13 +102,13 @@ public class BinaryOutputObjectTest extends AbstractTest {
         LOG.debug("A");
         RequestUtils.writeProperty(d2, rd1, obj.getId(), presentValue, inactive, 10);
         RequestUtils.writeProperty(d2, rd1, obj.getId(), presentValue, Null.instance, 7);
-        assertEquals(new PriorityArray().put(6, inactive).put(10, inactive), pa);
+        awaitEquals(new PriorityArray().put(6, inactive).put(10, inactive), () -> pa);
         assertEquals(inactive, RequestUtils.getProperty(d2, rd1, obj.getId(), presentValue));
 
         // Wait for the timer to expire.
-        clock.plus(2100, TimeUnit.MILLISECONDS, 2100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(2100);
         LOG.debug("B");
-        assertEquals(new PriorityArray().put(10, inactive), pa);
+        awaitEquals(new PriorityArray().put(10, inactive), () -> pa);
         assertEquals(inactive, RequestUtils.getProperty(d2, rd1, obj.getId(), presentValue));
 
         // Relinquish at 10. No timer should be active, and the array should be empty.
@@ -131,22 +130,23 @@ public class BinaryOutputObjectTest extends AbstractTest {
         assertEquals(inactive, RequestUtils.getProperty(d2, rd1, obj.getId(), presentValue));
 
         // Relinquish at 5. Timer remains active.
-        clock.plus(1500, TimeUnit.MILLISECONDS, 1500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1500);
+        quiesce();
         LOG.debug("F");
         RequestUtils.writeProperty(d2, rd1, obj.getId(), presentValue, Null.instance, 5);
         assertEquals(new PriorityArray().put(6, inactive).put(9, active), pa);
         assertEquals(inactive, RequestUtils.getProperty(d2, rd1, obj.getId(), presentValue));
 
         // Wait for the timer to expire. Starts min on timer for 2s
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
         LOG.debug("G");
-        assertEquals(new PriorityArray().put(6, active).put(9, active), pa);
+        awaitEquals(new PriorityArray().put(6, active).put(9, active), () -> pa);
         assertEquals(active, RequestUtils.getProperty(d2, rd1, obj.getId(), presentValue));
 
         // Wait for the timer to expire.
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
         LOG.debug("H");
-        assertEquals(new PriorityArray().put(9, active), pa);
+        awaitEquals(new PriorityArray().put(9, active), () -> pa);
         assertEquals(active, RequestUtils.getProperty(d2, rd1, obj.getId(), presentValue));
     }
 
@@ -173,14 +173,15 @@ public class BinaryOutputObjectTest extends AbstractTest {
 
         // Do a state change. Write a value to indicate a command failure. After 5s the alarm will be raised.
         obj.writePropertyInternal(PropertyIdentifier.feedbackValue, BinaryPV.active);
-        clock.plus(4500, TimeUnit.MILLISECONDS, 4500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(4500);
+        quiesce();
         assertEquals(EventState.normal, obj.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 80);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, obj.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), obj.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -202,15 +203,16 @@ public class BinaryOutputObjectTest extends AbstractTest {
 
         // Return to normal. After 12s the notification will be sent.
         obj.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
-        clock.plus(11500, TimeUnit.MILLISECONDS, 11500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(11500);
         assertEquals(EventState.offnormal,
                 obj.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        quiesce();
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, obj.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), obj.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -259,17 +261,19 @@ public class BinaryOutputObjectTest extends AbstractTest {
         // Go to high limit.
         obj.writePropertyInternal(PropertyIdentifier.feedbackValue, BinaryPV.active);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until just before the time delay.
-        clock.plus(29500, TimeUnit.MILLISECONDS, 29500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(29500);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until after the time delay.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -293,17 +297,19 @@ public class BinaryOutputObjectTest extends AbstractTest {
         // Return to normal
         obj.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until just before the time delay.
-        clock.plus(29500, TimeUnit.MILLISECONDS, 29500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(29500);
+        quiesce();
         assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until after the time delay.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());

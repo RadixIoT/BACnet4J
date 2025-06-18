@@ -130,7 +130,7 @@ public class ChangeOfValueTest extends AbstractTest {
                 subscription.getRecipient());
 
         // Subscribing should have caused a notification to be sent.
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         CovNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(4), notif.subscriberProcessIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -142,7 +142,7 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Write a new value that will trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(20));
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(4), notif.subscriberProcessIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -164,7 +164,7 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Change a different value that is monitored
         av.writePropertyInternal(PropertyIdentifier.outOfService, Boolean.TRUE);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.presentValue, new Real(21)), //
@@ -176,7 +176,7 @@ public class ChangeOfValueTest extends AbstractTest {
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(23));
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(24));
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(25));
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.presentValue, new Real(25)), //
@@ -247,7 +247,7 @@ public class ChangeOfValueTest extends AbstractTest {
                 subscription.getRecipient());
 
         // Subscribing should have caused a notification to be sent.
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         CovNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(4), notif.subscriberProcessIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -259,7 +259,7 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Write a new value to a different monitored property. That will trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(20));
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(4), notif.subscriberProcessIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -276,7 +276,7 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Write a change to the status flags.
         av.writePropertyInternal(PropertyIdentifier.reliability, Reliability.memberFault);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(4), notif.subscriberProcessIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -351,7 +351,7 @@ public class ChangeOfValueTest extends AbstractTest {
         assertListEqualsIgnoreOrder(expectedList, deviceList.getValues());
 
         // Subscribing should have caused a notification to be sent.
-        awaitEquals(listener2::getNotifCount, 4, 5000);
+        awaitEquals(4, listener2::getNotifCount);
 
         // Notification can be received in any order.
         CovNotifListener.Notif notif = getNotification(listener2, 4);
@@ -386,7 +386,7 @@ public class ChangeOfValueTest extends AbstractTest {
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, true))),
                 notif.listOfValues());
 
-        awaitEquals(listener3::getNotifCount, 4, 5000);
+        awaitEquals(4, listener3::getNotifCount);
 
         notif = getNotification(listener3, 4);
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -497,7 +497,7 @@ public class ChangeOfValueTest extends AbstractTest {
                 new UnsignedInteger(20), new PropertyReference(PropertyIdentifier.units), null)).get();
 
         // Subscribing should have caused a notification to be sent.
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         CovNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.units, EngineeringUnits.amperes),
@@ -506,7 +506,7 @@ public class ChangeOfValueTest extends AbstractTest {
 
         // Write a new value to the property. That will trigger a notification.
         av.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.ampereSeconds);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new SequenceOf<>( //
                         new PropertyValue(PropertyIdentifier.units, EngineeringUnits.ampereSeconds),
@@ -534,7 +534,7 @@ public class ChangeOfValueTest extends AbstractTest {
                 new UnsignedInteger(20), new PropertyReference(PropertyIdentifier.valueSource), null)).get();
 
         // Subscribing should have caused a notification to be sent.
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         CovNotifListener.Notif notif = listener.removeNotif();
         SequenceOf<PropertyValue> values = notif.listOfValues();
         // Ensure that the last command time looks like the set time.
@@ -555,7 +555,7 @@ public class ChangeOfValueTest extends AbstractTest {
         // Write a new value to the present value. This will trigger three notifications because multiple values
         // will be updated.
         av.writeProperty(vs, PropertyIdentifier.presentValue, new Real(15));
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         values = notif.listOfValues();
         // Ensure that the last command time looks like the set time.

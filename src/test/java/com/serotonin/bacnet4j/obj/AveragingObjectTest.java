@@ -61,7 +61,7 @@ AveragingObjectTest extends AbstractTest {
         ai.set(PropertyIdentifier.presentValue, new Real(1));
         // Wait for the valid-samples property, because that is the last property written in the poll.
         advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
-                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(1), 5000));
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(1)));
         final DateTime ts1 = new DateTime(clock.millis());
         assertEquals(new Real(1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts1, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
@@ -75,7 +75,7 @@ AveragingObjectTest extends AbstractTest {
         // Set to 5 and poll
         ai.set(PropertyIdentifier.presentValue, new Real(5));
         advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
-                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(2), 5000));
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(2)));
         final DateTime ts2 = new DateTime(clock.millis());
         assertEquals(new Real(1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts1, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
@@ -89,7 +89,7 @@ AveragingObjectTest extends AbstractTest {
         // Set to 3 and poll
         ai.set(PropertyIdentifier.presentValue, new Real(3));
         advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
-                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(3), 5000));
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(3)));
         assertEquals(new Real(1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts1, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
         assertEquals(new Real(3), a.readProperty(PropertyIdentifier.averageValue));
@@ -102,7 +102,7 @@ AveragingObjectTest extends AbstractTest {
         // Set to 10 and poll
         ai.set(PropertyIdentifier.presentValue, new Real(10));
         advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
-                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(4), 5000));
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(4)));
         final DateTime ts4 = new DateTime(clock.millis());
         assertEquals(new Real(1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts1, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
@@ -116,7 +116,7 @@ AveragingObjectTest extends AbstractTest {
         // Set to 9 and poll 7 times
         ai.set(PropertyIdentifier.presentValue, new Real(9));
         advanceClock(clock, 35, TimeUnit.SECONDS, 5, TimeUnit.SECONDS, notif::clear,
-                () -> notif.waitFor(PropertyIdentifier.validSamples, null, 5000));
+                () -> notif.waitFor(PropertyIdentifier.validSamples, null));
         assertEquals(new Real(1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts1, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
         assertEquals(7.454F, ((Real) a.readProperty(PropertyIdentifier.averageValue)).floatValue(), 0.001F);
@@ -129,7 +129,7 @@ AveragingObjectTest extends AbstractTest {
         // Set to -1 and poll
         ai.set(PropertyIdentifier.presentValue, new Real(-1));
         advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
-                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(12), 5000));
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(12)));
         final DateTime ts12 = new DateTime(clock.millis());
         assertEquals(new Real(-1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts12, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
@@ -143,7 +143,7 @@ AveragingObjectTest extends AbstractTest {
         // Set to 8 and poll
         ai.set(PropertyIdentifier.presentValue, new Real(8));
         advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
-                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(12), 5000));
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(12)));
         assertEquals(new Real(-1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts12, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
         assertEquals(7.333F, ((Real) a.readProperty(PropertyIdentifier.averageValue)).floatValue(), 0.001F);
