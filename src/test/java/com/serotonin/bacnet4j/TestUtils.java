@@ -347,6 +347,17 @@ public class TestUtils {
     }
 
     /**
+     * Convenience formulation of the awaitEquals implementation that looks more like an assert.
+     *
+     * @param expected       the value to match
+     * @param actualSupplier the supplier the value of which to check
+     */
+    public static void awaitEquals(Encodable expected, final EncodableSupplierWithException actualSupplier)
+            throws Exception {
+        awaitEquals(actualSupplier, expected, 5000);
+    }
+
+    /**
      * Utility to busy-wait up to a given timeout for the given supplier to supply a value that matches that given.
      *
      * @param supplier  the supplier the value of which to check
@@ -387,5 +398,13 @@ public class TestUtils {
             }
             ThreadUtils.sleep(2);
         }
+    }
+
+    /**
+     * Sleep for a given period before continuing to ensure that nothing happens during that time. This is frequently
+     * used to ensure that notifications are not sent following some activity.
+     */
+    public static void quiesce() {
+        ThreadUtils.sleep(500);
     }
 }

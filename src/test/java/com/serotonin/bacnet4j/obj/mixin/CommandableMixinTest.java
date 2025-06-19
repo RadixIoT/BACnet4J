@@ -1,12 +1,15 @@
 package com.serotonin.bacnet4j.obj.mixin;
 
+import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
@@ -47,7 +50,7 @@ public class CommandableMixinTest extends AbstractTest {
         final ValueSource valueSource = createValueSource(12);
 
         assertEquals(new Real(0), av.get(PropertyIdentifier.presentValue));
-        assertEquals(false, av.isOverridden());
+        assertFalse(av.isOverridden());
         assertNull(av.get(PropertyIdentifier.priorityArray));
         assertNull(av.get(PropertyIdentifier.relinquishDefault));
         assertNull(av.get(PropertyIdentifier.currentCommandPriority));
@@ -57,7 +60,7 @@ public class CommandableMixinTest extends AbstractTest {
         assertNull(av.get(PropertyIdentifier.commandTimeArray));
 
         // The write will fail because the object is not commandable.
-        TestUtils.assertBACnetServiceException(
+        assertBACnetServiceException(
                 () -> av.writeProperty(valueSource, new PropertyValue(PropertyIdentifier.presentValue, new Real(1))), //
                 ErrorClass.property, ErrorCode.writeAccessDenied);
 
@@ -66,7 +69,7 @@ public class CommandableMixinTest extends AbstractTest {
         av.writeProperty(valueSource, new PropertyValue(PropertyIdentifier.presentValue, new Real(1)));
 
         assertEquals(new Real(1), av.get(PropertyIdentifier.presentValue));
-        assertEquals(false, av.isOverridden());
+        assertFalse(av.isOverridden());
         assertNull(av.get(PropertyIdentifier.priorityArray));
         assertNull(av.get(PropertyIdentifier.relinquishDefault));
         assertNull(av.get(PropertyIdentifier.currentCommandPriority));
@@ -77,19 +80,19 @@ public class CommandableMixinTest extends AbstractTest {
 
         // Change the object to overridden. Now writes will fail because of that, but with the same error as above.
         av.setOverridden(true);
-        TestUtils.assertBACnetServiceException(
+        assertBACnetServiceException(
                 () -> av.writeProperty(valueSource, new PropertyValue(PropertyIdentifier.presentValue, new Real(1))), //
                 ErrorClass.property, ErrorCode.writeAccessDenied);
 
-        assertEquals(true, av.isOverridden());
-        assertEquals(false, av.supportsCommandable());
-        assertEquals(false, av.supportsValueSource());
+        assertTrue(av.isOverridden());
+        assertFalse(av.supportsCommandable());
+        assertFalse(av.supportsValueSource());
     }
 
     @Test
     public void bvCommandableNotValueSource() throws Exception {
-        final BinaryValueObject bv = new BinaryValueObject(d1, 0, "bv0", BinaryPV.inactive, false)
-                .supportCommandable(BinaryPV.inactive);
+        final BinaryValueObject bv =
+                new BinaryValueObject(d1, 0, "bv0", BinaryPV.inactive, false).supportCommandable(BinaryPV.inactive);
 
         // Assert default values.
         assertEquals(BinaryPV.inactive, bv.get(PropertyIdentifier.presentValue));
@@ -152,8 +155,8 @@ public class CommandableMixinTest extends AbstractTest {
         assertNull(bv.get(PropertyIdentifier.lastCommandTime));
         assertNull(bv.get(PropertyIdentifier.commandTimeArray));
 
-        assertEquals(true, bv.supportsCommandable());
-        assertEquals(false, bv.supportsValueSource());
+        assertTrue(bv.supportsCommandable());
+        assertFalse(bv.supportsValueSource());
     }
 
     @Test
@@ -184,25 +187,24 @@ public class CommandableMixinTest extends AbstractTest {
         final ValueSource vs = new ValueSource(new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 123),
                 new ObjectIdentifier(ObjectType.group, 124)));
         // Try to set the value directly but with an invalid source.
-        TestUtils.assertBACnetServiceException(
-                () -> bv.writeProperty(createValueSource(3),
-                        new PropertyValue(PropertyIdentifier.valueSource, null, vs, null)),
-                ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> bv.writeProperty(createValueSource(3),
+                        new PropertyValue(PropertyIdentifier.valueSource, null, vs, null)), ErrorClass.property,
+                ErrorCode.writeAccessDenied);
 
         // Set the value source directly
         bv.writeProperty(createValueSource(2), PropertyIdentifier.valueSource, vs);
         assertEquals(BinaryPV.active, bv.get(PropertyIdentifier.presentValue));
         assertEquals(vs, bv.get(PropertyIdentifier.valueSource));
 
-        assertEquals(false, bv.supportsCommandable());
-        assertEquals(true, bv.supportsValueSource());
+        assertFalse(bv.supportsCommandable());
+        assertTrue(bv.supportsValueSource());
     }
 
     @Test
     public void bvCommandableValueSource() throws Exception {
-        final BinaryValueObject bv = new BinaryValueObject(d1, 0, "bv0", BinaryPV.inactive, false)
-                .supportCommandable(BinaryPV.inactive) //
-                .supportValueSource();
+        final BinaryValueObject bv =
+                new BinaryValueObject(d1, 0, "bv0", BinaryPV.inactive, false).supportCommandable(BinaryPV.inactive)
+                        .supportValueSource();
 
         // Assert default values.
         assertEquals(BinaryPV.inactive, bv.get(PropertyIdentifier.presentValue));
@@ -213,9 +215,6 @@ public class CommandableMixinTest extends AbstractTest {
         assertEquals(emptyValueSources(), bv.get(PropertyIdentifier.valueSourceArray));
         TestUtils.assertEquals(new TimeStamp(new DateTime(d1)), bv.get(PropertyIdentifier.lastCommandTime), 1);
         assertEquals(emptyCommandTimes(), bv.get(PropertyIdentifier.commandTimeArray));
-
-        // Wait a bit so that last command times don't match.
-        Thread.sleep(30);
 
         // Write a new PV at priority 12.
         bv.writeProperty(createValueSource(12),
@@ -229,9 +228,6 @@ public class CommandableMixinTest extends AbstractTest {
         assertEquals(time12, bv.get(PropertyIdentifier.lastCommandTime));
         assertEquals(emptyCommandTimes().putBase1(12, time12), bv.get(PropertyIdentifier.commandTimeArray));
 
-        // Wait a bit so that last command times don't match.
-        Thread.sleep(30);
-
         // Write a new PV at priority 13.
         bv.writeProperty(createValueSource(13),
                 new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.inactive, new UnsignedInteger(13)));
@@ -244,9 +240,6 @@ public class CommandableMixinTest extends AbstractTest {
         assertEquals(time12, bv.get(PropertyIdentifier.lastCommandTime));
         assertEquals(emptyCommandTimes().putBase1(12, time12).putBase1(13, time13),
                 bv.get(PropertyIdentifier.commandTimeArray));
-
-        // Wait a bit so that last command times don't match.
-        Thread.sleep(30);
 
         // Write a new PV at priority 10. Ensure that it is active.
         bv.writeProperty(createValueSource(10),
@@ -266,9 +259,6 @@ public class CommandableMixinTest extends AbstractTest {
                 new ObjectIdentifier(ObjectType.group, 124)));
         bv.writeProperty(createValueSource(10), PropertyIdentifier.valueSource, vs10);
 
-        // Wait a bit so that last command times don't match.
-        Thread.sleep(30);
-
         // Remove the PV at 12. Ensure that 10 is still active.
         bv.writeProperty(createValueSource(12),
                 new PropertyValue(PropertyIdentifier.presentValue, null, Null.instance, new UnsignedInteger(12)));
@@ -281,9 +271,6 @@ public class CommandableMixinTest extends AbstractTest {
         assertEquals(time10, bv.get(PropertyIdentifier.lastCommandTime));
         assertEquals(emptyCommandTimes().putBase1(10, time10).putBase1(12, time12).putBase1(13, time13),
                 bv.get(PropertyIdentifier.commandTimeArray));
-
-        // Wait a bit so that last command times don't match.
-        Thread.sleep(30);
 
         // Remove the PV at 10. Ensure that 13 becomes active.
         bv.writeProperty(createValueSource(10),
@@ -298,9 +285,6 @@ public class CommandableMixinTest extends AbstractTest {
         assertEquals(emptyCommandTimes().putBase1(10, time10).putBase1(12, time12).putBase1(13, time13),
                 bv.get(PropertyIdentifier.commandTimeArray));
 
-        // Wait a bit so that last command times don't match.
-        Thread.sleep(30);
-
         // Remove the PV at 13. Ensure that the relinquish default becomes active.
         bv.writeProperty(createValueSource(13),
                 new PropertyValue(PropertyIdentifier.presentValue, null, Null.instance, new UnsignedInteger(13)));
@@ -312,14 +296,14 @@ public class CommandableMixinTest extends AbstractTest {
         assertEquals(emptyCommandTimes().putBase1(10, time10).putBase1(12, time12).putBase1(13, time13),
                 bv.get(PropertyIdentifier.commandTimeArray));
 
-        assertEquals(true, bv.supportsCommandable());
-        assertEquals(true, bv.supportsValueSource());
+        assertTrue(bv.supportsCommandable());
+        assertTrue(bv.supportsValueSource());
     }
 
     @Test
     public void boMinOnOffTime() throws Exception {
-        final BinaryOutputObject bo = new BinaryOutputObject(d1, 0, "bo0", BinaryPV.inactive, false, Polarity.normal,
-                BinaryPV.inactive);
+        final BinaryOutputObject bo =
+                new BinaryOutputObject(d1, 0, "bo0", BinaryPV.inactive, false, Polarity.normal, BinaryPV.inactive);
 
         // Assert default values.
         assertEquals(BinaryPV.inactive, bo.get(PropertyIdentifier.presentValue));
@@ -332,22 +316,19 @@ public class CommandableMixinTest extends AbstractTest {
         assertEquals(emptyCommandTimes(), bo.get(PropertyIdentifier.commandTimeArray));
 
         // Try to write to priority 0, which will fail.
-        TestUtils.assertBACnetServiceException(() -> {
-            bo.writeProperty(createValueSource(0),
-                    new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.active, UnsignedInteger.ZERO));
-        }, ErrorClass.property, ErrorCode.invalidArrayIndex);
+        assertBACnetServiceException(() -> bo.writeProperty(createValueSource(0),
+                        new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.active, UnsignedInteger.ZERO)),
+                ErrorClass.property, ErrorCode.invalidArrayIndex);
 
         // Try to write to priority 17, which will fail.
-        TestUtils.assertBACnetServiceException(() -> {
-            bo.writeProperty(createValueSource(17),
-                    new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.active, new UnsignedInteger(17)));
-        }, ErrorClass.property, ErrorCode.invalidArrayIndex);
+        assertBACnetServiceException(() -> bo.writeProperty(createValueSource(17),
+                        new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.active, new UnsignedInteger(17))),
+                ErrorClass.property, ErrorCode.invalidArrayIndex);
 
         // Try to write to priority 6, which will fail.
-        TestUtils.assertBACnetServiceException(() -> {
-            bo.writeProperty(createValueSource(6),
-                    new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.active, new UnsignedInteger(6)));
-        }, ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> bo.writeProperty(createValueSource(6),
+                        new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.active, new UnsignedInteger(6))),
+                ErrorClass.property, ErrorCode.writeAccessDenied);
 
         // Enable min off/on times.
         bo.writePropertyInternal(PropertyIdentifier.minimumOffTime, new Unsigned32(4));
@@ -358,8 +339,6 @@ public class CommandableMixinTest extends AbstractTest {
         assertEquals(emptyValueSources().putBase1(6, createLocalValueSource(bo)),
                 bo.get(PropertyIdentifier.valueSourceArray));
         assertEquals(emptyCommandTimes(), bo.get(PropertyIdentifier.commandTimeArray));
-
-        Thread.sleep(50);
 
         // Write a new PV at priority 8 so that the PV changes.
         bo.writeProperty(createValueSource(8),
@@ -372,8 +351,6 @@ public class CommandableMixinTest extends AbstractTest {
         TestUtils.assertEquals(new TimeStamp(new DateTime(d1)), time6, 1);
         assertEquals(emptyCommandTimes().putBase1(6, time6).putBase1(8, time6),
                 bo.get(PropertyIdentifier.commandTimeArray));
-
-        Thread.sleep(50);
 
         // Remove the value at 8, and ensure that the PV is still active.
         bo.writeProperty(createValueSource(8),
@@ -390,8 +367,8 @@ public class CommandableMixinTest extends AbstractTest {
                 bo.get(PropertyIdentifier.commandTimeArray));
 
         // Wait for the timer to complete, and ensure that the PV is not inactive.
-        clock.plus(2, TimeUnit.SECONDS, 2, TimeUnit.SECONDS, 0, 40);
-        assertEquals(BinaryPV.inactive, bo.get(PropertyIdentifier.presentValue));
+        clock.plusSeconds(2);
+        awaitEquals(BinaryPV.inactive, () -> bo.get(PropertyIdentifier.presentValue));
         assertEquals(createLocalValueSource(bo), bo.get(PropertyIdentifier.valueSource));
         assertEquals(emptyValueSources().putBase1(6, createLocalValueSource(bo)).putBase1(8, createValueSource(8)),
                 bo.get(PropertyIdentifier.valueSourceArray));
@@ -405,7 +382,7 @@ public class CommandableMixinTest extends AbstractTest {
     }
 
     private static ValueSource createValueSource(final int address) {
-        return new ValueSource(new Address(new byte[] { (byte) address }));
+        return new ValueSource(new Address(new byte[] {(byte) address}));
     }
 
     private ValueSource createLocalValueSource(final BACnetObject bo) {
@@ -425,10 +402,9 @@ public class CommandableMixinTest extends AbstractTest {
         final BinaryValueObject bv = new BinaryValueObject(d1, 0, "bv", BinaryPV.inactive, false).supportWritable();
 
         // Write with priority not allowed.
-        TestUtils.assertBACnetServiceException(() -> {
-            bv.writeProperty(null,
-                    new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.active, new UnsignedInteger(12)));
-        }, ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> bv.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.active, new UnsignedInteger(12))),
+                ErrorClass.property, ErrorCode.writeAccessDenied);
         assertEquals(BinaryPV.inactive, bv.readProperty(PropertyIdentifier.presentValue));
 
         // Write without priority not allowed.
@@ -441,16 +417,14 @@ public class CommandableMixinTest extends AbstractTest {
         final BinaryValueObject bv = new BinaryValueObject(d1, 0, "bv", BinaryPV.inactive, false);
 
         // Write with priority not allowed.
-        TestUtils.assertBACnetServiceException(() -> {
-            bv.writeProperty(null,
-                    new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.active, new UnsignedInteger(12)));
-        }, ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> bv.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.presentValue, null, BinaryPV.active, new UnsignedInteger(12))),
+                ErrorClass.property, ErrorCode.writeAccessDenied);
         assertEquals(BinaryPV.inactive, bv.readProperty(PropertyIdentifier.presentValue));
 
         // Write without priority also not allowed.
-        TestUtils.assertBACnetServiceException(() -> {
-            bv.writeProperty(null, PropertyIdentifier.presentValue, BinaryPV.active);
-        }, ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(() -> bv.writeProperty(null, PropertyIdentifier.presentValue, BinaryPV.active),
+                ErrorClass.property, ErrorCode.writeAccessDenied);
         assertEquals(BinaryPV.inactive, bv.readProperty(PropertyIdentifier.presentValue));
     }
 }
