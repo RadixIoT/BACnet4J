@@ -1,9 +1,12 @@
 package com.serotonin.bacnet4j;
 
+import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -16,10 +19,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import com.serotonin.bacnet4j.LocalDevice.CacheUpdate;
-import com.serotonin.bacnet4j.cache.CachePolicies;
-import com.serotonin.bacnet4j.cache.RemoteEntityCachePolicy;
-import com.serotonin.bacnet4j.util.RemoteDeviceDiscoverer;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.junit.After;
 import org.junit.Before;
@@ -27,6 +26,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.serotonin.bacnet4j.LocalDevice.CacheUpdate;
+import com.serotonin.bacnet4j.cache.CachePolicies;
+import com.serotonin.bacnet4j.cache.RemoteEntityCachePolicy;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
@@ -37,6 +39,7 @@ import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.util.DiscoveryUtils;
+import com.serotonin.bacnet4j.util.RemoteDeviceDiscoverer;
 import com.serotonin.bacnet4j.util.RemoteDeviceFinder.RemoteDeviceFuture;
 
 import lohbihler.warp.WarpClock;
@@ -70,7 +73,7 @@ public class LocalDeviceTest {
 
         RemoteDevice rd2 = d1.getRemoteDeviceBlocking(2);
         DiscoveryUtils.getExtendedDeviceInformation(d1, rd2);
-        
+
         // Ask for device 2 in two different threads.
         final MutableObject<RemoteDevice> rd21 = new MutableObject<>();
         final MutableObject<RemoteDevice> rd22 = new MutableObject<>();
@@ -78,24 +81,22 @@ public class LocalDeviceTest {
             try {
                 rd21.setValue(d1.getRemoteDevice(2).get());
             } catch (final BACnetException e) {
-                // Shouldn't happen
                 fail(e.getMessage());
-                e.printStackTrace();
+                LOG.error("Should not have happened", e);
             }
         });
         final Future<?> future2 = d1.submit(() -> {
             try {
                 rd22.setValue(d1.getRemoteDevice(2).get());
             } catch (final BACnetException e) {
-                // Shouldn't happen
-                e.printStackTrace();
+                LOG.error("Should not have happened", e);
             }
         });
 
         future1.get();
         future2.get();
 
-        assertTrue(rd21.getValue() == rd22.getValue());
+        assertSame(rd21.getValue(), rd22.getValue());
         assertNotNull(rd21.getValue().getDeviceProperty(PropertyIdentifier.protocolServicesSupported));
         assertNotNull(rd21.getValue().getDeviceProperty(PropertyIdentifier.objectName));
         assertNotNull(rd21.getValue().getDeviceProperty(PropertyIdentifier.protocolVersion));
@@ -106,7 +107,7 @@ public class LocalDeviceTest {
         final RemoteDevice rd23 = d1.getRemoteDevice(2).get();
 
         // Device is cached, so it will still be the same instance.
-        assertTrue(rd21.getValue() == rd23);
+        assertSame(rd21.getValue(), rd23);
     }
 
     @Test(expected = BACnetTimeoutException.class)
@@ -123,28 +124,31 @@ public class LocalDeviceTest {
 
     @Test
     public void undefinedDeviceId() throws Exception {
-        final LocalDevice ld = new LocalDevice(ObjectIdentifier.UNINITIALIZED,
-                new DefaultTransport(new TestNetwork(map, 3, 10)));
-        ld.setClock(clock);
-        new Thread(() -> clock.plus(200, TimeUnit.SECONDS, 10, TimeUnit.SECONDS, 10, 0)).start();
-        ld.initialize();
+        try (final LocalDevice ld = new LocalDevice(ObjectIdentifier.UNINITIALIZED,
+                new DefaultTransport(new TestNetwork(map, 3, 10)))) {
+            ld.setClock(clock);
+            new Thread(() -> {
+                // After a quiet period advance the clock to allow the local device initialization to complete.
+                quiesce();
+                clock.plusSeconds(200);
+            }).start();
+            ld.initialize();
 
-        LOG.info("Local device initialized with device id {}", ld.getInstanceNumber());
-        assertNotEquals(ObjectIdentifier.UNINITIALIZED, ld.getInstanceNumber());
+            LOG.info("Local device initialized with device id {}", ld.getInstanceNumber());
+            assertNotEquals(ObjectIdentifier.UNINITIALIZED, ld.getInstanceNumber());
+        }
     }
 
     @Test
-    public void getRemoteDeviceWithCallback() throws InterruptedException {
+    public void getRemoteDeviceWithCallback() throws Exception {
         assertNull(d1.getCachedRemoteDevice(2));
 
         // Ask for device 2 in a different thread.
         final MutableObject<RemoteDevice> rd21 = new MutableObject<>();
-        d1.getRemoteDevice(2, (rd) -> rd21.setValue(rd), null, null, 1, TimeUnit.SECONDS);
+        d1.getRemoteDevice(2, rd21::setValue, null, null, 1, TimeUnit.SECONDS);
 
-        Thread.sleep(1000);
-
-        assertNotNull(rd21.getValue());
-        assertTrue(rd21.getValue() == d1.getCachedRemoteDevice(2));
+        awaitTrue(() -> rd21.getValue() != null);
+        assertSame(rd21.getValue(), d1.getCachedRemoteDevice(2));
     }
 
     @Test(expected = BACnetServiceException.class)
@@ -162,35 +166,35 @@ public class LocalDeviceTest {
     @SuppressWarnings("unused")
     @Test
     public void getDeviceBlockingTimeout() throws Exception {
-        final LocalDevice d3 = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0))).withClock(clock)
-                .initialize();
+        try (final LocalDevice d3 = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0))).withClock(
+                clock).initialize()) {
+            final long start = Clock.systemUTC().millis();
 
-        final long start = Clock.systemUTC().millis();
+            try {
+                d3.getRemoteDeviceBlocking(4, 100);
+                fail();
+            } catch (final BACnetTimeoutException e) {
+                // Expected after 100ms.
+                assertTrue(Clock.systemUTC().millis() - start >= 100);
+            }
 
-        try {
-            d3.getRemoteDeviceBlocking(4, 100);
-            fail();
-        } catch (final BACnetTimeoutException e) {
-            // Expected after 100ms.
-            assertTrue(Clock.systemUTC().millis() - start >= 100);
-        }
+            try {
+                d3.getRemoteDeviceBlocking(4, 1000);
+                fail();
+            } catch (final BACnetTimeoutException e) {
+                // Expected immediately.
+                assertTrue(Clock.systemUTC().millis() - start < 1000);
+            }
 
-        try {
-            d3.getRemoteDeviceBlocking(4, 1000);
-            fail();
-        } catch (final BACnetTimeoutException e) {
-            // Expected immediately.
-            assertTrue(Clock.systemUTC().millis() - start < 1000);
-        }
+            clock.plusMillis(30000);
 
-        clock.plusMillis(30000);
-
-        try {
-            d3.getRemoteDeviceBlocking(4, 100);
-            fail();
-        } catch (final BACnetTimeoutException e) {
-            // Expected after 100ms.
-            assertTrue(Clock.systemUTC().millis() - start >= 100);
+            try {
+                d3.getRemoteDeviceBlocking(4, 100);
+                fail();
+            } catch (final BACnetTimeoutException e) {
+                // Expected after 100ms.
+                assertTrue(Clock.systemUTC().millis() - start >= 100);
+            }
         }
     }
 
@@ -206,8 +210,8 @@ public class LocalDeviceTest {
             cachePolicies.putDevicePolicy(1, RemoteEntityCachePolicy.EXPIRE_5_SECONDS);
             cachePolicies.putDevicePolicy(2, RemoteEntityCachePolicy.EXPIRE_1_MINUTE);
 
-            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(
-                    CacheUpdate.ALWAYS, results::add)) {
+            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(CacheUpdate.ALWAYS,
+                    results::add)) {
 
                 RemoteDevice response1 = poll(results);
                 RemoteDevice response2 = poll(results);
@@ -241,8 +245,8 @@ public class LocalDeviceTest {
             cachePolicies.putDevicePolicy(1, RemoteEntityCachePolicy.EXPIRE_5_SECONDS);
             cachePolicies.putDevicePolicy(2, RemoteEntityCachePolicy.EXPIRE_1_MINUTE);
 
-            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(
-                    CacheUpdate.IF_EXPIRED, results::add)) {
+            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(CacheUpdate.IF_EXPIRED,
+                    results::add)) {
 
                 RemoteDevice response1 = poll(results);
                 RemoteDevice response2 = poll(results);
@@ -278,8 +282,8 @@ public class LocalDeviceTest {
             cachePolicies.putDevicePolicy(1, RemoteEntityCachePolicy.EXPIRE_5_SECONDS);
             cachePolicies.putDevicePolicy(2, RemoteEntityCachePolicy.EXPIRE_1_MINUTE);
 
-            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(
-                    CacheUpdate.NEVER, results::add)) {
+            try (RemoteDeviceDiscoverer discoverer = localDevice.startRemoteDeviceDiscovery(CacheUpdate.NEVER,
+                    results::add)) {
 
                 RemoteDevice response1 = poll(results);
                 RemoteDevice response2 = poll(results);
@@ -306,7 +310,8 @@ public class LocalDeviceTest {
         return results.poll(5, TimeUnit.SECONDS);
     }
 
-    private void containsRemoteDeviceOneAndTwo(RemoteDeviceDiscoverer discoverer, RemoteDevice remoteDeviceA, RemoteDevice remoteDeviceB) {
+    private void containsRemoteDeviceOneAndTwo(RemoteDeviceDiscoverer discoverer, RemoteDevice remoteDeviceA,
+            RemoteDevice remoteDeviceB) {
         assertNotNull(remoteDeviceA);
         assertNotNull(remoteDeviceB);
         assertTrue(remoteDeviceA.getInstanceNumber() == 1 || remoteDeviceA.getInstanceNumber() == 2);

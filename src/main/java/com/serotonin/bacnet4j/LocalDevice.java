@@ -103,10 +103,8 @@ import lohbihler.warp.WarpScheduledExecutorService;
 import lohbihler.warp.WarpUtils;
 
 /**
- * Enhancements:
- * - Optional persistence of COV subscriptions
- * - default character string encoding
- * - persistence of recipient lists in notification forwarder object
+ * Enhancements: - Optional persistence of COV subscriptions - default character string encoding - persistence of
+ * recipient lists in notification forwarder object
  */
 public class LocalDevice implements AutoCloseable {
     static final Logger LOG = LoggerFactory.getLogger(LocalDevice.class);
@@ -136,9 +134,9 @@ public class LocalDevice implements AutoCloseable {
 
     /**
      * A map of devices for which lookups resulted in a timeout. Keeping this information around means that processes
-     * that loop though lists of objects and so potentially ask for the same remote device multiple times don't need
-     * to wait for the full timeout period each time. The key of the map is the device id, and the value is the time
-     * at which it is ok to look for the device again. See timeoutDeviceRetention.
+     * that loop though lists of objects and so potentially ask for the same remote device multiple times don't need to
+     * wait for the full timeout period each time. The key of the map is the device id, and the value is the time at
+     * which it is ok to look for the device again. See timeoutDeviceRetention.
      */
     private final Map<Integer, Long> timeoutDevices = new HashMap<>();
 
@@ -176,7 +174,7 @@ public class LocalDevice implements AutoCloseable {
 
     private ScheduledExecutorService timer;
 
-    //Callback if other devices have the same id like us
+    // Callback if other devices have the same id like us
     private Consumer<Address> sameDeviceIdCallback;
 
     /**
@@ -334,7 +332,7 @@ public class LocalDevice implements AutoCloseable {
                     @Override
                     public void iAmReceived(final RemoteDevice d) {
                         LOG.info("Device id {} is not available", d.getInstanceNumber());
-                        idList.remove(new Integer(d.getInstanceNumber()));
+                        idList.remove(Integer.valueOf(d.getInstanceNumber()));
                     }
                 };
 
@@ -377,14 +375,12 @@ public class LocalDevice implements AutoCloseable {
                     restartNotificationRecipients);
         }
         final UnconfirmedCovNotificationRequest restartNotif = new UnconfirmedCovNotificationRequest(
-                UnsignedInteger.ZERO, getId(), getId(), UnsignedInteger.ZERO,
-                new SequenceOf<>(
-                        new PropertyValue(PropertyIdentifier.systemStatus,
-                                deviceObject.get(PropertyIdentifier.systemStatus)),
-                        new PropertyValue(PropertyIdentifier.timeOfDeviceRestart,
-                                deviceObject.get(PropertyIdentifier.timeOfDeviceRestart)),
-                        new PropertyValue(PropertyIdentifier.lastRestartReason,
-                                deviceObject.get(PropertyIdentifier.lastRestartReason))));
+                UnsignedInteger.ZERO, getId(), getId(), UnsignedInteger.ZERO, new SequenceOf<>(
+                new PropertyValue(PropertyIdentifier.systemStatus, deviceObject.get(PropertyIdentifier.systemStatus)),
+                new PropertyValue(PropertyIdentifier.timeOfDeviceRestart,
+                        deviceObject.get(PropertyIdentifier.timeOfDeviceRestart)),
+                new PropertyValue(PropertyIdentifier.lastRestartReason,
+                        deviceObject.get(PropertyIdentifier.lastRestartReason))));
         for (final Recipient recipient : restartNotificationRecipients) {
             final Address address = recipient.toAddress(this);
             send(address, restartNotif);
@@ -395,6 +391,7 @@ public class LocalDevice implements AutoCloseable {
 
     /**
      * Create a ScheduledExecutorService for use by the local device
+     *
      * @return
      * @see java.util.concurrent.ScheduledExecutorService
      */
@@ -420,11 +417,11 @@ public class LocalDevice implements AutoCloseable {
         return initialized;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Executors
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Executors
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     /**
      * Schedules the given command for later execution.
@@ -463,11 +460,11 @@ public class LocalDevice implements AutoCloseable {
         timer.execute(task);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Device configuration.
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Device configuration
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     public String getPassword() {
         return password;
@@ -503,11 +500,11 @@ public class LocalDevice implements AutoCloseable {
         return transport.getTimeout();
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Local object management
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Local object management
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     public BACnetObject getObjectRequired(final ObjectIdentifier id) throws BACnetServiceException {
         final BACnetObject o = getObject(id);
@@ -610,11 +607,11 @@ public class LocalDevice implements AutoCloseable {
         return deviceObject.get(PropertyIdentifier.protocolServicesSupported);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Remote device management
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Remote device management
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     /**
      * Returns the cached remote device, or null if not found.
@@ -627,7 +624,7 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public RemoteDevice getCachedRemoteDevice(final Address address) {
-        return remoteDeviceCache.getCachedEntity((rd) -> rd.getAddress().equals(address));
+        return remoteDeviceCache.getCachedEntity(rd -> rd.getAddress().equals(address));
     }
 
     public RemoteDevice removeCachedRemoteDevice(final int instanceNumber) {
@@ -639,9 +636,7 @@ public class LocalDevice implements AutoCloseable {
      * the callback is called by the calling thread. Otherwise, a finder will be used to try to find it. If this is
      * successful the device will be cached.
      *
-     * The benefits of this method are:
-     * 1) It will cache the remote device if it is found
-     * 2) No blocking is performed
+     * The benefits of this method are: 1) It will cache the remote device if it is found 2) No blocking is performed
      *
      * @param instanceNumber
      * @param callback
@@ -665,7 +660,7 @@ public class LocalDevice implements AutoCloseable {
                 timeoutCallback.run();
             } else {
                 LOG.debug("Requesting the remote device from the remote device finder: {}", instanceNumber);
-                RemoteDeviceFinder.findDevice(this, instanceNumber, (cbrd) -> {
+                RemoteDeviceFinder.findDevice(this, instanceNumber, cbrd -> {
                     forgetDeviceTimeout(instanceNumber);
 
                     // Cache the device.
@@ -686,12 +681,11 @@ public class LocalDevice implements AutoCloseable {
      * will be set immediately. Otherwise, a finder will be used to try to find it. If this is successful the device
      * will be cached.
      *
-     * The benefits of this method are:
-     * 1) It will cache the remote device if it is found.
-     * 2) It returns a cancelable future.
+     * The benefits of this method are: 1) It will cache the remote device if it is found. 2) It returns a cancelable
+     * future.
      *
-     * If multiple threads are likely to request a remote device reference around the same time, it may be better to
-     * use the blocking method below.
+     * If multiple threads are likely to request a remote device reference around the same time, it may be better to use
+     * the blocking method below.
      *
      * @param instanceNumber
      * @return the remote device future
@@ -754,17 +748,16 @@ public class LocalDevice implements AutoCloseable {
      * @param instanceNumber
      * @return the remote device
      * @throws BACnetException
-     *             if anything goes wrong, including timeout.
+     *         if anything goes wrong, including timeout.
      */
     public RemoteDevice getRemoteDeviceBlocking(final int instanceNumber) throws BACnetException {
         return getRemoteDeviceBlocking(instanceNumber, transport.getTimeout());
     }
 
     /**
-     * A list of existing futures for each device. Multiple threads may want the same device,
-     * and so we also them all to wait on the same future. This has timeout implications since
-     * the timeout will be based upon the first thread that made the request, meaning that
-     * subsequent threads may experience a shorter timeout than requested.
+     * A list of existing futures for each device. Multiple threads may want the same device, and so we also them all to
+     * wait on the same future. This has timeout implications since the timeout will be based upon the first thread that
+     * made the request, meaning that subsequent threads may experience a shorter timeout than requested.
      */
     private final Map<Integer, RemoteDeviceFuture> futures = new HashMap<>();
 
@@ -772,16 +765,15 @@ public class LocalDevice implements AutoCloseable {
      * Returns the remote device for the given instanceNumber. If a cached instance is not found the finder will be used
      * to try and find it. A timeout exception is thrown if it can't be found.
      *
-     * The benefits of this method are:
-     * 1) It will cache the remote device if it is found.
-     * 2) Multiple threads that request the same remote device around the same time will be joined on the same request
+     * The benefits of this method are: 1) It will cache the remote device if it is found. 2) Multiple threads that
+     * request the same remote device around the same time will be joined on the same request
      *
      * If you require the ability to cancel a request, use the non-blocking method above.
      *
      * @param instanceNumber
      * @return the remote device
      * @throws BACnetException
-     *             if anything goes wrong, including timeout.
+     *         if anything goes wrong, including timeout.
      */
     public RemoteDevice getRemoteDeviceBlocking(final int instanceNumber, final long timeoutMillis)
             throws BACnetException {
@@ -832,7 +824,8 @@ public class LocalDevice implements AutoCloseable {
 
                         // Cache the device.
                         if (rd != null) {
-                            remoteDeviceCache.putEntity(instanceNumber, rd, cachePolicies.getDevicePolicy(instanceNumber));
+                            remoteDeviceCache.putEntity(instanceNumber, rd,
+                                    cachePolicies.getDevicePolicy(instanceNumber));
                         }
                     }
                 }
@@ -876,11 +869,14 @@ public class LocalDevice implements AutoCloseable {
      * Creates and starts a remote device discovery. Discovered devices are added to the cache as they are found. The
      * returned discoverer must be stopped by the caller.
      *
-     * @param cacheUpdate controls if the remote device cache should be updated
-     * @param callback optional client callback
+     * @param cacheUpdate
+     *         controls if the remote device cache should be updated
+     * @param callback
+     *         optional client callback
      * @return the discoverer, which must be stopped by the caller
      */
-    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(CacheUpdate cacheUpdate, final Consumer<RemoteDevice> callback) {
+    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(CacheUpdate cacheUpdate,
+            final Consumer<RemoteDevice> callback) {
         final RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(this, discoveredDevice -> {
             // Cache the device.
             remoteDeviceCache.putEntity(discoveredDevice.getInstanceNumber(), discoveredDevice,
@@ -897,20 +893,20 @@ public class LocalDevice implements AutoCloseable {
 
     private Predicate<RemoteDevice> getExpirationCheck(CacheUpdate cacheUpdate) {
         switch (cacheUpdate) {
-            case ALWAYS:
-                return d -> true;
-            case NEVER:
-                return d -> false;
-            case IF_EXPIRED:
-                return d -> remoteDeviceCache.getCachedEntity(d.getInstanceNumber()) == null;
-            default:
-                throw new IllegalArgumentException("Unknown value: " + cacheUpdate);
+        case ALWAYS:
+            return d -> true;
+        case NEVER:
+            return d -> false;
+        case IF_EXPIRED:
+            return d -> remoteDeviceCache.getCachedEntity(d.getInstanceNumber()) == null;
+        default:
+            throw new IllegalArgumentException("Unknown value: " + cacheUpdate);
         }
     }
 
     /**
-     * Updates the remote device with the given number with the given address, but only if the
-     * remote device is cached. Otherwise, nothing happens.
+     * Updates the remote device with the given number with the given address, but only if the remote device is cached.
+     * Otherwise, nothing happens.
      *
      * @param instanceNumber
      * @param address
@@ -921,14 +917,16 @@ public class LocalDevice implements AutoCloseable {
             throw new NullPointerException("address cannot be null");
         final RemoteDevice d = getCachedRemoteDevice(instanceNumber);
         if (d != null) {
-            if(address instanceof NetworkSourceAddress) {
-                LOG.debug("Updating address with source info, newAddress={}, existingAddress={}", address, d.getAddress());
-                //We can confidently change the network number
+            if (address instanceof NetworkSourceAddress) {
+                LOG.debug("Updating address with source info, newAddress={}, existingAddress={}", address,
+                        d.getAddress());
+                // We can confidently change the network number
                 d.setAddress(address);
-            }else {
+            } else {
                 Address newAddress = new Address(d.getAddress().getNetworkNumber().intValue(), address.getMacAddress());
-                LOG.debug("Not updating address without source info, newAddress={}, existingAddress={}", address, d.getAddress());
-                //This address can be from the source of the socket message (link service)
+                LOG.debug("Not updating address without source info, newAddress={}, existingAddress={}", newAddress,
+                        d.getAddress());
+                // This address can be from the source of the socket message (link service)
                 // and may not be what we really want to update here.  It was decided in 5.0.0
                 // to track incoming addresses via the NetworkSourceAddress class
                 // and not blindly set the remote devices new address here
@@ -976,15 +974,14 @@ public class LocalDevice implements AutoCloseable {
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Cached property management
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Cached property management
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     //
     // Get properties
-
     public <T extends Encodable> T getCachedRemoteProperty(final int did, final ObjectIdentifier oid,
             final PropertyIdentifier pid) {
         return getCachedRemoteProperty(did, oid, pid, null);
@@ -1008,8 +1005,7 @@ public class LocalDevice implements AutoCloseable {
 
     public void setCachedRemoteProperty(final int did, final ObjectIdentifier oid, final PropertyIdentifier pid,
             final UnsignedInteger pin, final Encodable value) {
-        if (value instanceof ErrorClassAndCode) {
-            final ErrorClassAndCode e = (ErrorClassAndCode) value;
+        if (value instanceof ErrorClassAndCode e) {
             if (ErrorClass.device.equals(e.getErrorClass())) {
                 // Don't cache devices if the error is about the device. In fact, delete the cached device.
                 remoteDeviceCache.removeEntity(did);
@@ -1039,11 +1035,12 @@ public class LocalDevice implements AutoCloseable {
         return rd.removeObjectProperty(oid, pid, pin);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Message sending
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Message sending
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
+
     public ServiceFuture send(final RemoteDevice d, final ConfirmedRequestService serviceRequest) {
         //        validateSupportedService(d, serviceRequest);
         return transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(),
@@ -1116,11 +1113,11 @@ public class LocalDevice implements AutoCloseable {
     //        }
     //    }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Communication control
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Communication control
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     private final Object communicationControlMonitor = new Object();
     private EnableDisable communicationControlState = EnableDisable.enable;
@@ -1154,11 +1151,11 @@ public class LocalDevice implements AutoCloseable {
         return communicationControlState;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Persistence
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Persistence
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     public IPersistence getPersistence() {
         return persistence;
@@ -1172,11 +1169,11 @@ public class LocalDevice implements AutoCloseable {
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Convenience methods
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Convenience methods
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     public Address[] getAllLocalAddresses() {
         return transport.getNetwork().getAllLocalAddresses();
@@ -1210,6 +1207,7 @@ public class LocalDevice implements AutoCloseable {
 
     /**
      * Register a callback if other devices have the same id like us.
+     *
      * @param callback
      */
     public void setSameDeviceIdCallback(Consumer<Address> callback) {
@@ -1223,12 +1221,9 @@ public class LocalDevice implements AutoCloseable {
      */
     public void notifySameDeviceIdCallback(Address from) {
         if (sameDeviceIdCallback != null) {
-            //Do this async
-            execute(() -> {
-                sameDeviceIdCallback.accept(from);
-            });
+            // Do this async
+            execute(() -> sameDeviceIdCallback.accept(from));
         }
     }
-
 
 }

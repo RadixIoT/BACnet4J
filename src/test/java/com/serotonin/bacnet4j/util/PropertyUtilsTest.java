@@ -1,5 +1,6 @@
 package com.serotonin.bacnet4j.util;
 
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -312,9 +313,7 @@ public class PropertyUtilsTest {
         d6.sendGlobalBroadcast(d6.getIAm());
 
         // Give time for the IAm to be processed.
-        Thread.sleep(300);
-
-        assertEquals(new OctetString(new byte[] {16}), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
+        awaitEquals(new OctetString(new byte[] {16}), () -> d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
     }
 
     /**
