@@ -305,7 +305,7 @@ public class PropertyUtilsTest {
         assertEquals(expectedValues, actualValues);
         assertEquals(str("d6"),
                 d1.getCachedRemoteProperty(6, oid(ObjectType.device, 6), PropertyIdentifier.objectName));
-        assertEquals(new OctetString(new byte[] { 6 }), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
+        assertEquals(new OctetString(new byte[] {6}), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
 
         // Change the network address of the device.
         d6.terminate();
@@ -313,8 +313,7 @@ public class PropertyUtilsTest {
         d6.sendGlobalBroadcast(d6.getIAm());
 
         // Give time for the IAm to be processed.
-        awaitEquals(() -> d1.getCachedRemoteDevice(6).getAddress().getMacAddress(), new OctetString(new byte[] { 16 }),
-                5000);
+        awaitEquals(new OctetString(new byte[] {16}), () -> d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
     }
 
     /**
@@ -333,7 +332,7 @@ public class PropertyUtilsTest {
         assertEquals(expectedValues, actualValues);
         assertEquals(str("d6"),
                 d1.getCachedRemoteProperty(6, oid(ObjectType.device, 6), PropertyIdentifier.objectName));
-        assertEquals(new OctetString(new byte[] { 6 }), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
+        assertEquals(new OctetString(new byte[] {6}), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
 
         // Change the network address of the device.
         d6.terminate();
@@ -359,7 +358,7 @@ public class PropertyUtilsTest {
         DiscoveryUtils.getExtendedDeviceInformation(d1, rd6);
         assertEquals(str("d6"),
                 d1.getCachedRemoteProperty(6, oid(ObjectType.device, 6), PropertyIdentifier.objectName));
-        assertEquals(new OctetString(new byte[] { 16 }), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
+        assertEquals(new OctetString(new byte[] {16}), d1.getCachedRemoteDevice(6).getAddress().getMacAddress());
     }
 
     @Test

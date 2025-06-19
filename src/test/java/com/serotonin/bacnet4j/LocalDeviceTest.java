@@ -1,5 +1,6 @@
 package com.serotonin.bacnet4j;
 
+import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -141,7 +142,7 @@ public class LocalDeviceTest {
         final MutableObject<RemoteDevice> rd21 = new MutableObject<>();
         d1.getRemoteDevice(2, rd21::setValue, null, null, 1, TimeUnit.SECONDS);
 
-        TestUtils.awaitTrue(() -> rd21.getValue() != null, 5000);
+        awaitTrue(() -> rd21.getValue() != null);
         assertSame(rd21.getValue(), d1.getCachedRemoteDevice(2));
     }
 

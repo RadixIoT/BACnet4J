@@ -283,6 +283,16 @@ public class TestUtils {
     }
 
     /**
+     * Convenience method to default the timeout to 5 seconds.
+     *
+     * @param condition the condition to which to wait
+     * @throws Exception the exception if any that the condition threw
+     */
+    public static void awaitTrue(BooleanSupplierWithException condition) throws Exception {
+        awaitTrue(condition, 5000);
+    }
+
+    /**
      * A utility to busy-wait up to a given timeout for the given condition to become true.
      *
      * @param condition the condition to which to wait
@@ -354,6 +364,17 @@ public class TestUtils {
     @FunctionalInterface
     public interface EncodableSupplierWithException {
         Encodable get() throws Exception;
+    }
+
+    /**
+     * Convenience formulation of the awaitEquals implementation that looks more like an assert.
+     *
+     * @param expected       the value to match
+     * @param actualSupplier the supplier the value of which to check
+     */
+    public static void awaitEquals(Encodable expected, final EncodableSupplierWithException actualSupplier)
+            throws Exception {
+        awaitEquals(actualSupplier, expected, 5000);
     }
 
     /**
