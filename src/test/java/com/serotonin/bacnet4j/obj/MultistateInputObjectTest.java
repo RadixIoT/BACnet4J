@@ -1,10 +1,9 @@
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -74,7 +73,7 @@ public class MultistateInputObjectTest extends AbstractTest {
         mi.supportIntrinsicReporting(5, 17, new BACnetArray<>(new UnsignedInteger(4), new UnsignedInteger(5)), null,
                 new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(40);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
@@ -82,14 +81,15 @@ public class MultistateInputObjectTest extends AbstractTest {
 
         // Do a state change. Write a value to indicate a command failure. After 5s the alarm will be raised.
         mi.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(4));
-        clock.plus(4500, TimeUnit.MILLISECONDS, 4500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(4500);
+        quiesce();
         assertEquals(EventState.normal, mi.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 80);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, mi.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), mi.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -109,15 +109,16 @@ public class MultistateInputObjectTest extends AbstractTest {
 
         // Return to normal. After 12s the notification will be sent.
         mi.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(3));
-        clock.plus(11500, TimeUnit.MILLISECONDS, 11500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(11500);
+        quiesce();
         assertEquals(EventState.offnormal,
                 mi.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, mi.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), mi.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -159,7 +160,7 @@ public class MultistateInputObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        Thread.sleep(40);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 
@@ -167,17 +168,19 @@ public class MultistateInputObjectTest extends AbstractTest {
         // Go to off normal.
         mi.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(4));
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until just before the time delay.
-        clock.plus(29500, TimeUnit.MILLISECONDS, 29500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(29500);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until after the time delay.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -199,17 +202,19 @@ public class MultistateInputObjectTest extends AbstractTest {
         // Return to normal
         mi.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(5));
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until just before the time delay.
-        clock.plus(29500, TimeUnit.MILLISECONDS, 29500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(29500);
+        quiesce();
         assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until after the time delay.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -243,7 +248,7 @@ public class MultistateInputObjectTest extends AbstractTest {
                 new BACnetArray<>(new UnsignedInteger(4), new UnsignedInteger(5)),
                 new EventTransitionBits(true, true, true), NotifyType.alarm, null);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(40);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
@@ -251,7 +256,7 @@ public class MultistateInputObjectTest extends AbstractTest {
 
         // Do a state change. Write to a fault state.
         mi.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(4));
-        Thread.sleep(40);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, mi.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), mi.readProperty(PropertyIdentifier.statusFlags));
 
@@ -278,7 +283,7 @@ public class MultistateInputObjectTest extends AbstractTest {
 
         // Return to normal. After 12s the notification will be sent.
         mi.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(2));
-        Thread.sleep(40);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, mi.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), mi.readProperty(PropertyIdentifier.statusFlags));
 
