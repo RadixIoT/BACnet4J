@@ -78,14 +78,14 @@ public class MessagingTest {
         });
         d1.initialize();
 
-        final Address a2 = new NetworkSourceAddress(Address.LOCAL_NETWORK, new byte[] { 2 });
+        final Address a2 = new NetworkSourceAddress(Address.LOCAL_NETWORK, new byte[] {2});
         final TestNetwork network2 = new TestNetwork(map, a2, 200);
         final LocalDevice d2 = new LocalDevice(2, new DefaultTransport(network2));
         d2.initialize();
 
         d1.sendLocalBroadcast(new WhoIsRequest());
 
-        awaitTrue(() -> o.getValue() != null, 5000);
+        awaitTrue(() -> o.getValue() != null);
 
         d1.terminate();
         d2.terminate();
@@ -100,8 +100,8 @@ public class MessagingTest {
         d1.initialize();
 
         // Create the second local device.
-        final LocalDevice d2 = new LocalDevice(2,
-                new DefaultTransport(new TestNetwork(map, new Address(new byte[] { 2 }), 200)));
+        final LocalDevice d2 =
+                new LocalDevice(2, new DefaultTransport(new TestNetwork(map, new Address(new byte[] {2}), 200)));
         createAnalogValue(d2, 0);
         d2.initialize();
 

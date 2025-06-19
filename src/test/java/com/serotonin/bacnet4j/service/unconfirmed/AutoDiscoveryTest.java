@@ -1,5 +1,6 @@
 package com.serotonin.bacnet4j.service.unconfirmed;
 
+import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
@@ -7,7 +8,6 @@ import org.junit.Test;
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.RemoteObject;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
 import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
@@ -41,7 +41,7 @@ public class AutoDiscoveryTest {
 
             // Wait while d1 receives the IHave, sends a WhoIs to d2, and then receives an IAm from d2 and creates
             // a remote device from the content.
-            TestUtils.awaitTrue(() -> d1.getCachedRemoteDevice(2) != null, 5000);
+            awaitTrue(() -> d1.getCachedRemoteDevice(2) != null);
 
             // Check a property that is not in the IHave, but is in the IAm
             assertEquals(Segmentation.segmentedBoth,
