@@ -2,6 +2,7 @@ package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -91,11 +92,11 @@ public class PulseConverterObjectTest extends AbstractTest {
         // Write pulses to go out of range.
         pc.pulses(3);
         clock.plusSeconds(11);
-        awaitEquals(() -> pc.readProperty(PropertyIdentifier.eventState), EventState.highLimit, 5000);
+        awaitEquals(1, listener::getNotifCount);
+        awaitEquals(EventState.highLimit, () -> pc.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), pc.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        awaitEquals(listener::getNotifCount, 1, 5000);
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -130,7 +131,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         assertEquals(0, listener.getNotifCount());
 
         clock.plusSeconds(2);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, pc.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), pc.readProperty(PropertyIdentifier.statusFlags));
         notif = listener.removeNotif();
@@ -264,7 +265,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         d2.send(rd1,
                         new SubscribeCOVRequest(new UnsignedInteger(987), pc.getId(), Boolean.FALSE, new UnsignedInteger(600)))
                 .get();
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         CovNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -277,7 +278,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         //
         // Add a pulse. No notification should be sent.
         pc.pulse();
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         //
@@ -285,7 +286,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         // and the update time.
         clock.plusMinutes(2);
         pc.pulse();
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -310,7 +311,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         d2.send(rd1,
                         new SubscribeCOVRequest(new UnsignedInteger(988), pc.getId(), Boolean.FALSE, new UnsignedInteger(6000)))
                 .get();
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         CovNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(988), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -324,7 +325,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         // Subscribe to a property as well to ensure that periodic notification are not sent.
         d2.send(rd1, new SubscribeCOVPropertyRequest(new UnsignedInteger(989), pc.getId(), Boolean.TRUE,
                 new UnsignedInteger(6000), new PropertyReference(PropertyIdentifier.reliability), null)).get();
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(989), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -339,13 +340,13 @@ public class PulseConverterObjectTest extends AbstractTest {
         clock.plusSeconds(40);
         final DateTime ts2 = new DateTime(d1);
         pc.pulse();
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         //
         // Advance the clock 21s. The periodic notification should be received.
         clock.plusSeconds(21);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(988), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -360,19 +361,19 @@ public class PulseConverterObjectTest extends AbstractTest {
         clock.plusSeconds(30);
         final DateTime ts3 = new DateTime(d1);
         pc.pulse();
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         //
         // Change the COV period to 3m, and ensure that no notifications are sent before that time.
         pc.writePropertyInternal(PropertyIdentifier.covPeriod, new UnsignedInteger(180));
         clock.plusSeconds(179);
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Advance the time to get a periodic notification.
         clock.plusSeconds(1);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(988), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -395,29 +396,29 @@ public class PulseConverterObjectTest extends AbstractTest {
 
         // Advance the clock 6 seconds, to do a poll. The reliability should be in fault.
         clock.plusSeconds(6);
-        awaitEquals(() -> pc.get(PropertyIdentifier.reliability), Reliability.configurationError, 5000);
-        awaitEquals(() -> pc.get(PropertyIdentifier.statusFlags), new StatusFlags(false, true, false, false), 5000);
+        awaitEquals(Reliability.configurationError, () -> pc.get(PropertyIdentifier.reliability));
+        awaitEquals(new StatusFlags(false, true, false, false), () -> pc.get(PropertyIdentifier.statusFlags));
 
         // Add the accumulator object. Polling should now succeed.
         final AccumulatorObject a = new AccumulatorObject(d1, 0, "a", 50, 0, EngineeringUnits.amperes, false,
                 new Scale(new SignedInteger(10)), new Prescale(new UnsignedInteger(1), new UnsignedInteger(1)), 1000,
                 5);
         clock.plusSeconds(5);
-        awaitEquals(() -> pc.get(PropertyIdentifier.reliability), Reliability.noFaultDetected, 5000);
-        awaitEquals(() -> pc.get(PropertyIdentifier.statusFlags), new StatusFlags(false, false, false, false), 5000);
+        awaitEquals(Reliability.noFaultDetected, () -> pc.get(PropertyIdentifier.reliability));
+        awaitEquals(new StatusFlags(false, false, false, false), () -> pc.get(PropertyIdentifier.statusFlags));
 
         // Point to a non-existent property.
         pc.writePropertyInternal(PropertyIdentifier.inputReference,
                 new ObjectPropertyReference(a.getId(), PropertyIdentifier.stateText));
         clock.plusSeconds(5);
-        awaitEquals(() -> pc.get(PropertyIdentifier.reliability), Reliability.configurationError, 5000);
-        awaitEquals(() -> pc.get(PropertyIdentifier.statusFlags), new StatusFlags(false, true, false, false), 5000);
+        awaitEquals(Reliability.configurationError, () -> pc.get(PropertyIdentifier.reliability));
+        awaitEquals(new StatusFlags(false, true, false, false), () -> pc.get(PropertyIdentifier.statusFlags));
 
         // Point to a property of the wrong type.
         pc.writePropertyInternal(PropertyIdentifier.inputReference,
                 new ObjectPropertyReference(a.getId(), PropertyIdentifier.objectName));
         clock.plusSeconds(5);
-        Thread.sleep(500);
+        quiesce();
         assertEquals(Reliability.configurationError, pc.get(PropertyIdentifier.reliability));
         assertEquals(new StatusFlags(false, true, false, false), pc.get(PropertyIdentifier.statusFlags));
 
@@ -425,8 +426,8 @@ public class PulseConverterObjectTest extends AbstractTest {
         pc.writePropertyInternal(PropertyIdentifier.inputReference,
                 new ObjectPropertyReference(a.getId(), PropertyIdentifier.presentValue));
         clock.plusSeconds(5);
-        awaitEquals(() -> pc.get(PropertyIdentifier.reliability), Reliability.noFaultDetected, 5000);
-        awaitEquals(() -> pc.get(PropertyIdentifier.statusFlags), new StatusFlags(false, false, false, false), 5000);
+        awaitEquals(Reliability.noFaultDetected, () -> pc.get(PropertyIdentifier.reliability));
+        awaitEquals(new StatusFlags(false, false, false, false), () -> pc.get(PropertyIdentifier.statusFlags));
 
         //
         // Try a pulse
@@ -442,7 +443,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         assertEquals(new Real(0), pc.get(PropertyIdentifier.presentValue));
         a.pulses(50);
         clock.plusSeconds(5);
-        awaitEquals(() -> pc.get(PropertyIdentifier.presentValue), new Real(375), 5000);
+        awaitEquals(new Real(375), () -> pc.get(PropertyIdentifier.presentValue));
 
         //
         // Change to out of service, add some pulses, advance the clock, and check that the present
@@ -450,7 +451,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         pc.writePropertyInternal(PropertyIdentifier.outOfService, Boolean.TRUE);
         a.pulses(50);
         clock.plusSeconds(5);
-        Thread.sleep(500);
+        quiesce();
         assertEquals(new Real(375), pc.get(PropertyIdentifier.presentValue));
 
         //
@@ -459,7 +460,7 @@ public class PulseConverterObjectTest extends AbstractTest {
         pc.writePropertyInternal(PropertyIdentifier.outOfService, Boolean.FALSE);
         a.pulses(50);
         clock.plusSeconds(5);
-        awaitEquals(() -> pc.get(PropertyIdentifier.presentValue), new Real(1125), 5000);
+        awaitEquals(new Real(1125), () -> pc.get(PropertyIdentifier.presentValue));
 
         // Remove the object.
         d1.removeObject(pc.getId());

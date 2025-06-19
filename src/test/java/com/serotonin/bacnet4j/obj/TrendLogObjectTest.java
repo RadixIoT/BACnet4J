@@ -3,8 +3,9 @@ package com.serotonin.bacnet4j.obj;
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
 import static com.serotonin.bacnet4j.TestUtils.await;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static com.serotonin.bacnet4j.TestUtils.awaitFalse;
+import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -96,7 +97,8 @@ public class TrendLogObjectTest extends AbstractTest {
         // Advance the clock to the polling time.
         LOG.info("Starting time: {}", clock.instant());
         final int seconds = (62 - clock.get(ChronoField.SECOND_OF_MINUTE) - 1) % 60 + 1;
-        clock.plus(seconds, SECONDS, 300);
+        clock.plusSeconds(seconds);
+        quiesce();
         LOG.info("First poll time: {}", clock.instant());
 
         assertEquals(1, tl.getRecordCount());
@@ -111,9 +113,9 @@ public class TrendLogObjectTest extends AbstractTest {
         bo.writePropertyInternal(PropertyIdentifier.presentValue, new Real(2));
 
         // Advance the clock another minute to poll again.
-        clock.plus(1, MINUTES, 0);
+        clock.plusMinutes(1);
 
-        awaitEquals(tl::getRecordCount, 2, 5000);
+        awaitEquals(2, tl::getRecordCount);
         final LogRecord record2 = tl.getRecord(1);
         assertEquals(2, record2.getTimestamp().getTime().getSecond());
         assertEquals((record1.getTimestamp().getTime().getMinute() + 1) % 60,
@@ -126,8 +128,8 @@ public class TrendLogObjectTest extends AbstractTest {
         bo.setOverridden(true);
 
         // Advance the clock another minute to poll again.
-        clock.plus(1, MINUTES, 0);
-        awaitEquals(tl::getRecordCount, 3, 5000);
+        clock.plusMinutes(1);
+        awaitEquals(3, tl::getRecordCount);
 
         final LogRecord record3 = tl.getRecord(2);
         assertEquals(2, record3.getTimestamp().getTime().getSecond());
@@ -143,9 +145,9 @@ public class TrendLogObjectTest extends AbstractTest {
 
         // Advance the clock to the new polling time.
         final int minutes = (62 - clock.get(ChronoField.MINUTE_OF_HOUR)) % 60;
-        clock.plus(minutes, MINUTES, 0);
+        clock.plusMinutes(minutes);
 
-        awaitEquals(tl::getRecordCount, 4, 5000);
+        awaitEquals(4, tl::getRecordCount);
         final LogRecord record4 = tl.getRecord(3);
         assertEquals(2, record4.getTimestamp().getTime().getMinute());
         assertEquals(new Real(3), record4.getChoice());
@@ -158,7 +160,7 @@ public class TrendLogObjectTest extends AbstractTest {
         tl.trigger();
 
         // Wait for the polling to finish.
-        awaitEquals(tl::getRecordCount, 5, 5000);
+        awaitEquals(5, tl::getRecordCount);
         final LogRecord record5 = tl.getRecord(4);
         assertEquals(new Real(4), record5.getChoice());
         assertEquals(new StatusFlags(false, false, false, false), record5.getStatusFlags());
@@ -189,11 +191,11 @@ public class TrendLogObjectTest extends AbstractTest {
 
         // Wait for the COV to set up, and for the initial notification to be sent.
         // Wait for the subscription to be there.
-        awaitEquals(() -> {
+        awaitEquals(1, () -> {
             SequenceOf<CovSubscription> subscriptions =
                     d.getObject(d.getId()).readProperty(PropertyIdentifier.activeCovSubscriptions);
             return subscriptions.getCount();
-        }, 1, 5000);
+        });
 
         // Remember the process id.
         SequenceOf<CovSubscription> subscriptions =
@@ -201,7 +203,7 @@ public class TrendLogObjectTest extends AbstractTest {
         final int processId = subscriptions.getBase1(1).getRecipient().getProcessIdentifier().intValue();
 
         // The initial notification should be there.
-        awaitEquals(tl::getRecordCount, 1, 5000);
+        awaitEquals(1, tl::getRecordCount);
         final LogRecord record1 = tl.getRecord(0);
         assertEquals(now, record1.getTimestamp());
         assertEquals(new Real(0), record1.getChoice());
@@ -211,7 +213,7 @@ public class TrendLogObjectTest extends AbstractTest {
         // Update the value to cause a COV notification.
         bo.writePropertyInternal(PropertyIdentifier.presentValue, new Real(1));
         LOG.info("Update");
-        awaitEquals(tl::getRecordCount, 2, 5000);
+        awaitEquals(2, tl::getRecordCount);
         final LogRecord record2 = tl.getRecord(1);
         assertEquals(now, record2.getTimestamp());
         assertEquals(new Real(1), record2.getChoice());
@@ -222,7 +224,7 @@ public class TrendLogObjectTest extends AbstractTest {
         // update threshold.
         clock.plusSeconds(45);
         bo.writePropertyInternal(PropertyIdentifier.presentValue, new Real(1.2F));
-        awaitEquals(tl::getRecordCount, 2, 5000);
+        awaitEquals(2, tl::getRecordCount);
         assertEquals(2, tl.getRecordCount());
 
         //
@@ -231,7 +233,7 @@ public class TrendLogObjectTest extends AbstractTest {
         clock.plusSeconds(25);
         now = new DateTime(clock.millis());
         bo.writePropertyInternal(PropertyIdentifier.presentValue, new Real(1.6F));
-        awaitEquals(tl::getRecordCount, 3, 5000);
+        awaitEquals(3, tl::getRecordCount);
         final LogRecord record3 = tl.getRecord(2);
         assertEquals(now, record3.getTimestamp());
         assertEquals(new Real(1.6F), record3.getChoice());
@@ -242,7 +244,7 @@ public class TrendLogObjectTest extends AbstractTest {
         clock.plusSeconds(12);
         now = new DateTime(clock.millis());
         bo.setOverridden(true);
-        awaitEquals(tl::getRecordCount, 4, 5000);
+        awaitEquals(4, tl::getRecordCount);
         final LogRecord record4 = tl.getRecord(3);
         assertEquals(now, record4.getTimestamp());
         assertEquals(new Real(1.6F), record4.getChoice());
@@ -252,7 +254,7 @@ public class TrendLogObjectTest extends AbstractTest {
         // Advance the clock past the resubscription period. Another notification should be received.
         clock.plusSeconds(20);
         now = new DateTime(clock.millis());
-        awaitEquals(tl::getRecordCount, 5, 5000);
+        awaitEquals(5, tl::getRecordCount);
         final LogRecord record5 = tl.getRecord(4);
         assertEquals(now, record5.getTimestamp());
         assertEquals(new Real(1.6F), record5.getChoice());
@@ -262,7 +264,7 @@ public class TrendLogObjectTest extends AbstractTest {
         // Change the resubscription interval
         tl.writeProperty(null, PropertyIdentifier.covResubscriptionInterval, new UnsignedInteger(300));
         // Wait for there to be an update due to the resubscription.
-        awaitEquals(tl::getRecordCount, 6, 5000);
+        awaitEquals(6, tl::getRecordCount);
 
         // Check that there is still only one subscription, and that it has a different process id.
         subscriptions = d.getObject(d.getId()).readProperty(PropertyIdentifier.activeCovSubscriptions);
@@ -276,14 +278,14 @@ public class TrendLogObjectTest extends AbstractTest {
         //
         // Advance the clock past the new resubscription period. Only one more notification should be received.
         clock.plusSeconds(310);
-        awaitEquals(tl::getRecordCount, 7, 5000);
+        awaitEquals(7, tl::getRecordCount);
 
         //
         // Try a trigger for fun.
         tl.trigger();
 
         // Wait for the polling to finish.
-        awaitEquals(tl::getRecordCount, 8, 5000);
+        awaitEquals(8, tl::getRecordCount);
     }
 
     @Test
@@ -314,7 +316,7 @@ public class TrendLogObjectTest extends AbstractTest {
         // Trigger an update
         LOG.info("Trigger");
         tl.trigger();
-        awaitEquals(tl::getRecordCount, 1, 5000);
+        awaitEquals(1, tl::getRecordCount);
 
         // The log record should be there.
         assertEquals(1, tl.getRecordCount());
@@ -359,8 +361,8 @@ public class TrendLogObjectTest extends AbstractTest {
         //
         // Write one more and make sure a notification was received.
         doTriggers(tl, 1);
-        awaitEquals(tl::getRecordCount, 5, 5000);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(5, tl::getRecordCount);
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(27), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -388,8 +390,8 @@ public class TrendLogObjectTest extends AbstractTest {
         //
         // Write another 5 triggers and ensure that the notification looks ok.
         doTriggers(tl, 5);
-        awaitEquals(tl::getRecordCount, 10, 5000);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(10, tl::getRecordCount);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(27), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -419,8 +421,8 @@ public class TrendLogObjectTest extends AbstractTest {
         tl.set(PropertyIdentifier.lastNotifyRecord, new UnsignedInteger(0xFFFFFFFDL));
         tl.set(PropertyIdentifier.totalRecordCount, new UnsignedInteger(0xFFFFFFFDL));
         doTriggers(tl, 5);
-        awaitEquals(tl::getRecordCount, 15, 5000);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(15, tl::getRecordCount);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(27), notif.processIdentifier());
@@ -450,10 +452,10 @@ public class TrendLogObjectTest extends AbstractTest {
     private static void doTriggers(final TrendLogObject tl, final int count) throws Exception {
         int remaining = count;
         while (remaining > 0) {
-            await(tl::trigger, 5000);
+            await(tl::trigger);
             remaining--;
         }
-        await(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue(), 5000);
+        await(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue());
     }
 
     @SuppressWarnings("unchecked")
@@ -488,7 +490,7 @@ public class TrendLogObjectTest extends AbstractTest {
         // Give the EE a chance to poll.
         clock.plusSeconds(1);
         // Wait for a bit for some assurance that nothing has changed.
-        Thread.sleep(500);
+        quiesce();
 
         // Ensure that there are no notifications.
         assertEquals(0, listener.getNotifCount());
@@ -496,7 +498,7 @@ public class TrendLogObjectTest extends AbstractTest {
         // Trigger another notification so that a notification is sent.
         doTriggers(tl, 1);
         clock.plusSeconds(1);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(28), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -518,7 +520,7 @@ public class TrendLogObjectTest extends AbstractTest {
         // Trigger another batch of updates. One notification should be sent.
         doTriggers(tl, 7);
         clock.plusSeconds(1);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(28), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -655,23 +657,25 @@ public class TrendLogObjectTest extends AbstractTest {
         assertEquals(0, tl.getRecordCount());
 
         // Advance the time a bit and do some triggers.
-        clock.plus(3, TimeUnit.MINUTES, 40);
+        clock.plusMinutes(3);
+        quiesce();
         assertTrue(tl.isLogDisabled());
         doTriggers(tl, 2);
         assertEquals(0, tl.getRecordCount());
 
         // Advance the time past the start time and do some triggers.
-        clock.plus(3, TimeUnit.MINUTES, 40);
+        clock.plusMinutes(3);
+        quiesce();
         final DateTime now2 = new DateTime(clock.millis());
         assertFalse(tl.isLogDisabled());
         doTriggers(tl, 2);
         assertEquals(2, tl.getRecordCount());
 
         // Advance the time past the stop time and do some triggers.
-        clock.plus(5, TimeUnit.MINUTES, 40);
+        clock.plusMinutes(5);
         final DateTime now3 = new DateTime(clock.millis());
+        awaitEquals(3, tl::getRecordCount);
         assertTrue(tl.isLogDisabled());
-        assertEquals(3, tl.getRecordCount());
         doTriggers(tl, 2);
         assertEquals(3, tl.getRecordCount());
         assertEquals(LogRecord.createFromMonitoredValue(now2, new Real(0), sf), tl.getRecord(0));
@@ -691,15 +695,15 @@ public class TrendLogObjectTest extends AbstractTest {
         assertEquals(3, tl.getRecordCount());
 
         // Advance the time past the start time and do some triggers.
-        clock.plus(6, TimeUnit.MINUTES, 40);
-        assertFalse(tl.isLogDisabled());
+        clock.plusMinutes(6);
+        awaitFalse(tl::isLogDisabled);
         doTriggers(tl, 2);
         assertEquals(5, tl.getRecordCount());
 
         // Advance the time past the stop time and do some triggers.
-        clock.plus(6, TimeUnit.MINUTES, 40);
-        assertTrue(tl.isLogDisabled());
-        assertEquals(6, tl.getRecordCount());
+        clock.plusMinutes(6);
+        awaitTrue(tl::isLogDisabled);
+        awaitEquals(6, tl::getRecordCount);
         doTriggers(tl, 2);
         assertEquals(6, tl.getRecordCount());
     }
@@ -797,7 +801,7 @@ public class TrendLogObjectTest extends AbstractTest {
                         NotifyType.event).withCov(100, new ClientCov(Null.instance));
 
         // Wait for the notification.
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
 
         // Validate notification
         final EventNotifListener.Notif notif = listener.removeNotif();
