@@ -1,6 +1,8 @@
 package com.serotonin.bacnet4j.util;
 
 import static com.serotonin.bacnet4j.TestUtils.assertListEqualsIgnoreOrder;
+import static com.serotonin.bacnet4j.TestUtils.indexOf;
+import static com.serotonin.bacnet4j.TestUtils.toList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +16,6 @@ import org.junit.Test;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
@@ -38,9 +39,8 @@ public class RemoteDeviceDiscovererTest {
         discoverer.start();
         Thread.sleep(300);
 
-        assertListEqualsIgnoreOrder(TestUtils.toList(12, 13, 14, 15, 16, 17), discoverer.getRemoteDevices(), predicate);
-        assertListEqualsIgnoreOrder(TestUtils.toList(12, 13, 14, 15, 16, 17), discoverer.getLatestRemoteDevices(),
-                predicate);
+        assertListEqualsIgnoreOrder(toList(12, 13, 14, 15, 16, 17), discoverer.getRemoteDevices(), predicate);
+        assertListEqualsIgnoreOrder(toList(12, 13, 14, 15, 16, 17), discoverer.getLatestRemoteDevices(), predicate);
 
         //
         // Add some more devices
@@ -48,9 +48,8 @@ public class RemoteDeviceDiscovererTest {
         d8.sendGlobalBroadcast(d8.getIAm());
         Thread.sleep(300);
 
-        assertListEqualsIgnoreOrder(TestUtils.toList(12, 13, 14, 15, 16, 17, 18), discoverer.getRemoteDevices(),
-                predicate);
-        assertListEqualsIgnoreOrder(TestUtils.toList(18), discoverer.getLatestRemoteDevices(), predicate);
+        assertListEqualsIgnoreOrder(toList(12, 13, 14, 15, 16, 17, 18), discoverer.getRemoteDevices(), predicate);
+        assertListEqualsIgnoreOrder(toList(18), discoverer.getLatestRemoteDevices(), predicate);
 
         //
         // Add some more devices
@@ -62,9 +61,9 @@ public class RemoteDeviceDiscovererTest {
         d10.sendGlobalBroadcast(d10.getIAm());
         Thread.sleep(300);
 
-        assertListEqualsIgnoreOrder(TestUtils.toList(12, 13, 14, 15, 16, 17, 18, 19, 20), discoverer.getRemoteDevices(),
+        assertListEqualsIgnoreOrder(toList(12, 13, 14, 15, 16, 17, 18, 19, 20), discoverer.getRemoteDevices(),
                 predicate);
-        assertListEqualsIgnoreOrder(TestUtils.toList(19, 20), discoverer.getLatestRemoteDevices(), predicate);
+        assertListEqualsIgnoreOrder(toList(19, 20), discoverer.getLatestRemoteDevices(), predicate);
 
         // Stop and add more devices to make sure they are not discovered.
         discoverer.stop();
@@ -74,7 +73,7 @@ public class RemoteDeviceDiscovererTest {
         d12.sendGlobalBroadcast(d12.getIAm());
         Thread.sleep(300);
 
-        assertListEqualsIgnoreOrder(TestUtils.toList(12, 13, 14, 15, 16, 17, 18, 19, 20), discoverer.getRemoteDevices(),
+        assertListEqualsIgnoreOrder(toList(12, 13, 14, 15, 16, 17, 18, 19, 20), discoverer.getRemoteDevices(),
                 predicate);
         assertListEqualsIgnoreOrder(new ArrayList<Integer>(), discoverer.getLatestRemoteDevices(), predicate);
 
@@ -105,12 +104,14 @@ public class RemoteDeviceDiscovererTest {
         final LocalDevice d6 = new LocalDevice(16, new DefaultTransport(new TestNetwork(map, 116, 1))).initialize();
         final LocalDevice d7 = new LocalDevice(17, new DefaultTransport(new TestNetwork(map, 117, 1))).initialize();
 
-        final List<Integer> expected = TestUtils.toList(12, 13, 14, 15, 16, 17);
+        final List<Integer> expected = toList(12, 13, 14, 15, 16, 17);
         final RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(d1, (d) -> {
-            final int index = TestUtils.indexOf(expected, d, predicate);
-            if (index == -1)
-                Assert.fail("RemoteDevice " + d.getInstanceNumber() + " not found in expected list");
-            expected.remove(index);
+            synchronized (expected) {
+                final int index = indexOf(expected, d, predicate);
+                if (index == -1)
+                    Assert.fail("RemoteDevice " + d.getInstanceNumber() + " not found in expected list");
+                expected.remove(index);
+            }
         });
 
         discoverer.start();
@@ -165,9 +166,7 @@ public class RemoteDeviceDiscovererTest {
     public void expirationCheck() throws Exception {
         BlockingQueue<RemoteDevice> results = new ArrayBlockingQueue<>(1);
 
-        try (LocalDevice d1 = createLocalDevice(1);
-             LocalDevice d2 = createLocalDevice(2)) {
-
+        try (LocalDevice d1 = createLocalDevice(1); LocalDevice d2 = createLocalDevice(2)) {
             d1.initialize();
             d2.initialize();
 
