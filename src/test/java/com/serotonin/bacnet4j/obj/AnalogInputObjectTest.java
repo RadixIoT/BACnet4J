@@ -2,11 +2,10 @@ package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
@@ -66,29 +65,33 @@ public class AnalogInputObjectTest extends AbstractTest {
         // Write a different normal value.
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(60));
         assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         // Ensure that no notifications are sent.
         assertEquals(0, listener.getNotifCount());
 
         // Set an out of range value and then set back to normal before the time delay.
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(110));
-        clock.plus(500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(500);
+        quiesce();
         assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(90));
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        quiesce();
         assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
 
         // Do a real state change. Write an out of range value. After 1 second the alarm will be raised.
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(10));
-        clock.plus(500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(500);
+        quiesce();
         assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.lowLimit, ai.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), ai.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -109,7 +112,7 @@ public class AnalogInputObjectTest extends AbstractTest {
 
         // Disable low limit checking. Will return to normal immediately.
         ai.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(false, true));
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState));
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
@@ -132,9 +135,9 @@ public class AnalogInputObjectTest extends AbstractTest {
         // Re-enable low limit checking. Will return to low-limit after 1 second.
         ai.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(true, true));
         assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState));
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.lowLimit, ai.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(EventType.outOfRange, notif.eventType());
         assertEquals(EventState.normal, notif.fromState());
@@ -146,9 +149,9 @@ public class AnalogInputObjectTest extends AbstractTest {
         // Go to a high limit. Will change to high-limit after 1 second.
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(110));
         assertEquals(EventState.lowLimit, ai.readProperty(PropertyIdentifier.eventState));
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.highLimit, ai.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(EventState.lowLimit, notif.fromState());
         assertEquals(EventState.highLimit, notif.toState());
@@ -159,7 +162,8 @@ public class AnalogInputObjectTest extends AbstractTest {
         // Reduce to within the deadband. No notification.
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(95));
         assertEquals(EventState.highLimit, ai.readProperty(PropertyIdentifier.eventState));
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.highLimit, ai.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 
@@ -167,12 +171,13 @@ public class AnalogInputObjectTest extends AbstractTest {
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(94));
         assertEquals(EventState.highLimit, ai.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
-        clock.plus(1500, TimeUnit.MILLISECONDS, 1500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1500);
+        quiesce();
         assertEquals(EventState.highLimit, ai.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(EventState.highLimit, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
@@ -199,7 +204,7 @@ public class AnalogInputObjectTest extends AbstractTest {
 
         // Write a fault value.
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(-5));
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
 
         assertEquals(EventState.fault, ai.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), ai.readProperty(PropertyIdentifier.statusFlags));

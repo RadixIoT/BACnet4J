@@ -2,11 +2,10 @@ package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
@@ -141,7 +140,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Disable low limit checking. Will return to normal immediately.
         a.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(false, true));
         assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState));
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -209,7 +208,8 @@ public class AccumulatorObjectTest extends AbstractTest {
     private void doPulses(final int... pulses) {
         for (final int i : pulses) {
             a.pulses(i);
-            clock.plus(1, TimeUnit.SECONDS, 1, TimeUnit.SECONDS, 20, 0);
+            clock.plusSeconds(1);
+            quiesce();
         }
     }
 
@@ -307,8 +307,8 @@ public class AccumulatorObjectTest extends AbstractTest {
         // Default the pulse rate
         a.set(PropertyIdentifier.pulseRate, new UnsignedInteger(40));
 
-        final DeviceObjectPropertyReference ref = new DeviceObjectPropertyReference(1, a.getId(),
-                PropertyIdentifier.pulseRate);
+        final DeviceObjectPropertyReference ref =
+                new DeviceObjectPropertyReference(1, a.getId(), PropertyIdentifier.pulseRate);
         final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(
                         new UnsignedRange(new UnsignedInteger(3), new UnsignedInteger(30), new UnsignedInteger(50))),
@@ -332,7 +332,7 @@ public class AccumulatorObjectTest extends AbstractTest {
 
         // Go to high limit.
         doPulses(53, 53, 53, 53, 53);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.highLimit, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
         assertEquals(new StatusFlags(true, false, false, false), ee.readProperty(PropertyIdentifier.statusFlags));
@@ -387,8 +387,9 @@ public class AccumulatorObjectTest extends AbstractTest {
 
     @Test
     public void construction() throws Exception {
-        final AccumulatorObject a1 = new AccumulatorObject(d1, 1, "a1", 456, 0, EngineeringUnits.amperes, false,
-                new Scale(new Real(1)), new Prescale(new UnsignedInteger(2), new UnsignedInteger(15)), 200, 1);
+        final AccumulatorObject a1 =
+                new AccumulatorObject(d1, 1, "a1", 456, 0, EngineeringUnits.amperes, false, new Scale(new Real(1)),
+                        new Prescale(new UnsignedInteger(2), new UnsignedInteger(15)), 200, 1);
         assertEquals(new UnsignedInteger(456), a1.get(PropertyIdentifier.presentValue));
     }
 

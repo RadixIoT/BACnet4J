@@ -62,7 +62,7 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
                 new Parameter(new Double(3.14)));
 
         // Wait for the alarm to be sent
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, ae.readProperty(PropertyIdentifier.eventState)); // Still normal. Always normal.
 
         // Ensure that a proper looking event notification was received.
