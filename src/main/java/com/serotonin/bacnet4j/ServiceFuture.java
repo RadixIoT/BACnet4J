@@ -32,5 +32,14 @@ import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.service.acknowledgement.AcknowledgementService;
 
 public interface ServiceFuture {
+    enum State {
+        NEW, QUEUED, SENT, DONE, FAILED, EXCEPTION;
+    }
+
     <T extends AcknowledgementService> T get() throws BACnetException;
+
+    default State getState() {
+        // Implementations can choose to support this or not.
+        throw new UnsupportedOperationException();
+    }
 }

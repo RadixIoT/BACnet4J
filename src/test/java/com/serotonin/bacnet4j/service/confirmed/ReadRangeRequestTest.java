@@ -1,5 +1,6 @@
 package com.serotonin.bacnet4j.service.confirmed;
 
+import static com.serotonin.bacnet4j.TestUtils.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -154,10 +155,10 @@ public class ReadRangeRequestTest {
     private static void doTriggers(final TrendLogMultipleObject tl, final int count) throws Exception {
         int remaining = count;
         while (remaining > 0) {
-            TestUtils.await(tl::trigger, 5000);
+            await(tl::trigger, 5000);
             remaining--;
         }
-        TestUtils.await(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue(), 5000);
+        await(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue(), 5000);
     }
 
     /**
