@@ -1,6 +1,7 @@
 package com.serotonin.bacnet4j;
 
 import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
@@ -126,7 +127,11 @@ public class LocalDeviceTest {
         try (final LocalDevice ld = new LocalDevice(ObjectIdentifier.UNINITIALIZED,
                 new DefaultTransport(new TestNetwork(map, 3, 10)))) {
             ld.setClock(clock);
-            new Thread(() -> clock.plus(200, TimeUnit.SECONDS, 10, TimeUnit.SECONDS, 10, 0)).start();
+            new Thread(() -> {
+                // After a quiet period advance the clock to allow the local device initialization to complete.
+                quiesce();
+                clock.plusSeconds(200);
+            }).start();
             ld.initialize();
 
             LOG.info("Local device initialized with device id {}", ld.getInstanceNumber());
