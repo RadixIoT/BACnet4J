@@ -2,6 +2,7 @@ package com.serotonin.bacnet4j.service.confirmed;
 
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
@@ -99,12 +100,12 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
         // Should also fail to send an IAm
         d1.send(rd2, d1.getIAm());
         // Wait a bit to ensure nothing changes.
-        Thread.sleep(500);
+        quiesce();
         assertEquals(0, iamCount.get());
 
         // But should still respond to a WhoIs
         d2.send(rd1, new WhoIsRequest(1, 1));
-        awaitEquals(iamCount::get, 1, 5000);
+        awaitEquals(1, iamCount::get);
 
         // Re-enable
         d2.send(rd1, new DeviceCommunicationControlRequest(null, EnableDisable.enable, null)).get();
@@ -146,7 +147,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
 
             // We need to advance the clock because otherwise the request will never time out.
             // First give the transport a chance to send the request.
-            awaitTrue(() -> future.getState() == ServiceFuture.State.SENT, 5000);
+            awaitTrue(() -> future.getState() == ServiceFuture.State.SENT);
             // Then advance past the timeout.
             clock.plusMillis(TIMEOUT + 1);
 
@@ -197,7 +198,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
     public void timer() throws Exception {
         // Disable for 5 minutes.
         d2.send(rd1, new DeviceCommunicationControlRequest(new UnsignedInteger(5), EnableDisable.disable, null)).get();
-        awaitEquals(d1::getCommunicationControlState, EnableDisable.disable, 5000);
+        awaitEquals(EnableDisable.disable, d1::getCommunicationControlState);
 
         // Fail to receive a request
         try {
@@ -207,7 +208,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
 
             // We need to advance the clock because otherwise the request will never time out.
             // First give the transport a chance to send the request.
-            awaitTrue(() -> future.getState() == ServiceFuture.State.SENT, 5000);
+            awaitTrue(() -> future.getState() == ServiceFuture.State.SENT);
 
             // Then advance past the timeout.
             clock.plusMillis(TIMEOUT + 1);
@@ -220,7 +221,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
 
         // Let the 5 minutes elapse.
         clock.plusMinutes(6);
-        awaitEquals(d1::getCommunicationControlState, EnableDisable.enable, 5000);
+        awaitEquals(EnableDisable.enable, d1::getCommunicationControlState);
 
         // Receive a request. This time it too succeeds. Note that the value is already "a", because requests are
         // still processed, just not responded.
@@ -247,7 +248,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
 
             // We need to advance the clock because otherwise the request will never time out.
             // First give the transport a chance to send the request.
-            awaitTrue(() -> future.getState() == ServiceFuture.State.SENT, 5000);
+            awaitTrue(() -> future.getState() == ServiceFuture.State.SENT);
             // Then advance past the timeout.
             clock.plusMillis(TIMEOUT + 1);
 
