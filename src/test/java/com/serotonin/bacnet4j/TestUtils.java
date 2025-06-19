@@ -283,6 +283,16 @@ public class TestUtils {
     }
 
     /**
+     * Convenience method to default the timeout to 5 seconds.
+     *
+     * @param condition the condition to which to wait
+     * @throws Exception the exception if any that the condition threw
+     */
+    public static void awaitTrue(BooleanSupplierWithException condition) throws Exception {
+        awaitTrue(condition, 5000);
+    }
+
+    /**
      * A utility to busy-wait up to a given timeout for the given condition to become true.
      *
      * @param condition the condition to which to wait
