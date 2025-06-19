@@ -13,7 +13,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.AbstractTest;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.enums.DayOfWeek;
 import com.serotonin.bacnet4j.enums.Month;
 import com.serotonin.bacnet4j.obj.ObjectTestUtils.ObjectWriteNotifier;
@@ -76,9 +75,9 @@ public class ScheduleObjectTest extends AbstractTest {
         final ScheduleObject so = createScheduleObject(av0, av1, defaultScheduledValue);
         final ObjectWriteNotifier<ScheduleObject> soNotifier = ObjectTestUtils.createObjectWriteNotifier(so);
 
-        awaitEquals(() -> so.get(PropertyIdentifier.presentValue), new Real(14), 5000);
-        awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), new Real(14), 5000);
-        awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(new Real(14), () -> so.get(PropertyIdentifier.presentValue));
+        awaitEquals(new Real(14), () -> av0.get(PropertyIdentifier.presentValue));
+        awaitEquals(new Real(14), () -> av1.get(PropertyIdentifier.presentValue));
 
         // Start actual tests.
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 1, 17, 0, new Real(15)); // Wednesday
@@ -127,9 +126,9 @@ public class ScheduleObjectTest extends AbstractTest {
         final ScheduleObject so = createScheduleObject(av0, av1, defaultScheduledValue);
         final ObjectWriteNotifier<ScheduleObject> soNotifier = ObjectTestUtils.createObjectWriteNotifier(so);
 
-        awaitEquals(() -> so.get(PropertyIdentifier.presentValue), new Real(14), 5000);
-        awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), new Real(14), 5000);
-        awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), new Real(14), 5000);
+        awaitEquals(new Real(14), () -> so.get(PropertyIdentifier.presentValue));
+        awaitEquals(new Real(14), () -> av0.get(PropertyIdentifier.presentValue));
+        awaitEquals(new Real(14), () -> av1.get(PropertyIdentifier.presentValue));
 
         // Start actual tests.
         testTime(soNotifier, av0, av1, java.time.Month.MAY, 1, 17, 0, new Real(15)); // Wednesday
@@ -179,25 +178,25 @@ public class ScheduleObjectTest extends AbstractTest {
             return lastUpdateTime.getDate().getMonth().getId() == month.getValue() && lastUpdateTime.getDate()
                     .getDay() == day && lastUpdateTime.getTime().getHour() == hour && lastUpdateTime.getTime()
                     .getMinute() == min;
-        }, 5000);
+        });
 
         if (scheduledValue.getClass().equals(Null.class)) {
             final Primitive scheduleDefault = so.obj().readProperty(PropertyIdentifier.scheduleDefault);
             if (scheduleDefault.getClass().equals(Null.class)) {
                 so.waitFor(PropertyIdentifier.presentValue, new Null(), 5000);
-                awaitEquals(() -> av0.get(PropertyIdentifier.presentValue),
-                        av0.readProperty(PropertyIdentifier.relinquishDefault), 5000);
-                awaitEquals(() -> av1.get(PropertyIdentifier.presentValue),
-                        av1.readProperty(PropertyIdentifier.relinquishDefault), 5000);
+                awaitEquals(av0.readProperty(PropertyIdentifier.relinquishDefault),
+                        () -> av0.get(PropertyIdentifier.presentValue));
+                awaitEquals(av1.readProperty(PropertyIdentifier.relinquishDefault),
+                        () -> av1.get(PropertyIdentifier.presentValue));
             } else {
                 so.waitFor(PropertyIdentifier.presentValue, scheduleDefault, 5000);
-                awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), scheduleDefault, 5000);
-                awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), scheduleDefault, 5000);
+                awaitEquals(scheduleDefault, () -> av0.get(PropertyIdentifier.presentValue));
+                awaitEquals(scheduleDefault, () -> av1.get(PropertyIdentifier.presentValue));
             }
         } else {
             so.waitFor(PropertyIdentifier.presentValue, scheduledValue, 5000);
-            awaitEquals(() -> av0.get(PropertyIdentifier.presentValue), scheduledValue, 5000);
-            awaitEquals(() -> av1.get(PropertyIdentifier.presentValue), scheduledValue, 5000);
+            awaitEquals(scheduledValue, () -> av0.get(PropertyIdentifier.presentValue));
+            awaitEquals(scheduledValue, () -> av1.get(PropertyIdentifier.presentValue));
         }
     }
 
@@ -237,7 +236,7 @@ public class ScheduleObjectTest extends AbstractTest {
         assertEquals(EventState.fault, so.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        TestUtils.awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         final EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -439,14 +438,14 @@ public class ScheduleObjectTest extends AbstractTest {
 
     private ScheduleObject createScheduleObject(AnalogValueObject av0, AnalogValueObject av1, Primitive scheduleDefault)
             throws Exception {
-        final SequenceOf<CalendarEntry> dateList = new SequenceOf<>(
-                new CalendarEntry(new Date(-1, null, -1, DayOfWeek.FRIDAY)), // Every Friday.
-                new CalendarEntry(
-                        new DateRange(new Date(-1, Month.NOVEMBER, -1, null), new Date(-1, Month.FEBRUARY, -1, null))),
-                // November to February
-                new CalendarEntry(new WeekNDay(Month.UNSPECIFIED, WeekOfMonth.days22to28, DayOfWeek.WEDNESDAY))
-                // The Wednesday during the 4th week of each month.
-        );
+        final SequenceOf<CalendarEntry> dateList =
+                new SequenceOf<>(new CalendarEntry(new Date(-1, null, -1, DayOfWeek.FRIDAY)), // Every Friday.
+                        new CalendarEntry(new DateRange(new Date(-1, Month.NOVEMBER, -1, null),
+                                new Date(-1, Month.FEBRUARY, -1, null))),
+                        // November to February
+                        new CalendarEntry(new WeekNDay(Month.UNSPECIFIED, WeekOfMonth.days22to28, DayOfWeek.WEDNESDAY))
+                        // The Wednesday during the 4th week of each month.
+                );
 
         final CalendarObject co = new CalendarObject(d1, 0, "cal0", dateList);
 
