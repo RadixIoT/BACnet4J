@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
@@ -48,9 +75,9 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        lsp = new LifeSafetyPointObject(d1, 0, "lsp", LifeSafetyState.quiet, LifeSafetyMode.on, false,
-                new SequenceOf<>(LifeSafetyMode.on, LifeSafetyMode.off, LifeSafetyMode.enabled),
-                LifeSafetyOperation.none, SilencedState.unsilenced);
+        lsp = new LifeSafetyPointObject(d1, 0, "lsp", LifeSafetyState.quiet, LifeSafetyMode.on, false, new SequenceOf<>(
+                LifeSafetyMode.on, LifeSafetyMode.off, LifeSafetyMode.enabled), LifeSafetyOperation.none,
+                SilencedState.unsilenced);
         nc = new NotificationClassObject(d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false));
 
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
@@ -66,8 +93,8 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
     @Test
     public void intrinsicReporting() throws Exception {
         lsp.supportIntrinsicReporting(5, 17, new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory),
-                new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), null,
-                new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
+                new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), null, new EventTransitionBits(
+                        true, true, true), NotifyType.alarm, new UnsignedInteger(12));
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
         Thread.sleep(500);
@@ -107,8 +134,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         // Return to normal. After 12s the notification will be sent.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.quiet);
         clock.plus(11500, TimeUnit.MILLISECONDS, 11500, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.lifeSafetyAlarm,
-                lsp.readProperty(PropertyIdentifier.eventState)); // Still lifeSafetyAlarm at this point.
+        assertEquals(EventState.lifeSafetyAlarm, lsp.readProperty(PropertyIdentifier.eventState)); // Still lifeSafetyAlarm at this point.
         clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.normal, lsp.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), lsp.readProperty(PropertyIdentifier.statusFlags));
@@ -139,8 +165,8 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
     @Test
     public void changeOfLifeSafetyAlgoA1() throws Exception {
         lsp.supportIntrinsicReporting(5, 17, new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory),
-                new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), null,
-                new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
+                new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), null, new EventTransitionBits(
+                        true, true, true), NotifyType.alarm, new UnsignedInteger(12));
 
         // Do a state change. Write a value to indicate a change of state failure. After 5s the alarm will be raised.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
@@ -154,8 +180,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         // Return to normal. After 12s the notification will be sent.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.quiet);
         clock.plus(11999, TimeUnit.MILLISECONDS, 11999, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal,
-                lsp.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
+        assertEquals(EventState.offnormal, lsp.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
         clock.plus(1, TimeUnit.MILLISECONDS, 1, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.normal, lsp.readProperty(PropertyIdentifier.eventState));
         assertEquals(1, listener.getNotifCount());
@@ -170,8 +195,8 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
     @Test
     public void changeOfLifeSafetyAlgoA2() throws Exception {
         lsp.supportIntrinsicReporting(5, 17, new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory),
-                new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), null,
-                new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
+                new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), null, new EventTransitionBits(
+                        true, true, true), NotifyType.alarm, new UnsignedInteger(12));
 
         // Write a value to indicate offnormal and advance the clock to just before the time delay.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
@@ -192,8 +217,8 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
     @Test
     public void changeOfLifeSafetyAlgoJ() throws Exception {
         lsp.supportIntrinsicReporting(5, 17, new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory),
-                new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), null,
-                new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
+                new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), null, new EventTransitionBits(
+                        true, true, true), NotifyType.alarm, new UnsignedInteger(12));
 
         // Write a value to indicate lifeSafetyAlarm and advance the clock to past the the time delay.
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testSupervisory);
@@ -221,8 +246,8 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         lsp.supportIntrinsicReporting(5, 17, //
                 new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory), //
                 new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), //
-                new BACnetArray<>(LifeSafetyState.fault, LifeSafetyState.faultAlarm),
-                new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
+                new BACnetArray<>(LifeSafetyState.fault, LifeSafetyState.faultAlarm), new EventTransitionBits(true,
+                        true, true), NotifyType.alarm, new UnsignedInteger(12));
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
         Thread.sleep(500);
@@ -258,12 +283,12 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
         assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
-        assertEquals(LifeSafetyState.faultAlarm,
-                LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
+        assertEquals(LifeSafetyState.faultAlarm, LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0)
+                .getValue()).intValue()));
         assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.on), cor.getPropertyValues().get(1));
-        assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
-                cor.getPropertyValues().get(2));
+        assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none), cor
+                .getPropertyValues().get(2));
 
         //
         // Write a different mode.
@@ -291,12 +316,12 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
         assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
-        assertEquals(LifeSafetyState.faultAlarm,
-                LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
+        assertEquals(LifeSafetyState.faultAlarm, LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0)
+                .getValue()).intValue()));
         assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.fast), cor.getPropertyValues().get(1));
-        assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
-                cor.getPropertyValues().get(2));
+        assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none), cor
+                .getPropertyValues().get(2));
 
         //
         // Write the same fault state.
@@ -331,12 +356,12 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
         assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
-        assertEquals(LifeSafetyState.fault,
-                LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
+        assertEquals(LifeSafetyState.fault, LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0)
+                .getValue()).intValue()));
         assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.fast), cor.getPropertyValues().get(1));
-        assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
-                cor.getPropertyValues().get(2));
+        assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none), cor
+                .getPropertyValues().get(2));
 
         //
         // Write a non-fault state. This produces two notifications
@@ -367,12 +392,12 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
         assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
-        assertEquals(LifeSafetyState.active,
-                LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
+        assertEquals(LifeSafetyState.active, LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0)
+                .getValue()).intValue()));
         assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.fast), cor.getPropertyValues().get(1));
-        assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
-                cor.getPropertyValues().get(2));
+        assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none), cor
+                .getPropertyValues().get(2));
 
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
@@ -395,18 +420,17 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReporting() throws Exception {
-        final DeviceObjectPropertyReference pvRef =
-                new DeviceObjectPropertyReference(1, lsp.getId(), PropertyIdentifier.presentValue);
-        final DeviceObjectPropertyReference modeRef =
-                new DeviceObjectPropertyReference(1, lsp.getId(), PropertyIdentifier.mode);
+        final DeviceObjectPropertyReference pvRef = new DeviceObjectPropertyReference(1, lsp.getId(),
+                PropertyIdentifier.presentValue);
+        final DeviceObjectPropertyReference modeRef = new DeviceObjectPropertyReference(1, lsp.getId(),
+                PropertyIdentifier.mode);
         final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", pvRef, NotifyType.alarm,
-                new EventParameter(new ChangeOfLifeSafety(new UnsignedInteger(30),
-                        new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory), //
+                new EventParameter(new ChangeOfLifeSafety(new UnsignedInteger(30), new BACnetArray<>(
+                        LifeSafetyState.tamper, LifeSafetyState.testSupervisory), //
                         new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), //
                         modeRef)), new EventTransitionBits(true, true, true), 17, 1000, new UnsignedInteger(50), //
-                new FaultParameter(
-                        new FaultLifeSafety(new BACnetArray<>(LifeSafetyState.fault, LifeSafetyState.faultAlarm),
-                                modeRef)));
+                new FaultParameter(new FaultLifeSafety(new BACnetArray<>(LifeSafetyState.fault,
+                        LifeSafetyState.faultAlarm), modeRef)));
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
         awaitEquals(() -> ee.readProperty(PropertyIdentifier.eventState), EventState.normal, 5000);
@@ -441,9 +465,9 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.offnormal, notif.toState());
-        assertEquals(new NotificationParameters(
-                new ChangeOfLifeSafetyNotif(LifeSafetyState.testAlarm, LifeSafetyMode.on,
-                        new StatusFlags(false, false, false, false), LifeSafetyOperation.none)), notif.eventValues());
+        assertEquals(new NotificationParameters(new ChangeOfLifeSafetyNotif(LifeSafetyState.testAlarm,
+                LifeSafetyMode.on, new StatusFlags(false, false, false, false), LifeSafetyOperation.none)), notif
+                        .eventValues());
 
         //
         // Change mode. Notification is sent immediately.
@@ -467,9 +491,9 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.offnormal, notif.fromState());
         assertEquals(EventState.offnormal, notif.toState());
-        assertEquals(new NotificationParameters(
-                new ChangeOfLifeSafetyNotif(LifeSafetyState.testAlarm, LifeSafetyMode.disarmed,
-                        new StatusFlags(false, false, false, false), LifeSafetyOperation.none)), notif.eventValues());
+        assertEquals(new NotificationParameters(new ChangeOfLifeSafetyNotif(LifeSafetyState.testAlarm,
+                LifeSafetyMode.disarmed, new StatusFlags(false, false, false, false), LifeSafetyOperation.none)), notif
+                        .eventValues());
 
         //
         // Go to fault value
@@ -497,17 +521,17 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(Reliability.multiStateFault, cor.getReliability());
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(4, cor.getPropertyValues().size());
-        assertEquals(new PropertyValue(PropertyIdentifier.objectPropertyReference, pvRef),
-                cor.getPropertyValues().get(0));
+        assertEquals(new PropertyValue(PropertyIdentifier.objectPropertyReference, pvRef), cor.getPropertyValues().get(
+                0));
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(1).getPropertyIdentifier());
         assertNull(cor.getPropertyValues().get(1).getPropertyArrayIndex());
-        assertEquals(LifeSafetyState.fault.intValue(),
-                ((Enumerated) cor.getPropertyValues().get(1).getValue()).intValue());
+        assertEquals(LifeSafetyState.fault.intValue(), ((Enumerated) cor.getPropertyValues().get(1).getValue())
+                .intValue());
         assertNull(cor.getPropertyValues().get(1).getPriority());
-        assertEquals(new PropertyValue(PropertyIdentifier.reliability, Reliability.noFaultDetected),
-                cor.getPropertyValues().get(2));
-        assertEquals(new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
-                cor.getPropertyValues().get(3));
+        assertEquals(new PropertyValue(PropertyIdentifier.reliability, Reliability.noFaultDetected), cor
+                .getPropertyValues().get(2));
+        assertEquals(new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)), cor
+                .getPropertyValues().get(3));
 
         //
         // Return to normal
@@ -536,17 +560,17 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(Reliability.noFaultDetected, cor.getReliability());
         assertEquals(new StatusFlags(false, false, false, false), cor.getStatusFlags());
         assertEquals(4, cor.getPropertyValues().size());
-        assertEquals(new PropertyValue(PropertyIdentifier.objectPropertyReference, pvRef),
-                cor.getPropertyValues().get(0));
+        assertEquals(new PropertyValue(PropertyIdentifier.objectPropertyReference, pvRef), cor.getPropertyValues().get(
+                0));
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(1).getPropertyIdentifier());
         assertNull(cor.getPropertyValues().get(1).getPropertyArrayIndex());
-        assertEquals(LifeSafetyState.blocked.intValue(),
-                ((Enumerated) cor.getPropertyValues().get(1).getValue()).intValue());
+        assertEquals(LifeSafetyState.blocked.intValue(), ((Enumerated) cor.getPropertyValues().get(1).getValue())
+                .intValue());
         assertNull(cor.getPropertyValues().get(1).getPriority());
-        assertEquals(new PropertyValue(PropertyIdentifier.reliability, Reliability.noFaultDetected),
-                cor.getPropertyValues().get(2));
-        assertEquals(new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
-                cor.getPropertyValues().get(3));
+        assertEquals(new PropertyValue(PropertyIdentifier.reliability, Reliability.noFaultDetected), cor
+                .getPropertyValues().get(2));
+        assertEquals(new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)), cor
+                .getPropertyValues().get(3));
     }
 
     @Test
@@ -559,9 +583,8 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
 
         //
         // Subscribe for notifications. Doing so should cause an initial notification to be sent.
-        d2.send(rd1,
-                        new SubscribeCOVRequest(new UnsignedInteger(987), lsp.getId(), Boolean.FALSE, new UnsignedInteger(600)))
-                .get();
+        d2.send(rd1, new SubscribeCOVRequest(new UnsignedInteger(987), lsp.getId(), Boolean.FALSE, new UnsignedInteger(
+                600))).get();
         awaitEquals(listener::getNotifCount, 1, 5000);
         CovNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
@@ -569,8 +592,8 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(lsp.getId(), notif.monitoredObjectIdentifier());
         assertEquals(new UnsignedInteger(600), notif.timeRemaining());
         assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, LifeSafetyState.quiet),
-                        new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
-                notif.listOfValues());
+                new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))), notif
+                        .listOfValues());
 
         //
         // Change the present value to send another notification. Advance the clock to test time remaining
@@ -585,8 +608,8 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(lsp.getId(), notif.monitoredObjectIdentifier());
         assertEquals(new UnsignedInteger(480), notif.timeRemaining());
         assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, LifeSafetyState.blocked),
-                        new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
-                notif.listOfValues());
+                new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))), notif
+                        .listOfValues());
     }
 
     @Test

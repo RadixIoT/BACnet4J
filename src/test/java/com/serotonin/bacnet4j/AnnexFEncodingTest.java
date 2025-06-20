@@ -1,25 +1,30 @@
 /*
  * ============================================================================
- * GNU Lesser General Public License
+ * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2006-2009 Serotonin Software Technologies Inc. http://serotoninsoftware.com
- * @author Matthew Lohbihler
+ * Copyright (C) 2006-2009 Radix IoT LLC. All rights reserved.
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j;
 
 import static org.junit.Assert.assertEquals;
@@ -171,10 +176,10 @@ public class AnnexFEncodingTest {
     @Test
     public void e1_1aTest() {
         final AcknowledgeAlarmRequest acknowledgeAlarmRequest = new AcknowledgeAlarmRequest(new UnsignedInteger(1),
-                new ObjectIdentifier(ObjectType.analogInput, 2), EventState.highLimit,
-                new TimeStamp(new UnsignedInteger(16)), new CharacterString(CharacterString.Encodings.ANSI_X3_4, "MDL"),
-                new TimeStamp(
-                        new DateTime(new Date(1992, Month.JUNE, 21, DayOfWeek.UNSPECIFIED), new Time(13, 3, 41, 9))));
+                new ObjectIdentifier(ObjectType.analogInput, 2), EventState.highLimit, new TimeStamp(
+                        new UnsignedInteger(16)), new CharacterString(CharacterString.Encodings.ANSI_X3_4, "MDL"),
+                new TimeStamp(new DateTime(new Date(1992, Month.JUNE, 21, DayOfWeek.UNSPECIFIED), new Time(13, 3, 41,
+                        9))));
 
         final ConfirmedRequest pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED,
                 MaxApduLength.UP_TO_206, (byte) 7, (byte) 0, 0, acknowledgeAlarmRequest);
@@ -198,8 +203,8 @@ public class AnnexFEncodingTest {
         final SequenceOf<PropertyValue> listOfValues = new SequenceOf<>(list);
 
         final ConfirmedCovNotificationRequest confirmedCovNotification = new ConfirmedCovNotificationRequest(
-                new UnsignedInteger(18), new ObjectIdentifier(ObjectType.device, 4),
-                new ObjectIdentifier(ObjectType.analogInput, 10), UnsignedInteger.ZERO, listOfValues);
+                new UnsignedInteger(18), new ObjectIdentifier(ObjectType.device, 4), new ObjectIdentifier(
+                        ObjectType.analogInput, 10), UnsignedInteger.ZERO, listOfValues);
 
         final ConfirmedRequest pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED,
                 MaxApduLength.UP_TO_206, (byte) 15, (byte) 0, 0, confirmedCovNotification);
@@ -222,9 +227,9 @@ public class AnnexFEncodingTest {
 
         final SequenceOf<PropertyValue> listOfValues = new SequenceOf<>(list);
 
-        final UnconfirmedCovNotificationRequest unconfirmedCovNotificationRequest = new UnconfirmedCovNotificationRequest(
-                new UnsignedInteger(18), new ObjectIdentifier(ObjectType.device, 4),
-                new ObjectIdentifier(ObjectType.analogInput, 10), UnsignedInteger.ZERO, listOfValues);
+        final UnconfirmedCovNotificationRequest unconfirmedCovNotificationRequest =
+                new UnconfirmedCovNotificationRequest(new UnsignedInteger(18), new ObjectIdentifier(ObjectType.device,
+                        4), new ObjectIdentifier(ObjectType.analogInput, 10), UnsignedInteger.ZERO, listOfValues);
 
         final UnconfirmedRequest pdu = new UnconfirmedRequest(unconfirmedCovNotificationRequest);
 
@@ -233,19 +238,19 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e1_4aTest() {
-        final ConfirmedEventNotificationRequest confirmedEventNotificationRequest = new ConfirmedEventNotificationRequest(
-                new UnsignedInteger(1), new ObjectIdentifier(ObjectType.device, 4),
-                new ObjectIdentifier(ObjectType.analogInput, 2), new TimeStamp(new UnsignedInteger(16)),
-                new UnsignedInteger(4), new UnsignedInteger(100), EventType.outOfRange, null, NotifyType.alarm,
-                Boolean.TRUE, EventState.normal, EventState.highLimit,
-                new NotificationParameters(new OutOfRangeNotif(new Real(80.1f),
-                        new StatusFlags(true, false, false, false), new Real(1), new Real(80))));
+        final ConfirmedEventNotificationRequest confirmedEventNotificationRequest =
+                new ConfirmedEventNotificationRequest(new UnsignedInteger(1), new ObjectIdentifier(ObjectType.device,
+                        4), new ObjectIdentifier(ObjectType.analogInput, 2), new TimeStamp(new UnsignedInteger(16)),
+                        new UnsignedInteger(4), new UnsignedInteger(100), EventType.outOfRange, null, NotifyType.alarm,
+                        Boolean.TRUE, EventState.normal, EventState.highLimit, new NotificationParameters(
+                                new OutOfRangeNotif(new Real(80.1f), new StatusFlags(true, false, false, false),
+                                        new Real(1), new Real(80))));
 
         final ConfirmedRequest pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED,
                 MaxApduLength.UP_TO_206, (byte) 16, (byte) 0, 0, confirmedEventNotificationRequest);
 
-        compare(pdu, "0002100209011c020000042c000000023e19103f49045964690589009901a900b903ce5e0c42a033331a0"
-                + "4802c3f8000003c42a000005fcf");
+        compare(pdu,
+                "0002100209011c020000042c000000023e19103f49045964690589009901a900b903ce5e0c42a033331a0" + "4802c3f8000003c42a000005fcf");
     }
 
     @Test
@@ -256,10 +261,10 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e1_4cTest() {
-        final AcknowledgeAlarmRequest req = new AcknowledgeAlarmRequest(new UnsignedInteger(1),
-                new ObjectIdentifier(ObjectType.analogInput, 2), EventState.highLimit,
-                new TimeStamp(new UnsignedInteger(16)), new CharacterString("MDL"),
-                new TimeStamp(new DateTime(new Date(1992, Month.JUNE, 21, null), new Time(13, 3, 41, 9))));
+        final AcknowledgeAlarmRequest req = new AcknowledgeAlarmRequest(new UnsignedInteger(1), new ObjectIdentifier(
+                ObjectType.analogInput, 2), EventState.highLimit, new TimeStamp(new UnsignedInteger(16)),
+                new CharacterString("MDL"), new TimeStamp(new DateTime(new Date(1992, Month.JUNE, 21, null), new Time(
+                        13, 3, 41, 9))));
 
         final ConfirmedRequest pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED,
                 MaxApduLength.UP_TO_206, (byte) 7, (byte) 0, 0, req);
@@ -275,18 +280,18 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e1_5Test() {
-        final UnconfirmedEventNotificationRequest unconfirmedEventNotificationRequest = new UnconfirmedEventNotificationRequest(
-                new UnsignedInteger(1), new ObjectIdentifier(ObjectType.device, 9),
-                new ObjectIdentifier(ObjectType.analogInput, 2), new TimeStamp(new UnsignedInteger(16)),
-                new UnsignedInteger(4), new UnsignedInteger(100), EventType.outOfRange, null, NotifyType.alarm,
-                Boolean.TRUE, EventState.normal, EventState.highLimit,
-                new NotificationParameters(new OutOfRangeNotif(new Real(80.1f),
-                        new StatusFlags(true, false, false, false), new Real(1), new Real(80))));
+        final UnconfirmedEventNotificationRequest unconfirmedEventNotificationRequest =
+                new UnconfirmedEventNotificationRequest(new UnsignedInteger(1), new ObjectIdentifier(ObjectType.device,
+                        9), new ObjectIdentifier(ObjectType.analogInput, 2), new TimeStamp(new UnsignedInteger(16)),
+                        new UnsignedInteger(4), new UnsignedInteger(100), EventType.outOfRange, null, NotifyType.alarm,
+                        Boolean.TRUE, EventState.normal, EventState.highLimit, new NotificationParameters(
+                                new OutOfRangeNotif(new Real(80.1f), new StatusFlags(true, false, false, false),
+                                        new Real(1), new Real(80))));
 
         final UnconfirmedRequest pdu = new UnconfirmedRequest(unconfirmedEventNotificationRequest);
 
-        compare(pdu, "100309011c020000092c000000023e19103f49045964690589009901a900b903ce5e0c42a033331a048"
-                + "02c3f8000003c42a000005fcf");
+        compare(pdu,
+                "100309011c020000092c000000023e19103f49045964690589009901a900b903ce5e0c42a033331a048" + "02c3f8000003c42a000005fcf");
     }
 
     @Test
@@ -328,15 +333,15 @@ public class AnnexFEncodingTest {
     @Test
     public void e1_7bTest() {
         final List<GetEnrollmentSummaryAck.EnrollmentSummary> enrollmentSummaries = new ArrayList<>();
-        enrollmentSummaries
-                .add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(ObjectType.analogInput, 2),
-                        EventType.outOfRange, EventState.highLimit, new UnsignedInteger(100), new UnsignedInteger(4)));
-        enrollmentSummaries
-                .add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(ObjectType.eventEnrollment, 6),
-                        EventType.changeOfState, EventState.normal, new UnsignedInteger(50), new UnsignedInteger(2)));
+        enrollmentSummaries.add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(
+                ObjectType.analogInput, 2), EventType.outOfRange, EventState.highLimit, new UnsignedInteger(100),
+                new UnsignedInteger(4)));
+        enrollmentSummaries.add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(
+                ObjectType.eventEnrollment, 6), EventType.changeOfState, EventState.normal, new UnsignedInteger(50),
+                new UnsignedInteger(2)));
 
-        final GetEnrollmentSummaryAck getEnrollmentSummaryAck = new GetEnrollmentSummaryAck(
-                new SequenceOf<>(enrollmentSummaries));
+        final GetEnrollmentSummaryAck getEnrollmentSummaryAck = new GetEnrollmentSummaryAck(new SequenceOf<>(
+                enrollmentSummaries));
 
         final ComplexACK pdu = new ComplexACK(false, false, (byte) 1, 0, 0, getEnrollmentSummaryAck);
 
@@ -346,10 +351,9 @@ public class AnnexFEncodingTest {
     @Test
     public void e1_7cTest() {
         final GetEnrollmentSummaryRequest getEnrollmentSummaryRequest = new GetEnrollmentSummaryRequest(
-                GetEnrollmentSummaryRequest.AcknowledgmentFilter.all,
-                new RecipientProcess(new Recipient(new ObjectIdentifier(ObjectType.device, 17)),
-                        new UnsignedInteger(9)),
-                null, null, new PriorityFilter(new UnsignedInteger(6), new UnsignedInteger(10)), null);
+                GetEnrollmentSummaryRequest.AcknowledgmentFilter.all, new RecipientProcess(new Recipient(
+                        new ObjectIdentifier(ObjectType.device, 17)), new UnsignedInteger(9)), null, null,
+                new PriorityFilter(new UnsignedInteger(6), new UnsignedInteger(10)), null);
 
         final ConfirmedRequest pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED,
                 MaxApduLength.UP_TO_206, (byte) 2, (byte) 0, 0, getEnrollmentSummaryRequest);
@@ -360,21 +364,21 @@ public class AnnexFEncodingTest {
     @Test
     public void e1_7dTest() {
         final List<GetEnrollmentSummaryAck.EnrollmentSummary> enrollmentSummaries = new ArrayList<>();
-        enrollmentSummaries
-                .add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(ObjectType.analogInput, 2),
-                        EventType.outOfRange, EventState.normal, new UnsignedInteger(8), new UnsignedInteger(4)));
-        enrollmentSummaries
-                .add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(ObjectType.analogInput, 3),
-                        EventType.outOfRange, EventState.normal, new UnsignedInteger(8), new UnsignedInteger(4)));
-        enrollmentSummaries
-                .add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(ObjectType.analogInput, 4),
-                        EventType.outOfRange, EventState.normal, new UnsignedInteger(8), new UnsignedInteger(4)));
-        enrollmentSummaries
-                .add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(ObjectType.eventEnrollment, 7),
-                        EventType.floatingLimit, EventState.normal, new UnsignedInteger(3), new UnsignedInteger(8)));
+        enrollmentSummaries.add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(
+                ObjectType.analogInput, 2), EventType.outOfRange, EventState.normal, new UnsignedInteger(8),
+                new UnsignedInteger(4)));
+        enrollmentSummaries.add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(
+                ObjectType.analogInput, 3), EventType.outOfRange, EventState.normal, new UnsignedInteger(8),
+                new UnsignedInteger(4)));
+        enrollmentSummaries.add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(
+                ObjectType.analogInput, 4), EventType.outOfRange, EventState.normal, new UnsignedInteger(8),
+                new UnsignedInteger(4)));
+        enrollmentSummaries.add(new GetEnrollmentSummaryAck.EnrollmentSummary(new ObjectIdentifier(
+                ObjectType.eventEnrollment, 7), EventType.floatingLimit, EventState.normal, new UnsignedInteger(3),
+                new UnsignedInteger(8)));
 
-        final GetEnrollmentSummaryAck getEnrollmentSummaryAck = new GetEnrollmentSummaryAck(
-                new SequenceOf<>(enrollmentSummaries));
+        final GetEnrollmentSummaryAck getEnrollmentSummaryAck = new GetEnrollmentSummaryAck(new SequenceOf<>(
+                enrollmentSummaries));
 
         final ComplexACK pdu = new ComplexACK(false, false, (byte) 2, 0, 0, getEnrollmentSummaryAck);
 
@@ -411,16 +415,16 @@ public class AnnexFEncodingTest {
                 new BACnetArray<>(new TimeStamp(new Time(15, 40, 0, 0)), new TimeStamp(new Time(255, 255, 255, 255)),
                         new TimeStamp(new Time(15, 45, 30, 30))), //
                 NotifyType.alarm, //
-                new EventTransitionBits(true, true, true),
-                new BACnetArray<>(new UnsignedInteger(15), new UnsignedInteger(15), new UnsignedInteger(20))));
+                new EventTransitionBits(true, true, true), new BACnetArray<>(new UnsignedInteger(15),
+                        new UnsignedInteger(15), new UnsignedInteger(20))));
 
-        final GetEventInformationAck getEventInformationAck = new GetEventInformationAck(
-                new SequenceOf<>(eventSummaries), Boolean.FALSE);
+        final GetEventInformationAck getEventInformationAck = new GetEventInformationAck(new SequenceOf<>(
+                eventSummaries), Boolean.FALSE);
 
         final ComplexACK pdu = new ComplexACK(false, false, (byte) 1, 0, 0, getEventInformationAck);
 
-        compare(pdu, "30011d0e0c0000000219032a05603e0c0f2300140cffffffff0cffffffff3f49005a05e06e210f210f21146f0"
-                + "c0000000319002a05c03e0c0f2800000cffffffff0c0f2d1e1e3f49005a05e06e210f210f21146f0f1900");
+        compare(pdu,
+                "30011d0e0c0000000219032a05603e0c0f2300140cffffffff0cffffffff3f49005a05e06e210f210f21146f0" + "c0000000319002a05c03e0c0f2800000cffffffff0c0f2d1e1e3f49005a05e06e210f210f21146f0f1900");
     }
 
     @Test
@@ -479,27 +483,21 @@ public class AnnexFEncodingTest {
     @Test
     public void e1_12aTest() {
         final SubscribeCOVPropertyMultipleRequest req = new SubscribeCOVPropertyMultipleRequest(new Unsigned32(18),
-                Boolean.TRUE,
-                new UnsignedInteger(
-                        60),
-                new UnsignedInteger(5),
-                new SequenceOf<>(
+                Boolean.TRUE, new UnsignedInteger(60), new UnsignedInteger(5), new SequenceOf<>(
                         new CovSubscriptionSpecification(new ObjectIdentifier(ObjectType.analogInput, 10),
-                                new SequenceOf<>(
-                                        new CovReference(new PropertyReference(PropertyIdentifier.presentValue),
-                                                new Real(1), Boolean.TRUE),
-                                        new CovReference(new PropertyReference(PropertyIdentifier.reliability), null,
-                                                Boolean.FALSE))),
-                        new CovSubscriptionSpecification(new ObjectIdentifier(ObjectType.analogOutput, 8),
-                                new SequenceOf<>(
-                                        new CovReference(new PropertyReference(PropertyIdentifier.presentValue),
-                                                new Real(1), Boolean.TRUE)))));
+                                new SequenceOf<>(new CovReference(new PropertyReference(
+                                        PropertyIdentifier.presentValue), new Real(1), Boolean.TRUE), new CovReference(
+                                                new PropertyReference(PropertyIdentifier.reliability), null,
+                                                Boolean.FALSE))), new CovSubscriptionSpecification(new ObjectIdentifier(
+                                                        ObjectType.analogOutput, 8), new SequenceOf<>(new CovReference(
+                                                                new PropertyReference(PropertyIdentifier.presentValue),
+                                                                new Real(1), Boolean.TRUE)))));
 
         final ConfirmedRequest pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED,
                 MaxApduLength.UP_TO_206, (byte) 15, (byte) 0, 0, req);
 
-        compare(pdu, "00020f1e09121901293c39054e0c0000000a1e0e09550f1c3f80000029010e09670f29001f0c004000081e0e" + ""
-                + "09550f1c3f80000029011f4f");
+        compare(pdu,
+                "00020f1e09121901293c39054e0c0000000a1e0e09550f1c3f80000029010e09670f29001f0c004000081e0e" + "" + "09550f1c3f80000029011f4f");
     }
 
     @Test
@@ -510,16 +508,16 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e1_13aTest() {
-        final ConfirmedCovNotificationMultipleRequest req = new ConfirmedCovNotificationMultipleRequest(
-                new Unsigned32(18), new ObjectIdentifier(ObjectType.device, 4), new UnsignedInteger(35),
-                new DateTime(new Date(2013, Month.JUNE, 3, DayOfWeek.MONDAY), new Time(3, 23, 53, 47)),
-                new SequenceOf<>(
-                        new CovNotification(new ObjectIdentifier(ObjectType.analogInput, 10),
-                                new SequenceOf<>(new CovNotificationValue(PropertyIdentifier.presentValue, null,
-                                        new Real(65), new Time(3, 23, 52, 0)))),
-                        new CovNotification(new ObjectIdentifier(ObjectType.analogOutput, 5),
-                                new SequenceOf<>(new CovNotificationValue(PropertyIdentifier.presentValue, null,
-                                        new Real(80.1F), null)))));
+        final ConfirmedCovNotificationMultipleRequest req = new ConfirmedCovNotificationMultipleRequest(new Unsigned32(
+                18), new ObjectIdentifier(ObjectType.device, 4), new UnsignedInteger(35), new DateTime(new Date(2013,
+                        Month.JUNE, 3, DayOfWeek.MONDAY), new Time(3, 23, 53, 47)), new SequenceOf<>(
+                                new CovNotification(new ObjectIdentifier(ObjectType.analogInput, 10), new SequenceOf<>(
+                                        new CovNotificationValue(PropertyIdentifier.presentValue, null, new Real(65),
+                                                new Time(3, 23, 52, 0)))), new CovNotification(new ObjectIdentifier(
+                                                        ObjectType.analogOutput, 5), new SequenceOf<>(
+                                                                new CovNotificationValue(
+                                                                        PropertyIdentifier.presentValue, null, new Real(
+                                                                                80.1F), null)))));
 
         final ConfirmedRequest pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED,
                 MaxApduLength.UP_TO_206, (byte) 15, (byte) 0, 0, req);
@@ -528,10 +526,9 @@ public class AnnexFEncodingTest {
         // There are multiple differences with the spec here.
         // 1) ---------------------------27
         // 2) -----------------------------------------------------------------------------------2e
-        compare(pdu,
-                "00020f1f09121c0200000429233ea471060301b40317352f3f4e0c0000000a1e09552e44428200002f3c03173400"
-                        // 3) ---------------------------2e
-                        + "1f0c004000051e09552e4442a033332f1f4f");
+        compare(pdu, "00020f1f09121c0200000429233ea471060301b40317352f3f4e0c0000000a1e09552e44428200002f3c03173400"
+        // 3) ---------------------------2e
+                + "1f0c004000051e09552e4442a033332f1f4f");
     }
 
     @Test
@@ -568,8 +565,8 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e2_1bTest() {
-        final AcknowledgementService service = new AtomicReadFileAck(Boolean.FALSE,
-                new StreamAccessAck(new SignedInteger(0), new OctetString("Chiller01 On-Time=4.3 Hours".getBytes())));
+        final AcknowledgementService service = new AtomicReadFileAck(Boolean.FALSE, new StreamAccessAck(
+                new SignedInteger(0), new OctetString("Chiller01 On-Time=4.3 Hours".getBytes())));
         final APDU pdu = new ComplexACK(false, false, (byte) 0, 0, 0, service);
         compare(pdu, "300006100E3100651B4368696C6C65723031204F6E2D54696D653D342E3320486F7572730F");
     }
@@ -588,8 +585,8 @@ public class AnnexFEncodingTest {
         final List<OctetString> strings = new ArrayList<>();
         strings.add(new OctetString("12:00,45.6".getBytes()));
         strings.add(new OctetString("12:15,44.8".getBytes()));
-        final AcknowledgementService service = new AtomicReadFileAck(Boolean.TRUE,
-                new RecordAccessAck(new SignedInteger(14), new UnsignedInteger(2), new SequenceOf<>(strings)));
+        final AcknowledgementService service = new AtomicReadFileAck(Boolean.TRUE, new RecordAccessAck(
+                new SignedInteger(14), new UnsignedInteger(2), new SequenceOf<>(strings)));
         final APDU pdu = new ComplexACK(false, false, (byte) 18, 0, 0, service);
         compare(pdu, "301206111E310E2102650A31323A30302C34352E36650A31323A31352C34342E381F");
     }
@@ -638,8 +635,8 @@ public class AnnexFEncodingTest {
         propertyReferences.add(new PropertyReference(PropertyIdentifier.reliability, null));
 
         final List<ReadAccessSpecification> elements = new ArrayList<>();
-        elements.add(new ReadAccessSpecification(new ObjectIdentifier(ObjectType.analogInput, 15),
-                new SequenceOf<>(propertyReferences)));
+        elements.add(new ReadAccessSpecification(new ObjectIdentifier(ObjectType.analogInput, 15), new SequenceOf<>(
+                propertyReferences)));
         final ConfirmedRequestService service = new AddListElementRequest(new ObjectIdentifier(ObjectType.group, 3),
                 PropertyIdentifier.listOfGroupMembers, null, new SequenceOf<>(elements));
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_206,
@@ -716,12 +713,12 @@ public class AnnexFEncodingTest {
     @Test
     public void e3_3aTest() {
         final List<PropertyValue> propertyValues = new ArrayList<>();
-        propertyValues.add(new PropertyValue(PropertyIdentifier.objectName, null,
-                new CharacterString(CharacterString.Encodings.ANSI_X3_4, "Trend 1"), null));
-        propertyValues
-                .add(new PropertyValue(PropertyIdentifier.fileAccessMethod, null, FileAccessMethod.recordAccess, null));
-        final ConfirmedRequestService service = new CreateObjectRequest(ObjectType.file,
-                new SequenceOf<>(propertyValues));
+        propertyValues.add(new PropertyValue(PropertyIdentifier.objectName, null, new CharacterString(
+                CharacterString.Encodings.ANSI_X3_4, "Trend 1"), null));
+        propertyValues.add(new PropertyValue(PropertyIdentifier.fileAccessMethod, null, FileAccessMethod.recordAccess,
+                null));
+        final ConfirmedRequestService service = new CreateObjectRequest(ObjectType.file, new SequenceOf<>(
+                propertyValues));
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_1024,
                 (byte) 86, (byte) 0, 0, service);
         compare(pdu, "0004560A0E090A0F1E094D2E7508005472656E6420312F09292E91002F1F");
@@ -800,8 +797,8 @@ public class AnnexFEncodingTest {
         final List<Result> results = new ArrayList<>();
         results.add(new Result(PropertyIdentifier.presentValue, null, new Real(72.3f)));
         results.add(new Result(PropertyIdentifier.reliability, null, Reliability.noFaultDetected));
-        readAccessResults
-                .add(new ReadAccessResult(new ObjectIdentifier(ObjectType.analogInput, 16), new SequenceOf<>(results)));
+        readAccessResults.add(new ReadAccessResult(new ObjectIdentifier(ObjectType.analogInput, 16), new SequenceOf<>(
+                results)));
         final AcknowledgementService service = new ReadPropertyMultipleAck(new SequenceOf<>(readAccessResults));
         final APDU pdu = new ComplexACK(false, false, (byte) 241, 0, 0, service);
         compare(pdu, "30F10E0C000000101E29554E444290999A4F29674E91004F1F");
@@ -838,19 +835,19 @@ public class AnnexFEncodingTest {
 
         List<Result> results = new ArrayList<>();
         results.add(new Result(PropertyIdentifier.presentValue, null, new Real(42.3f)));
-        readAccessResults
-                .add(new ReadAccessResult(new ObjectIdentifier(ObjectType.analogInput, 33), new SequenceOf<>(results)));
+        readAccessResults.add(new ReadAccessResult(new ObjectIdentifier(ObjectType.analogInput, 33), new SequenceOf<>(
+                results)));
 
         results = new ArrayList<>();
-        results.add(new Result(PropertyIdentifier.presentValue, null,
-                new ErrorClassAndCode(ErrorClass.object, ErrorCode.unknownObject)));
-        readAccessResults
-                .add(new ReadAccessResult(new ObjectIdentifier(ObjectType.analogInput, 50), new SequenceOf<>(results)));
+        results.add(new Result(PropertyIdentifier.presentValue, null, new ErrorClassAndCode(ErrorClass.object,
+                ErrorCode.unknownObject)));
+        readAccessResults.add(new ReadAccessResult(new ObjectIdentifier(ObjectType.analogInput, 50), new SequenceOf<>(
+                results)));
 
         results = new ArrayList<>();
         results.add(new Result(PropertyIdentifier.presentValue, null, new Real(435.7f)));
-        readAccessResults
-                .add(new ReadAccessResult(new ObjectIdentifier(ObjectType.analogInput, 35), new SequenceOf<>(results)));
+        readAccessResults.add(new ReadAccessResult(new ObjectIdentifier(ObjectType.analogInput, 35), new SequenceOf<>(
+                results)));
 
         final AcknowledgementService service = new ReadPropertyMultipleAck(new SequenceOf<>(readAccessResults));
         final APDU pdu = new ComplexACK(false, false, (byte) 2, 0, 0, service);
@@ -861,9 +858,8 @@ public class AnnexFEncodingTest {
     @Test
     public void e3_8aTest() {
         final ReadRangeRequest req = new ReadRangeRequest(new ObjectIdentifier(ObjectType.trendLog, 1),
-                PropertyIdentifier.logBuffer, null,
-                new ByTime(new DateTime(new Date(1998, Month.MARCH, 23, DayOfWeek.MONDAY), new Time(19, 52, 34, 0)),
-                        new SignedInteger(4)));
+                PropertyIdentifier.logBuffer, null, new ByTime(new DateTime(new Date(1998, Month.MARCH, 23,
+                        DayOfWeek.MONDAY), new Time(19, 52, 34, 0)), new SignedInteger(4)));
         final APDU pdu = new ConfirmedRequest(false, false, true, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_206,
                 (byte) 1, (byte) 0, 0, req);
         compare(pdu, "0202011a0c0500000119837ea462031701b41334220031047f");
@@ -873,28 +869,22 @@ public class AnnexFEncodingTest {
     public void e3_8bTest() {
         final AcknowledgementService service = new ReadRangeAck(new ObjectIdentifier(ObjectType.trendLog, 1),
                 PropertyIdentifier.logBuffer, null, new ResultFlags(true, true, false), new UnsignedInteger(2),
-                new SequenceOf<>(
-                        new LogRecord(
-                                new DateTime(new Date(1998, Month.MARCH, 23, DayOfWeek.MONDAY),
-                                        new Time(19, 54, 27, 0)),
-                                false, new Real(18), new StatusFlags(false, false, false, false)),
-                        new LogRecord(
-                                new DateTime(new Date(1998, Month.MARCH, 23, DayOfWeek.MONDAY),
-                                        new Time(19, 56, 27, 0)),
-                                false, new Real(18.1f), new StatusFlags(false, false, false, false))),
+                new SequenceOf<>(new LogRecord(new DateTime(new Date(1998, Month.MARCH, 23, DayOfWeek.MONDAY), new Time(
+                        19, 54, 27, 0)), false, new Real(18), new StatusFlags(false, false, false, false)),
+                        new LogRecord(new DateTime(new Date(1998, Month.MARCH, 23, DayOfWeek.MONDAY), new Time(19, 56,
+                                27, 0)), false, new Real(18.1f), new StatusFlags(false, false, false, false))),
                 new UnsignedInteger(79201));
 
         final APDU pdu = new ComplexACK(false, false, (byte) 1, 0, 0, service);
 
-        compare(pdu, "30011a0c0500000119833a05c049025e0ea462031701b413361b000f1e2c419000001f2a04000ea462031701" + ""
-                + "b413381b000f1e2c4190cccd1f2a04005f6b013561");
+        compare(pdu,
+                "30011a0c0500000119833a05c049025e0ea462031701b413361b000f1e2c419000001f2a04000ea462031701" + "" + "b413381b000f1e2c4190cccd1f2a04005f6b013561");
     }
 
     @Test
     public void e3_9aTest() {
-        final ConfirmedRequestService service = new WritePropertyRequest(
-                new ObjectIdentifier(ObjectType.analogValue, 1), PropertyIdentifier.presentValue, null, new Real(180),
-                null);
+        final ConfirmedRequestService service = new WritePropertyRequest(new ObjectIdentifier(ObjectType.analogValue,
+                1), PropertyIdentifier.presentValue, null, new Real(180), null);
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_1024,
                 (byte) 89, (byte) 0, 0, service);
         compare(pdu, "0004590F0C0080000119553E44433400003F");
@@ -927,8 +917,8 @@ public class AnnexFEncodingTest {
         final ConfirmedRequestService service = new WritePropertyMultipleRequest(new SequenceOf<>(writeAccessSpecs));
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_1024,
                 (byte) 1, (byte) 0, 0, service);
-        compare(pdu, "000401100C008000051E09552E44428600002F1F0C008000061E09552E44428600002F1F0C008000071E09552E4442"
-                + "9000002F1F");
+        compare(pdu,
+                "000401100C008000051E09552E44428600002F1F0C008000061E09552E44428600002F1F0C008000071E09552E4442" + "9000002F1F");
     }
 
     @Test
@@ -940,10 +930,9 @@ public class AnnexFEncodingTest {
     @Test
     public void e3_11Test() {
         final WriteGroupRequest req = new WriteGroupRequest(new Unsigned32(23), new UnsignedInteger(8),
-                new SequenceOf<>(
-                        new GroupChannelValue(new Unsigned16(268), null, new ChannelValue(new UnsignedInteger(1111))),
-                        new GroupChannelValue(new Unsigned16(269), null, new ChannelValue(new UnsignedInteger(2222)))),
-                null);
+                new SequenceOf<>(new GroupChannelValue(new Unsigned16(268), null, new ChannelValue(new UnsignedInteger(
+                        1111))), new GroupChannelValue(new Unsigned16(269), null, new ChannelValue(new UnsignedInteger(
+                                2222)))), null);
         compare(new UnconfirmedRequest(req), "100a091719082e0a010c2204570a010d2208ae2f");
     }
 
@@ -951,19 +940,16 @@ public class AnnexFEncodingTest {
     public void e3_12Test() {
         final WriteGroupRequest req = new WriteGroupRequest(new Unsigned32(23), new UnsignedInteger(8),
                 new SequenceOf<>(new GroupChannelValue(new Unsigned16(12), null, new ChannelValue(new Real(67))),
-                        new GroupChannelValue(new Unsigned16(13), null, new ChannelValue(new Real(72)))),
-                Boolean.TRUE);
+                        new GroupChannelValue(new Unsigned16(13), null, new ChannelValue(new Real(72)))), Boolean.TRUE);
         compare(new UnconfirmedRequest(req), "100a091719082e090c4442860000090d44429000002f3901");
     }
 
     @Test
     public void e3_13Test() {
         final WriteGroupRequest req = new WriteGroupRequest(new Unsigned32(23), new UnsignedInteger(8),
-                new SequenceOf<>(
-                        new GroupChannelValue(new Unsigned16(12), null, new ChannelValue(new UnsignedInteger(1111))),
-                        new GroupChannelValue(new Unsigned16(13), new UnsignedInteger(10),
-                                new ChannelValue(new CharacterString("ABC")))),
-                null);
+                new SequenceOf<>(new GroupChannelValue(new Unsigned16(12), null, new ChannelValue(new UnsignedInteger(
+                        1111))), new GroupChannelValue(new Unsigned16(13), new UnsignedInteger(10), new ChannelValue(
+                                new CharacterString("ABC")))), null);
         compare(new UnconfirmedRequest(req), "100a091719082e090c220457090d190a74004142432f");
     }
 
@@ -984,7 +970,7 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e4_2aTest() {
-        final EncodedValue parameters = new EncodedValue(new Real(72.4f), new OctetString(new byte[] { 0x16, 0x49 }));
+        final EncodedValue parameters = new EncodedValue(new Real(72.4f), new OctetString(new byte[] {0x16, 0x49}));
         final ConfirmedRequestService service = new ConfirmedPrivateTransferRequest(new UnsignedInteger(25),
                 new UnsignedInteger(8), parameters);
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_1024,
@@ -1002,7 +988,7 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e4_3Test() {
-        final EncodedValue parameters = new EncodedValue(new Real(72.4f), new OctetString(new byte[] { 0x16, 0x49 }));
+        final EncodedValue parameters = new EncodedValue(new Real(72.4f), new OctetString(new byte[] {0x16, 0x49}));
         final UnconfirmedRequestService service = new UnconfirmedPrivateTransferRequest(new UnsignedInteger(25),
                 new UnsignedInteger(8), parameters);
         final APDU pdu = new UnconfirmedRequest(service);
@@ -1026,9 +1012,9 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e4_5aTest() {
-        final ConfirmedRequestService service = new ConfirmedTextMessageRequest(
-                new ObjectIdentifier(ObjectType.device, 5), MessagePriority.normal,
-                new CharacterString(CharacterString.Encodings.ANSI_X3_4, "PM required for PUMP347"));
+        final ConfirmedRequestService service = new ConfirmedTextMessageRequest(new ObjectIdentifier(ObjectType.device,
+                5), MessagePriority.normal, new CharacterString(CharacterString.Encodings.ANSI_X3_4,
+                        "PM required for PUMP347"));
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_128,
                 (byte) 3, (byte) 0, 0, service);
         compare(pdu, "000103130C0200000529003D1800504D20726571756972656420666F722050554D50333437");
@@ -1042,25 +1028,25 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e4_6Test() {
-        final UnconfirmedRequestService service = new UnconfirmedTextMessageRequest(
-                new ObjectIdentifier(ObjectType.device, 5), MessagePriority.normal,
-                new CharacterString(CharacterString.Encodings.ANSI_X3_4, "PM required for PUMP347"));
+        final UnconfirmedRequestService service = new UnconfirmedTextMessageRequest(new ObjectIdentifier(
+                ObjectType.device, 5), MessagePriority.normal, new CharacterString(CharacterString.Encodings.ANSI_X3_4,
+                        "PM required for PUMP347"));
         final APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "10050C0200000529003D1800504D20726571756972656420666F722050554D50333437");
     }
 
     @Test
     public void e4_7Test() {
-        final UnconfirmedRequestService service = new TimeSynchronizationRequest(
-                new DateTime(new Date(1992, Month.NOVEMBER, 17, DayOfWeek.UNSPECIFIED), new Time(22, 45, 30, 70)));
+        final UnconfirmedRequestService service = new TimeSynchronizationRequest(new DateTime(new Date(1992,
+                Month.NOVEMBER, 17, DayOfWeek.UNSPECIFIED), new Time(22, 45, 30, 70)));
         final APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "1006A45C0B11FFB4162D1E46");
     }
 
     @Test
     public void e4_8aTest() {
-        final UnconfirmedRequestService service = new WhoHasRequest(null,
-                new CharacterString(CharacterString.Encodings.ANSI_X3_4, "OATemp"));
+        final UnconfirmedRequestService service = new WhoHasRequest(null, new CharacterString(
+                CharacterString.Encodings.ANSI_X3_4, "OATemp"));
         final APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "10073D07004F4154656D70");
     }
@@ -1068,16 +1054,16 @@ public class AnnexFEncodingTest {
     @Test
     public void e4_8bTest() {
         final UnconfirmedRequestService service = new IHaveRequest(new ObjectIdentifier(ObjectType.device, 8),
-                new ObjectIdentifier(ObjectType.analogInput, 3),
-                new CharacterString(CharacterString.Encodings.ANSI_X3_4, "OATemp"));
+                new ObjectIdentifier(ObjectType.analogInput, 3), new CharacterString(
+                        CharacterString.Encodings.ANSI_X3_4, "OATemp"));
         final APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "1001C402000008C4000000037507004F4154656D70");
     }
 
     @Test
     public void e4_8cTest() {
-        final UnconfirmedRequestService service = new WhoHasRequest(null,
-                new ObjectIdentifier(ObjectType.analogInput, 3));
+        final UnconfirmedRequestService service = new WhoHasRequest(null, new ObjectIdentifier(ObjectType.analogInput,
+                3));
         final APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "10072C00000003");
     }
@@ -1085,8 +1071,8 @@ public class AnnexFEncodingTest {
     @Test
     public void e4_8dTest() {
         final UnconfirmedRequestService service = new IHaveRequest(new ObjectIdentifier(ObjectType.device, 8),
-                new ObjectIdentifier(ObjectType.analogInput, 3),
-                new CharacterString(CharacterString.Encodings.ANSI_X3_4, "OATemp"));
+                new ObjectIdentifier(ObjectType.analogInput, 3), new CharacterString(
+                        CharacterString.Encodings.ANSI_X3_4, "OATemp"));
         final APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "1001C402000008C4000000037507004F4154656D70");
     }
@@ -1179,8 +1165,8 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e5_eTest() {
-        final ConfirmedRequestService service = new VtDataRequest(new UnsignedInteger(29),
-                new OctetString("FRED\r".getBytes()), UnsignedInteger.ZERO);
+        final ConfirmedRequestService service = new VtDataRequest(new UnsignedInteger(29), new OctetString("FRED\r"
+                .getBytes()), UnsignedInteger.ZERO);
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_128,
                 (byte) 82, (byte) 0, 0, service);
         compare(pdu, "00015217211D6505465245440D2100");
@@ -1195,8 +1181,8 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e5_gTest() {
-        final ConfirmedRequestService service = new VtDataRequest(new UnsignedInteger(5),
-                new OctetString("FRED\r\nEnter Password:".getBytes()), new UnsignedInteger(1));
+        final ConfirmedRequestService service = new VtDataRequest(new UnsignedInteger(5), new OctetString(
+                "FRED\r\nEnter Password:".getBytes()), new UnsignedInteger(1));
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_128,
                 (byte) 83, (byte) 0, 0, service);
         compare(pdu, "0001531721056515465245440D0A456E7465722050617373776F72643A2101");

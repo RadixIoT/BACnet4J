@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.service.confirmed;
 
 import static org.junit.Assert.assertEquals;
@@ -52,8 +79,8 @@ public class ReadPropertyMultipleRequestTest {
 
     @Test
     public void allProperties() throws BACnetException {
-        final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(
-                new ReadAccessSpecification(g0.getId(), PropertyIdentifier.all));
+        final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(new ReadAccessSpecification(
+                g0.getId(), PropertyIdentifier.all));
         final ReadPropertyMultipleAck ack = (ReadPropertyMultipleAck) new ReadPropertyMultipleRequest(
                 listOfReadAccessSpecs).handle(localDevice, addr);
 
@@ -66,15 +93,15 @@ public class ReadPropertyMultipleRequestTest {
         assertEquals(new Result(PropertyIdentifier.listOfGroupMembers, null, new SequenceOf<>()), results.get(1));
         assertEquals(new Result(PropertyIdentifier.presentValue, null, new SequenceOf<>()), results.get(2));
         assertEquals(new Result(PropertyIdentifier.objectIdentifier, null, g0.getId()), results.get(3));
-        assertEquals(new Result(PropertyIdentifier.description, null, new CharacterString("my description")),
-                results.get(4));
+        assertEquals(new Result(PropertyIdentifier.description, null, new CharacterString("my description")), results
+                .get(4));
         assertEquals(new Result(PropertyIdentifier.objectName, null, new CharacterString("g0")), results.get(5));
     }
 
     @Test
     public void requiredProperties() throws BACnetException {
-        final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(
-                new ReadAccessSpecification(g0.getId(), PropertyIdentifier.required));
+        final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(new ReadAccessSpecification(
+                g0.getId(), PropertyIdentifier.required));
         final ReadPropertyMultipleAck ack = (ReadPropertyMultipleAck) new ReadPropertyMultipleRequest(
                 listOfReadAccessSpecs).handle(localDevice, addr);
 
@@ -92,8 +119,8 @@ public class ReadPropertyMultipleRequestTest {
 
     @Test
     public void optionalProperties() throws BACnetException {
-        final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(
-                new ReadAccessSpecification(g0.getId(), PropertyIdentifier.optional));
+        final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(new ReadAccessSpecification(
+                g0.getId(), PropertyIdentifier.optional));
         final ReadPropertyMultipleAck ack = (ReadPropertyMultipleAck) new ReadPropertyMultipleRequest(
                 listOfReadAccessSpecs).handle(localDevice, addr);
 
@@ -102,37 +129,37 @@ public class ReadPropertyMultipleRequestTest {
         assertEquals(g0.getId(), readAccessResults.get(0).getObjectIdentifier());
         final List<Result> results = readAccessResults.get(0).getListOfResults().getValues();
         assertEquals(1, results.size());
-        assertEquals(new Result(PropertyIdentifier.description, null, new CharacterString("my description")),
-                results.get(0));
+        assertEquals(new Result(PropertyIdentifier.description, null, new CharacterString("my description")), results
+                .get(0));
     }
 
     @Test // 15.7.2 and standard test 135.1-2013 9.18.1.3
     public void uninitializedDeviceId() throws BACnetException {
-        SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(
-                new ReadAccessSpecification(new ObjectIdentifier(ObjectType.device, ObjectIdentifier.UNINITIALIZED), PropertyIdentifier.vendorIdentifier));
+        SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(new ReadAccessSpecification(
+                new ObjectIdentifier(ObjectType.device, ObjectIdentifier.UNINITIALIZED),
+                PropertyIdentifier.vendorIdentifier));
 
         ReadPropertyMultipleAck ack = (ReadPropertyMultipleAck) new ReadPropertyMultipleRequest(listOfReadAccessSpecs)
                 .handle(localDevice, addr);
 
         //The instance number of the localdevice must be sent if a request is made to the instance 0x3FFFFF (unitialized).
         for (ReadAccessResult listOfReadAccessResult : ack.getListOfReadAccessResults()) {
-            assertEquals(new ObjectIdentifier(ObjectType.device, localDevice.getInstanceNumber()), listOfReadAccessResult.getObjectIdentifier());
+            assertEquals(new ObjectIdentifier(ObjectType.device, localDevice.getInstanceNumber()),
+                    listOfReadAccessResult.getObjectIdentifier());
         }
     }
-    
+
     @Test // BTL Test 9.20.1.6
     public void partialErrorProperties() throws BACnetException {
         //Property "description" exist in groupobject
         //Property "accessDoors" does not exist in groupobject
         //Object "analogInput" does not exist in device
-        final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(
-                new ReadAccessSpecification(g0.getId(),
-                        new SequenceOf<>(new PropertyReference(PropertyIdentifier.description),
-                                new PropertyReference(PropertyIdentifier.accessDoors))),
-                new ReadAccessSpecification(new ObjectIdentifier(ObjectType.analogInput, 0),
-                        new SequenceOf<>(new PropertyReference(PropertyIdentifier.description),
-                                new PropertyReference(PropertyIdentifier.objectName)))
-        );
+        final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(new ReadAccessSpecification(
+                g0.getId(), new SequenceOf<>(new PropertyReference(PropertyIdentifier.description),
+                        new PropertyReference(PropertyIdentifier.accessDoors))), new ReadAccessSpecification(
+                                new ObjectIdentifier(ObjectType.analogInput, 0), new SequenceOf<>(new PropertyReference(
+                                        PropertyIdentifier.description), new PropertyReference(
+                                                PropertyIdentifier.objectName))));
 
         final ReadPropertyMultipleAck ack = (ReadPropertyMultipleAck) new ReadPropertyMultipleRequest(
                 listOfReadAccessSpecs).handle(localDevice, addr);
@@ -143,14 +170,18 @@ public class ReadPropertyMultipleRequestTest {
         assertEquals(g0.getId(), readAccessResults.get(0).getObjectIdentifier());
         final List<Result> results = readAccessResults.get(0).getListOfResults().getValues();
         assertEquals(2, results.size());
-        assertEquals(new Result(PropertyIdentifier.description, null, new CharacterString("my description")), results.get(0));
-        assertEquals(new Result(PropertyIdentifier.accessDoors, null, new ErrorClassAndCode(ErrorClass.property, ErrorCode.unknownProperty)), results.get(1));
+        assertEquals(new Result(PropertyIdentifier.description, null, new CharacterString("my description")), results
+                .get(0));
+        assertEquals(new Result(PropertyIdentifier.accessDoors, null, new ErrorClassAndCode(ErrorClass.property,
+                ErrorCode.unknownProperty)), results.get(1));
         //spec 1
         assertEquals(new ObjectIdentifier(ObjectType.analogInput, 0), readAccessResults.get(1).getObjectIdentifier());
         final List<Result> results1 = readAccessResults.get(1).getListOfResults().getValues();
         assertEquals(2, results1.size());
-        assertEquals(new Result(PropertyIdentifier.description, null, new ErrorClassAndCode(ErrorClass.object, ErrorCode.unknownObject)), results1.get(0));
-        assertEquals(new Result(PropertyIdentifier.objectName, null, new ErrorClassAndCode(ErrorClass.object, ErrorCode.unknownObject)), results1.get(1));
+        assertEquals(new Result(PropertyIdentifier.description, null, new ErrorClassAndCode(ErrorClass.object,
+                ErrorCode.unknownObject)), results1.get(0));
+        assertEquals(new Result(PropertyIdentifier.objectName, null, new ErrorClassAndCode(ErrorClass.object,
+                ErrorCode.unknownObject)), results1.get(1));
     }
-    
+
 }

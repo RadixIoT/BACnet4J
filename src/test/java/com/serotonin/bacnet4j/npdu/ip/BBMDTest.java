@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.npdu.ip;
 
 import static org.junit.Assert.assertEquals;
@@ -32,7 +59,7 @@ public class BBMDTest {
 
     private final WarpClock clock = new WarpClock();
     boolean canRun;
-    
+
     LDInfo ld11, ld12, ld13;
     LDInfo ld21, ld22, ld23;
     LDInfo ld31, ld32, ld33;
@@ -47,14 +74,14 @@ public class BBMDTest {
         //Could do this from terminal: ifconfig lo0 alias 127.0.1.1
         try {
             InetSocketAddress addr = new InetSocketAddress("127.0.1.1", 47808);
-            try(DatagramSocket socket = new DatagramSocket(addr)){
+            try (DatagramSocket socket = new DatagramSocket(addr)) {
                 canRun = true;
             }
-        }catch(SocketException e) {
+        } catch (SocketException e) {
             canRun = false;
         }
         Assume.assumeTrue(canRun);
-        
+
         ld11 = createLocalDevice(1, 1);
         ld12 = createLocalDevice(1, 2);
         ld13 = createLocalDevice(1, 3);
@@ -83,9 +110,9 @@ public class BBMDTest {
     @After
     public void after() throws Exception {
 
-        if(!canRun)
+        if (!canRun)
             return;
-        
+
         br1.close();
         br2.close();
         br3.close();
@@ -446,8 +473,8 @@ public class BBMDTest {
         assertEquals(exp.length, packet.getLength());
         final byte[] actual = packet.getData();
         for (int i = 0; i < exp.length; i++)
-            assertEquals("Byte mismatch at index " + i + ": expected " + Integer.toHexString(exp[i] & 0xFF)
-                    + " but got " + Integer.toHexString(actual[i] & 0xFF), exp[i], actual[i]);
+            assertEquals("Byte mismatch at index " + i + ": expected " + Integer.toHexString(
+                    exp[i] & 0xFF) + " but got " + Integer.toHexString(actual[i] & 0xFF), exp[i], actual[i]);
     }
 
     private static DatagramPacket packet(final int function, final String payload, final LDInfo dest) {
@@ -470,7 +497,7 @@ public class BBMDTest {
         info.network = new IpNetworkBuilder().withLocalBindAddress("127.0." + subnet + "." + addr) //
                 .withSubnet("127.0." + subnet + ".0", 24) //
                 .withLocalNetworkNumber(1) //
-                .build();       
+                .build();
         info.network.enableBBMD();
 
         info.ld = new LocalDevice(subnet * 10 + addr, new DefaultTransport(info.network)) //
@@ -527,6 +554,7 @@ public class BBMDTest {
         }
     }
 
+
     /**
      * Simulates broadcasting by knowing all of the sockets on a particular virtual subnet, and listening for messages
      * on a virtual broadcast address. When it receives a message, it
@@ -567,8 +595,8 @@ public class BBMDTest {
                     else {
                         // Use that socket to send to individual addresses.
                         for (final DatagramSocket to : forwardTo) {
-                            final DatagramPacket fwd = new DatagramPacket(p.getData(), p.getLength(),
-                                    to.getLocalSocketAddress());
+                            final DatagramPacket fwd = new DatagramPacket(p.getData(), p.getLength(), to
+                                    .getLocalSocketAddress());
                             from.send(fwd);
                         }
                     }

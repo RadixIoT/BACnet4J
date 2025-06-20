@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2015 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
- * included to allow you to distribute a combined work that includes BACnet4J
+ * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.obj;
 
 import java.util.Calendar;
@@ -92,9 +91,8 @@ public class ScheduleObject extends BACnetObject {
     public static ScheduleObject create(final LocalDevice localDevice, final int instanceNumber)
             throws BACnetServiceException {
         return new ScheduleObject(localDevice, instanceNumber, ObjectType.schedule + " " + instanceNumber,
-                new DateRange(Date.UNSPECIFIED, Date.UNSPECIFIED),
-                new BACnetArray<>(7, new DailySchedule(new SequenceOf<>())), new SequenceOf<>(), BinaryPV.inactive,
-                new SequenceOf<>(), 12, false);
+                new DateRange(Date.UNSPECIFIED, Date.UNSPECIFIED), new BACnetArray<>(7, new DailySchedule(
+                        new SequenceOf<>())), new SequenceOf<>(), BinaryPV.inactive, new SequenceOf<>(), 12, false);
     }
 
     private ScheduledFuture<?> presentValueRefresher;
@@ -132,8 +130,8 @@ public class ScheduleObject extends BACnetObject {
         if (exceptionSchedule != null)
             writeProperty(null, new PropertyValue(PropertyIdentifier.exceptionSchedule, exceptionSchedule));
         writePropertyInternal(PropertyIdentifier.presentValue, scheduleDefault);
-        writeProperty(null,
-                new PropertyValue(PropertyIdentifier.listOfObjectPropertyReferences, listOfObjectPropertyReferences));
+        writeProperty(null, new PropertyValue(PropertyIdentifier.listOfObjectPropertyReferences,
+                listOfObjectPropertyReferences));
         writePropertyInternal(PropertyIdentifier.priorityForWriting, new UnsignedInteger(priorityForWriting));
         writePropertyInternal(PropertyIdentifier.reliability, Reliability.noFaultDetected);
         writePropertyInternal(PropertyIdentifier.outOfService, Boolean.valueOf(outOfService));
@@ -175,9 +173,8 @@ public class ScheduleObject extends BACnetObject {
             final Primitive scheduleDefault = get(PropertyIdentifier.scheduleDefault);
             final SequenceOf<DeviceObjectPropertyReference> refs = value.getValue();
             for (final DeviceObjectPropertyReference ref : refs) {
-                final ObjectPropertyTypeDefinition def =
-                        ObjectProperties.getObjectPropertyTypeDefinition(ref.getObjectIdentifier().getObjectType(),
-                                ref.getPropertyIdentifier());
+                final ObjectPropertyTypeDefinition def = ObjectProperties.getObjectPropertyTypeDefinition(ref
+                        .getObjectIdentifier().getObjectType(), ref.getPropertyIdentifier());
                 if (def != null) {
                     boolean isNull = scheduleDefault.getClass().equals(Null.class);
                     if (!isNull && scheduleDefault.getClass() != def.getPropertyTypeDefinition().getClazz()) {
@@ -422,8 +419,8 @@ public class ScheduleObject extends BACnetObject {
 
     private static boolean isBeginningOfDay(final DateTime now) {
         final GregorianCalendar gc = now.getGC();
-        return gc.get(Calendar.HOUR_OF_DAY) == 0 && gc.get(Calendar.MINUTE) == 0 && gc.get(
-                Calendar.SECOND) == 0 && gc.get(Calendar.MILLISECOND) == 0;
+        return gc.get(Calendar.HOUR_OF_DAY) == 0 && gc.get(Calendar.MINUTE) == 0 && gc.get(Calendar.SECOND) == 0 && gc
+                .get(Calendar.MILLISECOND) == 0;
     }
 
     private static long timeOf(final Date date, final TimeValue tv) {
@@ -476,14 +473,14 @@ public class ScheduleObject extends BACnetObject {
     }
 
     void doWrites(final Encodable value) {
-        final SequenceOf<DeviceObjectPropertyReference> listOfObjectPropertyReferences =
-                get(PropertyIdentifier.listOfObjectPropertyReferences);
+        final SequenceOf<DeviceObjectPropertyReference> listOfObjectPropertyReferences = get(
+                PropertyIdentifier.listOfObjectPropertyReferences);
         final UnsignedInteger priorityForWriting = get(PropertyIdentifier.priorityForWriting);
 
         // Send the write requests.
         for (final DeviceObjectPropertyReference dopr : listOfObjectPropertyReferences) {
-            LOG.debug("Sending write request to {} in {}, value={}, priority={}", dopr.getObjectIdentifier(),
-                    dopr.getDeviceIdentifier(), value, priorityForWriting);
+            LOG.debug("Sending write request to {} in {}, value={}, priority={}", dopr.getObjectIdentifier(), dopr
+                    .getDeviceIdentifier(), value, priorityForWriting);
 
             if (dopr.getDeviceIdentifier() == null) {
                 // Local write.
@@ -501,9 +498,8 @@ public class ScheduleObject extends BACnetObject {
 
                 try {
                     final RemoteDevice d = getLocalDevice().getRemoteDevice(devId.getInstanceNumber()).get();
-                    final WritePropertyRequest req =
-                            new WritePropertyRequest(oid, dopr.getPropertyIdentifier(), dopr.getPropertyArrayIndex(),
-                                    value, priorityForWriting);
+                    final WritePropertyRequest req = new WritePropertyRequest(oid, dopr.getPropertyIdentifier(), dopr
+                            .getPropertyArrayIndex(), value, priorityForWriting);
                     getLocalDevice().send(d, req, new ResponseConsumer() {
                         @Override
                         public void success(final AcknowledgementService ack) {

@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import java.util.Objects;
@@ -66,10 +93,8 @@ public class TrendLogObject extends BACnetObject {
         return new TrendLogObject(localDevice, instanceNumber, ObjectType.trendLog.toString() + " " + instanceNumber,
                 new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED,
                 new DeviceObjectPropertyReference(localDevice.getInstanceNumber(), localDevice.getId(),
-                        PropertyIdentifier.databaseRevision),
-                60, false, 100) //
-                        .supportIntrinsicReporting(20, 0, new EventTransitionBits(false, false, false),
-                                NotifyType.event);
+                        PropertyIdentifier.databaseRevision), 60, false, 100) //
+                .supportIntrinsicReporting(20, 0, new EventTransitionBits(false, false, false), NotifyType.event);
     }
 
     private final LogBuffer<LogRecord> buffer;
@@ -177,13 +202,12 @@ public class TrendLogObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.eventDetectionEnable, Boolean.TRUE);
 
         final BufferReadyAlgo algo = new BufferReadyAlgo(PropertyIdentifier.totalRecordCount,
-                new DeviceObjectPropertyReference(getId(), PropertyIdentifier.logBuffer, null,
-                        getLocalDevice().getId()),
-                PropertyIdentifier.notificationThreshold, PropertyIdentifier.lastNotifyRecord);
+                new DeviceObjectPropertyReference(getId(), PropertyIdentifier.logBuffer, null, getLocalDevice()
+                        .getId()), PropertyIdentifier.notificationThreshold, PropertyIdentifier.lastNotifyRecord);
 
         final PropertyIdentifier[] triggerProps = new PropertyIdentifier[] { //
                 PropertyIdentifier.totalRecordCount, //
-                PropertyIdentifier.notificationThreshold };
+                PropertyIdentifier.notificationThreshold};
 
         // Now add the mixin.
         addMixin(new IntrinsicReportingMixin(this, algo, null, PropertyIdentifier.totalRecordCount, triggerProps)
@@ -207,7 +231,7 @@ public class TrendLogObject extends BACnetObject {
 
     /**
      * @deprecated This method return a buffer that may not be thread-safe. Use {@link #doWithBuffer} instead.
-     * This method will be removed in a future major version.
+     *             This method will be removed in a future major version.
      */
     @Deprecated
     public LogBuffer<LogRecord> getBuffer() {
@@ -473,12 +497,12 @@ public class TrendLogObject extends BACnetObject {
 
         // Add the monitored property.
         final DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences();
-        refs.addIndex(monitored.getDeviceIdentifier().getInstanceNumber(), monitored.getObjectIdentifier(),
-                monitored.getPropertyIdentifier(), monitored.getPropertyArrayIndex());
+        refs.addIndex(monitored.getDeviceIdentifier().getInstanceNumber(), monitored.getObjectIdentifier(), monitored
+                .getPropertyIdentifier(), monitored.getPropertyArrayIndex());
 
         // Check if status flags exist for the object.
-        final ObjectPropertyTypeDefinition def = ObjectProperties.getObjectPropertyTypeDefinition(
-                monitored.getObjectIdentifier().getObjectType(), PropertyIdentifier.statusFlags);
+        final ObjectPropertyTypeDefinition def = ObjectProperties.getObjectPropertyTypeDefinition(monitored
+                .getObjectIdentifier().getObjectType(), PropertyIdentifier.statusFlags);
         if (def != null) {
             refs.add(monitored.getDeviceIdentifier().getInstanceNumber(), monitored.getObjectIdentifier(),
                     PropertyIdentifier.statusFlags);
@@ -544,9 +568,9 @@ public class TrendLogObject extends BACnetObject {
             final ObjectIdentifier deviceIdentifier = monitored.getDeviceIdentifier();
             final SubscribeCOVPropertyRequest localCovSubscription = new SubscribeCOVPropertyRequest(
                     new UnsignedInteger(getLocalDevice().getNextProcessId()), monitored.getObjectIdentifier(),
-                    Boolean.TRUE, new UnsignedInteger(resubscribeSeconds * 2),
-                    new PropertyReference(monitored.getPropertyIdentifier(), monitored.getPropertyArrayIndex()),
-                    clientCovIncrement.isRealIncrement() ? clientCovIncrement.getRealIncrement() : null);
+                    Boolean.TRUE, new UnsignedInteger(resubscribeSeconds * 2), new PropertyReference(monitored
+                            .getPropertyIdentifier(), monitored.getPropertyArrayIndex()), clientCovIncrement
+                                    .isRealIncrement() ? clientCovIncrement.getRealIncrement() : null);
             covSubscription = localCovSubscription;
 
             // Create the listener that will catch the COV notifications.
@@ -659,8 +683,8 @@ public class TrendLogObject extends BACnetObject {
         // Check the result.
         final DeviceObjectPropertyReference monitored = get(PropertyIdentifier.logDeviceObjectProperty);
         final PropertyValues values = result.getPropertyValues(monitored.getDeviceIdentifier().getInstanceNumber());
-        final Encodable value = values.getNoErrorCheck(monitored.getObjectIdentifier(),
-                new PropertyReference(monitored.getPropertyIdentifier(), monitored.getPropertyArrayIndex()));
+        final Encodable value = values.getNoErrorCheck(monitored.getObjectIdentifier(), new PropertyReference(monitored
+                .getPropertyIdentifier(), monitored.getPropertyArrayIndex()));
 
         LogRecord record;
         boolean error = false;

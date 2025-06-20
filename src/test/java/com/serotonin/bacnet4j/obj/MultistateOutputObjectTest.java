@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.assertEquals;
@@ -76,8 +103,8 @@ public class MultistateOutputObjectTest extends AbstractTest {
         final MultistateOutputObject mv = new MultistateOutputObject(d1, 1, "mv1", 7, null, 1, 1, true);
 
         try {
-            mv.writeProperty(null,
-                    new PropertyValue(PropertyIdentifier.stateText, new BACnetArray<>(new CharacterString("a"))));
+            mv.writeProperty(null, new PropertyValue(PropertyIdentifier.stateText, new BACnetArray<>(
+                    new CharacterString("a"))));
             fail("Should have thrown an exception");
         } catch (final BACnetServiceException e) {
             assertEquals(ErrorClass.property, e.getErrorClass());
@@ -89,15 +116,14 @@ public class MultistateOutputObjectTest extends AbstractTest {
     public void stateText() throws Exception {
         final MultistateOutputObject mv = new MultistateOutputObject(d1, 1, "mv1", 7, null, 1, 1, true);
 
-        mv.writeProperty(null, new PropertyValue(PropertyIdentifier.stateText,
-                new BACnetArray<>(new CharacterString("a"), new CharacterString("b"), new CharacterString("c"),
-                        new CharacterString("d"), new CharacterString("e"), new CharacterString("f"),
-                        new CharacterString("g"))));
+        mv.writeProperty(null, new PropertyValue(PropertyIdentifier.stateText, new BACnetArray<>(new CharacterString(
+                "a"), new CharacterString("b"), new CharacterString("c"), new CharacterString("d"), new CharacterString(
+                        "e"), new CharacterString("f"), new CharacterString("g"))));
 
         mv.writeProperty(null, new PropertyValue(PropertyIdentifier.numberOfStates, new UnsignedInteger(6)));
         assertEquals(new BACnetArray<>(new CharacterString("a"), new CharacterString("b"), new CharacterString("c"),
-                        new CharacterString("d"), new CharacterString("e"), new CharacterString("f")),
-                mv.get(PropertyIdentifier.stateText));
+                new CharacterString("d"), new CharacterString("e"), new CharacterString("f")), mv.get(
+                        PropertyIdentifier.stateText));
 
         mv.writeProperty(null, new PropertyValue(PropertyIdentifier.numberOfStates, new UnsignedInteger(8)));
         assertEquals(new BACnetArray<>(new CharacterString("a"), new CharacterString("b"), new CharacterString("c"),
@@ -150,17 +176,16 @@ public class MultistateOutputObjectTest extends AbstractTest {
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.offnormal, notif.toState());
         CommandFailureNotif commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
-        assertEquals(new UnsignedInteger(2),
-                AmbiguousValue.convertTo(commandFailure.getCommandValue(), UnsignedInteger.class));
+        assertEquals(new UnsignedInteger(2), AmbiguousValue.convertTo(commandFailure.getCommandValue(),
+                UnsignedInteger.class));
         assertEquals(new StatusFlags(true, false, false, false), commandFailure.getStatusFlags());
-        assertEquals(new UnsignedInteger(1),
-                AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), UnsignedInteger.class));
+        assertEquals(new UnsignedInteger(1), AmbiguousValue.convertTo(commandFailure.getFeedbackValue(),
+                UnsignedInteger.class));
 
         // Return to normal. After 12s the notification will be sent.
         mo.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(1));
         clock.plus(11500, TimeUnit.MILLISECONDS, 11500, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal,
-                mo.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
+        assertEquals(EventState.offnormal, mo.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
         clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
         assertEquals(EventState.normal, mo.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), mo.readProperty(PropertyIdentifier.statusFlags));
@@ -182,11 +207,11 @@ public class MultistateOutputObjectTest extends AbstractTest {
         assertEquals(EventState.offnormal, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
         commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
-        assertEquals(new UnsignedInteger(1),
-                AmbiguousValue.convertTo(commandFailure.getCommandValue(), UnsignedInteger.class));
+        assertEquals(new UnsignedInteger(1), AmbiguousValue.convertTo(commandFailure.getCommandValue(),
+                UnsignedInteger.class));
         assertEquals(new StatusFlags(false, false, false, false), commandFailure.getStatusFlags());
-        assertEquals(new UnsignedInteger(1),
-                AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), UnsignedInteger.class));
+        assertEquals(new UnsignedInteger(1), AmbiguousValue.convertTo(commandFailure.getFeedbackValue(),
+                UnsignedInteger.class));
     }
 
     @SuppressWarnings("unchecked")
@@ -199,12 +224,12 @@ public class MultistateOutputObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(2), mo.get(PropertyIdentifier.presentValue));
         assertEquals(new UnsignedInteger(2), mo.get(PropertyIdentifier.feedbackValue));
 
-        final DeviceObjectPropertyReference ref =
-                new DeviceObjectPropertyReference(1, mo.getId(), PropertyIdentifier.presentValue);
+        final DeviceObjectPropertyReference ref = new DeviceObjectPropertyReference(1, mo.getId(),
+                PropertyIdentifier.presentValue);
         final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
-                new EventParameter(new CommandFailure(new UnsignedInteger(30),
-                        new DeviceObjectPropertyReference(1, mo.getId(), PropertyIdentifier.feedbackValue))),
-                new EventTransitionBits(true, true, true), 17, 1000, null, null);
+                new EventParameter(new CommandFailure(new UnsignedInteger(30), new DeviceObjectPropertyReference(1, mo
+                        .getId(), PropertyIdentifier.feedbackValue))), new EventTransitionBits(true, true, true), 17,
+                1000, null, null);
 
         // Set up the notification destination
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
@@ -250,11 +275,11 @@ public class MultistateOutputObjectTest extends AbstractTest {
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.offnormal, notif.toState());
         CommandFailureNotif commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
-        assertEquals(new UnsignedInteger(2),
-                AmbiguousValue.convertTo(commandFailure.getCommandValue(), UnsignedInteger.class));
+        assertEquals(new UnsignedInteger(2), AmbiguousValue.convertTo(commandFailure.getCommandValue(),
+                UnsignedInteger.class));
         assertEquals(new StatusFlags(false, false, false, false), commandFailure.getStatusFlags());
-        assertEquals(new UnsignedInteger(1),
-                AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), UnsignedInteger.class));
+        assertEquals(new UnsignedInteger(1), AmbiguousValue.convertTo(commandFailure.getFeedbackValue(),
+                UnsignedInteger.class));
 
         //
         // Return to normal
@@ -286,10 +311,10 @@ public class MultistateOutputObjectTest extends AbstractTest {
         assertEquals(EventState.offnormal, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
         commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
-        assertEquals(new UnsignedInteger(1),
-                AmbiguousValue.convertTo(commandFailure.getCommandValue(), UnsignedInteger.class));
+        assertEquals(new UnsignedInteger(1), AmbiguousValue.convertTo(commandFailure.getCommandValue(),
+                UnsignedInteger.class));
         assertEquals(new StatusFlags(false, false, false, false), commandFailure.getStatusFlags());
-        assertEquals(new UnsignedInteger(1),
-                AmbiguousValue.convertTo(commandFailure.getFeedbackValue(), UnsignedInteger.class));
+        assertEquals(new UnsignedInteger(1), AmbiguousValue.convertTo(commandFailure.getFeedbackValue(),
+                UnsignedInteger.class));
     }
 }

@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.util;
 
 import static org.junit.Assert.assertEquals;
@@ -78,8 +105,8 @@ public class RequestUtilsTest {
         rd.setMaxReadMultipleReferences(200);
 
         final AtomicInteger exceptionCount = new AtomicInteger();
-        when(d.send(any(RemoteDevice.class), any(ReadPropertyMultipleRequest.class)))
-                .thenAnswer(new Answer<ServiceFuture>() {
+        when(d.send(any(RemoteDevice.class), any(ReadPropertyMultipleRequest.class))).thenAnswer(
+                new Answer<ServiceFuture>() {
                     private int threshold = 50;
 
                     @Override
@@ -117,10 +144,10 @@ public class RequestUtilsTest {
                         if (mod == 1)
                             throw new ServiceTooBigException("much too big");
                         else if (mod == 2)
-                            throw new AbortAPDUException(
-                                    new Abort(false, (byte) 0, AbortReason.bufferOverflow.intValue()));
-                        throw new AbortAPDUException(
-                                new Abort(false, (byte) 0, AbortReason.segmentationNotSupported.intValue()));
+                            throw new AbortAPDUException(new Abort(false, (byte) 0, AbortReason.bufferOverflow
+                                    .intValue()));
+                        throw new AbortAPDUException(new Abort(false, (byte) 0, AbortReason.segmentationNotSupported
+                                .intValue()));
                     }
                 });
 
@@ -171,13 +198,12 @@ public class RequestUtilsTest {
             }
         };
 
-        final List<Pair<ObjectPropertyReference, Encodable>> results = RequestUtils.readProperties(d1, rd2,
-                TestUtils.toList( //
+        final List<Pair<ObjectPropertyReference, Encodable>> results = RequestUtils.readProperties(d1, rd2, TestUtils
+                .toList( //
                         new ObjectPropertyReference(ai.getId(), PropertyIdentifier.presentValue),
                         new ObjectPropertyReference(ai.getId(), PropertyIdentifier.logDeviceObjectProperty),
                         new ObjectPropertyReference(new ObjectIdentifier(ObjectType.analogOutput, 0),
-                                PropertyIdentifier.presentValue)),
-                false, listener);
+                                PropertyIdentifier.presentValue)), false, listener);
 
         // Verify listener updates.
         assertEquals(3, listenerUpdates.size());
@@ -194,16 +220,16 @@ public class RequestUtilsTest {
         assertEquals(ai.getId(), listenerUpdates.get(1).get("oid"));
         assertEquals(PropertyIdentifier.logDeviceObjectProperty, listenerUpdates.get(1).get("pid"));
         assertEquals(null, listenerUpdates.get(1).get("pin"));
-        assertEquals(new ErrorClassAndCode(ErrorClass.property, ErrorCode.unknownProperty),
-                listenerUpdates.get(1).get("value"));
+        assertEquals(new ErrorClassAndCode(ErrorClass.property, ErrorCode.unknownProperty), listenerUpdates.get(1).get(
+                "value"));
 
         assertEquals(1, (Double) listenerUpdates.get(2).get("progress"), 0.01);
         assertEquals(2, listenerUpdates.get(2).get("deviceId"));
         assertEquals(new ObjectIdentifier(ObjectType.analogOutput, 0), listenerUpdates.get(2).get("oid"));
         assertEquals(PropertyIdentifier.presentValue, listenerUpdates.get(2).get("pid"));
         assertEquals(null, listenerUpdates.get(2).get("pin"));
-        assertEquals(new ErrorClassAndCode(ErrorClass.object, ErrorCode.unknownObject),
-                listenerUpdates.get(2).get("value"));
+        assertEquals(new ErrorClassAndCode(ErrorClass.object, ErrorCode.unknownObject), listenerUpdates.get(2).get(
+                "value"));
 
         // Verify the results.
         assertEquals(3, results.size());

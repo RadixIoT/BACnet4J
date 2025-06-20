@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj.mixin.event.eventAlgo;
 
 import java.util.Map;
@@ -38,7 +65,7 @@ public class ChangeOfLifeSafetyAlgo extends EventAlgorithm {
 
     @Override
     public PropertyIdentifier[] getAdditionalMonitoredProperties() {
-        return new PropertyIdentifier[] { PropertyIdentifier.statusFlags, PropertyIdentifier.operationExpected };
+        return new PropertyIdentifier[] {PropertyIdentifier.statusFlags, PropertyIdentifier.operationExpected};
     }
 
     @Override
@@ -118,8 +145,8 @@ public class ChangeOfLifeSafetyAlgo extends EventAlgorithm {
         }
 
         // (f)
-        if (currentState.equals(EventState.offnormal) && isAlarmValue
-                && !monitoredValue.equals(lastStateCausingTransition)) {
+        if (currentState.equals(EventState.offnormal) && isAlarmValue && !monitoredValue.equals(
+                lastStateCausingTransition)) {
             return new StateTransition(EventState.offnormal, timeDelay);
         }
 
@@ -143,8 +170,8 @@ public class ChangeOfLifeSafetyAlgo extends EventAlgorithm {
         }
 
         // (j)
-        if (currentState.equals(EventState.lifeSafetyAlarm) && isLifeSafetyAlarmValue
-                && !monitoredValue.equals(lastStateCausingTransition)) {
+        if (currentState.equals(EventState.lifeSafetyAlarm) && isLifeSafetyAlarmValue && !monitoredValue.equals(
+                lastStateCausingTransition)) {
             return new StateTransition(EventState.lifeSafetyAlarm, timeDelay);
         }
 
@@ -183,10 +210,10 @@ public class ChangeOfLifeSafetyAlgo extends EventAlgorithm {
                         p.getModePropertyReference().getObjectIdentifier(), //
                         p.getModePropertyReference().getPropertyIdentifier(), //
                         p.getModePropertyReference().getPropertyArrayIndex())), //
-                (StatusFlags) additionalValues
-                        .get(new ObjectPropertyReference(monitoredObjectReference, PropertyIdentifier.statusFlags)),
-                (LifeSafetyOperation) additionalValues.get(
-                        new ObjectPropertyReference(monitoredObjectReference, PropertyIdentifier.operationExpected)));
+                (StatusFlags) additionalValues.get(new ObjectPropertyReference(monitoredObjectReference,
+                        PropertyIdentifier.statusFlags)), (LifeSafetyOperation) additionalValues.get(
+                                new ObjectPropertyReference(monitoredObjectReference,
+                                        PropertyIdentifier.operationExpected)));
     }
 
     private static NotificationParameters getNotificationParameters(final LifeSafetyState newState,
@@ -194,7 +221,7 @@ public class ChangeOfLifeSafetyAlgo extends EventAlgorithm {
         if (statusFlags == null)
             statusFlags = new StatusFlags(false, false, false, false);
 
-        return new NotificationParameters(
-                new ChangeOfLifeSafetyNotif(newState, newMode, statusFlags, operationExpected));
+        return new NotificationParameters(new ChangeOfLifeSafetyNotif(newState, newMode, statusFlags,
+                operationExpected));
     }
 }

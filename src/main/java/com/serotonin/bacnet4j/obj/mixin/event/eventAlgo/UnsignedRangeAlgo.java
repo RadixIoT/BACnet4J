@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj.mixin.event.eventAlgo;
 
 import java.util.Map;
@@ -43,7 +70,7 @@ public class UnsignedRangeAlgo extends EventAlgorithm {
 
     @Override
     public PropertyIdentifier[] getAdditionalMonitoredProperties() {
-        return new PropertyIdentifier[] { PropertyIdentifier.statusFlags };
+        return new PropertyIdentifier[] {PropertyIdentifier.statusFlags};
     }
 
     @Override
@@ -87,8 +114,8 @@ public class UnsignedRangeAlgo extends EventAlgorithm {
                 lowLimitInt);
 
         // (a)
-        if (currentState.equals(EventState.normal) && limitEnable.isHighLimitEnable()
-                && monitoredValueInt > highLimitInt)
+        if (currentState.equals(EventState.normal) && limitEnable
+                .isHighLimitEnable() && monitoredValueInt > highLimitInt)
             return new StateTransition(EventState.highLimit, timeDelay);
 
         // (b)
@@ -100,8 +127,8 @@ public class UnsignedRangeAlgo extends EventAlgorithm {
             return new StateTransition(EventState.normal, null);
 
         // (d)
-        if (currentState.equals(EventState.highLimit) && limitEnable.isLowLimitEnable()
-                && monitoredValueInt < lowLimitInt)
+        if (currentState.equals(EventState.highLimit) && limitEnable
+                .isLowLimitEnable() && monitoredValueInt < lowLimitInt)
             return new StateTransition(EventState.lowLimit, timeDelay);
 
         // (e)
@@ -113,8 +140,8 @@ public class UnsignedRangeAlgo extends EventAlgorithm {
             return new StateTransition(EventState.normal, null);
 
         // (g)
-        if (currentState.equals(EventState.lowLimit) && limitEnable.isHighLimitEnable()
-                && monitoredValueInt > highLimitInt)
+        if (currentState.equals(EventState.lowLimit) && limitEnable
+                .isHighLimitEnable() && monitoredValueInt > highLimitInt)
             return new StateTransition(EventState.highLimit, timeDelay);
 
         // (h)
@@ -144,8 +171,8 @@ public class UnsignedRangeAlgo extends EventAlgorithm {
                 p.getLowLimit(), //
                 p.getHighLimit(), //
                 (UnsignedInteger) monitoredValue, //
-                (StatusFlags) additionalValues
-                        .get(new ObjectPropertyReference(monitoredObjectReference, PropertyIdentifier.statusFlags)));
+                (StatusFlags) additionalValues.get(new ObjectPropertyReference(monitoredObjectReference,
+                        PropertyIdentifier.statusFlags)));
     }
 
     private static NotificationParameters getNotificationParameters(final EventState fromState,

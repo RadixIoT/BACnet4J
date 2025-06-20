@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj.mixin.event;
 
 import java.util.concurrent.ScheduledFuture;
@@ -86,10 +113,10 @@ abstract public class EventReportingMixin extends AbstractMixin {
         bo.writePropertyInternal(PropertyIdentifier.ackedTransitions, new EventTransitionBits(true, true, true));
         bo.writePropertyInternal(PropertyIdentifier.eventTimeStamps, new BACnetArray<>(TimeStamp.UNSPECIFIED_DATETIME,
                 TimeStamp.UNSPECIFIED_DATETIME, TimeStamp.UNSPECIFIED_DATETIME));
-        bo.writePropertyInternal(PropertyIdentifier.eventMessageTexts,
-                new BACnetArray<>(CharacterString.EMPTY, CharacterString.EMPTY, CharacterString.EMPTY));
-        bo.writePropertyInternal(PropertyIdentifier.eventMessageTextsConfig,
-                new BACnetArray<>(CharacterString.EMPTY, CharacterString.EMPTY, CharacterString.EMPTY));
+        bo.writePropertyInternal(PropertyIdentifier.eventMessageTexts, new BACnetArray<>(CharacterString.EMPTY,
+                CharacterString.EMPTY, CharacterString.EMPTY));
+        bo.writePropertyInternal(PropertyIdentifier.eventMessageTextsConfig, new BACnetArray<>(CharacterString.EMPTY,
+                CharacterString.EMPTY, CharacterString.EMPTY));
         //ee.writePropertyImpl(PropertyIdentifier.eventAlgorithmInhibitRef, new ObjectPropertyReference()); Not supported
         bo.writePropertyInternal(PropertyIdentifier.eventAlgorithmInhibit, Boolean.FALSE);
     }
@@ -237,8 +264,8 @@ abstract public class EventReportingMixin extends AbstractMixin {
 
         // Get the notification class object.
         final UnsignedInteger ncId = get(PropertyIdentifier.notificationClass);
-        final BACnetObject nc = getLocalDevice()
-                .getObject(new ObjectIdentifier(ObjectType.notificationClass, ncId.intValue()));
+        final BACnetObject nc = getLocalDevice().getObject(new ObjectIdentifier(ObjectType.notificationClass, ncId
+                .intValue()));
         if (nc == null) {
             LOG.info("Notification class with id {} does not exist. Aborting state transition processing.", ncId);
             return;
@@ -429,8 +456,8 @@ abstract public class EventReportingMixin extends AbstractMixin {
 
         // Get the notification class object.
         final UnsignedInteger ncId = get(PropertyIdentifier.notificationClass);
-        final BACnetObject nc = getLocalDevice()
-                .getObject(new ObjectIdentifier(ObjectType.notificationClass, ncId.intValue()));
+        final BACnetObject nc = getLocalDevice().getObject(new ObjectIdentifier(ObjectType.notificationClass, ncId
+                .intValue()));
 
         // Do we need to send any notifications?
         if (eventEnable.contains(eventStateAcknowledged)) {
@@ -446,8 +473,8 @@ abstract public class EventReportingMixin extends AbstractMixin {
             final SequenceOf<Destination> recipientList = nc.get(PropertyIdentifier.recipientList);
             final BACnetArray<UnsignedInteger> priority = nc.get(PropertyIdentifier.priority);
 
-            sendNotifications(recipientList, timeOfAcknowledgment, nc, priority, eventStateAcknowledged,
-                    getEventType(eventAlgo), messageText, NotifyType.ackNotification, null, null, null);
+            sendNotifications(recipientList, timeOfAcknowledgment, nc, priority, eventStateAcknowledged, getEventType(
+                    eventAlgo), messageText, NotifyType.ackNotification, null, null, null);
         }
     }
 
@@ -476,8 +503,8 @@ abstract public class EventReportingMixin extends AbstractMixin {
 
             if (!EventState.normal.equals(eventState) || !ackedTransitions.allTrue()) {
                 final UnsignedInteger ncId = get(PropertyIdentifier.notificationClass);
-                final BACnetObject nc = getLocalDevice()
-                        .getObject(new ObjectIdentifier(ObjectType.notificationClass, ncId.intValue()));
+                final BACnetObject nc = getLocalDevice().getObject(new ObjectIdentifier(ObjectType.notificationClass,
+                        ncId.intValue()));
 
                 return new EventSummary( //
                         (ObjectIdentifier) get(PropertyIdentifier.objectIdentifier), //
@@ -501,8 +528,8 @@ abstract public class EventReportingMixin extends AbstractMixin {
         if (eventDetectionEnable != null && eventDetectionEnable.booleanValue()) {
             final EventState eventState = get(PropertyIdentifier.eventState);
             final UnsignedInteger ncId = get(PropertyIdentifier.notificationClass);
-            final BACnetObject nc = getLocalDevice()
-                    .getObject(new ObjectIdentifier(ObjectType.notificationClass, ncId.intValue()));
+            final BACnetObject nc = getLocalDevice().getObject(new ObjectIdentifier(ObjectType.notificationClass, ncId
+                    .intValue()));
             final BACnetArray<UnsignedInteger> priorities = nc.get(PropertyIdentifier.priority);
             final UnsignedInteger priority = priorities.getBase1(eventState.getTransitionIndex());
 
@@ -560,8 +587,8 @@ abstract public class EventReportingMixin extends AbstractMixin {
                 include = false;
 
             if (include)
-                return new EnrollmentSummary((ObjectIdentifier) get(PropertyIdentifier.objectIdentifier),
-                        getEventType(eventAlgo), eventState, priority, ncId);
+                return new EnrollmentSummary((ObjectIdentifier) get(PropertyIdentifier.objectIdentifier), getEventType(
+                        eventAlgo), eventState, priority, ncId);
         }
 
         return null;
@@ -583,6 +610,7 @@ abstract public class EventReportingMixin extends AbstractMixin {
         abstract PropertyValue get(EventReportingMixin mixin);
     }
 
+
     private static class ObjectCORProperyProducer extends CORPropertyValueProducer {
         public ObjectCORProperyProducer(final PropertyIdentifier pid) {
             super(pid);
@@ -593,6 +621,7 @@ abstract public class EventReportingMixin extends AbstractMixin {
             return new PropertyValue(pid, mixin.get(pid));
         }
     }
+
 
     private static class EventEnrollmentMonitoredPropertyProducer extends CORPropertyValueProducer {
         public EventEnrollmentMonitoredPropertyProducer(final PropertyIdentifier pid) {
@@ -605,6 +634,7 @@ abstract public class EventReportingMixin extends AbstractMixin {
         }
     }
 
+
     private static class EventEnrollmentMonitoredReferencedPropertyProducer extends CORPropertyValueProducer {
         public EventEnrollmentMonitoredReferencedPropertyProducer(final PropertyIdentifier pid) {
             super(pid);
@@ -616,6 +646,7 @@ abstract public class EventReportingMixin extends AbstractMixin {
             return mixin.getEventEnrollmentMonitoredProperty(reference.getPropertyIdentifier());
         }
     }
+
 
     private static class NotImplementedProducer extends CORPropertyValueProducer {
         public NotImplementedProducer(final PropertyIdentifier pid) {
@@ -674,7 +705,7 @@ abstract public class EventReportingMixin extends AbstractMixin {
                 ObjectType.multiStateValue, //
                 ObjectType.positiveIntegerValue, //
                 ObjectType.pulseConverter))
-            return new CORPropertyValueProducer[] { new ObjectCORProperyProducer(PropertyIdentifier.presentValue) };
+            return new CORPropertyValueProducer[] {new ObjectCORProperyProducer(PropertyIdentifier.presentValue)};
 
         if (objectType.isOneOf( //
                 ObjectType.binaryOutput, //
@@ -694,7 +725,7 @@ abstract public class EventReportingMixin extends AbstractMixin {
         if (objectType.isOneOf( //
                 ObjectType.escalator, //
                 ObjectType.lift))
-            return new CORPropertyValueProducer[] { new NotImplementedProducer(PropertyIdentifier.faultSignals) };
+            return new CORPropertyValueProducer[] {new NotImplementedProducer(PropertyIdentifier.faultSignals)};
 
         if (ObjectType.eventEnrollment.equals(objectType))
             return new CORPropertyValueProducer[] { //

@@ -19,6 +19,8 @@ jobs:
           java-version: 17
           distribution: 'zulu'
           cache: 'maven'
+      - name: Check code format
+        run: mvn -T1C spotless:check checkstyle:check
       - name: Cache SonarCloud packages
         uses: actions/cache@v3
         with:
