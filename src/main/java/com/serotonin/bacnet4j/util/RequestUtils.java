@@ -148,7 +148,12 @@ public class RequestUtils {
 
     public static Encodable sendReadPropertyAllowNull(final LocalDevice localDevice, final RemoteDevice d,
             final ObjectIdentifier oid, final PropertyIdentifier pid) throws BACnetException {
-        return sendReadPropertyAllowNull(localDevice, d, oid, pid, null, null);
+        return sendReadPropertyAllowNull(localDevice, d, oid, pid, null, null, 0);
+    }
+
+    public static Encodable sendReadPropertyAllowNull(final LocalDevice localDevice, final RemoteDevice d,
+                                                      final ObjectIdentifier oid, final PropertyIdentifier pid, long timeout) throws BACnetException {
+        return sendReadPropertyAllowNull(localDevice, d, oid, pid, null, null, timeout);
     }
 
     public static SequenceOf<ObjectIdentifier> getObjectList(final LocalDevice localDevice, final RemoteDevice d)
@@ -160,7 +165,7 @@ public class RequestUtils {
     public static SequenceOf<ObjectIdentifier> getObjectList(final LocalDevice localDevice, final RemoteDevice d,
             final ReadListener callback) throws BACnetException {
         return (SequenceOf<ObjectIdentifier>) sendReadPropertyAllowNull(localDevice, d, d.getObjectIdentifier(),
-                PropertyIdentifier.objectList, null, callback);
+                PropertyIdentifier.objectList, null, callback, 0);
     }
 
     /**
@@ -169,10 +174,10 @@ public class RequestUtils {
      */
     public static Encodable sendReadPropertyAllowNull(final LocalDevice localDevice, final RemoteDevice d,
             final ObjectIdentifier oid, final PropertyIdentifier pid, final UnsignedInteger propertyArrayIndex,
-            final ReadListener callback) throws BACnetException {
+            final ReadListener callback, long timeout) throws BACnetException {
         try {
             final ReadPropertyAck ack = (ReadPropertyAck) localDevice
-                    .send(d, new ReadPropertyRequest(oid, pid, propertyArrayIndex)).get();
+                    .send(d, new ReadPropertyRequest(oid, pid, propertyArrayIndex)).get(timeout);
             if (callback != null)
                 callback.progress(1, d.getInstanceNumber(), oid, pid, ack.getPropertyArrayIndex(), ack.getValue());
             return ack.getValue();
@@ -186,7 +191,7 @@ public class RequestUtils {
 
                     // ... then try getting it by sending requests for indices. Find out how many there are.
                     final int len = ((UnsignedInteger) sendReadPropertyAllowNull(localDevice, d, oid, pid,
-                            UnsignedInteger.ZERO, null)).intValue();
+                            UnsignedInteger.ZERO, null, timeout)).intValue();
 
                     // Create a list of individual property references.
                     final PropertyReferences refs = new PropertyReferences();
@@ -265,7 +270,12 @@ public class RequestUtils {
     }
 
     public static PropertyValues readProperties(final LocalDevice localDevice, final RemoteDevice d,
-            final PropertyReferences refs, boolean allowNull, final ReadListener callback) throws BACnetException {
+                                                final PropertyReferences refs, boolean allowNull, final ReadListener callback) throws BACnetException {
+        return readProperties(localDevice, d, refs, allowNull, callback, 0);
+    }
+
+    public static PropertyValues readProperties(final LocalDevice localDevice, final RemoteDevice d,
+            final PropertyReferences refs, boolean allowNull, final ReadListener callback, long timeout) throws BACnetException {
         Map<ObjectIdentifier, List<PropertyReference>> properties;
         final PropertyValues propertyValues = new PropertyValues();
         final ReadListenerUpdater updater = new ReadListenerUpdater(callback, propertyValues, refs.size());
@@ -381,7 +391,7 @@ public class RequestUtils {
                         }else
                             populateWithError(d, properties, updater, e.getError());
                     }else {
-                        sendOneAtATime(localDevice, d, partition, allowNull, updater);
+                        sendOneAtATime(localDevice, d, partition, allowNull, updater, timeout);
                     }
                     partitions.remove(0);
                 } catch (final BACnetException e) {
@@ -393,7 +403,7 @@ public class RequestUtils {
             }
         } else {
             // If it doesn't support read property multiple, send them one at a time.
-            sendOneAtATime(localDevice, d, refs, allowNull, updater);
+            sendOneAtATime(localDevice, d, refs, allowNull, updater, timeout);
         }
 
         return propertyValues;
@@ -410,7 +420,7 @@ public class RequestUtils {
     }
 
     private static void sendOneAtATime(final LocalDevice localDevice, final RemoteDevice d,
-            final PropertyReferences refs, boolean allowNull, final ReadListenerUpdater updater) throws BACnetException {
+            final PropertyReferences refs, boolean allowNull, final ReadListenerUpdater updater, long timeout) throws BACnetException {
         LOG.debug("Making property reference requests one at a time");
         List<PropertyReference> refList;
         ReadPropertyRequest request;
@@ -445,7 +455,7 @@ public class RequestUtils {
 
                             // ... then try getting it by sending requests for indices. Find out how many there are.
                             final int len = ((UnsignedInteger) sendReadPropertyAllowNull(localDevice, d, oid, ref.getPropertyIdentifier(),
-                                    UnsignedInteger.ZERO, null)).intValue();
+                                    UnsignedInteger.ZERO, null, timeout)).intValue();
 
                             // Create a list of individual property references.
                             final PropertyReferences newRefs = new PropertyReferences();

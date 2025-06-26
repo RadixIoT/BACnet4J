@@ -33,4 +33,6 @@ import com.serotonin.bacnet4j.service.acknowledgement.AcknowledgementService;
 
 public interface ServiceFuture {
     <T extends AcknowledgementService> T get() throws BACnetException;
+
+    <T extends AcknowledgementService> T get(long timeout) throws BACnetException;
 }
