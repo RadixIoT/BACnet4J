@@ -301,6 +301,19 @@ public class TestUtils {
     }
 
     /**
+     * Convenience method defaulting the timeout to 5 seconds.
+     *
+     * @param condition the condition to which to wait
+     * @throws Exception the exception if any thrown by the condition
+     */
+    public static void awaitFalse(BooleanSupplierWithException condition) throws Exception {
+        if (await(condition, false, 5000)) {
+            return;
+        }
+        fail("awaitFalse timed out");
+    }
+
+    /**
      * Utility to busy-wait up to a given timeout for the given condition to become false.
      *
      * @param condition the condition to which to wait
@@ -397,6 +410,25 @@ public class TestUtils {
         fail("awaitEquals timed out. Wanted " + constant + " but last value was " + supplier.get());
     }
 
+    /**
+     * Convenience method defaulting the value to true and the timeout to 5 seconds.
+     *
+     * @param condition the condition to which to wait
+     * @return true if the condition was matched, false otherwise
+     * @throws Exception the exception if any thrown by the condition
+     */
+    public static boolean await(BooleanSupplierWithException condition) throws Exception {
+        return await(condition, true, 5000);
+    }
+
+    /**
+     * Convenience method defaulting the value to true.
+     *
+     * @param condition the condition to which to wait
+     * @param timeoutMs the maximum amount of time to wait
+     * @return true if the condition was matched, false otherwise
+     * @throws Exception the exception if any thrown by the condition
+     */
     public static boolean await(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
         return await(condition, true, timeoutMs);
     }

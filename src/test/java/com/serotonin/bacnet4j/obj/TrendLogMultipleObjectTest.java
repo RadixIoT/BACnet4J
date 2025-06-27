@@ -5,6 +5,7 @@ import static com.serotonin.bacnet4j.TestUtils.await;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static com.serotonin.bacnet4j.TestUtils.awaitFalse;
 import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
@@ -15,7 +16,6 @@ import static org.junit.Assert.assertTrue;
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -105,10 +105,10 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         // Advance the clock to the polling time.
         LOG.debug("start: {}", clock.instant());
         final int seconds = (62 - clock.get(ChronoField.SECOND_OF_MINUTE) - 1) % 60 + 1;
-        clock.plus(seconds, SECONDS, 0);
+        clock.plusSeconds(seconds);
         LOG.debug("poll: {}", clock.instant());
 
-        awaitEquals(tl::getRecordCount, 1, 5000);
+        awaitEquals(1, tl::getRecordCount);
         final LogMultipleRecord record0 = tl.getRecord(0);
         // We asked for alignment and an offset of 2 seconds.
         assertEquals(2.0, record0.getTimestamp().getTime().getSecond(), 1.0);
@@ -125,10 +125,10 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(2));
 
         // Advance the clock another minute to poll again
-        clock.plus(1, MINUTES, 0);
+        clock.plusMinutes(1);
         LOG.debug("poll: {}", clock.instant());
 
-        awaitEquals(tl::getRecordCount, 2, 5000);
+        awaitEquals(2, tl::getRecordCount);
         final LogMultipleRecord record1 = tl.getRecord(1);
         assertEquals(2, record1.getTimestamp().getTime().getSecond());
         assertEquals((record0.getTimestamp().getTime().getMinute() + 1) % 60,
@@ -148,10 +148,10 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
 
         // Advance the clock to the new polling time.
         final int minutes = (62 - clock.get(ChronoField.MINUTE_OF_HOUR)) % 60;
-        clock.plus(minutes, MINUTES, 0);
+        clock.plusMinutes(minutes);
         LOG.debug("poll: {}", clock.instant());
 
-        awaitEquals(tl::getRecordCount, 3, 5000);
+        awaitEquals(3, tl::getRecordCount);
         assertEquals(3, tl.getRecordCount());
         final LogMultipleRecord record2 = tl.getRecord(2);
         assertEquals(2, record2.getTimestamp().getTime().getMinute());
@@ -169,7 +169,7 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         tl.trigger();
 
         // Wait for the polling to finish.
-        awaitEquals(tl::getRecordCount, 4, 5000);
+        awaitEquals(4, tl::getRecordCount);
         final LogMultipleRecord record3 = tl.getRecord(3);
         assertEquals(4, record3.getSequenceNumber());
         assertEquals(5, record3.getLogData().getData().size());
@@ -205,7 +205,7 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
 
         // Trigger an update
         tl.trigger();
-        awaitEquals(tl::getRecordCount, 1, 5000);
+        awaitEquals(1, tl::getRecordCount);
 
         // The log record should be there.
         final LogMultipleRecord record0 = tl.getRecord(0);
@@ -254,8 +254,8 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         //
         // Write one more and make sure a notification was received.
         doTriggers(tl, 1);
-        awaitEquals(tl::getRecordCount, 5, 5000);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(5, tl::getRecordCount);
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(27), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -283,8 +283,8 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         //
         // Write another 5 triggers and ensure that the notification looks ok.
         doTriggers(tl, 5);
-        assertEquals(10, tl.getRecordCount());
-        assertEquals(1, listener.getNotifCount());
+        awaitEquals(10, tl::getRecordCount);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(27), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -314,8 +314,8 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         tl.set(PropertyIdentifier.lastNotifyRecord, new UnsignedInteger(0xFFFFFFFDL));
         tl.set(PropertyIdentifier.totalRecordCount, new UnsignedInteger(0xFFFFFFFDL));
         doTriggers(tl, 5);
-        awaitEquals(tl::getRecordCount, 15, 5000);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(15, tl::getRecordCount);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(27), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -344,10 +344,10 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
     private static void doTriggers(final TrendLogMultipleObject tl, final int count) throws Exception {
         int remaining = count;
         while (remaining > 0) {
-            await(tl::trigger, 5000);
+            await(tl::trigger);
             remaining--;
         }
-        await(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue(), 5000);
+        await(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue());
     }
 
     @SuppressWarnings("unchecked")
@@ -379,7 +379,7 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
 
         // Give the EE a chance to poll.
         clock.plusSeconds(1);
-        Thread.sleep(500);
+        quiesce();
 
         // Ensure that there are no notifications.
         assertEquals(0, listener.getNotifCount());
@@ -387,7 +387,7 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         // Trigger another notification so that a notification is sent.
         doTriggers(tl, 1);
         clock.plusSeconds(1);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(28), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -409,7 +409,7 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         // Trigger another batch of updates. One notification should be sent.
         doTriggers(tl, 7);
         clock.plusSeconds(1);
-        awaitEquals(listener::getNotifCount, 1, 5000);
+        awaitEquals(1, listener::getNotifCount);
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(28), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -552,21 +552,22 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         assertEquals(0, tl.getRecordCount());
 
         // Advance the time a bit and do some triggers.
-        clock.plus(3, TimeUnit.MINUTES, 500);
+        clock.plusMinutes(3);
+        quiesce();
         assertTrue(tl.isLogDisabled());
         doTriggers(tl, 2);
         assertEquals(0, tl.getRecordCount());
 
         // Advance the time past the start time and do some triggers.
-        clock.plus(3, TimeUnit.MINUTES, 0);
-        awaitFalse(tl::isLogDisabled, 5000);
+        clock.plusMinutes(3);
+        awaitFalse(tl::isLogDisabled);
         doTriggers(tl, 2);
         assertEquals(2, tl.getRecordCount());
 
         // Advance the time past the stop time and do some triggers.
-        clock.plus(5, TimeUnit.MINUTES, 0);
-        awaitTrue(tl::isLogDisabled, 5000);
-        awaitEquals(tl::getRecordCount, 3, 5000);
+        clock.plusMinutes(5);
+        awaitTrue(tl::isLogDisabled);
+        awaitEquals(3, tl::getRecordCount);
         final DateTime now3 = new DateTime(clock.millis());
         doTriggers(tl, 2);
         assertEquals(3, tl.getRecordCount());
@@ -587,15 +588,15 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         assertEquals(3, tl.getRecordCount());
 
         // Advance the time past the start time and do some triggers.
-        clock.plus(6, TimeUnit.MINUTES, 0);
-        awaitFalse(tl::isLogDisabled, 5000);
+        clock.plusMinutes(6);
+        awaitFalse(tl::isLogDisabled);
         doTriggers(tl, 2);
         assertEquals(5, tl.getRecordCount());
 
         // Advance the time past the stop time and do some triggers.
-        clock.plus(5, TimeUnit.MINUTES, 0);
-        awaitTrue(tl::isLogDisabled, 5000);
-        awaitEquals(tl::getRecordCount, 6, 5000);
+        clock.plusMinutes(5);
+        awaitTrue(tl::isLogDisabled);
+        awaitEquals(6, tl::getRecordCount);
         doTriggers(tl, 2);
         assertEquals(6, tl.getRecordCount());
     }
