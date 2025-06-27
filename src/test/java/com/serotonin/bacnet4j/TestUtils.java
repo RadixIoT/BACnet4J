@@ -195,7 +195,6 @@ public class TestUtils {
         }
     }
 
-
     @FunctionalInterface
     public interface BACnetExceptionCommand {
         void call() throws BACnetException;

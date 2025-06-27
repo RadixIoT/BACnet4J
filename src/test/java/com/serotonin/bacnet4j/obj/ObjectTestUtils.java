@@ -59,10 +59,20 @@ public class ObjectTestUtils {
         }
 
         /**
+         * Convenience method that defaults the wait time to 5 seconds.
+         *
+         * @param pid      the property identifier for which to watch
+         * @param newValue the value for which to watch, or null for any value.
+         */
+        public void waitFor(PropertyIdentifier pid, Encodable newValue) {
+            waitFor(pid, newValue, 5000);
+        }
+
+        /**
          * Wait until a given property has a given value written to it, or until the wait time has expired.
          *
          * @param pid      the property identifier for which to watch
-         * @param newValue the value for which to watch
+         * @param newValue the value for which to watch, or null for any value.
          * @param waitTime how long to wait. If time expires an AssertionException is throws via the fail method.
          */
         public void waitFor(PropertyIdentifier pid, Encodable newValue, long waitTime) {
@@ -71,13 +81,16 @@ public class ObjectTestUtils {
             while (true) {
                 try {
                     WrittenProperty wp = writtenProperties.poll(waitTime, TimeUnit.MILLISECONDS);
-                    if (wp.pid == pid && wp.newValue.equals(newValue)) {
+                    if (wp == null) {
+                        fail("Timeout waiting for property write of " + pid + " to " + newValue);
+                    }
+                    if (wp.pid == pid && (newValue == null || wp.newValue.equals(newValue))) {
                         LOG.debug("{} waited for {}ms for pid: {}, newValue: {}", bo.getId(),
                                 Clock.systemUTC().millis() - startTime, pid, newValue);
                         return;
                     }
                 } catch (InterruptedException e) {
-                    fail("Timeout waiting for property write of " + pid + " to " + newValue);
+                    fail("Polling interrupted for property write of " + pid + " to " + newValue);
                 }
             }
         }
