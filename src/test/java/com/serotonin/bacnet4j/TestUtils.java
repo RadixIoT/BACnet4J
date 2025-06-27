@@ -8,12 +8,13 @@ import java.io.IOException;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiPredicate;
 
 import org.junit.Assert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
@@ -34,6 +35,8 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 
 public class TestUtils {
+    static final Logger LOG = LoggerFactory.getLogger(TestUtils.class);
+
     public static <T, U> void assertListEqualsIgnoreOrder(final List<T> expectedList, final List<U> actualList,
             final BiPredicate<T, U> predicate) {
         Assert.assertEquals(expectedList.size(), actualList.size());
@@ -165,8 +168,7 @@ public class TestUtils {
             command.call();
             fail("BACnetException was expected");
         } catch (final BACnetException e) {
-            if (e instanceof ErrorAPDUException) {
-                final ErrorAPDUException eae = (ErrorAPDUException) e;
+            if (e instanceof ErrorAPDUException eae) {
                 assertErrorClassAndCode(eae.getError().getErrorClassAndCode(), errorClass, errorCode);
                 return (T) eae.getApdu().getError();
             }
@@ -181,14 +183,14 @@ public class TestUtils {
             command.call();
             fail("BACnetException was expected");
         } catch (final BACnetException e) {
-            if (e instanceof RejectAPDUException) {
-                final RejectAPDUException eae = (RejectAPDUException) e;
+            if (e instanceof RejectAPDUException eae) {
                 Assert.assertEquals(rejectReason, eae.getApdu().getRejectReason());
             } else {
                 fail("RejectAPDUException was expected: " + e.getClass());
             }
         }
     }
+
 
     @FunctionalInterface
     public interface BACnetExceptionCommand {
@@ -214,7 +216,7 @@ public class TestUtils {
         try {
             parsed = Encodable.read(queue, encodable.getClass());
         } catch (final BACnetException e) {
-            e.printStackTrace();
+            LOG.error("", e);
             fail(e.getMessage());
             return;
         }
@@ -237,7 +239,7 @@ public class TestUtils {
         try {
             parsed = Encodable.readSequenceOf(queue, innerType);
         } catch (final BACnetException e) {
-            e.printStackTrace();
+            LOG.error("", e);
             fail(e.getMessage());
             return;
         }
@@ -261,18 +263,6 @@ public class TestUtils {
             }
         }
     }
-
-    //
-    // Size assurance. Uses busy wait with timeout to ensure that a collection reaches a certain size.
-    public static void assertSize(final Collection<?> collection, final int size, final int wait) throws Exception {
-        awaitEquals(collection::size, size, wait);
-    }
-
-    @FunctionalInterface
-    interface SizeRetriever {
-        int size();
-    }
-
 
     /**
      * Supplier that returns a boolean and can throw an exception doing so.

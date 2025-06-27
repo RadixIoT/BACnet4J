@@ -1,5 +1,6 @@
 package com.serotonin.bacnet4j.npdu.ip;
 
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
@@ -17,6 +18,8 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
@@ -28,11 +31,13 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import lohbihler.warp.WarpClock;
 
 public class BBMDTest {
+    static final Logger LOG = LoggerFactory.getLogger(BBMDTest.class);
+
     static final int port = 0xBAC0;
 
     private final WarpClock clock = new WarpClock();
     boolean canRun;
-    
+
     LDInfo ld11, ld12, ld13;
     LDInfo ld21, ld22, ld23;
     LDInfo ld31, ld32, ld33;
@@ -43,18 +48,34 @@ public class BBMDTest {
 
     @Before
     public void before() throws Exception {
-        //On OSX 127.x.x.x are not localhost addresses
-        //Could do this from terminal: ifconfig lo0 alias 127.0.1.1
+        // On OSX 127.x.x.x are not localhost addresses
+        // Can do this from terminal:
+        // sudo ifconfig lo0 alias 127.0.1.3
+        // sudo ifconfig lo0 alias 127.0.2.1
+        // sudo ifconfig lo0 alias 127.0.1.1
+        // sudo ifconfig lo0 alias 127.0.2.2
+        // sudo ifconfig lo0 alias 127.0.2.3
+        // sudo ifconfig lo0 alias 127.0.3.1
+        // sudo ifconfig lo0 alias 127.0.3.2
+        // sudo ifconfig lo0 alias 127.0.3.3
+        // sudo ifconfig lo0 alias 127.0.151.1
+        // sudo ifconfig lo0 alias 127.0.152.1
+        // sudo ifconfig lo0 alias 127.0.153.1
+        // sudo ifconfig lo0 alias 127.0.254.254
+        // sudo ifconfig lo0 alias 127.0.1.255
+        // sudo ifconfig lo0 alias 127.0.2.255
+        // sudo ifconfig lo0 alias 127.0.3.255
+
         try {
             InetSocketAddress addr = new InetSocketAddress("127.0.1.1", 47808);
-            try(DatagramSocket socket = new DatagramSocket(addr)){
+            try (DatagramSocket socket = new DatagramSocket(addr)) {
                 canRun = true;
             }
-        }catch(SocketException e) {
+        } catch (SocketException e) {
             canRun = false;
         }
         Assume.assumeTrue(canRun);
-        
+
         ld11 = createLocalDevice(1, 1);
         ld12 = createLocalDevice(1, 2);
         ld13 = createLocalDevice(1, 3);
@@ -82,10 +103,9 @@ public class BBMDTest {
 
     @After
     public void after() throws Exception {
-
-        if(!canRun)
+        if (!canRun)
             return;
-        
+
         br1.close();
         br2.close();
         br3.close();
@@ -110,13 +130,13 @@ public class BBMDTest {
     }
 
     @Test
-    public void noBBMD() throws Exception {
-
+    public void noBBMD() {
         // Send some broadcasts
         ld11.ld.sendLocalBroadcast(ld11.ld.getIAm());
         ld12.ld.sendLocalBroadcast(ld12.ld.getIAm());
         ld33.ld.sendLocalBroadcast(new WhoIsRequest());
-        clock.plus(400, TimeUnit.MILLISECONDS, 800);
+        clock.plusMillis(400);
+        quiesce();
 
         // Confirm that the above broadcasts were only received on their subnets.
         assertEquals(1, ld11.iamCount()); // IAm from 12
@@ -132,7 +152,6 @@ public class BBMDTest {
 
     @Test
     public void bdt() throws Exception {
-
         // Write a BDT
         configurer.send(packet(1, "7F000101BAC0FFFFFFFF" + "7F000201BAC0FFFFFFFF", ld11));
 
@@ -151,21 +170,20 @@ public class BBMDTest {
 
     @Test
     public void fdt() throws Exception {
-
         final InetSocketAddress target = ld11.network.getLocalBindAddress();
 
         // Set the clock.
-        clock.plus(1, TimeUnit.SECONDS, 20);
+        clock.plusSeconds(1);
 
         // PART 1
         // Write FD registrations
         fd151.network.registerAsForeignDevice(target, 3);
         fd152.network.registerAsForeignDevice(target, 30);
         fd153.network.registerAsForeignDevice(target, 300);
-        Thread.sleep(100);
 
         // Advance the clock one second.
-        clock.plus(1, TimeUnit.SECONDS, 20);
+        clock.plusSeconds(1);
+        quiesce();
 
         // Read registrations
         configurer.send(packet(6, "", ld11));
@@ -182,7 +200,7 @@ public class BBMDTest {
         // Delete again. NOTE: this should return a NAK, but there is currently no facility to check. There will
         // instead be an error written to the log.
         fd153.network.unregisterAsForeignDevice();
-        Thread.sleep(100);
+        quiesce();
 
         // Read registrations again
         configurer.send(packet(6, "", ld11));
@@ -194,7 +212,7 @@ public class BBMDTest {
         // PART 4
         // Manually register a foreign device.
         fd153.network.getSocket().send(packet(5, "0001", target));
-        Thread.sleep(100);
+        quiesce();
 
         // Verify that it is there
         configurer.send(packet(6, "", ld11));
@@ -203,7 +221,7 @@ public class BBMDTest {
 
         // Wait for the manual entry to expire.
         // Advance the clock 42 seconds. The TTL was 1s, plus 30s grace, and the expiry thread runs every 10s.
-        clock.plus(42, TimeUnit.SECONDS, 1, TimeUnit.SECONDS, 10, 20);
+        clock.plus(42, TimeUnit.SECONDS, 1, TimeUnit.SECONDS, 50, 100);
 
         // Read registrations again
         configurer.send(packet(6, "", ld11));
@@ -215,7 +233,6 @@ public class BBMDTest {
 
     @Test
     public void broadcasts() throws Exception {
-
         // ***** Set up the BBMDs *****
         // 127.0.1.1
         String payload = "7F000101BAC0FFFFFFFF"; // Self
@@ -256,7 +273,8 @@ public class BBMDTest {
         fd151.network.registerAsForeignDevice(ld11.network.getLocalBindAddress(), 5000);
         fd152.network.registerAsForeignDevice(ld11.network.getLocalBindAddress(), 5000);
         fd153.network.registerAsForeignDevice(ld22.network.getLocalBindAddress(), 5000);
-        clock.plus(100, TimeUnit.MILLISECONDS, 100);
+        clock.plusMillis(100);
+        quiesce();
 
         // ********** TEST 1 **********
         // ***** Send a broadcast from 127.0.1.1 *****
@@ -275,7 +293,8 @@ public class BBMDTest {
         //   - 127.0.1.2 (original)
         //   - 127.0.1.3 (original)
         ld11.ld.sendLocalBroadcast(ld11.ld.getIAm());
-        clock.plus(100, TimeUnit.MILLISECONDS, 200);
+        clock.plusMillis(100);
+        quiesce();
 
         // Confirm that the broadcast was received across the B/N network
         assertEquals(0, ld11.iamCount());
@@ -294,7 +313,8 @@ public class BBMDTest {
 
         // ********** TEST 2 **********
         ld12.ld.sendLocalBroadcast(ld12.ld.getIAm());
-        clock.plus(100, TimeUnit.MILLISECONDS, 100);
+        clock.plusMillis(100);
+        quiesce();
 
         // Confirm that the broadcast was received across the B/N network
         assertEquals(1, ld11.iamCount());
@@ -313,7 +333,8 @@ public class BBMDTest {
 
         // ********** TEST 3 **********
         ld21.ld.sendLocalBroadcast(ld21.ld.getIAm());
-        clock.plus(100, TimeUnit.MILLISECONDS, 100);
+        clock.plusMillis(100);
+        quiesce();
 
         // Confirm that the broadcast was received across the B/N network
         assertEquals(1, ld11.iamCount());
@@ -332,7 +353,8 @@ public class BBMDTest {
 
         // ********** TEST 4 **********
         ld22.ld.sendLocalBroadcast(ld22.ld.getIAm());
-        clock.plus(100, TimeUnit.MILLISECONDS, 300);
+        clock.plusMillis(100);
+        quiesce();
 
         // Confirm that the broadcast was received across the B/N network
         assertEquals(1, ld11.iamCount());
@@ -351,7 +373,8 @@ public class BBMDTest {
 
         // ********** TEST 5 **********
         ld31.ld.sendLocalBroadcast(ld31.ld.getIAm());
-        clock.plus(100, TimeUnit.MILLISECONDS, 300);
+        clock.plusMillis(100);
+        quiesce();
 
         // Confirm that the broadcast was received across the B/N network
         assertEquals(1, ld11.iamCount());
@@ -379,7 +402,8 @@ public class BBMDTest {
         //     - 127.0.3.2 (forward)
         //     - 127.0.3.3 (forward)
         fd152.ld.sendLocalBroadcast(fd152.ld.getIAm());
-        clock.plus(100, TimeUnit.MILLISECONDS, 100);
+        clock.plusMillis(100);
+        quiesce();
 
         // Confirm that the broadcast was received across the B/N network
         assertEquals(1, ld11.iamCount());
@@ -407,7 +431,8 @@ public class BBMDTest {
         //     - 127.0.3.2 (forward)
         //     - 127.0.3.3 (forward)
         fd153.ld.sendLocalBroadcast(fd153.ld.getIAm());
-        clock.plus(100, TimeUnit.MILLISECONDS, 100);
+        clock.plusMillis(100);
+        quiesce();
 
         // Confirm that the broadcast was received across the B/N network
         assertEquals(0, ld11.iamCount());
@@ -446,8 +471,8 @@ public class BBMDTest {
         assertEquals(exp.length, packet.getLength());
         final byte[] actual = packet.getData();
         for (int i = 0; i < exp.length; i++)
-            assertEquals("Byte mismatch at index " + i + ": expected " + Integer.toHexString(exp[i] & 0xFF)
-                    + " but got " + Integer.toHexString(actual[i] & 0xFF), exp[i], actual[i]);
+            assertEquals("Byte mismatch at index " + i + ": expected " + Integer.toHexString(
+                    exp[i] & 0xFF) + " but got " + Integer.toHexString(actual[i] & 0xFF), exp[i], actual[i]);
     }
 
     private static DatagramPacket packet(final int function, final String payload, final LDInfo dest) {
@@ -470,7 +495,7 @@ public class BBMDTest {
         info.network = new IpNetworkBuilder().withLocalBindAddress("127.0." + subnet + "." + addr) //
                 .withSubnet("127.0." + subnet + ".0", 24) //
                 .withLocalNetworkNumber(1) //
-                .build();       
+                .build();
         info.network.enableBBMD();
 
         info.ld = new LocalDevice(subnet * 10 + addr, new DefaultTransport(info.network)) //
@@ -491,12 +516,11 @@ public class BBMDTest {
         return info;
     }
 
-    @SuppressWarnings("resource")
     Broadcaster createBroadcaster(final int subnet) throws IOException {
         final String ip = "127.0." + subnet + ".255";
         final DatagramSocket s = new DatagramSocket(IpNetwork.DEFAULT_PORT, InetAddress.getByName(ip));
 
-        // Find all of the sockets on the same virtual subnet.
+        // Find all the sockets on the same virtual subnet.
         final List<DatagramSocket> to = new ArrayList<>();
         for (final DatagramSocket dev : allSockets) {
             if (dev.getLocalAddress().getAddress()[2] == subnet)
@@ -512,7 +536,8 @@ public class BBMDTest {
 
     List<DatagramSocket> allSockets = new ArrayList<>();
 
-    class LDInfo {
+
+    static class LDInfo {
         LocalDevice ld;
         IpNetwork network;
         MutableInt iamCount;
@@ -527,9 +552,10 @@ public class BBMDTest {
         }
     }
 
+
     /**
-     * Simulates broadcasting by knowing all of the sockets on a particular virtual subnet, and listening for messages
-     * on a virtual broadcast address. When it receives a message, it
+     * Simulates broadcasting by knowing all the sockets on a particular virtual subnet, and listening for messages on a
+     * virtual broadcast address. When it receives a message, it
      */
     class Broadcaster implements Runnable {
         final String ip;
@@ -567,8 +593,8 @@ public class BBMDTest {
                     else {
                         // Use that socket to send to individual addresses.
                         for (final DatagramSocket to : forwardTo) {
-                            final DatagramPacket fwd = new DatagramPacket(p.getData(), p.getLength(),
-                                    to.getLocalSocketAddress());
+                            final DatagramPacket fwd =
+                                    new DatagramPacket(p.getData(), p.getLength(), to.getLocalSocketAddress());
                             from.send(fwd);
                         }
                     }
@@ -577,9 +603,9 @@ public class BBMDTest {
                         break;
 
                     // ignore
-                    e.printStackTrace();
+                    LOG.error("", e);
                 } catch (final IOException e) {
-                    e.printStackTrace();
+                    LOG.error("", e);
                 }
             }
         }
