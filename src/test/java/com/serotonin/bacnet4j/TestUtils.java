@@ -9,13 +9,14 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiPredicate;
 
 import org.junit.Assert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
@@ -38,6 +39,8 @@ import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 import lohbihler.warp.WarpClock;
 
 public class TestUtils {
+    static final Logger LOG = LoggerFactory.getLogger(TestUtils.class);
+
     public static <T, U> void assertListEqualsIgnoreOrder(final List<T> expectedList, final List<U> actualList,
             final BiPredicate<T, U> predicate) {
         Assert.assertEquals(expectedList.size(), actualList.size());
@@ -216,7 +219,7 @@ public class TestUtils {
         try {
             parsed = Encodable.read(queue, encodable.getClass());
         } catch (final BACnetException e) {
-            e.printStackTrace();
+            LOG.error("", e);
             fail(e.getMessage());
             return;
         }
@@ -239,7 +242,7 @@ public class TestUtils {
         try {
             parsed = Encodable.readSequenceOf(queue, innerType);
         } catch (final BACnetException e) {
-            e.printStackTrace();
+            LOG.error("", e);
             fail(e.getMessage());
             return;
         }
@@ -264,24 +267,22 @@ public class TestUtils {
         }
     }
 
-    //
-    // Size assurance. Uses busy wait with timeout to ensure that a collection reaches a certain size.
-    public static void assertSize(final Collection<?> collection, final int size, final int wait) throws Exception {
-        awaitEquals(collection::size, size, wait);
-    }
-
-    @FunctionalInterface
-    interface SizeRetriever {
-        int size();
-    }
-
-
     /**
      * Supplier that returns a boolean and can throw an exception doing so.
      */
     @FunctionalInterface
     public interface BooleanSupplierWithException {
         boolean getAsBoolean() throws Exception;
+    }
+
+    /**
+     * Convenience method to default the timeout to 5 seconds.
+     *
+     * @param condition the condition to which to wait
+     * @throws Exception the exception if any that the condition threw
+     */
+    public static void awaitTrue(BooleanSupplierWithException condition) throws Exception {
+        awaitTrue(condition, 5000);
     }
 
     /**
@@ -296,6 +297,19 @@ public class TestUtils {
             return;
         }
         fail("awaitTrue timed out");
+    }
+
+    /**
+     * Convenience method defaulting the timeout to 5 seconds.
+     *
+     * @param condition the condition to which to wait
+     * @throws Exception the exception if any thrown by the condition
+     */
+    public static void awaitFalse(BooleanSupplierWithException condition) throws Exception {
+        if (await(condition, false, 5000)) {
+            return;
+        }
+        fail("awaitFalse timed out");
     }
 
     /**
@@ -395,6 +409,25 @@ public class TestUtils {
         fail("awaitEquals timed out. Wanted " + constant + " but last value was " + supplier.get());
     }
 
+    /**
+     * Convenience method defaulting the value to true and the timeout to 5 seconds.
+     *
+     * @param condition the condition to which to wait
+     * @return true if the condition was matched, false otherwise
+     * @throws Exception the exception if any thrown by the condition
+     */
+    public static boolean await(BooleanSupplierWithException condition) throws Exception {
+        return await(condition, true, 5000);
+    }
+
+    /**
+     * Convenience method defaulting the value to true.
+     *
+     * @param condition the condition to which to wait
+     * @param timeoutMs the maximum amount of time to wait
+     * @return true if the condition was matched, false otherwise
+     * @throws Exception the exception if any thrown by the condition
+     */
     public static boolean await(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
         return await(condition, true, timeoutMs);
     }
@@ -464,9 +497,11 @@ public class TestUtils {
 
         try {
             if (remainder <= 0L) {
-                preAdvance.run();
+                if (preAdvance != null)
+                    preAdvance.run();
                 result = clock.plusNanos(0L);
-                postAdvance.run();
+                if (postAdvance != null)
+                    postAdvance.run();
             } else {
                 while (remainder > 0L) {
                     long nanos = each;
@@ -474,10 +509,12 @@ public class TestUtils {
                         nanos = remainder;
                     }
 
-                    preAdvance.run();
+                    if (preAdvance != null)
+                        preAdvance.run();
                     result = clock.plusNanos(nanos);
                     remainder -= nanos;
-                    postAdvance.run();
+                    if (postAdvance != null)
+                        postAdvance.run();
                 }
             }
 
