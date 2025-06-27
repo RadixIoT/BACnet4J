@@ -33,6 +33,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
@@ -93,7 +94,9 @@ public class IpNetwork extends Network implements Runnable {
 
     // Runtime
     private Thread thread;
-    private DatagramSocket socket;
+    private Thread receiveBroadcast;
+    private DatagramSocket exclusiveSocket;
+    private DatagramSocket sharedSocket;
     private OctetString broadcastMAC;
     private InetSocketAddress localBindAddress;
     private byte[] subnetMask;
@@ -150,38 +153,44 @@ public class IpNetwork extends Network implements Runnable {
      * @return
      */
     public DatagramSocket getSocket() {
-        return socket;
+        return exclusiveSocket;
     }
 
     @Override
     public void initialize(final Transport transport) throws Exception {
         super.initialize(transport);
-
         localBindAddress = InetAddrCache.get(localBindAddressStr, port);
+        boolean isDefaultBind = localBindAddressStr.equals(DEFAULT_BIND_IP);
 
-        if (reuseAddress) {
-            socket = new DatagramSocket(null);
-            socket.setReuseAddress(true);
-            if (!socket.getReuseAddress())
-                LOG.warn("reuseAddress was set, but not supported by the underlying platform");
-            socket.bind(localBindAddress);
-        } else
-            socket = new DatagramSocket(localBindAddress);
-        socket.setBroadcast(true);
+        if (isDefaultBind || reuseAddress) exclusiveSocket = new MulticastSocket(localBindAddress);
+        else exclusiveSocket = new DatagramSocket(localBindAddress);
 
-        //        broadcastAddress = new Address(broadcastIp, port, new Network(0xffff, new byte[0]));
+        if (!isDefaultBind) {
+            InetSocketAddress broadcastBindAddress = InetAddrCache.get(DEFAULT_BIND_IP, port);
+            sharedSocket = new MulticastSocket(broadcastBindAddress);
+        }
+
         broadcastMAC = IpNetworkUtils.toOctetString(broadcastAddressStr, port);
         subnetMask = BACnetUtils.dottedStringToBytes(subnetMaskStr);
-
         thread = new Thread(this, "BACnet4J IP socket listener for " + transport.getLocalDevice().getId());
         thread.start();
+
+        if (sharedSocket != null) {
+            receiveBroadcast = new Thread(() -> receive(sharedSocket));
+            receiveBroadcast.start();
+        }
     }
 
     @Override
     public void terminate() {
+        if (receiveBroadcast != null)
+            receiveBroadcast.interrupt();
+
         unregisterAsForeignDevice();
-        if (socket != null)
-            socket.close();
+        if (exclusiveSocket != null)
+            exclusiveSocket.close();
+        if (sharedSocket != null)
+            sharedSocket.close();
         if (ftdMaintenance != null)
             ftdMaintenance.cancel(false);
     }
@@ -309,7 +318,7 @@ public class IpNetwork extends Network implements Runnable {
     private void sendPacket(final InetSocketAddress addr, final byte[] data) throws BACnetException {
         try {
             final DatagramPacket packet = new DatagramPacket(data, data.length, addr);
-            socket.send(packet);
+            exclusiveSocket.send(packet);
             bytesOut += data.length;
         } catch (final Exception e) {
             throw new BACnetException(e);
@@ -320,6 +329,10 @@ public class IpNetwork extends Network implements Runnable {
     // For receiving
     @Override
     public void run() {
+        receive(exclusiveSocket);
+    }
+
+    private void receive(DatagramSocket socket) {
         final byte[] buffer = new byte[MESSAGE_LENGTH];
         final DatagramPacket p = new DatagramPacket(buffer, buffer.length);
 
@@ -363,9 +376,9 @@ public class IpNetwork extends Network implements Runnable {
         if (function == 0x0) {
             final int result = BACnetUtils.popShort(queue);
 
-           if (result == 0x10)
-                LOG.error("Write-Broadcast-Distrubution-Table failed!");  
-           else if (result == 0x20)
+            if (result == 0x10)
+                LOG.error("Write-Broadcast-Distrubution-Table failed!");
+            else if (result == 0x20)
                 LOG.error("Read-Broadcast-Distrubution-Table failed!");
             else if (result == 0x30)
                 LOG.error("Register-Foreign-Device failed!");
@@ -620,9 +633,9 @@ public class IpNetwork extends Network implements Runnable {
                 response.pushU2B(0x20); // NAK
             }
         } else {
-                response.push(0); // Result
-                response.pushU2B(6); // Length
-                response.pushU2B(0x20); // NAK
+            response.push(0); // Result
+            response.pushU2B(6); // Length
+            response.pushU2B(0x20); // NAK
         }
         sendPacket(IpNetworkUtils.getInetSocketAddress(origin), response.popAll());
     }
@@ -802,8 +815,8 @@ public class IpNetwork extends Network implements Runnable {
                     list.pushU2B(e.timeToLive);
 
                     int remaining = (int) (e.endTime - now) / 1000;
-                    if (remaining < 0) 
-                    // Hasn't yet been cleaned up.
+                    if (remaining < 0)
+                        // Hasn't yet been cleaned up.
                         remaining = 0;
                     if (remaining > 65535)
                         remaining = 65535;
@@ -984,7 +997,7 @@ public class IpNetwork extends Network implements Runnable {
         pushISA(queue, fdtEntry);
         sendPacket(addr, queue.popAll());
     }
-    
+
     /**
      * Enable BBMD support. Allow other device to register as BBMD or foreign device. *
      */
