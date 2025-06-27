@@ -22,14 +22,12 @@ import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.exception.ErrorAPDUException;
-import com.serotonin.bacnet4j.exception.RejectAPDUException;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.constructed.TimeStamp;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
-import com.serotonin.bacnet4j.type.enumerated.RejectReason;
 import com.serotonin.bacnet4j.type.error.BaseError;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.Time;
@@ -181,20 +179,6 @@ public class TestUtils {
         return null;
     }
 
-    public static void assertRejectAPDUException(final BACnetExceptionCommand command,
-            final RejectReason rejectReason) {
-        try {
-            command.call();
-            fail("BACnetException was expected");
-        } catch (final BACnetException e) {
-            if (e instanceof RejectAPDUException eae) {
-                Assert.assertEquals(rejectReason, eae.getApdu().getRejectReason());
-            } else {
-                fail("RejectAPDUException was expected: " + e.getClass());
-            }
-        }
-    }
-
     @FunctionalInterface
     public interface BACnetExceptionCommand {
         void call() throws BACnetException;
@@ -293,7 +277,7 @@ public class TestUtils {
      * @throws Exception the exception if any that the condition threw
      */
     public static void awaitTrue(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
-        if (await(condition, true, timeoutMs)) {
+        if (await(true, condition, timeoutMs)) {
             return;
         }
         fail("awaitTrue timed out");
@@ -306,7 +290,7 @@ public class TestUtils {
      * @throws Exception the exception if any thrown by the condition
      */
     public static void awaitFalse(BooleanSupplierWithException condition) throws Exception {
-        if (await(condition, false, 5000)) {
+        if (await(false, condition, 5000)) {
             return;
         }
         fail("awaitFalse timed out");
@@ -320,7 +304,7 @@ public class TestUtils {
      * @throws Exception the exception if any thrown by the condition
      */
     public static void awaitFalse(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
-        if (await(condition, false, timeoutMs)) {
+        if (await(false, condition, timeoutMs)) {
             return;
         }
         fail("awaitFalse timed out");
@@ -355,23 +339,23 @@ public class TestUtils {
      * @param actualSupplier the supplier the value of which to check
      */
     public static void awaitEquals(int expected, final IntSupplierWithException actualSupplier) throws Exception {
-        awaitEquals(actualSupplier, expected, 5000);
+        awaitEquals(expected, actualSupplier, 5000);
     }
 
     /**
      * Utility to busy-wait up to a given timeout for the given supplier to supply a value that matches that given.
      *
+     * @param expected  the value to match
      * @param supplier  the supplier the value of which to check
-     * @param constant  the value to match
      * @param timeoutMs the maximum amount of time to wait
      * @throws Exception the exception if any thrown by the supplier
      */
-    public static void awaitEquals(final IntSupplierWithException supplier, int constant, long timeoutMs)
+    public static void awaitEquals(int expected, final IntSupplierWithException supplier, long timeoutMs)
             throws Exception {
-        if (await(() -> supplier.get() == constant, true, timeoutMs)) {
+        if (await(true, () -> supplier.get() == expected, timeoutMs)) {
             return;
         }
-        fail("awaitEquals timed out. Wanted " + constant + " but last value was " + supplier.get());
+        fail("awaitEquals timed out. Wanted " + expected + " but last value was " + supplier.get());
     }
 
     /**
@@ -390,23 +374,23 @@ public class TestUtils {
      */
     public static void awaitEquals(Encodable expected, final EncodableSupplierWithException actualSupplier)
             throws Exception {
-        awaitEquals(actualSupplier, expected, 5000);
+        awaitEquals(expected, actualSupplier, 5000);
     }
 
     /**
      * Utility to busy-wait up to a given timeout for the given supplier to supply a value that matches that given.
      *
+     * @param expected  the value to match
      * @param supplier  the supplier the value of which to check
-     * @param constant  the value to match
      * @param timeoutMs the maximum amount of time to wait
      * @throws Exception the exception if any thrown by the supplier
      */
-    public static void awaitEquals(final EncodableSupplierWithException supplier, Encodable constant, long timeoutMs)
+    public static void awaitEquals(Encodable expected, final EncodableSupplierWithException supplier, long timeoutMs)
             throws Exception {
-        if (await(() -> equalsRegardingNull(supplier.get(), constant), true, timeoutMs)) {
+        if (await(true, () -> equalsRegardingNull(expected, supplier.get()), timeoutMs)) {
             return;
         }
-        fail("awaitEquals timed out. Wanted " + constant + " but last value was " + supplier.get());
+        fail("awaitEquals timed out. Wanted " + expected + " but last value was " + supplier.get());
     }
 
     /**
@@ -417,7 +401,7 @@ public class TestUtils {
      * @throws Exception the exception if any thrown by the condition
      */
     public static boolean await(BooleanSupplierWithException condition) throws Exception {
-        return await(condition, true, 5000);
+        return await(true, condition, 5000);
     }
 
     /**
@@ -429,23 +413,23 @@ public class TestUtils {
      * @throws Exception the exception if any thrown by the condition
      */
     public static boolean await(BooleanSupplierWithException condition, long timeoutMs) throws Exception {
-        return await(condition, true, timeoutMs);
+        return await(true, condition, timeoutMs);
     }
 
     /**
      * Utility that will "busy-wait" up to a given timeout for a condition to match the given value.
      *
+     * @param expected  the value the condition should match
      * @param condition the condition to which to wait
-     * @param value     the value the condition should match
      * @param timeoutMs the maximum amount of time to wait
      * @return true if the condition was matched, false otherwise
      * @throws Exception the exception if any thrown by the condition
      */
-    public static boolean await(BooleanSupplierWithException condition, boolean value, long timeoutMs)
+    public static boolean await(boolean expected, BooleanSupplierWithException condition, long timeoutMs)
             throws Exception {
         final long deadline = Clock.systemUTC().millis() + timeoutMs;
         while (true) {
-            if (condition.getAsBoolean() == value) {
+            if (condition.getAsBoolean() == expected) {
                 return true;
             }
             if (deadline < Clock.systemUTC().millis()) {
@@ -458,18 +442,6 @@ public class TestUtils {
     @FunctionalInterface
     public interface RunnableWithException {
         void run() throws Exception;
-    }
-
-    /**
-     * Convenience method for only advancing the clock.
-     *
-     * @param clock  the clock to advance
-     * @param amount the amount of time to advance
-     * @param unit   the unit of total time amount
-     * @return the final datetime
-     */
-    public static LocalDateTime advanceClock(WarpClock clock, int amount, TimeUnit unit) throws Exception {
-        return advanceClock(clock, amount, unit, 0, null, null, null);
     }
 
     /**
