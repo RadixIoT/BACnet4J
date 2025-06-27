@@ -461,6 +461,18 @@ public class TestUtils {
     }
 
     /**
+     * Convenience method for only advancing the clock.
+     *
+     * @param clock  the clock to advance
+     * @param amount the amount of time to advance
+     * @param unit   the unit of total time amount
+     * @return the final datetime
+     */
+    public static LocalDateTime advanceClock(WarpClock clock, int amount, TimeUnit unit) throws Exception {
+        return advanceClock(clock, amount, unit, 0, null, null, null);
+    }
+
+    /**
      * Lifted from the WarpClock.plus method, but instead of sleep intervals this uses runnables.
      *
      * @param clock       the clock to advance
