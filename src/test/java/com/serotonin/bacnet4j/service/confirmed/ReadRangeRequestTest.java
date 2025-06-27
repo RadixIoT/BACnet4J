@@ -155,10 +155,10 @@ public class ReadRangeRequestTest {
     private static void doTriggers(final TrendLogMultipleObject tl, final int count) throws Exception {
         int remaining = count;
         while (remaining > 0) {
-            await(tl::trigger, 5000);
+            await(tl::trigger);
             remaining--;
         }
-        await(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue(), 5000);
+        await(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue());
     }
 
     /**
