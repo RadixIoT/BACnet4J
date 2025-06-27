@@ -1,5 +1,9 @@
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.advanceClock;
+import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -9,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.AbstractTest;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkUtils;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
@@ -63,19 +66,21 @@ public class AnalogOutputObjectTest extends AbstractTest {
         ao.supportIntrinsicReporting(60, 17, 100, 20, 5, new LimitEnable(true, true),
                 new EventTransitionBits(true, true, true), NotifyType.alarm, 180);
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(40);
+        quiesce();
         assertEquals(0, listener.getNotifCount());
 
         // Do a real state change. Write an out of range value. After 60s the alarm will be raised.
         ao.writePropertyInternal(PropertyIdentifier.presentValue, new Real(101));
-        clock.plus(59500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, 0, 40);
+        advanceClock(clock, 59500, TimeUnit.MILLISECONDS, 500, TimeUnit.MILLISECONDS, null,
+                () -> assertEquals(EventState.normal, ao.readProperty(PropertyIdentifier.eventState)));
+        quiesce();
         assertEquals(EventState.normal, ao.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.highLimit, ao.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, false, false, false), ao.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
@@ -98,12 +103,13 @@ public class AnalogOutputObjectTest extends AbstractTest {
         ao.writePropertyInternal(PropertyIdentifier.presentValue, new Real(94));
         assertEquals(EventState.highLimit, ao.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
-        clock.plus(179999, TimeUnit.MILLISECONDS, 179999, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(179999);
+        quiesce();
         assertEquals(EventState.highLimit, ao.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
-        clock.plus(2, TimeUnit.MILLISECONDS, 2, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(2);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, ao.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(EventState.highLimit, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
@@ -131,7 +137,7 @@ public class AnalogOutputObjectTest extends AbstractTest {
     @Test
     public void propertyConformanceEditableWhenOutOfService() throws BACnetServiceException {
         // Should not be writable while in service
-        TestUtils.assertBACnetServiceException(() -> ao.writeProperty(null,
+        assertBACnetServiceException(() -> ao.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.reliability, null, Reliability.unreliableOther, null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
 
@@ -205,7 +211,7 @@ public class AnalogOutputObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        Thread.sleep(40);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 
@@ -213,17 +219,19 @@ public class AnalogOutputObjectTest extends AbstractTest {
         // Go to high limit.
         ao.writePropertyInternal(PropertyIdentifier.presentValue, new Real(70));
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until just before the time delay.
-        clock.plus(29500, TimeUnit.MILLISECONDS, 29500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(29500);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until after the time delay.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.highLimit, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
@@ -246,17 +254,19 @@ public class AnalogOutputObjectTest extends AbstractTest {
         // Return to normal
         ao.writePropertyInternal(PropertyIdentifier.presentValue, new Real(40));
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.highLimit, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until just before the time delay.
-        clock.plus(29500, TimeUnit.MILLISECONDS, 29500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(29500);
+        quiesce();
         assertEquals(EventState.highLimit, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until after the time delay.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(600);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.getNotifCount());
         notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());

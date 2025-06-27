@@ -33,6 +33,14 @@ import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.service.acknowledgement.AcknowledgementService;
 
 public interface ResponseConsumer {
+    default void queued() {
+        // Implementations can choose to support this or not.
+    }
+
+    default void sent() {
+        // Implementations can choose to support this or not.
+    }
+
     void success(AcknowledgementService ack);
 
     void fail(AckAPDU ack);
