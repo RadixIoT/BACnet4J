@@ -19,6 +19,27 @@ jobs:
           java-version: 17
           distribution: 'zulu'
           cache: 'maven'
+      - name: Checkstyle
+        run: mvn -T1C checkstyle:check
+      - name: Fetch latest IntelliJ release version
+        id: get_version
+        run: |
+          version=$(curl "https://data.services.jetbrains.com/products/releases?code=IIC&latest=true&type=release" | jq -r ".IIC[0].version")
+          echo "version=$version" >> $GITHUB_OUTPUT
+      - name: Cache IntelliJ
+        id: cache_idea
+        uses: actions/cache@v3
+        with:
+          path: /tmp/idea
+          key: idea-${{ steps.get_version.outputs.version }}
+      - name: Download IntelliJ
+        if: steps.cache_idea.outputs.cache-hit != 'true'
+        run: |
+          curl -L -o /tmp/idea.tar.gz "https://download.jetbrains.com/idea/ideaIC-${{ steps.get_version.outputs.version }}.tar.gz"
+          mkdir -p /tmp/idea && tar -xzf /tmp/idea.tar.gz -C /tmp/idea --strip-components=1
+      - name: Check code format with IntelliJ command line formatter
+        run: | #https://www.jetbrains.com/help/idea/command-line-formatter.html
+          /tmp/idea/bin/format.sh . -r -settings ".idea/codeStyles/Project.xml" -mask "*.java" -dry
       - name: Cache SonarCloud packages
         uses: actions/cache@v3
         with:
