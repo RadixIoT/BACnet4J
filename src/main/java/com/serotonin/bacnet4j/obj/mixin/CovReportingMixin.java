@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.obj.mixin;
 
 import java.util.ArrayList;
@@ -390,58 +389,60 @@ public class CovReportingMixin extends AbstractMixin {
         }
     }
 
+
     public static final CovReportingCriteria criteria13_1_1 = new CovReportingCriteria( //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
-                    PropertyIdentifier.doorAlarmState }, //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
-                    PropertyIdentifier.doorAlarmState }, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
+                    PropertyIdentifier.doorAlarmState}, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
+                    PropertyIdentifier.doorAlarmState}, //
             null, PropertyIdentifier.presentValue);
 
     public static final CovReportingCriteria criteria13_1_2 = new CovReportingCriteria( //
-            new PropertyIdentifier[] { PropertyIdentifier.accessEventTime, PropertyIdentifier.statusFlags }, //
-            new PropertyIdentifier[] { PropertyIdentifier.accessEvent, PropertyIdentifier.statusFlags,
+            new PropertyIdentifier[] {PropertyIdentifier.accessEventTime, PropertyIdentifier.statusFlags}, //
+            new PropertyIdentifier[] {PropertyIdentifier.accessEvent, PropertyIdentifier.statusFlags,
                     PropertyIdentifier.accessEventTag, PropertyIdentifier.accessEventTime,
-                    PropertyIdentifier.accessEventCredential, PropertyIdentifier.accessEventAuthenticationFactor }, //
+                    PropertyIdentifier.accessEventCredential, PropertyIdentifier.accessEventAuthenticationFactor}, //
             null, PropertyIdentifier.accessEvent);
 
     public static final CovReportingCriteria criteria13_1_3 = new CovReportingCriteria( //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags }, //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags }, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags}, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags}, //
             PropertyIdentifier.presentValue, PropertyIdentifier.presentValue);
 
     public static final CovReportingCriteria criteria13_1_4 = new CovReportingCriteria( //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags }, //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags }, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags}, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags}, //
             null, PropertyIdentifier.presentValue);
 
     public static final CovReportingCriteria criteria13_1_5 = new CovReportingCriteria( //
-            new PropertyIdentifier[] { PropertyIdentifier.updateTime, PropertyIdentifier.statusFlags }, //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
-                    PropertyIdentifier.updateTime }, //
+            new PropertyIdentifier[] {PropertyIdentifier.updateTime, PropertyIdentifier.statusFlags}, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
+                    PropertyIdentifier.updateTime}, //
             null, PropertyIdentifier.presentValue);
 
     public static final CovReportingCriteria criteria13_1_6 = new CovReportingCriteria( //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
                     PropertyIdentifier.requestedShedLevel, PropertyIdentifier.startTime,
-                    PropertyIdentifier.shedDuration, PropertyIdentifier.dutyWindow }, //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
+                    PropertyIdentifier.shedDuration, PropertyIdentifier.dutyWindow}, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
                     PropertyIdentifier.requestedShedLevel, PropertyIdentifier.startTime,
-                    PropertyIdentifier.shedDuration, PropertyIdentifier.dutyWindow }, //
+                    PropertyIdentifier.shedDuration, PropertyIdentifier.dutyWindow}, //
             null, PropertyIdentifier.presentValue);
 
     public static final CovReportingCriteria criteria13_1_7 = new CovReportingCriteria( //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags }, //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
-                    PropertyIdentifier.setpoint, PropertyIdentifier.controlledVariableValue }, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags}, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
+                    PropertyIdentifier.setpoint, PropertyIdentifier.controlledVariableValue}, //
             PropertyIdentifier.presentValue, PropertyIdentifier.presentValue);
 
     public static final CovReportingCriteria criteria13_1_8 = new CovReportingCriteria( //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags }, //
-            new PropertyIdentifier[] { PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
-                    PropertyIdentifier.updateTime }, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags}, //
+            new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.statusFlags,
+                    PropertyIdentifier.updateTime}, //
             PropertyIdentifier.presentValue, PropertyIdentifier.presentValue);
 
     private static final Map<ObjectType, CovReportingCriteria> objectTypeCriteria = new HashMap<>();
+
     static {
         objectTypeCriteria.put(ObjectType.accessDoor, criteria13_1_1);
 

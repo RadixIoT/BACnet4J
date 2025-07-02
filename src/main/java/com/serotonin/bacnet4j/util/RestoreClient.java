@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.util;
 
 import java.io.BufferedReader;
@@ -54,7 +81,7 @@ public class RestoreClient {
     private final CharacterString password;
     private final int recordsPerRequest;
     private final int maxOctetsPerRequest;
-    
+
     public RestoreClient(final LocalDevice localDevice, final int targetDeviceId, final String password) {
         this.localDevice = localDevice;
         this.targetDeviceId = targetDeviceId;
@@ -63,29 +90,31 @@ public class RestoreClient {
         this.maxOctetsPerRequest = 128;
     }
 
-    
+
     /**
      * Constructor with communication parameters
+     *
      * @param localDevice
      * @param targetDeviceId
      * @param password
-     * @param recordsPerRequest only for record-access relevant. 
-     * Record access files are written out as CRLF-delimited hex representations. 
-     * The choice of the number of records per request is arbitrary 
-     * because we don't know how big a record will be.
-     * @param maxOctetsPerRequest only for stram-access relevant. 
-     * Defines the maximum APDU size that is used. 
-     * The choice of the number of bytes per request 
-     * is based upon the max APDU size of the target.
+     * @param recordsPerRequest   only for record-access relevant.
+     *                            Record access files are written out as CRLF-delimited hex representations.
+     *                            The choice of the number of records per request is arbitrary
+     *                            because we don't know how big a record will be.
+     * @param maxOctetsPerRequest only for stram-access relevant.
+     *                            Defines the maximum APDU size that is used.
+     *                            The choice of the number of bytes per request
+     *                            is based upon the max APDU size of the target.
      */
-    public RestoreClient(final LocalDevice localDevice, final int targetDeviceId, final String password, int recordsPerRequest, int maxOctetsPerRequest) {
+    public RestoreClient(final LocalDevice localDevice, final int targetDeviceId, final String password,
+            int recordsPerRequest, int maxOctetsPerRequest) {
         this.localDevice = localDevice;
         this.targetDeviceId = targetDeviceId;
         this.password = password == null ? null : new CharacterString(password);
         this.recordsPerRequest = recordsPerRequest;
         this.maxOctetsPerRequest = maxOctetsPerRequest;
     }
-        
+
     /**
      * Start the restore procedure with a default timeout of 30s.
      */
@@ -96,13 +125,13 @@ public class RestoreClient {
     /**
      * Start the restore procedure.
      *
-     * @param files
-     *            the files to restore to the target device. The file names are expected to look like those produced
-     *            by the BackupClient, and will be restore to file objects on the target device with the same object
-     *            identifiers.
-     * @param restoreStateChangeTimeout
-     *            the maximum amount of milliseconds to wait for the backup state of the target
-     *            to change to an actionable value.
+     * @param files                     the files to restore to the target device. The file names are expected to look
+     *                                  like those produced
+     *                                  by the BackupClient, and will be restore to file objects on the target device
+     *                                  with the same object
+     *                                  identifiers.
+     * @param restoreStateChangeTimeout the maximum amount of milliseconds to wait for the backup state of the target
+     *                                  to change to an actionable value.
      * @throws BACnetException
      * @throws IOException
      */
@@ -131,7 +160,8 @@ public class RestoreClient {
         try {
             // 19.1.3.1 - send a start restore request to the target device.
             LOG.info("Sending start restore request...");
-            localDevice.send(rd, new ReinitializeDeviceRequest(ReinitializedStateOfDevice.startRestore, password)).get();
+            localDevice.send(rd, new ReinitializeDeviceRequest(ReinitializedStateOfDevice.startRestore, password))
+                    .get();
 
             // 19.1.3.2
             if (restorePreparationTimeSeconds > 0) {
@@ -175,7 +205,7 @@ public class RestoreClient {
                     throw e;
                 }
             }
-             
+
             copyFiles(files, rd);
 
             // 19.1.3.4
@@ -198,12 +228,13 @@ public class RestoreClient {
 
         // The choice of the number of bytes per request is based upon the max APDU size of the target. 
         // This parameter is only relevant for streamAccess.
-        int octetsPerRequest = rd.getMaxAPDULengthAccepted() - ConfirmedRequest.getHeaderSize(true) - AtomicWriteFileRequest.getHeaderSize() - AtomicWriteFileRequest.StreamAccess.getHeaderSize();
+        int octetsPerRequest = rd.getMaxAPDULengthAccepted() - ConfirmedRequest.getHeaderSize(
+                true) - AtomicWriteFileRequest.getHeaderSize() - AtomicWriteFileRequest.StreamAccess.getHeaderSize();
         if (octetsPerRequest > maxOctetsPerRequest) {
             octetsPerRequest = maxOctetsPerRequest;
         }
         LOG.debug("With streamAccess, {} octets per Request can be transmitted", octetsPerRequest);
-        
+
         for (final File file : files) {
             // Find a matching file object.
             final int fileNumber = toFileInstanceNumber(file);
@@ -218,11 +249,11 @@ public class RestoreClient {
             if (fileOid == null) {
                 // Didn't find a matching file. Create a new file on the target.
                 final CreateObjectAck ack = localDevice.send(rd,
-                        new CreateObjectRequest(ObjectType.file, new SequenceOf<>(
-                                new PropertyValue(PropertyIdentifier.objectName, new CharacterString(file.getName())),
-                                new PropertyValue(PropertyIdentifier.fileType,
-                                        new CharacterString("configurationFile")),
-                                new PropertyValue(PropertyIdentifier.fileAccessMethod, FileAccessMethod.streamAccess))))
+                                new CreateObjectRequest(ObjectType.file, new SequenceOf<>(
+                                        new PropertyValue(PropertyIdentifier.objectName, new CharacterString(file.getName())),
+                                        new PropertyValue(PropertyIdentifier.fileType,
+                                                new CharacterString("configurationFile")),
+                                        new PropertyValue(PropertyIdentifier.fileAccessMethod, FileAccessMethod.streamAccess))))
                         .get();
                 fileOid = ack.getObjectIdentifier();
             }
@@ -254,7 +285,7 @@ public class RestoreClient {
                             }
                             records.add(new OctetString(ArrayUtils.fromPlainHexString(line)));
                         }
-                        
+
                         if (records.size() > 0) {
                             reqCount++;
                             final AtomicWriteFileRequest req = new AtomicWriteFileRequest(fileOid, new RecordAccess(

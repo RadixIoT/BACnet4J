@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.npdu.ip;
 
 import java.io.IOException;
@@ -147,6 +146,7 @@ public class IpNetwork extends Network implements Runnable {
 
     /**
      * Get the network socket, useful for routing purposes
+     *
      * @return
      */
     public DatagramSocket getSocket() {
@@ -205,13 +205,11 @@ public class IpNetwork extends Network implements Runnable {
      * If the device is to be un-registered, the registerAsForeignDevice method should be called. This will be done
      * automatically if the local device is terminated.
      *
-     * @param addr
-     *            The address of the BBMD where our device wants to be registered
-     * @param timeToLive
-     *            The time until we are automatically removed out of the FDT
-     * @throws BACnetException
-     *             if a timeout occurs, a NAK is received, the device is already registered as a foreign device, or
-     *             the request could not be sent.
+     * @param addr       The address of the BBMD where our device wants to be registered
+     * @param timeToLive The time until we are automatically removed out of the FDT
+     * @throws BACnetException if a timeout occurs, a NAK is received, the device is already registered as a foreign
+     *                         device, or
+     *                         the request could not be sent.
      */
     public void registerAsForeignDevice(final InetSocketAddress addr, final int timeToLive) throws BACnetException {
         if (timeToLive < 1)
@@ -363,9 +361,9 @@ public class IpNetwork extends Network implements Runnable {
         if (function == 0x0) {
             final int result = BACnetUtils.popShort(queue);
 
-           if (result == 0x10)
-                LOG.error("Write-Broadcast-Distrubution-Table failed!");  
-           else if (result == 0x20)
+            if (result == 0x10)
+                LOG.error("Write-Broadcast-Distrubution-Table failed!");
+            else if (result == 0x20)
                 LOG.error("Read-Broadcast-Distrubution-Table failed!");
             else if (result == 0x30)
                 LOG.error("Register-Foreign-Device failed!");
@@ -556,6 +554,7 @@ public class IpNetwork extends Network implements Runnable {
         byte[] distributionMask;
     }
 
+
     static class FDTEntry {
         InetSocketAddress address;
         int timeToLive;
@@ -620,9 +619,9 @@ public class IpNetwork extends Network implements Runnable {
                 response.pushU2B(0x20); // NAK
             }
         } else {
-                response.push(0); // Result
-                response.pushU2B(6); // Length
-                response.pushU2B(0x20); // NAK
+            response.push(0); // Result
+            response.pushU2B(6); // Length
+            response.pushU2B(0x20); // NAK
         }
         sendPacket(IpNetworkUtils.getInetSocketAddress(origin), response.popAll());
     }
@@ -778,7 +777,8 @@ public class IpNetwork extends Network implements Runnable {
                 }
 
                 fd.timeToLive = timeToLive;
-                fd.endTime = getTransport().getLocalDevice().getClock().millis() + (timeToLive + 30) * 1000; // Adds a 30-second grace period, as per J.5.2.3
+                fd.endTime = getTransport().getLocalDevice().getClock()
+                        .millis() + (timeToLive + 30) * 1000; // Adds a 30-second grace period, as per J.5.2.3
 
                 response.pushU2B(0); // Success
             }
@@ -802,8 +802,8 @@ public class IpNetwork extends Network implements Runnable {
                     list.pushU2B(e.timeToLive);
 
                     int remaining = (int) (e.endTime - now) / 1000;
-                    if (remaining < 0) 
-                    // Hasn't yet been cleaned up.
+                    if (remaining < 0)
+                        // Hasn't yet been cleaned up.
                         remaining = 0;
                     if (remaining > 65535)
                         remaining = 65535;
@@ -984,7 +984,7 @@ public class IpNetwork extends Network implements Runnable {
         pushISA(queue, fdtEntry);
         sendPacket(addr, queue.popAll());
     }
-    
+
     /**
      * Enable BBMD support. Allow other device to register as BBMD or foreign device. *
      */
