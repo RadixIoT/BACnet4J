@@ -63,10 +63,8 @@ public class IpNetworkBuilder {
      * Either this method or withBroadcast must be called.
      *
      * @param subnetAddress       the address of the local subnet, NOT the subnet mask., e.g. 192.168.0.0. The subnet
-     *                            address is
-     *                            required because the given local bind address could be the wildcard address, i.e.
-     *                            0.0.0.0, from
-     *                            which the broadcast address cannot be calculated.
+     *                            address is required because the given local bind address could be the wildcard
+     *                            address, i.e. 0.0.0.0, from which the broadcast address cannot be calculated.
      * @param networkPrefixLength the number of bits in the local subnet.
      * @return this
      */

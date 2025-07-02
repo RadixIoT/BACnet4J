@@ -29,8 +29,7 @@ package com.serotonin.bacnet4j.enums;
 
 public enum Month {
     JANUARY(1), FEBRUARY(2), MARCH(3), APRIL(4), MAY(5), JUNE(6), JULY(7), AUGUST(8), SEPTEMBER(9), OCTOBER(
-            10), NOVEMBER(
-            11), DECEMBER(12), ODD_MONTHS(13), EVEN_MONTHS(14), UNSPECIFIED(255);
+            10), NOVEMBER(11), DECEMBER(12), ODD_MONTHS(13), EVEN_MONTHS(14), UNSPECIFIED(255);
 
     private byte id;
 
@@ -47,42 +46,24 @@ public enum Month {
     }
 
     public boolean isSpecific() {
-        switch (this) {
-            case ODD_MONTHS:
-            case EVEN_MONTHS:
-            case UNSPECIFIED:
-                return false;
-            default:
-                return true;
-        }
+        return switch (this) {
+            case ODD_MONTHS, EVEN_MONTHS, UNSPECIFIED -> false;
+            default -> true;
+        };
     }
 
     public boolean isOdd() {
-        switch (this) {
-            case JANUARY:
-            case MARCH:
-            case MAY:
-            case JULY:
-            case SEPTEMBER:
-            case NOVEMBER:
-                return true;
-            default:
-                return false;
-        }
+        return switch (this) {
+            case JANUARY, MARCH, MAY, JULY, SEPTEMBER, NOVEMBER -> true;
+            default -> false;
+        };
     }
 
     public boolean isEven() {
-        switch (this) {
-            case FEBRUARY:
-            case APRIL:
-            case JUNE:
-            case AUGUST:
-            case OCTOBER:
-            case DECEMBER:
-                return true;
-            default:
-                return false;
-        }
+        return switch (this) {
+            case FEBRUARY, APRIL, JUNE, AUGUST, OCTOBER, DECEMBER -> true;
+            default -> false;
+        };
     }
 
     public boolean matches(Month that) {

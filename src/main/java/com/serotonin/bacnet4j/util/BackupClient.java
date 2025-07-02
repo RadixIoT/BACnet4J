@@ -92,14 +92,12 @@ public class BackupClient {
      * @param localDevice
      * @param targetDeviceId
      * @param password
-     * @param recordsPerRequest   only for record-access relevant.
-     *                            Record access files are written out as CRLF-delimited hex representations.
-     *                            The choice of the number of records per request is arbitrary
+     * @param recordsPerRequest   only for record-access relevant. Record access files are written out as CRLF-delimited
+     *                            hex representations. The choice of the number of records per request is arbitrary
      *                            because we don't know how big a record will be.
-     * @param maxOctetsPerRequest only for stram-access relevant.
-     *                            Defines the maximum APDU size that is used.
-     *                            The choice of the number of bytes per request
-     *                            is based upon the max APDU size of the target.
+     * @param maxOctetsPerRequest only for stream-access relevant. Defines the maximum APDU size that is used. The
+     *                            choice of the number of bytes per request is based upon the max APDU size of the
+     *                            target.
      */
     public BackupClient(final LocalDevice localDevice, final int targetDeviceId, final String password,
             int recordsPerRequest, int maxOctetsPerRequest) {

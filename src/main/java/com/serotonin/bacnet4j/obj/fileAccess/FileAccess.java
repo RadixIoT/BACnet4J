@@ -66,8 +66,7 @@ public interface FileAccess {
      * Allows the FileAccess implementation to determine whether to allow the given file size write.
      *
      * @param fileSize the file size to write. If an exception is not thrown and other validations succeed, the
-     *                 writeFileSize
-     *                 method will be called.
+     *                 writeFileSize method will be called.
      * @throws BACnetServiceException
      */
     default void validateFileSizeWrite(final long fileSize) throws BACnetServiceException {
