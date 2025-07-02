@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.type.constructed;
 
 import java.util.ArrayList;
@@ -58,6 +57,7 @@ import com.serotonin.bacnet4j.util.sero.Utils;
 
 public class FaultParameter extends BaseType {
     private static ChoiceOptions choiceOptions = new ChoiceOptions();
+
     static {
         choiceOptions.addContextual(0, Null.class);
         choiceOptions.addContextual(1, FaultCharacterString.class);
@@ -227,6 +227,7 @@ public class FaultParameter extends BaseType {
         }
     }
 
+
     public static class FaultCharacterString extends AbstractFaultParameter {
         private final SequenceOf<CharacterString> listOfFaultValues;
 
@@ -282,6 +283,7 @@ public class FaultParameter extends BaseType {
             return true;
         }
     }
+
 
     public static class FaultExtended extends AbstractFaultParameter {
         private final Unsigned16 vendorId;
@@ -384,6 +386,7 @@ public class FaultParameter extends BaseType {
 
         public static class FaultExtendedParameter extends BaseType {
             private static ChoiceOptions valueChoiceOptions = new ChoiceOptions();
+
             static {
                 valueChoiceOptions.addPrimitive(Null.class);
                 valueChoiceOptions.addPrimitive(Real.class);
@@ -560,6 +563,7 @@ public class FaultParameter extends BaseType {
         }
     }
 
+
     public static class FaultLifeSafety extends AbstractFaultParameter {
         private final SequenceOf<LifeSafetyState> listOfFaultValues;
         private final DeviceObjectPropertyReference modePropertyReference;
@@ -637,6 +641,7 @@ public class FaultParameter extends BaseType {
         }
     }
 
+
     public static class FaultState extends AbstractFaultParameter {
         private final SequenceOf<PropertyStates> listOfFaultValues;
 
@@ -692,6 +697,7 @@ public class FaultParameter extends BaseType {
             return true;
         }
     }
+
 
     public static class FaultStatusFlags extends AbstractFaultParameter {
         private final DeviceObjectPropertyReference statusFlagsReference;
@@ -753,6 +759,7 @@ public class FaultParameter extends BaseType {
             return true;
         }
     }
+
 
     public static class FaultOutOfRange extends AbstractFaultParameter {
         private final FaultNormalValue minNormalValue;
@@ -825,6 +832,7 @@ public class FaultParameter extends BaseType {
 
         public static class FaultNormalValue extends BaseType {
             private static ChoiceOptions valueChoiceOptions = new ChoiceOptions();
+
             static {
                 valueChoiceOptions.addPrimitive(Real.class);
                 valueChoiceOptions.addPrimitive(UnsignedInteger.class);
@@ -894,6 +902,7 @@ public class FaultParameter extends BaseType {
             }
         }
     }
+
 
     public static class FaultListed extends AbstractFaultParameter {
         private final DeviceObjectPropertyReference faultListReference;

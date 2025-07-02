@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.npdu;
 
 import org.junit.Assert;
@@ -69,7 +96,7 @@ public class NetworkPriorityTest {
                 EventType.changeOfBitstring, new CharacterString("hi"), NotifyType.event, Boolean.FALSE,
                 EventState.normal, EventState.offnormal,
                 new NotificationParameters(
-                        new ChangeOfBitStringNotif(new BitString(new boolean[] { false, true, false, true }),
+                        new ChangeOfBitStringNotif(new BitString(new boolean[] {false, true, false, true}),
                                 new StatusFlags(true, false, false, false))));
         final ConfirmedRequest apdu = new ConfirmedRequest(false, false, true, MaxSegments.MORE_THAN_64,
                 MaxApduLength.UP_TO_1476, (byte) 45, 0, 5, req);
@@ -83,7 +110,7 @@ public class NetworkPriorityTest {
                 EventType.changeOfBitstring, new CharacterString("hi"), NotifyType.event, Boolean.FALSE,
                 EventState.normal, EventState.offnormal,
                 new NotificationParameters(
-                        new ChangeOfBitStringNotif(new BitString(new boolean[] { false, true, false, true }),
+                        new ChangeOfBitStringNotif(new BitString(new boolean[] {false, true, false, true}),
                                 new StatusFlags(true, false, false, false))));
 
         final UnconfirmedRequest apdu = new UnconfirmedRequest(req);
@@ -159,7 +186,7 @@ public class NetworkPriorityTest {
 
             @Override
             public Address[] getAllLocalAddresses() {
-                return new Address[] {new Address(2, new byte[]{ 1})};
+                return new Address[] {new Address(2, new byte[] {1})};
             }
 
             @Override
@@ -169,7 +196,7 @@ public class NetworkPriorityTest {
 
         };
 
-        network.sendAPDU(new Address(2, new byte[] { 2 }), new OctetString(new byte[] { 5 }), apdu, false);
+        network.sendAPDU(new Address(2, new byte[] {2}), new OctetString(new byte[] {5}), apdu, false);
 
         queue.pop();
         final byte control = queue.pop();

@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,24 +12,24 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.type.constructed;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,7 +43,6 @@ import com.serotonin.bacnet4j.type.primitive.Date;
 import com.serotonin.bacnet4j.type.primitive.Enumerated;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
-import java.util.Collections;
 
 public class WeekNDay extends OctetString implements DateMatchable {
     public static class WeekOfMonth extends Enumerated {
@@ -66,28 +65,21 @@ public class WeekNDay extends OctetString implements DateMatchable {
         public static WeekOfMonth forName(final String name) {
             return (WeekOfMonth) Enumerated.forName(nameMap, name);
         }
-        
+
         public static String nameForId(final int id) {
             return prettyMap.get(id);
         }
-        
+
         public static WeekOfMonth valueOf(final byte b) {
-            switch (b) {
-            case 1:
-                return days1to7;
-            case 2:
-                return days8to14;
-            case 3:
-                return days15to21;
-            case 4:
-                return days22to28;
-            case 5:
-                return days29to31;
-            case 6:
-                return last7Days;
-            default:
-                return any;
-            }
+            return switch (b) {
+                case 1 -> days1to7;
+                case 2 -> days8to14;
+                case 3 -> days15to21;
+                case 4 -> days22to28;
+                case 5 -> days29to31;
+                case 6 -> last7Days;
+                default -> any;
+            };
         }
 
         private WeekOfMonth(final int value) {
@@ -123,7 +115,7 @@ public class WeekNDay extends OctetString implements DateMatchable {
     }
 
     public WeekNDay(final Month month, final WeekOfMonth weekOfMonth, final DayOfWeek dayOfWeek) {
-        super(new byte[] { month.getId(), weekOfMonth.byteValue(), (byte) dayOfWeek.getId() });
+        super(new byte[] {month.getId(), weekOfMonth.byteValue(), (byte) dayOfWeek.getId()});
     }
 
     public Month getMonth() {

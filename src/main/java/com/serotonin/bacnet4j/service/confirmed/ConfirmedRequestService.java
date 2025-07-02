@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.service.confirmed;
 
 import com.serotonin.bacnet4j.LocalDevice;
@@ -107,104 +106,104 @@ abstract public class ConfirmedRequestService extends Service {
     public static ConfirmedRequestService createConfirmedRequestService(final byte type, final ByteQueue queue)
             throws BACnetException {
 
-            ConfirmedRequestService result;
-            switch (type) {
-                case AcknowledgeAlarmRequest.TYPE_ID: // 0
-                    result = new AcknowledgeAlarmRequest(queue);
-                    break;
-                case ConfirmedCovNotificationRequest.TYPE_ID: // 1
-                    result = new ConfirmedCovNotificationRequest(queue);
-                    break;
-                case ConfirmedEventNotificationRequest.TYPE_ID: // 2
-                    result = new ConfirmedEventNotificationRequest(queue);
-                    break;
-                case GetAlarmSummaryRequest.TYPE_ID: // 3
-                    result = new GetAlarmSummaryRequest(queue);
-                    break;
-                case GetEnrollmentSummaryRequest.TYPE_ID: // 4
-                    result = new GetEnrollmentSummaryRequest(queue);
-                    break;
-                case SubscribeCOVRequest.TYPE_ID: // 5
-                    result = new SubscribeCOVRequest(queue);
-                    break;
-                case AtomicReadFileRequest.TYPE_ID: // 6
-                    result = new AtomicReadFileRequest(queue);
-                    break;
-                case AtomicWriteFileRequest.TYPE_ID: // 7
-                    result = new AtomicWriteFileRequest(queue);
-                    break;
-                case AddListElementRequest.TYPE_ID: // 8
-                    result = new AddListElementRequest(queue);
-                    break;
-                case RemoveListElementRequest.TYPE_ID: // 9
-                    result = new RemoveListElementRequest(queue);
-                    break;
-                case CreateObjectRequest.TYPE_ID: // 10
-                    result = new CreateObjectRequest(queue);
-                    break;
-                case DeleteObjectRequest.TYPE_ID: // 11
-                    result = new DeleteObjectRequest(queue);
-                    break;
-                case ReadPropertyRequest.TYPE_ID: // 12
-                    result = new ReadPropertyRequest(queue);
-                    break;
-                case ReadPropertyMultipleRequest.TYPE_ID: // 14
-                    result = new ReadPropertyMultipleRequest(queue);
-                    break;
-                case WritePropertyRequest.TYPE_ID: // 15
-                    result = new WritePropertyRequest(queue);
-                    break;
-                case WritePropertyMultipleRequest.TYPE_ID: // 16
-                    result = new WritePropertyMultipleRequest(queue);
-                    break;
-                case DeviceCommunicationControlRequest.TYPE_ID: // 17
-                    result = new DeviceCommunicationControlRequest(queue);
-                    break;
-                case ConfirmedPrivateTransferRequest.TYPE_ID: // 18
-                    result = new ConfirmedPrivateTransferRequest(queue);
-                    break;
-                case ConfirmedTextMessageRequest.TYPE_ID: // 19
-                    result = new ConfirmedTextMessageRequest(queue);
-                    break;
-                case ReinitializeDeviceRequest.TYPE_ID: // 20
-                    result = new ReinitializeDeviceRequest(queue);
-                    break;
-                case VtOpenRequest.TYPE_ID: // 21
-                    result = new VtOpenRequest(queue);
-                    break;
-                case VtCloseRequest.TYPE_ID: // 22
-                    result = new VtCloseRequest(queue);
-                    break;
-                case VtDataRequest.TYPE_ID: // 23
-                    result = new VtDataRequest(queue);
-                    break;
-                case ReadRangeRequest.TYPE_ID: // 26
-                    result = new ReadRangeRequest(queue);
-                    break;
-                case LifeSafetyOperationRequest.TYPE_ID: // 27
-                    result = new LifeSafetyOperationRequest(queue);
-                    break;
-                case SubscribeCOVPropertyRequest.TYPE_ID: // 28
-                    result = new SubscribeCOVPropertyRequest(queue);
-                    break;
-                case GetEventInformationRequest.TYPE_ID: // 29
-                    result = new GetEventInformationRequest(queue);
-                    break;
-                case SubscribeCOVPropertyMultipleRequest.TYPE_ID: // 30
-                    result = new SubscribeCOVPropertyMultipleRequest(queue);
-                    break;
-                case ConfirmedCovNotificationMultipleRequest.TYPE_ID: // 31
-                    result = new ConfirmedCovNotificationMultipleRequest(queue);
-                    break;
-                default:
-                    //Standard test 135.1-2013, 9.39.1
-                    throw new BACnetRejectException(RejectReason.unrecognizedService);
-            }
-            // To pass the standard test 135.1-2013 13.4.5 we have to check if too many arguments have been sent.
-            if (queue.size() != 0) {
-                throw new BACnetRejectException(RejectReason.tooManyArguments);
-            }
-            return result;          
+        ConfirmedRequestService result;
+        switch (type) {
+            case AcknowledgeAlarmRequest.TYPE_ID: // 0
+                result = new AcknowledgeAlarmRequest(queue);
+                break;
+            case ConfirmedCovNotificationRequest.TYPE_ID: // 1
+                result = new ConfirmedCovNotificationRequest(queue);
+                break;
+            case ConfirmedEventNotificationRequest.TYPE_ID: // 2
+                result = new ConfirmedEventNotificationRequest(queue);
+                break;
+            case GetAlarmSummaryRequest.TYPE_ID: // 3
+                result = new GetAlarmSummaryRequest(queue);
+                break;
+            case GetEnrollmentSummaryRequest.TYPE_ID: // 4
+                result = new GetEnrollmentSummaryRequest(queue);
+                break;
+            case SubscribeCOVRequest.TYPE_ID: // 5
+                result = new SubscribeCOVRequest(queue);
+                break;
+            case AtomicReadFileRequest.TYPE_ID: // 6
+                result = new AtomicReadFileRequest(queue);
+                break;
+            case AtomicWriteFileRequest.TYPE_ID: // 7
+                result = new AtomicWriteFileRequest(queue);
+                break;
+            case AddListElementRequest.TYPE_ID: // 8
+                result = new AddListElementRequest(queue);
+                break;
+            case RemoveListElementRequest.TYPE_ID: // 9
+                result = new RemoveListElementRequest(queue);
+                break;
+            case CreateObjectRequest.TYPE_ID: // 10
+                result = new CreateObjectRequest(queue);
+                break;
+            case DeleteObjectRequest.TYPE_ID: // 11
+                result = new DeleteObjectRequest(queue);
+                break;
+            case ReadPropertyRequest.TYPE_ID: // 12
+                result = new ReadPropertyRequest(queue);
+                break;
+            case ReadPropertyMultipleRequest.TYPE_ID: // 14
+                result = new ReadPropertyMultipleRequest(queue);
+                break;
+            case WritePropertyRequest.TYPE_ID: // 15
+                result = new WritePropertyRequest(queue);
+                break;
+            case WritePropertyMultipleRequest.TYPE_ID: // 16
+                result = new WritePropertyMultipleRequest(queue);
+                break;
+            case DeviceCommunicationControlRequest.TYPE_ID: // 17
+                result = new DeviceCommunicationControlRequest(queue);
+                break;
+            case ConfirmedPrivateTransferRequest.TYPE_ID: // 18
+                result = new ConfirmedPrivateTransferRequest(queue);
+                break;
+            case ConfirmedTextMessageRequest.TYPE_ID: // 19
+                result = new ConfirmedTextMessageRequest(queue);
+                break;
+            case ReinitializeDeviceRequest.TYPE_ID: // 20
+                result = new ReinitializeDeviceRequest(queue);
+                break;
+            case VtOpenRequest.TYPE_ID: // 21
+                result = new VtOpenRequest(queue);
+                break;
+            case VtCloseRequest.TYPE_ID: // 22
+                result = new VtCloseRequest(queue);
+                break;
+            case VtDataRequest.TYPE_ID: // 23
+                result = new VtDataRequest(queue);
+                break;
+            case ReadRangeRequest.TYPE_ID: // 26
+                result = new ReadRangeRequest(queue);
+                break;
+            case LifeSafetyOperationRequest.TYPE_ID: // 27
+                result = new LifeSafetyOperationRequest(queue);
+                break;
+            case SubscribeCOVPropertyRequest.TYPE_ID: // 28
+                result = new SubscribeCOVPropertyRequest(queue);
+                break;
+            case GetEventInformationRequest.TYPE_ID: // 29
+                result = new GetEventInformationRequest(queue);
+                break;
+            case SubscribeCOVPropertyMultipleRequest.TYPE_ID: // 30
+                result = new SubscribeCOVPropertyMultipleRequest(queue);
+                break;
+            case ConfirmedCovNotificationMultipleRequest.TYPE_ID: // 31
+                result = new ConfirmedCovNotificationMultipleRequest(queue);
+                break;
+            default:
+                //Standard test 135.1-2013, 9.39.1
+                throw new BACnetRejectException(RejectReason.unrecognizedService);
+        }
+        // To pass the standard test 135.1-2013 13.4.5 we have to check if too many arguments have been sent.
+        if (queue.size() != 0) {
+            throw new BACnetRejectException(RejectReason.tooManyArguments);
+        }
+        return result;
     }
 
     abstract public AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException;

@@ -1,6 +1,30 @@
-/**
- * Copyright (C) 2018 Infinite Automation Software. All rights reserved.
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.npdu.mstp;
 
 import java.io.File;
@@ -16,9 +40,9 @@ import com.serotonin.bacnet4j.util.sero.StreamUtils;
 
 
 /**
- * MS/TP Master node using a real-time serial driver 
- *   installed in the linux Kernel.
- * 
+ * MS/TP Master node using a real-time serial driver
+ * installed in the linux Kernel.
+ *
  * @author Terry Packer
  */
 public class RealtimeMasterNode extends MasterNode {
@@ -28,16 +52,16 @@ public class RealtimeMasterNode extends MasterNode {
     private final int baud;
     private int responseTimeoutMs = 1000;
     private long lastFrameSendTime; //Track response timeouts
-    
-    public RealtimeMasterNode(final String portId, final File driver, final File configProgram, final byte thisStation, 
+
+    public RealtimeMasterNode(final String portId, final File driver, final File configProgram, final byte thisStation,
             final int retryCount, final int baud, int responseTimeoutMs) throws IllegalArgumentException {
-        super(portId, null, null, (byte)0xFF, retryCount);
+        super(portId, null, null, (byte) 0xFF, retryCount);
         this.thisStation = thisStation;
         this.baud = baud;
         this.driver = new RealtimeDriver(driver, configProgram);
         this.responseTimeoutMs = responseTimeoutMs;
     }
-    
+
     @Override
     protected void validate(final int retryCount) {
         this.retryCount = retryCount;
@@ -47,7 +71,7 @@ public class RealtimeMasterNode extends MasterNode {
         soleMaster = false;
         state = MasterNodeState.idle;
     }
-    
+
     @Override
     public void setMaxMaster(final int maxMaster) {
         super.setMaxMaster(maxMaster);
@@ -62,11 +86,11 @@ public class RealtimeMasterNode extends MasterNode {
     public void setUsageTimeout(final int usageTimeout) {
         super.setUsageTimeout(usageTimeout);
     }
-    
+
     public void setResponseTimeoutMs(int responseTimeoutMs) {
         this.responseTimeoutMs = responseTimeoutMs;
     }
-    
+
     @Override
     public void initialize(final Transport transport) throws Exception {
         //Setup I/O
@@ -78,23 +102,23 @@ public class RealtimeMasterNode extends MasterNode {
         this.driver.configure(portId, baud, thisStation, maxMaster, maxInfoFrames, usageTimeout);
         super.initialize(transport);
     }
-    
+
     @Override
     protected void doCycle() {
         readFrame();
-        
+
         if (state == MasterNodeState.idle)
             idle();
-        
+
         if (state == MasterNodeState.useToken)
             useToken();
-        
-        if(state == MasterNodeState.doneWithToken)
+
+        if (state == MasterNodeState.doneWithToken)
             state = MasterNodeState.idle;
-        
+
         if (state == MasterNodeState.waitForReply)
             waitForReply();
-        
+
         //TODO Can't currently get to this state since we don't have 
         // the frame type from the driver so we have to do this every time
         //if (state == MasterNodeState.answerDataRequest)
@@ -114,7 +138,7 @@ public class RealtimeMasterNode extends MasterNode {
             activity = true;
         }
     }
-    
+
     @Override
     protected void readInputStream() {
         try {
@@ -130,7 +154,7 @@ public class RealtimeMasterNode extends MasterNode {
                 //TODO How can we validate that this is an entire message?
                 frame.setSourceAddress(readArray[pos++]);
                 byte[] data = new byte[readCount - 1];
-                for(int i=0; i<readCount - 1; i++) {
+                for (int i = 0; i < readCount - 1; i++) {
                     data[i] = readArray[pos++];
                 }
                 frame.setData(data);
@@ -156,33 +180,33 @@ public class RealtimeMasterNode extends MasterNode {
             frame();
             receivedValidFrame = false;
             activity = true;
-        }else {
+        } else {
             //We can use the token
             state = MasterNodeState.useToken;
         }
     }
-    
+
     /* (non-Javadoc)
      * @see com.serotonin.bacnet4j.npdu.mstp.MasterNode#frame()
      */
     @Override
     protected void frame() {
         receivedDataNoReply(frame);
-        
+
         //TODO How to decide?  via NPDU or do we modify the driver
         //The idea here is that we assume the driver will always 
         // reply for us...?
         //state = MasterNodeState.answerDataRequest;
         //replyDeadline = lastNonSilence + Constants.REPLY_DELAY;
     }
-    
+
     @Override
     protected void waitForReply() {
-        if(clock.millis() > lastFrameSendTime + responseTimeoutMs) {
+        if (clock.millis() > lastFrameSendTime + responseTimeoutMs) {
             if (LOG.isDebugEnabled())
                 LOG.debug(thisStation + " waitForReply:ReplyTimeout");
             state = MasterNodeState.idle;
-        }else if (receivedValidFrame) {
+        } else if (receivedValidFrame) {
             if (LOG.isDebugEnabled())
                 LOG.debug(thisStation + " waitForReply:ReceivedReply");
             receivedDataNoReply(frame);
@@ -190,7 +214,7 @@ public class RealtimeMasterNode extends MasterNode {
             receivedValidFrame = false;
         }
     }
-    
+
     /* (non-Javadoc)
      * @see com.serotonin.bacnet4j.npdu.mstp.MasterNode#answerDataRequest()
      */
@@ -208,15 +232,15 @@ public class RealtimeMasterNode extends MasterNode {
             }
         }
     }
-    
-    
+
+
     @Override
     protected void sendFrame(final Frame frame) {
         LOG.info("Sending frame: " + frame);
         try {
             if (LOG.isTraceEnabled())
                 LOG.trace(tracePrefix() + "out: " + frame);
-            
+
             // Header
             byte[] writeArray = new byte[5 + frame.getLength()];
             int pos = 0;
@@ -224,13 +248,13 @@ public class RealtimeMasterNode extends MasterNode {
             writeArray[pos++] = frame.getFrameType().id;
             writeArray[pos++] = frame.getDestinationAddress();
             writeArray[pos++] = frame.getSourceAddress();
-            writeArray[pos++] = (byte)(frame.getLength() >> 8 & 0xff);
-            writeArray[pos++] = (byte)(frame.getLength() & 0xff);
+            writeArray[pos++] = (byte) (frame.getLength() >> 8 & 0xff);
+            writeArray[pos++] = (byte) (frame.getLength() & 0xff);
             //Skip 2 byte header CRC, the driver will add it
 
             if (frame.getLength() > 0) {
                 // Data
-                for(int i=0; i<frame.getLength(); i++)
+                for (int i = 0; i < frame.getLength(); i++)
                     writeArray[pos++] = frame.getData()[i];
                 //Driver will add CRC
             }
@@ -249,14 +273,14 @@ public class RealtimeMasterNode extends MasterNode {
             }
         }
     }
-    
+
     @Override
     public void terminate() {
         super.terminate();
         try {
-            if(in != null)
+            if (in != null)
                 in.close();
-            if(out != null)
+            if (out != null)
                 out.close();
         } catch (IOException e) {
             LOG.error("Error closing streams.", e);

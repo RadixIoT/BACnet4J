@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.transport;
 
 import java.util.Iterator;
@@ -350,6 +349,7 @@ public class DefaultTransport implements Transport, Runnable {
         abstract protected void handleException(BACnetException e);
     }
 
+
     class OutgoingConfirmed extends Outgoing {
         private final int maxAPDULengthAccepted;
         private final Segmentation segmentationSupported;
@@ -428,6 +428,7 @@ public class DefaultTransport implements Transport, Runnable {
         }
     }
 
+
     class OutgoingUnconfirmed extends Outgoing {
         private final UnconfirmedRequestService service;
         private final boolean broadcast;
@@ -455,6 +456,7 @@ public class DefaultTransport implements Transport, Runnable {
                     + ", linkService=" + linkService + "]";
         }
     }
+
 
     class DelayedOutgoing {
         final Outgoing outgoing;
@@ -542,45 +544,46 @@ public class DefaultTransport implements Transport, Runnable {
     private void receiveImpl(final NPDU in) {
         if (in.isNetworkMessage()) {
             switch (in.getNetworkMessageType()) {
-            case 0x1: // I-Am-Router-To-Network
-            case 0x2: // I-Could-Be-Router-To-Network
-                final ByteQueue data = in.getNetworkMessageData();
-                while (data.size() > 1) {
-                    final int nn = data.popU2B();
-                    LOG.debug("Adding network router {} for network {}", in.getFrom().getMacAddress(), nn);
-                    networkRouters.put(nn, in.getFrom().getMacAddress());
-                }
-                break;
-            case 0x3: // Reject-Message-To-Network
-                String reason;
-                final int reasonCode = in.getNetworkMessageData().popU1B();
-                if (reasonCode == 0)
-                    reason = "Other error";
-                else if (reasonCode == 1)
-                    reason = "The router is not directly connected to DNET and cannot find a router to DNET on any "
-                            //
-                            + "directly connected network using Who-Is-Router-To-Network messages.";
-                else if (reasonCode == 2)
-                    reason = "The router is busy and unable to accept messages for the specified DNET at the " //
-                            + "present time.";
-                else if (reasonCode == 3)
-                    reason = "It is an unknown network layer message type. The DNET returned in this case is a " //
-                            + "local matter.";
-                else if (reasonCode == 4)
-                    reason = "The message is too long to be routed to this DNET.";
-                else if (reasonCode == 5)
-                    reason = "The source message was rejected due to a BACnet security error and that error cannot "
-                            //
-                            + " be forwarded to the source device. See Clause 24.12.1.1 for more details on the " //
-                            + "generation of Reject-Message-To-Network messages indicating this reason.";
-                else if (reasonCode == 6)
-                    reason = "The source message was rejected due to errors in the addressing. The length of the " //
-                            + "DADR or SADR was determined to be invalid.";
-                else
-                    reason = "Unknown reason code";
-                LOG.warn("Received Reject-Message-To-Network with reason '{}': {}", reasonCode, reason);
-                break;
-            default:
+                case 0x1: // I-Am-Router-To-Network
+                case 0x2: // I-Could-Be-Router-To-Network
+                    final ByteQueue data = in.getNetworkMessageData();
+                    while (data.size() > 1) {
+                        final int nn = data.popU2B();
+                        LOG.debug("Adding network router {} for network {}", in.getFrom().getMacAddress(), nn);
+                        networkRouters.put(nn, in.getFrom().getMacAddress());
+                    }
+                    break;
+                case 0x3: // Reject-Message-To-Network
+                    String reason;
+                    final int reasonCode = in.getNetworkMessageData().popU1B();
+                    if (reasonCode == 0)
+                        reason = "Other error";
+                    else if (reasonCode == 1)
+                        reason = "The router is not directly connected to DNET and cannot find a router to DNET on any "
+                                //
+                                + "directly connected network using Who-Is-Router-To-Network messages.";
+                    else if (reasonCode == 2)
+                        reason = "The router is busy and unable to accept messages for the specified DNET at the " //
+                                + "present time.";
+                    else if (reasonCode == 3)
+                        reason = "It is an unknown network layer message type. The DNET returned in this case is a " //
+                                + "local matter.";
+                    else if (reasonCode == 4)
+                        reason = "The message is too long to be routed to this DNET.";
+                    else if (reasonCode == 5)
+                        reason = "The source message was rejected due to a BACnet security error and that error cannot "
+                                //
+                                + " be forwarded to the source device. See Clause 24.12.1.1 for more details on the " //
+                                + "generation of Reject-Message-To-Network messages indicating this reason.";
+                    else if (reasonCode == 6)
+                        reason =
+                                "The source message was rejected due to errors in the addressing. The length of the " //
+                                        + "DADR or SADR was determined to be invalid.";
+                    else
+                        reason = "Unknown reason code";
+                    LOG.warn("Received Reject-Message-To-Network with reason '{}': {}", reasonCode, reason);
+                    break;
+                default:
             }
         } else {
             receiveAPDU(in);

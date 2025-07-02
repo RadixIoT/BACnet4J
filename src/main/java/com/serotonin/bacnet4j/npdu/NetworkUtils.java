@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.npdu;
 
 import java.net.InetAddress;
@@ -36,9 +35,7 @@ import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.npdu.ip.IpNetworkUtils;
 import com.serotonin.bacnet4j.npdu.ipv6.Ipv6NetworkUtils;
 import com.serotonin.bacnet4j.npdu.mstp.MstpNetworkUtils;
-import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
-import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.util.BACnetUtils;
 
 public class NetworkUtils {
@@ -76,7 +73,7 @@ public class NetworkUtils {
             int colon = s.indexOf(':');
             if (colon == -1)
                 // Assume MS/TP
-                return new OctetString(new byte[] { Byte.parseByte(s) });
+                return new OctetString(new byte[] {Byte.parseByte(s)});
 
             // WORKAROUND: add any scheme to make the resulting URI valid.
             URI uri = new URI("xx://" + s); // may throw URISyntaxException
@@ -91,8 +88,7 @@ public class NetworkUtils {
             bb[b.length + 1] = (byte) (uri.getPort() & 0xff);
 
             return new OctetString(bb);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new RuntimeException("Error parsing '" + s + "'", e);
         }
     }

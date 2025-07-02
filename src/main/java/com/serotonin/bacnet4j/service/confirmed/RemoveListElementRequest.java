@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,21 +12,23 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.service.confirmed;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
@@ -37,7 +39,6 @@ import com.serotonin.bacnet4j.obj.ObjectProperties;
 import com.serotonin.bacnet4j.obj.ObjectPropertyTypeDefinition;
 import com.serotonin.bacnet4j.service.acknowledgement.AcknowledgementService;
 import com.serotonin.bacnet4j.type.Encodable;
-import static com.serotonin.bacnet4j.type.Encodable.read;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.constructed.PropertyValue;
@@ -51,8 +52,6 @@ import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
-import java.util.ArrayList;
-import java.util.List;
 
 public class RemoveListElementRequest extends ConfirmedRequestService {
     public static final byte TYPE_ID = 9;
@@ -104,7 +103,8 @@ public class RemoveListElementRequest extends ConfirmedRequestService {
             listOfElements = new SequenceOf<>(values);
         } catch (BACnetErrorException ex) {
             ErrorClassAndCode errorClassAndCode = ex.getBacnetError().getError().getErrorClassAndCode();
-            throw createException(errorClassAndCode.getErrorClass(), errorClassAndCode.getErrorCode(), new UnsignedInteger(errorIndex));
+            throw createException(errorClassAndCode.getErrorClass(), errorClassAndCode.getErrorCode(),
+                    new UnsignedInteger(errorIndex));
         }
     }
 
@@ -158,7 +158,7 @@ public class RemoveListElementRequest extends ConfirmedRequestService {
             throw createException(ErrorClass.services, ErrorCode.propertyIsNotAList, UnsignedInteger.ZERO);
 
         //Copy the original sequence
-        final SequenceOf<Encodable> copyList = new SequenceOf<>(new ArrayList(((SequenceOf<Encodable>) e).getValues()));   
+        final SequenceOf<Encodable> copyList = new SequenceOf<>(new ArrayList(((SequenceOf<Encodable>) e).getValues()));
         final SequenceOf<Encodable> list = new SequenceOf<>(copyList.getValues());
         for (int i = 0; i < listOfElements.getCount(); i++) {
             final Encodable pr = listOfElements.getBase1(i + 1);

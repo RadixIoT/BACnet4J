@@ -1,9 +1,9 @@
 /*
  * ============================================================================
-` * GNU General Public License
+ * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j;
 
 import java.time.Clock;
@@ -747,8 +746,7 @@ public class LocalDevice implements AutoCloseable {
      *
      * @param instanceNumber
      * @return the remote device
-     * @throws BACnetException
-     *         if anything goes wrong, including timeout.
+     * @throws BACnetException if anything goes wrong, including timeout.
      */
     public RemoteDevice getRemoteDeviceBlocking(final int instanceNumber) throws BACnetException {
         return getRemoteDeviceBlocking(instanceNumber, transport.getTimeout());
@@ -772,8 +770,7 @@ public class LocalDevice implements AutoCloseable {
      *
      * @param instanceNumber
      * @return the remote device
-     * @throws BACnetException
-     *         if anything goes wrong, including timeout.
+     * @throws BACnetException if anything goes wrong, including timeout.
      */
     public RemoteDevice getRemoteDeviceBlocking(final int instanceNumber, final long timeoutMillis)
             throws BACnetException {
@@ -869,10 +866,8 @@ public class LocalDevice implements AutoCloseable {
      * Creates and starts a remote device discovery. Discovered devices are added to the cache as they are found. The
      * returned discoverer must be stopped by the caller.
      *
-     * @param cacheUpdate
-     *         controls if the remote device cache should be updated
-     * @param callback
-     *         optional client callback
+     * @param cacheUpdate controls if the remote device cache should be updated
+     * @param callback    optional client callback
      * @return the discoverer, which must be stopped by the caller
      */
     public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(CacheUpdate cacheUpdate,
@@ -893,14 +888,14 @@ public class LocalDevice implements AutoCloseable {
 
     private Predicate<RemoteDevice> getExpirationCheck(CacheUpdate cacheUpdate) {
         switch (cacheUpdate) {
-        case ALWAYS:
-            return d -> true;
-        case NEVER:
-            return d -> false;
-        case IF_EXPIRED:
-            return d -> remoteDeviceCache.getCachedEntity(d.getInstanceNumber()) == null;
-        default:
-            throw new IllegalArgumentException("Unknown value: " + cacheUpdate);
+            case ALWAYS:
+                return d -> true;
+            case NEVER:
+                return d -> false;
+            case IF_EXPIRED:
+                return d -> remoteDeviceCache.getCachedEntity(d.getInstanceNumber()) == null;
+            default:
+                throw new IllegalArgumentException("Unknown value: " + cacheUpdate);
         }
     }
 

@@ -1,25 +1,30 @@
 /*
  * ============================================================================
- * GNU Lesser General Public License
+ * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2006-2009 Serotonin Software Technologies Inc. http://serotoninsoftware.com
- * @author Matthew Lohbihler
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j;
 
 import static org.junit.Assert.assertEquals;
@@ -222,9 +227,10 @@ public class AnnexFEncodingTest {
 
         final SequenceOf<PropertyValue> listOfValues = new SequenceOf<>(list);
 
-        final UnconfirmedCovNotificationRequest unconfirmedCovNotificationRequest = new UnconfirmedCovNotificationRequest(
-                new UnsignedInteger(18), new ObjectIdentifier(ObjectType.device, 4),
-                new ObjectIdentifier(ObjectType.analogInput, 10), UnsignedInteger.ZERO, listOfValues);
+        final UnconfirmedCovNotificationRequest unconfirmedCovNotificationRequest =
+                new UnconfirmedCovNotificationRequest(
+                        new UnsignedInteger(18), new ObjectIdentifier(ObjectType.device, 4),
+                        new ObjectIdentifier(ObjectType.analogInput, 10), UnsignedInteger.ZERO, listOfValues);
 
         final UnconfirmedRequest pdu = new UnconfirmedRequest(unconfirmedCovNotificationRequest);
 
@@ -233,13 +239,14 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e1_4aTest() {
-        final ConfirmedEventNotificationRequest confirmedEventNotificationRequest = new ConfirmedEventNotificationRequest(
-                new UnsignedInteger(1), new ObjectIdentifier(ObjectType.device, 4),
-                new ObjectIdentifier(ObjectType.analogInput, 2), new TimeStamp(new UnsignedInteger(16)),
-                new UnsignedInteger(4), new UnsignedInteger(100), EventType.outOfRange, null, NotifyType.alarm,
-                Boolean.TRUE, EventState.normal, EventState.highLimit,
-                new NotificationParameters(new OutOfRangeNotif(new Real(80.1f),
-                        new StatusFlags(true, false, false, false), new Real(1), new Real(80))));
+        final ConfirmedEventNotificationRequest confirmedEventNotificationRequest =
+                new ConfirmedEventNotificationRequest(
+                        new UnsignedInteger(1), new ObjectIdentifier(ObjectType.device, 4),
+                        new ObjectIdentifier(ObjectType.analogInput, 2), new TimeStamp(new UnsignedInteger(16)),
+                        new UnsignedInteger(4), new UnsignedInteger(100), EventType.outOfRange, null, NotifyType.alarm,
+                        Boolean.TRUE, EventState.normal, EventState.highLimit,
+                        new NotificationParameters(new OutOfRangeNotif(new Real(80.1f),
+                                new StatusFlags(true, false, false, false), new Real(1), new Real(80))));
 
         final ConfirmedRequest pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED,
                 MaxApduLength.UP_TO_206, (byte) 16, (byte) 0, 0, confirmedEventNotificationRequest);
@@ -275,13 +282,14 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e1_5Test() {
-        final UnconfirmedEventNotificationRequest unconfirmedEventNotificationRequest = new UnconfirmedEventNotificationRequest(
-                new UnsignedInteger(1), new ObjectIdentifier(ObjectType.device, 9),
-                new ObjectIdentifier(ObjectType.analogInput, 2), new TimeStamp(new UnsignedInteger(16)),
-                new UnsignedInteger(4), new UnsignedInteger(100), EventType.outOfRange, null, NotifyType.alarm,
-                Boolean.TRUE, EventState.normal, EventState.highLimit,
-                new NotificationParameters(new OutOfRangeNotif(new Real(80.1f),
-                        new StatusFlags(true, false, false, false), new Real(1), new Real(80))));
+        final UnconfirmedEventNotificationRequest unconfirmedEventNotificationRequest =
+                new UnconfirmedEventNotificationRequest(
+                        new UnsignedInteger(1), new ObjectIdentifier(ObjectType.device, 9),
+                        new ObjectIdentifier(ObjectType.analogInput, 2), new TimeStamp(new UnsignedInteger(16)),
+                        new UnsignedInteger(4), new UnsignedInteger(100), EventType.outOfRange, null, NotifyType.alarm,
+                        Boolean.TRUE, EventState.normal, EventState.highLimit,
+                        new NotificationParameters(new OutOfRangeNotif(new Real(80.1f),
+                                new StatusFlags(true, false, false, false), new Real(1), new Real(80))));
 
         final UnconfirmedRequest pdu = new UnconfirmedRequest(unconfirmedEventNotificationRequest);
 
@@ -549,8 +557,8 @@ public class AnnexFEncodingTest {
                 new SequenceOf<>(
                         new com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedCovNotificationMultipleRequest.CovNotification(
                                 new ObjectIdentifier(ObjectType.analogInput, 10), new SequenceOf<>(
-                                        new com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedCovNotificationMultipleRequest.CovNotification.CovNotificationValue(
-                                                PropertyIdentifier.presentValue, null, new Real(65), null)))));
+                                new com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedCovNotificationMultipleRequest.CovNotification.CovNotificationValue(
+                                        PropertyIdentifier.presentValue, null, new Real(65), null)))));
 
         final UnconfirmedRequest pdu = new UnconfirmedRequest(req);
 
@@ -984,7 +992,7 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e4_2aTest() {
-        final EncodedValue parameters = new EncodedValue(new Real(72.4f), new OctetString(new byte[] { 0x16, 0x49 }));
+        final EncodedValue parameters = new EncodedValue(new Real(72.4f), new OctetString(new byte[] {0x16, 0x49}));
         final ConfirmedRequestService service = new ConfirmedPrivateTransferRequest(new UnsignedInteger(25),
                 new UnsignedInteger(8), parameters);
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_1024,
@@ -1002,7 +1010,7 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e4_3Test() {
-        final EncodedValue parameters = new EncodedValue(new Real(72.4f), new OctetString(new byte[] { 0x16, 0x49 }));
+        final EncodedValue parameters = new EncodedValue(new Real(72.4f), new OctetString(new byte[] {0x16, 0x49}));
         final UnconfirmedRequestService service = new UnconfirmedPrivateTransferRequest(new UnsignedInteger(25),
                 new UnsignedInteger(8), parameters);
         final APDU pdu = new UnconfirmedRequest(service);
