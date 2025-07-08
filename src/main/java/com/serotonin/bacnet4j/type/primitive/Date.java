@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.type.primitive;
 
 import java.util.Calendar;
@@ -123,7 +122,7 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
     public boolean isEvenDays() {
         return day == EVEN_DAYS;
     }
-            
+
     public int getDay() {
         return day;
     }
@@ -155,8 +154,7 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
      * Matches this presumably wildcard date with a (that) necessarily specifically defined date to determine if (true)
      * the given date is one of this' defined dates or (false) not.
      *
-     * @param that
-     *            the specific date with which to compare.
+     * @param that the specific date with which to compare.
      * @return
      */
     @Override

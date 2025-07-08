@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.type.primitive;
 
 import java.io.UnsupportedEncodingException;
@@ -39,7 +38,8 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 public class CharacterString extends Primitive {
     public static final byte TYPE_ID = 7;
     public static final int IBM_MS_DBCS_CODEPAGE = 850;
-    
+
+
     public interface Encodings {
         byte ANSI_X3_4 = 0;
         byte IBM_MS_DBCS = 1;
@@ -48,6 +48,7 @@ public class CharacterString extends Primitive {
         byte ISO_10646_UCS_2 = 4;
         byte ISO_8859_1 = 5;
     }
+
 
     public static final CharacterString EMPTY = new CharacterString("");
 
@@ -60,10 +61,12 @@ public class CharacterString extends Primitive {
     }
 
     /**
-     * According to Oracle java documentation about Charset, the behavior of optional charsets may vary between java platform implementations.
+     * According to Oracle java documentation about Charset, the behavior of optional charsets may vary between java
+     * platform implementations.
      * This concerns ISO_10646_UCS_4 (UTF-32), IBM_MS_DBCS and JIS_C_6226.
+     *
      * @param encoding
-     * @param value 
+     * @param value
      */
     public CharacterString(final byte encoding, final String value) {
         try {
@@ -99,7 +102,8 @@ public class CharacterString extends Primitive {
             int codePage = queue.popU2B();
             //Currently only the codepage 850 is supported for IBM_MS_DBCS.
             if (codePage != IBM_MS_DBCS_CODEPAGE) {
-                throw new BACnetErrorException(ErrorClass.property, ErrorCode.characterSetNotSupported, Byte.toString(encoding));
+                throw new BACnetErrorException(ErrorClass.property, ErrorCode.characterSetNotSupported,
+                        Byte.toString(encoding));
             }
         }
 
@@ -124,28 +128,28 @@ public class CharacterString extends Primitive {
     public byte getTypeId() {
         return TYPE_ID;
     }
-    
+
     private static byte[] encode(final byte encoding, final String value) {
         try {
             switch (encoding) {
-            case Encodings.ANSI_X3_4:
-                return value.getBytes("UTF-8");
-            case Encodings.ISO_10646_UCS_2:
-                return value.getBytes("UTF-16");           
-            case Encodings.ISO_8859_1:
-                return value.getBytes("ISO-8859-1");
-            case Encodings.ISO_10646_UCS_4:
-                return value.getBytes("UTF-32");   
-            case Encodings.IBM_MS_DBCS:    
-               byte[] bytes = value.getBytes("IBM" + IBM_MS_DBCS_CODEPAGE);
-               //Add the codePage
-               byte[] result = new byte[2 + bytes.length];
-               result[0] = (byte) (IBM_MS_DBCS_CODEPAGE >> 8);
-               result[1] = (byte) IBM_MS_DBCS_CODEPAGE;
-               System.arraycopy(bytes, 0, result, 2, bytes.length);
-               return result;
-            default:
-                return null;
+                case Encodings.ANSI_X3_4:
+                    return value.getBytes("UTF-8");
+                case Encodings.ISO_10646_UCS_2:
+                    return value.getBytes("UTF-16");
+                case Encodings.ISO_8859_1:
+                    return value.getBytes("ISO-8859-1");
+                case Encodings.ISO_10646_UCS_4:
+                    return value.getBytes("UTF-32");
+                case Encodings.IBM_MS_DBCS:
+                    byte[] bytes = value.getBytes("IBM" + IBM_MS_DBCS_CODEPAGE);
+                    //Add the codePage
+                    byte[] result = new byte[2 + bytes.length];
+                    result[0] = (byte) (IBM_MS_DBCS_CODEPAGE >> 8);
+                    result[1] = (byte) IBM_MS_DBCS_CODEPAGE;
+                    System.arraycopy(bytes, 0, result, 2, bytes.length);
+                    return result;
+                default:
+                    return null;
             }
         } catch (final UnsupportedEncodingException e) {
             // Should never happen, so convert to a runtime exception.
@@ -158,11 +162,11 @@ public class CharacterString extends Primitive {
             switch (encoding) {
                 case Encodings.ANSI_X3_4:
                     return new String(bytes, "UTF-8");
-                case Encodings.ISO_10646_UCS_2:                               
+                case Encodings.ISO_10646_UCS_2:
                     return new String(bytes, "UTF-16");
                 case Encodings.ISO_8859_1:
                     return new String(bytes, "ISO-8859-1");
-                 case Encodings.ISO_10646_UCS_4:    
+                case Encodings.ISO_10646_UCS_4:
                     return new String(bytes, "UTF-32");
                 case Encodings.IBM_MS_DBCS:
                     return new String(bytes, "IBM" + IBM_MS_DBCS_CODEPAGE);

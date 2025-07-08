@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.type;
 
 import static org.junit.Assert.assertEquals;
@@ -67,7 +94,7 @@ public class EncodableTest {
 
     @Test
     public void _20_2_8() throws BACnetException {
-        decodePrimitive("631234FF", new OctetString(new byte[] { 0x12, 0x34, (byte) 0xFF }));
+        decodePrimitive("631234FF", new OctetString(new byte[] {0x12, 0x34, (byte) 0xFF}));
     }
 
     @Test
@@ -78,7 +105,7 @@ public class EncodableTest {
 
     @Test
     public void _20_2_10() throws BACnetException {
-        decodePrimitive("8203A8", new BitString(new boolean[] { true, false, true, false, true }));
+        decodePrimitive("8203A8", new BitString(new boolean[] {true, false, true, false, true}));
     }
 
     @Test
@@ -113,14 +140,14 @@ public class EncodableTest {
         decodePrimitive("0CC2053333", 0, new Real(-33.3F));
         decodePrimitive("1D08C040A66666666666", 1, new Double(-33.3));
         decodePrimitive("FD5508C040A66666666666", 85, new Double(-33.3));
-        decodePrimitive("1A4321", 1, new OctetString(new byte[] { 0x43, 0x21 }));
+        decodePrimitive("1A4321", 1, new OctetString(new byte[] {0x43, 0x21}));
         decodePrimitive("5D1900546869732069732061204241436E657420737472696E6721", 5,
                 new CharacterString("This is a BACnet string!"));
         decodePrimitive("FD7F1900546869732069732061204241436E657420737472696E6721", 127,
                 new CharacterString("This is a BACnet string!"));
         // TODO The spec say this starts with '75'. Should probably point this out.
         decodePrimitive("7D0A004672616EC3A7616973", 7, new CharacterString("Français"));
-        decodePrimitive("0A03A8", 0, new BitString(new boolean[] { true, false, true, false, true, }));
+        decodePrimitive("0A03A8", 0, new BitString(new boolean[] {true, false, true, false, true,}));
         decodePrimitive("9900", 9, new Enumerated(0));
         decodePrimitive("9C5B011804", 9, new Date(1991, Month.JANUARY, 24, DayOfWeek.THURSDAY));
         decodePrimitive("4C11232D11", 4, new Time(17, 35, 45, 17));
@@ -210,11 +237,11 @@ public class EncodableTest {
         testTimerStateChangeValue(new TimerStateChangeValue(new Real(345.6F)), 14, "ee4443accccdef");
         testTimerStateChangeValue(new TimerStateChangeValue(new Double(456.78)), 15, "fe0f5508407c8c7ae147ae14ff0f");
         testTimerStateChangeValue(
-                new TimerStateChangeValue(new OctetString(new byte[] { 1, 2, 5, 11, 56, (byte) 213 })), 16,
+                new TimerStateChangeValue(new OctetString(new byte[] {1, 2, 5, 11, 56, (byte) 213})), 16,
                 "fe1065060102050b38d5ff10");
         testTimerStateChangeValue(new TimerStateChangeValue(new CharacterString("A BACnet test")), 17,
                 "fe11750e0041204241436e65742074657374ff11");
-        testTimerStateChangeValue(new TimerStateChangeValue(new BitString(new boolean[] { true, false, false, true })),
+        testTimerStateChangeValue(new TimerStateChangeValue(new BitString(new boolean[] {true, false, false, true})),
                 18, "fe12820490ff12");
         testTimerStateChangeValue(new TimerStateChangeValue(new Enumerated(27)), 19, "fe13911bff13");
         testTimerStateChangeValue(new TimerStateChangeValue(new Date(117, Month.OCTOBER, 26, DayOfWeek.UNSPECIFIED)),
@@ -224,7 +251,8 @@ public class EncodableTest {
                 "fe50c407c0000bff50");
         testTimerStateChangeValue(new TimerStateChangeValue(), 81, "fe5108ff51");
         //        testTimerStateChangeValue(new TimerStateChangeValue(), 125, ""); ANY value
-        testTimerStateChangeValue(new TimerStateChangeValue(new DateTime(new Date(2017, Month.FEBRUARY, 22, DayOfWeek.WEDNESDAY), new Time(13, 4, 20, 68))), 200,
+        testTimerStateChangeValue(new TimerStateChangeValue(
+                        new DateTime(new Date(2017, Month.FEBRUARY, 22, DayOfWeek.WEDNESDAY), new Time(13, 4, 20, 68))), 200,
                 "fec82ea475021603b40d0414442fffc8");
         testTimerStateChangeValue(
                 new TimerStateChangeValue(new LightingCommand(LightingOperation.stepUp, new Real(110), new Real(5),
