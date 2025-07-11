@@ -542,4 +542,14 @@ public class TestUtils {
     public static void quiesce() {
         ThreadUtils.sleep(500);
     }
+
+    /**
+     * Looks for the existence of a `.dockerenv` file at the root directory as evidence that this is running in a
+     * docker container.
+     *
+     * @return true if the docker env flag file is found.
+     */
+    public static boolean isDockerEnv() {
+        return new File("/.dockerenv").exists();
+    }
 }

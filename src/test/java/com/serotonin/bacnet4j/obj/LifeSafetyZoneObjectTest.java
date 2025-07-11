@@ -117,7 +117,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         clock.plusMillis(600);
         awaitEquals(EventState.lifeSafetyAlarm, () -> lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(new StatusFlags(true, false, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
+        awaitEquals(new StatusFlags(true, false, false, false), () -> lsz.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
         awaitEquals(1, listener::getNotifCount);

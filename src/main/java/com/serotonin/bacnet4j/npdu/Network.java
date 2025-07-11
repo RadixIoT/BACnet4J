@@ -169,7 +169,7 @@ abstract public class Network {
         return nn == Address.LOCAL_NETWORK || nn == localNetworkNumber;
     }
 
-    protected void handleIncomingData(final ByteQueue queue, final OctetString linkService) {
+    protected synchronized void handleIncomingData(final ByteQueue queue, final OctetString linkService) {
         try {
             final NPDU npdu = handleIncomingDataImpl(queue, linkService);
             if (npdu != null) {
