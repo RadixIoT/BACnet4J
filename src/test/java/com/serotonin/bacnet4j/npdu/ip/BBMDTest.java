@@ -549,7 +549,9 @@ public class BBMDTest {
 
     Broadcaster createBroadcaster(final int subnet) throws IOException {
         final String ip = "127.0." + subnet + ".255";
-        final DatagramSocket s = new DatagramSocket(IpNetwork.DEFAULT_PORT, InetAddress.getByName(ip));
+        final DatagramSocket s = new DatagramSocket();
+        s.setReuseAddress(true);
+        s.bind(new InetSocketAddress(ip, IpNetwork.DEFAULT_PORT));
 
         // Find all the sockets on the same virtual subnet.
         final List<DatagramSocket> to = new ArrayList<>();
