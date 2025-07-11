@@ -353,7 +353,7 @@ public class IpNetwork extends Network {
 
     //
     // For receiving
-    private void listen(DatagramSocket socket) {
+    private void listen(final DatagramSocket socket) {
         final byte[] buffer = new byte[MESSAGE_LENGTH];
         final DatagramPacket p = new DatagramPacket(buffer, buffer.length);
 
@@ -378,7 +378,8 @@ public class IpNetwork extends Network {
     }
 
     @Override
-    protected NPDU handleIncomingDataImpl(final ByteQueue queue, final OctetString linkService) throws Exception {
+    protected NPDU handleIncomingDataImpl(final ByteQueue queue, final OctetString linkService)
+            throws Exception {
         LOG.trace("Received request from {}", linkService);
 
         // Initial parsing of IP message.
