@@ -45,8 +45,8 @@ import com.serotonin.bacnet4j.transport.DefaultTransport;
 
 /**
  * These tests assume the existence of the remote devices created by the docker compose, and so only runs if being
- * executed in a docker environment. See @{@link DockerRemoteDevice}. This class will send both broadcast and
- * unicast messages every second.
+ * executed in a docker environment. See @{@link DockerRemoteDevice}, which sends both broadcast and unicast
+ * messages every second.
  */
 public class IpNetworkTest {
     @Test
@@ -111,9 +111,6 @@ public class IpNetworkTest {
                 }
             };
             localDevice.getEventHandler().addListener(listener);
-
-            // Sending a WhoIs is not strictly necessary because the devices are broadcasting IAms anyway.
-            //        localDevice.sendGlobalBroadcast(new WhoIsRequest());
 
             awaitTrue(() -> iAms.contains(22));
             awaitTrue(() -> iAms.contains(33));

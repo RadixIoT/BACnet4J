@@ -136,6 +136,7 @@ public class IpNetwork extends Network {
     }
 
     /**
+     * @since 6.1.0
      * @deprecated Incorrectly spelled method. Use getBroadcastAddress() instead.
      */
     @Deprecated
