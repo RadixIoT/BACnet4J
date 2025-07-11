@@ -77,9 +77,10 @@ public class BBMDTest {
     public void before() throws Exception {
         // On OSX 127.x.x.x are not localhost addresses
         // Can do this from terminal:
+        // sudo ifconfig lo0 alias 127.0.1.1
+        // sudo ifconfig lo0 alias 127.0.1.2
         // sudo ifconfig lo0 alias 127.0.1.3
         // sudo ifconfig lo0 alias 127.0.2.1
-        // sudo ifconfig lo0 alias 127.0.1.1
         // sudo ifconfig lo0 alias 127.0.2.2
         // sudo ifconfig lo0 alias 127.0.2.3
         // sudo ifconfig lo0 alias 127.0.3.1
@@ -93,13 +94,15 @@ public class BBMDTest {
         // sudo ifconfig lo0 alias 127.0.2.255
         // sudo ifconfig lo0 alias 127.0.3.255
 
+        LDInfo testLdInfo = null;
         try {
-            InetSocketAddress addr = new InetSocketAddress("127.0.1.1", 47808);
-            try (DatagramSocket socket = new DatagramSocket(addr)) {
-                canRun = true;
-            }
+            testLdInfo = createLocalDevice(1, 1);
+            canRun = true;
         } catch (SocketException e) {
             canRun = false;
+        } finally {
+            if (testLdInfo != null)
+                testLdInfo.ld.terminate();
         }
         Assume.assumeTrue(canRun);
 
@@ -522,6 +525,7 @@ public class BBMDTest {
         info.network = new IpNetworkBuilder().withLocalBindAddress("127.0." + subnet + "." + addr) //
                 .withSubnet("127.0." + subnet + ".0", 24) //
                 .withLocalNetworkNumber(1) //
+                .withReuseAddress(true)
                 .build();
         info.network.enableBBMD();
 
