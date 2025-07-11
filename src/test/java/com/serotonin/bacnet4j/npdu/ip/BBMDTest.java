@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.junit.After;
 import org.junit.Assume;
@@ -94,15 +95,15 @@ public class BBMDTest {
         // sudo ifconfig lo0 alias 127.0.2.255
         // sudo ifconfig lo0 alias 127.0.3.255
 
-        LDInfo testLdInfo = null;
-        try {
-            testLdInfo = createLocalDevice(1, 1);
-            canRun = true;
-        } catch (SocketException e) {
-            canRun = false;
-        } finally {
-            if (testLdInfo != null)
-                testLdInfo.ld.terminate();
+        if (!SystemUtils.IS_OS_LINUX) {
+            try {
+                InetSocketAddress addr = new InetSocketAddress("127.0.1.1", 47808);
+                try (DatagramSocket ignored = new DatagramSocket(addr)) {
+                    canRun = true;
+                }
+            } catch (SocketException e) {
+                canRun = false;
+            }
         }
         Assume.assumeTrue(canRun);
 
@@ -525,7 +526,6 @@ public class BBMDTest {
         info.network = new IpNetworkBuilder().withLocalBindAddress("127.0." + subnet + "." + addr) //
                 .withSubnet("127.0." + subnet + ".0", 24) //
                 .withLocalNetworkNumber(1) //
-                .withReuseAddress(true)
                 .build();
         info.network.enableBBMD();
 
@@ -549,9 +549,7 @@ public class BBMDTest {
 
     Broadcaster createBroadcaster(final int subnet) throws IOException {
         final String ip = "127.0." + subnet + ".255";
-        final DatagramSocket s = new DatagramSocket();
-        s.setReuseAddress(true);
-        s.bind(new InetSocketAddress(ip, IpNetwork.DEFAULT_PORT));
+        final DatagramSocket s = new DatagramSocket(IpNetwork.DEFAULT_PORT, InetAddress.getByName(ip));
 
         // Find all the sockets on the same virtual subnet.
         final List<DatagramSocket> to = new ArrayList<>();
