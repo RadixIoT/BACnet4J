@@ -3,6 +3,8 @@
 # Ensure that the working directory is the script directory
 cd "$(dirname "$0")"
 
+mkdir -p .m2
+
 # Build the assets needed for testing, but don't run the tests.
 mvn clean test-compile
 

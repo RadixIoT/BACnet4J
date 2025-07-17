@@ -17,13 +17,13 @@ services:
       bacnet-network-2:
         ipv4_address: 192.168.2.11
     volumes:
-      - ~/.m2:/root/.m2 # Reuses the downloaded archives on the host
+      - ${PWD}/.m2:/root/.m2 # Reuses the downloaded archives on the host
       # Allows the saving of specific artifacts on the host. We don't map the entire target directory because there
       # are test assets there (in particular fileObjectTest.txt) that behave oddly when copying and deleting on mapped
       # volumes.
       - ${PWD}/target/site:/app/target/site
       - ${PWD}/target/surefire-reports:/app/target/surefire-reports
-    command: mvn test jacoco:report -Penable-jacoco
+    command: mvn test jacoco:report -Penable-jacoco -Dtest=AnnexFEncodingTest
     #command: tail -f /dev/null
 
   # This container hosts a BACnet4J instance that sends unicasts and broadcasts that the testing container can receive.
@@ -36,13 +36,16 @@ services:
       interval: 3s
       timeout: 5s
       retries: 50
+    depends_on:
+      bacnet-33:
+        condition: service_healthy
     networks:
       bacnet-network-1:
         ipv4_address: 192.168.1.22
       bacnet-network-2:
         ipv4_address: 192.168.2.22
     volumes:
-      - ~/.m2:/root/.m2 # Reuses the downloaded archives on the host
+      - ${PWD}/.m2:/root/.m2 # Reuses the downloaded archives on the host
       - ${PWD}:/app
     working_dir: /app
     command: mvn exec:java -Dexec.classpathScope=test -Dexec.mainClass="com.serotonin.bacnet4j.docker.DockerRemoteDevice" -Dexec.args="docker-remote-device-22.properties"
@@ -63,7 +66,7 @@ services:
       bacnet-network-2:
         ipv4_address: 192.168.2.33
     volumes:
-      - ~/.m2:/root/.m2 # Reuses the downloaded archives on the host
+      - ${PWD}/.m2:/root/.m2 # Reuses the downloaded archives on the host
       - ${PWD}:/app
     working_dir: /app
     command: mvn exec:java -Dexec.classpathScope=test -Dexec.mainClass="com.serotonin.bacnet4j.docker.DockerRemoteDevice" -Dexec.args="docker-remote-device-33.properties"
