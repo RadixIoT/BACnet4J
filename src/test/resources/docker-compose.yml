@@ -21,9 +21,9 @@ services:
       # Allows the saving of specific artifacts on the host. We don't map the entire target directory because there
       # are test assets there (in particular fileObjectTest.txt) that behave oddly when copying and deleting on mapped
       # volumes.
-      - ${PWD}/target/site:/app/target/site
-      - ${PWD}/target/surefire-reports:/app/target/surefire-reports
-    command: mvn test jacoco:report -Penable-jacoco -Dtest=AnnexFEncodingTest
+      - ${PWD}/target/site-docker:/app/target/site
+      - ${PWD}/target/surefire-reports-docker:/app/target/surefire-reports
+    command: mvn test jacoco:report -Penable-jacoco
     #command: tail -f /dev/null
 
   # This container hosts a BACnet4J instance that sends unicasts and broadcasts that the testing container can receive.

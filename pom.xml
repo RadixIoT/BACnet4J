@@ -118,6 +118,35 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <!-- 2. Docker Compose Up -->
+                    <execution>
+                        <id>docker-compose-up</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>sh</executable>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument><![CDATA[
+                                  # Create the maven repo directory that the containers will share.
+                                  mkdir -p .m2
+
+                                  # Start the containers to run the tests.
+                                  docker-compose -f src/test/resources/docker-compose.yml -p bacnet4j up --build --abort-on-container-exit
+                                ]]></argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
     <dependencies>
