@@ -136,10 +136,9 @@ public class IpNetwork extends Network {
     }
 
     /**
-     * @since 6.1.0
      * @deprecated Incorrectly spelled method. Use getBroadcastAddress() instead.
      */
-    @Deprecated
+    @Deprecated(since = "6.1.0")
     public String getBroadcastAddresss() {
         return getBroadcastAddress();
     }
@@ -173,7 +172,7 @@ public class IpNetwork extends Network {
         broadcastMAC = IpNetworkUtils.toOctetString(broadcastAddressStr, port);
         subnetMask = BACnetUtils.dottedStringToBytes(subnetMaskStr);
 
-        if (!DEFAULT_BIND_IP.equals(localBindAddressStr) && SystemUtils.IS_OS_LINUX) {
+        if (!DEFAULT_BIND_IP.equals(localBindAddressStr) && (SystemUtils.IS_OS_LINUX || SystemUtils.IS_OS_MAC)) {
             // If the bind address is the wildcard address (i.e. 0.0.0.0) then we will get messages to the broadcast
             // addresses automatically. The same is true if the OS is Windows regardless of the bind address. But on
             // Linux we need to open a socket on the broadcast address and get the broadcasts that way.

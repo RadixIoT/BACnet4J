@@ -63,7 +63,7 @@ public class DockerRemoteDevice {
         Files.deleteIfExists(RUNNING_FLAG_PATH);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
-                System.out.println("Cleaning up remote device");
+                LOG.info("Cleaning up remote device");
                 Files.deleteIfExists(RUNNING_FLAG_PATH);
             } catch (IOException e) {
                 throw new RuntimeException(e);
