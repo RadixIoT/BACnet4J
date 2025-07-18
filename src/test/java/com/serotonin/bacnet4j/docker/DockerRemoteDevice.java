@@ -106,6 +106,6 @@ public class DockerRemoteDevice {
         }, 4, 2, TimeUnit.SECONDS);
 
         LOG.info("Remote device {} started at {}", p.getProperty("deviceNumber"), p.get("localBindAddress"));
-        Files.createFile(Paths.get("/running.txt"));
+        Files.createFile(Paths.get("/tmp/running.txt"));
     }
 }

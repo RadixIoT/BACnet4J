@@ -136,11 +136,17 @@
                             <arguments>
                                 <argument>-c</argument>
                                 <argument><![CDATA[
-                                  # Create the maven repo directory that the containers will share.
-                                  mkdir -p .m2
+                                  if [ "${skipTests}" = "true" ]; then
+                                    echo "Skipping integration-test because skipTests is set"
+                                    exit 0
+                                  fi
 
                                   # Start the containers to run the tests.
-                                  docker-compose -f src/test/resources/docker-compose.yml -p bacnet4j up --build --abort-on-container-exit
+                                  export MY_UID=$(id -u)
+                                  export MY_GUID=$(id -g)
+                                  trap 'docker compose -f src/test/resources/compose.yml down' EXIT INT TERM
+                                  docker compose -f src/test/resources/compose.yml up --abort-on-container-exit
+                                  docker compose -f src/test/resources/compose.yml down
                                 ]]></argument>
                             </arguments>
                         </configuration>
