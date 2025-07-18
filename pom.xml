@@ -118,6 +118,41 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <!-- 2. Docker Compose Up -->
+                    <execution>
+                        <id>docker-compose-up</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>sh</executable>
+                            <arguments>
+                                <argument>-c</argument>
+                                <argument><![CDATA[
+                                  if [ "${skipTests}" = "true" ]; then
+                                    echo "Skipping integration-test because skipTests is set"
+                                    exit 0
+                                  fi
+
+                                  # Start the containers to run the tests.
+                                  export MY_UID=$(id -u)
+                                  export MY_GUID=$(id -g)
+                                  trap 'docker compose -f src/test/resources/compose.yml down' EXIT INT TERM
+                                  docker compose -f src/test/resources/compose.yml up --abort-on-container-exit
+                                  docker compose -f src/test/resources/compose.yml down
+                                ]]></argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
     <dependencies>
