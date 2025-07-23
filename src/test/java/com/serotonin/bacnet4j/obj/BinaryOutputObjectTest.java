@@ -122,7 +122,7 @@ public class BinaryOutputObjectTest extends AbstractTest {
         clock.plusMillis(1100);
         LOG.debug("e,f");
         awaitEquals(new PriorityArray().put(6, inactive).put(7, inactive), () -> pa);
-        assertEquals(inactive, RequestUtils.getProperty(d2, rd1, obj.getId(), presentValue));
+        awaitEquals(inactive, () -> RequestUtils.getProperty(d2, rd1, obj.getId(), presentValue));
 
         // Going off on our own now...
         // Write inactive into 10, and relinquish 7

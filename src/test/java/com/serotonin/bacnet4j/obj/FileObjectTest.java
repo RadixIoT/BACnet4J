@@ -28,6 +28,7 @@
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assume.assumeFalse;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -167,9 +168,12 @@ public class FileObjectTest extends AbstractTest {
 
     @Test
     public void readOnly() throws Exception {
+        // In docker containers the setWritable method will return true indicating that the writability status of a
+        // file has been changed, but will always be writable regardless of what was requested.
+        assumeFalse(TestUtils.isDockerEnv());
+
         final File file = new File(path);
         final FileObject f = new FileObject(d1, 0, "test", new StreamAccess(file));
-
 
         if (file.setWritable(true)) {
             assertEquals(Boolean.FALSE, f.readProperty(PropertyIdentifier.readOnly, null));

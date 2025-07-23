@@ -44,6 +44,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +63,7 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 /**
  * Use IpNetworkBuilder to create.
  */
-public class IpNetwork extends Network implements Runnable {
+public class IpNetwork extends Network {
     static final Logger LOG = LoggerFactory.getLogger(IpNetwork.class);
 
     public static final byte BVLC_TYPE = (byte) 0x81;
@@ -91,8 +92,8 @@ public class IpNetwork extends Network implements Runnable {
     private ScheduledFuture<?> foreignRegistrationMaintenance;
 
     // Runtime
-    private Thread thread;
-    private DatagramSocket socket;
+    private DatagramSocket unicastSocket;
+    private DatagramSocket broadcastSocket;
     private OctetString broadcastMAC;
     private InetSocketAddress localBindAddress;
     private byte[] subnetMask;
@@ -130,8 +131,16 @@ public class IpNetwork extends Network implements Runnable {
         return localBindAddress;
     }
 
-    public String getBroadcastAddresss() {
+    public String getBroadcastAddress() {
         return broadcastAddressStr;
+    }
+
+    /**
+     * @deprecated Incorrectly spelled method. Use getBroadcastAddress() instead.
+     */
+    @Deprecated(since = "6.1.0")
+    public String getBroadcastAddresss() {
+        return getBroadcastAddress();
     }
 
     @Override
@@ -150,7 +159,7 @@ public class IpNetwork extends Network implements Runnable {
      * @return
      */
     public DatagramSocket getSocket() {
-        return socket;
+        return unicastSocket;
     }
 
     @Override
@@ -158,30 +167,58 @@ public class IpNetwork extends Network implements Runnable {
         super.initialize(transport);
 
         localBindAddress = InetAddrCache.get(localBindAddressStr, port);
+        unicastSocket = createSocket(localBindAddress);
 
+        broadcastMAC = IpNetworkUtils.toOctetString(broadcastAddressStr, port);
+        subnetMask = BACnetUtils.dottedStringToBytes(subnetMaskStr);
+
+        if (!DEFAULT_BIND_IP.equals(localBindAddressStr) && (SystemUtils.IS_OS_LINUX || SystemUtils.IS_OS_MAC)) {
+            // If the bind address is the wildcard address (i.e. 0.0.0.0) then we will get messages to the broadcast
+            // addresses automatically. The same is true if the OS is Windows regardless of the bind address. But on
+            // Linux we need to open a socket on the broadcast address and get the broadcasts that way.
+            try {
+                InetSocketAddress broadcastAddress = InetAddrCache.get(broadcastAddressStr, port);
+                broadcastSocket = createSocket(broadcastAddress);
+            } catch (final SocketException e) {
+                unicastSocket.close();
+                throw e;
+            }
+        }
+
+        // If the bindings were successful, start the listener threads.
+        Thread unicastThread = new Thread(() -> listen(unicastSocket),
+                "BACnet4J IP socket listener for " + transport.getLocalDevice().getId());
+        unicastThread.start();
+
+        if (broadcastSocket != null) {
+            Thread broadcastThread = new Thread(() -> listen(broadcastSocket),
+                    "BACnet4J IP broadcast socket listener for " + transport.getLocalDevice().getId());
+            broadcastThread.start();
+        }
+    }
+
+    private DatagramSocket createSocket(final InetSocketAddress bindAddress) throws SocketException {
+        LOG.info("Binding to address {}", bindAddress);
+        final DatagramSocket socket;
         if (reuseAddress) {
             socket = new DatagramSocket(null);
             socket.setReuseAddress(true);
             if (!socket.getReuseAddress())
-                LOG.warn("reuseAddress was set, but not supported by the underlying platform");
-            socket.bind(localBindAddress);
+                LOG.warn("reuseAddress was set but not supported by the underlying platform");
+            socket.bind(bindAddress);
         } else
-            socket = new DatagramSocket(localBindAddress);
+            socket = new DatagramSocket(bindAddress);
         socket.setBroadcast(true);
-
-        //        broadcastAddress = new Address(broadcastIp, port, new Network(0xffff, new byte[0]));
-        broadcastMAC = IpNetworkUtils.toOctetString(broadcastAddressStr, port);
-        subnetMask = BACnetUtils.dottedStringToBytes(subnetMaskStr);
-
-        thread = new Thread(this, "BACnet4J IP socket listener for " + transport.getLocalDevice().getId());
-        thread.start();
+        return socket;
     }
 
     @Override
     public void terminate() {
         unregisterAsForeignDevice();
-        if (socket != null)
-            socket.close();
+        if (unicastSocket != null)
+            unicastSocket.close();
+        if (broadcastSocket != null)
+            broadcastSocket.close();
         if (ftdMaintenance != null)
             ftdMaintenance.cancel(false);
     }
@@ -307,7 +344,7 @@ public class IpNetwork extends Network implements Runnable {
     private void sendPacket(final InetSocketAddress addr, final byte[] data) throws BACnetException {
         try {
             final DatagramPacket packet = new DatagramPacket(data, data.length, addr);
-            socket.send(packet);
+            unicastSocket.send(packet);
             bytesOut += data.length;
         } catch (final Exception e) {
             throw new BACnetException(e);
@@ -316,8 +353,7 @@ public class IpNetwork extends Network implements Runnable {
 
     //
     // For receiving
-    @Override
-    public void run() {
+    private void listen(final DatagramSocket socket) {
         final byte[] buffer = new byte[MESSAGE_LENGTH];
         final DatagramPacket p = new DatagramPacket(buffer, buffer.length);
 
@@ -342,7 +378,8 @@ public class IpNetwork extends Network implements Runnable {
     }
 
     @Override
-    protected NPDU handleIncomingDataImpl(final ByteQueue queue, final OctetString linkService) throws Exception {
+    protected NPDU handleIncomingDataImpl(final ByteQueue queue, final OctetString linkService)
+            throws Exception {
         LOG.trace("Received request from {}", linkService);
 
         // Initial parsing of IP message.

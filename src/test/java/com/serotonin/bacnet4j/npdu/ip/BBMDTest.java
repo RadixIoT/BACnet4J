@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.junit.After;
 import org.junit.Assume;
@@ -77,9 +78,10 @@ public class BBMDTest {
     public void before() throws Exception {
         // On OSX 127.x.x.x are not localhost addresses
         // Can do this from terminal:
+        // sudo ifconfig lo0 alias 127.0.1.1
+        // sudo ifconfig lo0 alias 127.0.1.2
         // sudo ifconfig lo0 alias 127.0.1.3
         // sudo ifconfig lo0 alias 127.0.2.1
-        // sudo ifconfig lo0 alias 127.0.1.1
         // sudo ifconfig lo0 alias 127.0.2.2
         // sudo ifconfig lo0 alias 127.0.2.3
         // sudo ifconfig lo0 alias 127.0.3.1
@@ -93,13 +95,15 @@ public class BBMDTest {
         // sudo ifconfig lo0 alias 127.0.2.255
         // sudo ifconfig lo0 alias 127.0.3.255
 
-        try {
-            InetSocketAddress addr = new InetSocketAddress("127.0.1.1", 47808);
-            try (DatagramSocket socket = new DatagramSocket(addr)) {
-                canRun = true;
+        if (!SystemUtils.IS_OS_LINUX) {
+            try {
+                InetSocketAddress addr = new InetSocketAddress("127.0.1.1", 47808);
+                try (DatagramSocket ignored = new DatagramSocket(addr)) {
+                    canRun = true;
+                }
+            } catch (SocketException e) {
+                canRun = false;
             }
-        } catch (SocketException e) {
-            canRun = false;
         }
         Assume.assumeTrue(canRun);
 
