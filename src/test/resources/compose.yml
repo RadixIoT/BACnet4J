@@ -3,7 +3,7 @@ name: bacnet4j
 services:
   # This is the container in which the tests are run.
   bacnet-11:
-    image: csanchez/maven:3-azulzulu-17-alpine
+    image: maven:3-eclipse-temurin-17-alpine
     depends_on:
       bacnet-22:
         condition: service_healthy
