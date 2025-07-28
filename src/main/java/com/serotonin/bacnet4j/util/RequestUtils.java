@@ -44,6 +44,7 @@ import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
 import com.serotonin.bacnet4j.exception.ErrorAPDUException;
+import com.serotonin.bacnet4j.exception.RejectAPDUException;
 import com.serotonin.bacnet4j.exception.ServiceTooBigException;
 import com.serotonin.bacnet4j.obj.ObjectProperties;
 import com.serotonin.bacnet4j.service.acknowledgement.ReadPropertyAck;
@@ -67,6 +68,7 @@ import com.serotonin.bacnet4j.type.enumerated.AbortReason;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.type.enumerated.RejectReason;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -344,6 +346,22 @@ public class RequestUtils {
                     LOG.warn("Chunked request failed.");
                     if (AbortReason.bufferOverflow.equals(e.getApdu().getAbortReason())
                             || AbortReason.segmentationNotSupported.equals(e.getApdu().getAbortReason())) {
+                        if (partition.size() < 2)
+                            throw e;
+
+                        // Reduce the device's max references.
+                        d.reduceMaxReadMultipleReferences(partition.size());
+
+                        // Create a new PropertyReferences instance from the remaining references.
+                        final PropertyReferences remaining = new PropertyReferences(partitions);
+
+                        // Repartition the remaining requests.
+                        partitions = remaining.getPropertiesPartitioned(d.getMaxReadMultipleReferences());
+                    } else
+                        throw new BACnetException("Completed " + counter + " requests. Excepted on: " + request, e);
+                } catch (final RejectAPDUException e) {
+                    LOG.warn("Chunked request failed.");
+                    if (RejectReason.bufferOverflow.equals(e.getApdu().getRejectReason())) {
                         if (partition.size() < 2)
                             throw e;
 
