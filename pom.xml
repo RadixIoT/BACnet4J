@@ -24,6 +24,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <additionalDeploymentRepositoryId>additional-deployment-repository</additionalDeploymentRepositoryId>
         <maven.compiler.release>17</maven.compiler.release>
+        <skipTests>false</skipTests>
     </properties>
     <build>
         <sourceDirectory>src/main/java</sourceDirectory>
@@ -33,7 +34,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-site-plugin</artifactId>
-                    <version>3.8.2</version>
+                    <version>3.21.0</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -67,6 +68,16 @@
                         <includeTestSourceDirectory>true</includeTestSourceDirectory>
                     </configuration>
                 </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>0.8.13</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.4.2</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -86,11 +97,6 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-site-plugin</artifactId>
-                <version>3.21.0</version>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -118,37 +124,18 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.0</version>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
                 <executions>
-                    <!-- 2. Docker Compose Up -->
                     <execution>
-                        <id>docker-compose-up</id>
-                        <phase>pre-integration-test</phase>
+                        <id>prepare-agent</id>
+                        <phase>initialize</phase>
                         <goals>
-                            <goal>exec</goal>
+                            <goal>prepare-agent</goal>
                         </goals>
                         <configuration>
-                            <executable>sh</executable>
-                            <arguments>
-                                <argument>-c</argument>
-                                <argument><![CDATA[
-                                  if [ "${skipTests}" = "true" ]; then
-                                    echo "Skipping integration-test because skipTests is set"
-                                    exit 0
-                                  fi
-
-                                  # Start the containers to run the tests.
-                                  export MY_UID=$(id -u)
-                                  export MY_GUID=$(id -g)
-                                  trap 'docker compose -f src/test/resources/compose.yml down' EXIT INT TERM
-                                  docker compose -f src/test/resources/compose.yml up --abort-on-container-exit
-                                  docker compose -f src/test/resources/compose.yml down
-                                ]]></argument>
-                            </arguments>
+                            <skip>${skipTests}</skip>
                         </configuration>
                     </execution>
                 </executions>
@@ -283,25 +270,108 @@
             </build>
         </profile>
         <profile>
-            <id>enable-jacoco</id>
+            <id>jacoco-report</id>
             <build>
                 <plugins>
                     <plugin>
                         <groupId>org.jacoco</groupId>
                         <artifactId>jacoco-maven-plugin</artifactId>
-                        <version>0.8.13</version>
                         <executions>
-                            <execution>
-                                <goals>
-                                    <goal>prepare-agent</goal>
-                                </goals>
-                            </execution>
                             <execution>
                                 <id>report</id>
                                 <phase>verify</phase>
                                 <goals>
                                     <goal>report</goal>
                                 </goals>
+                                <configuration>
+                                    <skip>${skipTests}</skip>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>docker</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.8.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-dependencies</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>copy-dependencies</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${skipTests}</skip>
+                                    <outputDirectory>${project.build.directory}/dependency</outputDirectory>
+                                    <includeScope>test</includeScope>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>docker-compose-up</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${skipTests}</skip>
+                                    <executable>sh</executable>
+                                    <arguments>
+                                        <!-- Notifies TeamCity to import test results and JaCoCo coverage data -->
+                                        <argument>-c</argument>
+                                        <argument><![CDATA[
+                                          echo "##teamcity[importData type='surefire' path='target/docker-target/surefire-reports/TEST-*.xml']"
+                                          echo "##teamcity[jacocoReport dataPath='target/jacoco.exec' classpath='target/classes/**/*.class']"
+
+                                          docker compose -p bacnet4j -f src/test/resources/compose.yml up --abort-on-container-exit
+                                          docker compose -p bacnet4j -f src/test/resources/compose.yml down
+                                        ]]></argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>merge-results</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>merge</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${skipTests}</skip>
+                                    <fileSets>
+                                        <fileSet>
+                                            <directory>${project.build.directory}</directory>
+                                            <includes>
+                                                <include>jacoco.exec</include>
+                                            </includes>
+                                        </fileSet>
+                                        <fileSet>
+                                            <directory>${project.build.directory}/docker-target</directory>
+                                            <includes>
+                                                <include>jacoco.exec</include>
+                                            </includes>
+                                        </fileSet>
+                                    </fileSets>
+                                    <destFile>${project.build.directory}/jacoco.exec</destFile>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
