@@ -34,14 +34,4 @@ public class TestNetworkIdentifier extends NetworkIdentifier {
     public String getIdString() {
         return "test";
     }
-
-    @Override
-    public int hashCode() {
-        return -12345;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return obj instanceof TestNetworkIdentifier;
-    }
 }
