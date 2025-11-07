@@ -215,6 +215,13 @@ public class DefaultTransport implements Transport, Runnable {
             }
         }
 
+        // cancel any delayed outgoing messages.
+        for (final DelayedOutgoing delayed : delayedOutgoing) {
+            if (delayed.outgoing instanceof OutgoingConfirmed ogc && ogc.consumer != null) {
+                ogc.consumer.ex(new BACnetException("Cancelled due to transport shutdown"));
+            }
+        }
+
         // Cancel any unacked messages
         for (final UnackedMessageContext ctx : unackedMessages.getRequests().values()) {
             if (ctx.getConsumer() != null) {
@@ -844,10 +851,13 @@ public class DefaultTransport implements Transport, Runnable {
             return;
         }
 
-        // This may be a segment ack for an inter-window segment. We ignore all segment acks except for the
-        // one for the last segment that was sent.
-        if (ack.getSequenceNumber() < ctx.getLastIdSent())
+        if (ack.getSequenceNumber() < ctx.getLastIdSent()) {
+            // This is likely a duplicate SegmentACK.
+            // 2020 BACnet spec 5.4.4.2, reset segment timer and wait for next SegmentAck
+            unackedMessages.add(key, ctx);
+            ctx.resetTimer(segTimeout);
             return;
+        }
 
         int remaining = ack.getActualWindowSize();
 
@@ -1013,22 +1023,26 @@ public class DefaultTransport implements Transport, Runnable {
                         ctx.useConsumer((consumer) -> consumer.ex(new BACnetTimeoutException()));
                     } else {
                         // A segmented message.
-                        if (ctx.getSegmentWindow().isEmpty()) {
-                            // No segments received. Return a timeout.
-                            ctx.useConsumer((consumer) -> consumer.ex(new BACnetTimeoutException(
-                                    "Timeout while waiting for segment part: invokeId=" + key.getInvokeId()
-                                            + ", sequenceId=" + ctx.getSegmentWindow().getFirstSequenceId())));
-                        } else if (ctx.getSegmentWindow().isEmpty())
-                            LOG.warn("No segments received for message " + ctx.getOriginalApdu());
-                        else {
+                        var timeoutEx = new BACnetTimeoutException(
+                                "Timeout while waiting for segment part: key=%s, sequenceId=%s, apdu=%s"
+                                        .formatted(key, ctx.getSegmentWindow().getFirstSequenceId(),
+                                                ctx.getOriginalApdu()));
+
+                        ctx.useConsumer((consumer) -> consumer.ex(timeoutEx));
+                        if (ctx.getConsumer() == null) {
+                            LOG.warn("Timeout waiting for segment(s)", timeoutEx);
+                        }
+
+                        if (!ctx.getSegmentWindow().isEmpty()) {
                             // Return a NAK with the last sequence id received in order and start over.
+                            // TODO - Sending a NAK here is not appropriate
                             try {
                                 network.sendAPDU(key.getAddress(), key.getLinkService(),
                                         new SegmentACK(true, key.isFromServer(), key.getInvokeId(),
                                                 ctx.getSegmentWindow().getLatestSequenceId(),
                                                 ctx.getSegmentWindow().getWindowSize(), true), false);
                             } catch (final BACnetException ex) {
-                                ctx.useConsumer((consumer) -> consumer.ex(ex));
+                                LOG.warn("Error sending NAK after timeout", ex);
                             }
                         }
                     }
