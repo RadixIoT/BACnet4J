@@ -101,7 +101,7 @@ public class DefaultTransport implements Transport, Runnable {
     // Message queues
     private final Queue<Outgoing> outgoing = new ConcurrentLinkedQueue<>();
     private final Queue<NPDU> incoming = new ConcurrentLinkedQueue<>();
-    private final Queue<DelayedOutgoing> delayedOutgoing = new LinkedList<>();
+    final Queue<DelayedOutgoing> delayedOutgoing = new LinkedList<>();
 
     // Processing
     final UnackedMessages unackedMessages = new UnackedMessages();
