@@ -1038,6 +1038,7 @@ public class LocalDevice implements AutoCloseable {
      -----------------------------------------------------------*/
 
     public ServiceFuture send(final RemoteDevice d, final ConfirmedRequestService serviceRequest) {
+        ensureInitialized();
         //        validateSupportedService(d, serviceRequest);
         return transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(),
                 serviceRequest);

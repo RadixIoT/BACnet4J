@@ -107,6 +107,7 @@ public class DefaultTransport implements Transport, Runnable {
     final UnackedMessages unackedMessages = new UnackedMessages();
     private Thread thread;
     private volatile boolean running = true;
+    private final Object runLock = new Object();
     private final Object pauseLock = new Object();
 
     public DefaultTransport(final Network network) {
@@ -181,7 +182,9 @@ public class DefaultTransport implements Transport, Runnable {
     public void initialize() throws Exception {
         servicesSupported = localDevice.getServicesSupported();
 
-        running = true;
+        synchronized (runLock) {
+            running = true;
+        }
         network.initialize(this);
         thread = new Thread(this, "BACnet4J transport for device " + localDevice.getInstanceNumber());
         thread.start();
@@ -194,7 +197,10 @@ public class DefaultTransport implements Transport, Runnable {
     @Override
     public void terminate() {
         // Stop the processing thread.
-        running = false;
+        LOG.debug("Terminating transport");
+        synchronized (runLock) {
+            running = false;
+        }
         ThreadUtils.notifySync(pauseLock);
         if (thread != null)
             ThreadUtils.join(thread);
@@ -267,7 +273,15 @@ public class DefaultTransport implements Transport, Runnable {
         }
 
         if (allowSend) {
-            outgoing.add(new OutgoingUnconfirmed(address, service, broadcast, new Exception()));
+            var out = new OutgoingUnconfirmed(address, service, broadcast, new Exception());
+            synchronized (runLock) {
+                if (running) {
+                    outgoing.add(out);
+                } else {
+                    LOG.debug("Transport is not running, will not queue outgoing {}", out);
+                }
+            }
+
             ThreadUtils.notifySync(pauseLock);
         }
     }
@@ -288,16 +302,38 @@ public class DefaultTransport implements Transport, Runnable {
             final ConfirmedRequestService service, final ResponseConsumer consumer) {
         // 16.1.2
         if (EnableDisable.enable.equals(localDevice.getCommunicationControlState())) {
-            outgoing.add(new OutgoingConfirmed(address, maxAPDULengthAccepted, segmentationSupported, service, consumer,
-                    new Exception()));
-            if (consumer != null) {
-                consumer.queued();
+            var out = new OutgoingConfirmed(
+                    address,
+                    maxAPDULengthAccepted,
+                    segmentationSupported,
+                    service,
+                    consumer,
+                    new Exception()
+            );
+
+            boolean messageQueued = false;
+            synchronized (runLock) {
+                if (running) {
+                    messageQueued = outgoing.add(out);
+                }
             }
+
+            if (messageQueued && consumer != null) {
+                consumer.queued();
+            } else if (!messageQueued) {
+                LOG.debug("Transport is not running, will not queue outgoing {}", out);
+                if (consumer != null) {
+                    consumer.ex(new BACnetException("Transport is not running"));
+                }
+            }
+
             ThreadUtils.notifySync(pauseLock);
         } else {
             // Communication has been disabled as the result of a DeviceCommunicationControlRequest. The consumer
             // is informed with an exception.
-            consumer.ex(new CommunicationDisabledException());
+            if (consumer != null) {
+                consumer.ex(new CommunicationDisabledException());
+            }
         }
     }
 
@@ -517,8 +553,15 @@ public class DefaultTransport implements Transport, Runnable {
                     final DelayedOutgoing delayedOutgoing = iter.next();
                     if (delayedOutgoing.isReady()) {
                         iter.remove();
-                        outgoing.add(delayedOutgoing.outgoing);
-                        LOG.info("Retrying delayed outgoing {}", delayedOutgoing.outgoing);
+                        synchronized (runLock) {
+                            if (running) {
+                                outgoing.add(delayedOutgoing.outgoing);
+                                LOG.info("Retrying delayed outgoing {}", delayedOutgoing.outgoing);
+                            } else {
+                                LOG.debug("Transport not running, will not retry delayed outgoing {}",
+                                        delayedOutgoing.outgoing);
+                            }
+                        }
                         pause = false;
                     } else {
                         // No other entries in the list should be ready either
