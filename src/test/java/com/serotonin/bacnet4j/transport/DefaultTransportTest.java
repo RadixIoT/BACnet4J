@@ -35,10 +35,12 @@ import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.InOrder;
 
 import com.serotonin.bacnet4j.LocalDevice;
+import com.serotonin.bacnet4j.ServiceFuture;
 import com.serotonin.bacnet4j.apdu.APDU;
 import com.serotonin.bacnet4j.apdu.ConfirmedRequest;
 import com.serotonin.bacnet4j.apdu.SegmentACK;
@@ -49,8 +51,10 @@ import com.serotonin.bacnet4j.npdu.NPCI;
 import com.serotonin.bacnet4j.npdu.NPDU;
 import com.serotonin.bacnet4j.npdu.Network;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedRequestService;
+import com.serotonin.bacnet4j.service.confirmed.DeviceCommunicationControlRequest.EnableDisable;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
+import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 
@@ -179,4 +183,27 @@ public class DefaultTransportTest {
 
         return apdu;
     }
+
+    @Test(timeout=10_000)
+    public void futuresCompleteExceptionallyForRequestsSentAfterTerminate() throws Exception {
+        final Network network = mock(Network.class);
+        when(network.isThisNetwork(any())).thenReturn(true);
+
+        final LocalDevice localDevice = mock(LocalDevice.class);
+        when(localDevice.getClock()).thenReturn(Clock.systemUTC());
+        when(localDevice.getCommunicationControlState()).thenReturn(EnableDisable.enable);
+
+        final DefaultTransport sut = new DefaultTransport(network);
+        sut.setLocalDevice(localDevice);
+        sut.initialize();
+
+        final Address to = new Address(0, new byte[] {1});
+
+        sut.terminate();
+        ServiceFuture result = sut.send(to, 20, Segmentation.segmentedBoth, mock(ConfirmedRequestService.class));
+
+        BACnetException e = Assert.assertThrows(BACnetException.class, result::get);
+        Assert.assertTrue(e.getMessage().contains("not running"));
+    }
+
 }
