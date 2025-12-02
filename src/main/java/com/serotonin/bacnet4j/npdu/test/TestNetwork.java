@@ -65,6 +65,7 @@ public class TestNetwork extends Network implements Runnable {
 
     private volatile boolean running = true;
     private Thread thread;
+    private final NetworkIdentifier networkIdentifier = new TestNetworkIdentifier();
 
     /**
      * This is the list of outgoing messages queued up for sending.
@@ -96,7 +97,7 @@ public class TestNetwork extends Network implements Runnable {
 
     @Override
     public NetworkIdentifier getNetworkIdentifier() {
-        return new TestNetworkIdentifier();
+        return networkIdentifier;
     }
 
     @Override

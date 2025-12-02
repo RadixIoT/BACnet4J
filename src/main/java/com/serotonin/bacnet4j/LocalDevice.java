@@ -107,7 +107,8 @@ import lohbihler.warp.WarpUtils;
  */
 public class LocalDevice implements AutoCloseable {
     static final Logger LOG = LoggerFactory.getLogger(LocalDevice.class);
-    public static final String VERSION = "6.0.0";
+    public static final String VERSION =
+            Objects.requireNonNullElse(LocalDevice.class.getPackage().getImplementationVersion(), "unknown");
 
     private final Transport transport;
 

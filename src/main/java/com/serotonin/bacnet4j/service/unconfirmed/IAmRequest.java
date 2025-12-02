@@ -101,24 +101,15 @@ public class IAmRequest extends UnconfirmedRequestService {
 
         localDevice.updateRemoteDevice(remoteDoi, from);
 
-        final RemoteDevice d = localDevice.getCachedRemoteDevice(remoteDoi);
-        if (d == null) {
-            // Populate the object with discovered values, but do so in a different thread.
-            localDevice.execute(() -> {
-                LOG.debug("{} received an IAm from {}. Asynchronously creating remote device",
-                        localDevice.getInstanceNumber(), remoteDoi);
-                final RemoteDevice rd = new RemoteDevice(localDevice, remoteDoi, from);
-                rd.setDeviceProperty(PropertyIdentifier.maxApduLengthAccepted, maxAPDULengthAccepted);
-                rd.setDeviceProperty(PropertyIdentifier.segmentationSupported, segmentationSupported);
-                rd.setDeviceProperty(PropertyIdentifier.vendorIdentifier, vendorId);
-                localDevice.getEventHandler().fireIAmReceived(rd);
-            });
-        } else {
-            d.setDeviceProperty(PropertyIdentifier.maxApduLengthAccepted, maxAPDULengthAccepted);
-            d.setDeviceProperty(PropertyIdentifier.segmentationSupported, segmentationSupported);
-            d.setDeviceProperty(PropertyIdentifier.vendorIdentifier, vendorId);
-            localDevice.getEventHandler().fireIAmReceived(d);
+        var rd = localDevice.getCachedRemoteDevice(remoteDoi);
+        if (rd == null) {
+            rd = new RemoteDevice(localDevice, remoteDoi, from);
         }
+        rd.setDeviceProperty(PropertyIdentifier.maxApduLengthAccepted, maxAPDULengthAccepted);
+        rd.setDeviceProperty(PropertyIdentifier.segmentationSupported, segmentationSupported);
+        rd.setDeviceProperty(PropertyIdentifier.vendorIdentifier, vendorId);
+        var finalRd = rd;
+        localDevice.execute(() -> localDevice.getEventHandler().fireIAmReceived(finalRd));
     }
 
     @Override

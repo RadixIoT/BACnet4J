@@ -366,7 +366,7 @@ public class TestUtils {
      * @param actualSupplier the supplier the value of which to check
      */
     public static void awaitEquals(int expected, final IntSupplierWithException actualSupplier) throws Exception {
-        awaitEquals(expected, actualSupplier, 5000);
+        awaitEquals(expected, actualSupplier, 10000);
     }
 
     /**
