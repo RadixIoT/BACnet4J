@@ -27,21 +27,15 @@
 
 package com.serotonin.bacnet4j.npdu.test;
 
-import com.serotonin.bacnet4j.npdu.NetworkIdentifier;
+import static org.junit.Assert.assertEquals;
 
-public class TestNetworkIdentifier extends NetworkIdentifier {
-    @Override
-    public String getIdString() {
-        return "test";
-    }
+import org.junit.Test;
 
-    @Override
-    public int hashCode() {
-        return -12345;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return obj instanceof TestNetworkIdentifier;
+public class TestNetworkIdentifierTest {
+    @Test
+    public void twoTestNetworkIdentifiersAreEqual() {
+        TestNetworkIdentifier testNetworkIdentifier1 = new TestNetworkIdentifier();
+        TestNetworkIdentifier testNetworkIdentifier2 = new TestNetworkIdentifier();
+        assertEquals(testNetworkIdentifier1, testNetworkIdentifier2);
     }
 }

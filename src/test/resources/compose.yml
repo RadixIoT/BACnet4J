@@ -3,8 +3,7 @@ name: bacnet4j
 services:
   # This is the container in which the tests are run.
   bacnet-11:
-    image: maven:3-eclipse-temurin-17
-    user: ${MY_UID:-0}:${MY_GUID:-0}
+    image: maven:3-eclipse-temurin-17-alpine
     depends_on:
       bacnet-22:
         condition: service_healthy
@@ -15,68 +14,59 @@ services:
         ipv4_address: 192.168.1.11
       bacnet-network-2:
         ipv4_address: 192.168.2.11
+    tmpfs:
+      - /home/.m2
     volumes:
-      - ${PWD}:/app
-      - ${PWD}/target/site-docker:/app/target/site
-      - ${PWD}/target/surefire-reports-docker:/app/target/surefire-reports
+      - ${PWD}:/app:rw
+      - ${PWD}/target/docker-target:/app/target:rw
+      - ${MAVEN_REPOSITORY:-${HOME}/.m2/repository}:/home/.m2/repository:ro
     working_dir: /app
     environment:
-      MAVEN_CONFIG: /app/.m2
-    command: mvn -Duser.home=/app test jacoco:report -Penable-jacoco
-    #command: tail -f /dev/null
+      MAVEN_CONFIG: /home/.m2
+    command: mvn -Duser.home=/home -o verify
 
   # This container hosts a BACnet4J instance that sends unicasts and broadcasts that the testing container can receive.
   bacnet-22:
-    image: maven:3-eclipse-temurin-17
-    user: ${MY_UID:-0}:${MY_GUID:-0}
+    image: azul/zulu-openjdk-alpine:17-jre-headless
     healthcheck:
       # See DockerRemoteDevice, which creates running.txt after the local devices has been initialized. The file is
       # created in the tmp so that it is not shared by the volume mappings.
-      test: bash -c "[ -f /tmp/running.txt ]"
-      interval: 3s
-      timeout: 3s
+      test: sh -c "[ -f /tmp/running.txt ]"
+      interval: 1s
+      timeout: 1s
       retries: 1
-      start_period: 30s
-      start_interval: 3s
-    depends_on:
-      bacnet-33:
-        condition: service_healthy
+      start_period: 5s
+      start_interval: 1s
     networks:
       bacnet-network-1:
         ipv4_address: 192.168.1.22
       bacnet-network-2:
         ipv4_address: 192.168.2.22
-    environment:
-      MAVEN_CONFIG: /app/.m2
     volumes:
-      - ${PWD}:/app
-    working_dir: /app
-    command: mvn -Duser.home=/app exec:java -Dexec.classpathScope=test -Dexec.mainClass="com.serotonin.bacnet4j.docker.DockerRemoteDevice" -Dexec.args="docker-remote-device-22.properties"
+      - ${PWD}/target:/target:ro
+    entrypoint: ["java", "-cp", "/target/test-classes:/target/*:/target/dependency/*"]
+    command: ["com.serotonin.bacnet4j.docker.DockerRemoteDevice", "docker-remote-device-22.properties"]
 
-  # This container hosts a BACnet4J instance that sends unicasts and broadcasts that the testing container can receive.
   bacnet-33:
-    image: maven:3-eclipse-temurin-17
-    user: ${MY_UID:-0}:${MY_GUID:-0}
+    image: azul/zulu-openjdk-alpine:17-jre-headless
     healthcheck:
       # See DockerRemoteDevice, which creates running.txt after the local devices has been initialized. The file is
       # created in the tmp so that it is not shared by the volume mappings.
-      test: bash -c "[ -f /tmp/running.txt ]"
-      interval: 3s
-      timeout: 3s
+      test: sh -c "[ -f /tmp/running.txt ]"
+      interval: 1s
+      timeout: 1s
       retries: 1
-      start_period: 150s
-      start_interval: 3s
+      start_period: 5s
+      start_interval: 1s
     networks:
       bacnet-network-1:
         ipv4_address: 192.168.1.33
       bacnet-network-2:
         ipv4_address: 192.168.2.33
-    environment:
-      MAVEN_CONFIG: /app/.m2
     volumes:
-      - ${PWD}:/app
-    working_dir: /app
-    command: mvn -Duser.home=/app exec:java -Dexec.classpathScope=test -Dexec.mainClass="com.serotonin.bacnet4j.docker.DockerRemoteDevice" -Dexec.args="docker-remote-device-33.properties"
+      - ${PWD}/target:/target:ro
+    entrypoint: ["java", "-cp", "/target/test-classes:/target/*:/target/dependency/*"]
+    command: ["com.serotonin.bacnet4j.docker.DockerRemoteDevice", "docker-remote-device-33.properties"]
 
 networks:
   bacnet-network-1:
