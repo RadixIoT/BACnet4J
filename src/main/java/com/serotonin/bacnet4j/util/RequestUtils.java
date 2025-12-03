@@ -343,7 +343,7 @@ public class RequestUtils {
                     // Repartition the remaining requests.
                     partitions = remaining.getPropertiesPartitioned(d.getMaxReadMultipleReferences());
                 } catch (final AbortAPDUException e) {
-                    LOG.warn("Chunked request failed.");
+                    LOG.warn("Chunked request failed (abort).");
                     if (AbortReason.bufferOverflow.equals(e.getApdu().getAbortReason())
                             || AbortReason.segmentationNotSupported.equals(e.getApdu().getAbortReason())) {
                         if (partition.size() < 2)
@@ -360,7 +360,7 @@ public class RequestUtils {
                     } else
                         throw new BACnetException("Completed " + counter + " requests. Excepted on: " + request, e);
                 } catch (final RejectAPDUException e) {
-                    LOG.warn("Chunked request failed.");
+                    LOG.warn("Chunked request failed (reject).");
                     if (RejectReason.bufferOverflow.equals(e.getApdu().getRejectReason())) {
                         if (partition.size() < 2)
                             throw e;
