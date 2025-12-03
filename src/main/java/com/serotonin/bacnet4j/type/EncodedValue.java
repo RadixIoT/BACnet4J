@@ -30,6 +30,7 @@ package com.serotonin.bacnet4j.type;
 import java.util.Arrays;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -120,6 +121,10 @@ public class EncodedValue extends Encodable {
     }
 
     private static void copyData(final ByteQueue queue, final int length, final ByteQueue data) {
+        if (length <= 0) {
+            // Guard for https://github.com/RadixIoT/BACnet4J/issues/66
+            throw new BACnetRuntimeException("Illegal copy length: " + length + ", encoded data may be corrupt");
+        }
         int len = length;
         while (len-- > 0)
             data.push(queue.pop());
