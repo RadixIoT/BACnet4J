@@ -150,8 +150,7 @@ public class RequestUtilsTest {
                             throw new AbortAPDUException(
                                     new Abort(false, (byte) 0, AbortReason.bufferOverflow.intValue()));
                         else if (mod == 3)
-                            throw new RejectAPDUException(
-                                    new Reject((byte)0, RejectReason.bufferOverflow));
+                            throw new RejectAPDUException(new Reject((byte) 0, RejectReason.bufferOverflow));
 
                         throw new AbortAPDUException(
                                 new Abort(false, (byte) 0, AbortReason.segmentationNotSupported.intValue()));
