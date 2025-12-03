@@ -44,6 +44,7 @@ import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
 import com.serotonin.bacnet4j.exception.ErrorAPDUException;
+import com.serotonin.bacnet4j.exception.RejectAPDUException;
 import com.serotonin.bacnet4j.exception.ServiceTooBigException;
 import com.serotonin.bacnet4j.obj.ObjectProperties;
 import com.serotonin.bacnet4j.service.acknowledgement.ReadPropertyAck;
@@ -67,6 +68,7 @@ import com.serotonin.bacnet4j.type.enumerated.AbortReason;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.type.enumerated.RejectReason;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -75,11 +77,14 @@ import com.serotonin.bacnet4j.util.sero.Utils;
 public class RequestUtils {
     static final Logger LOG = LoggerFactory.getLogger(RequestUtils.class);
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    private RequestUtils() {
+    }
+
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Read properties
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Does not work with aggregate PIDs like "all".
@@ -98,8 +103,7 @@ public class RequestUtils {
         final Map<PropertyIdentifier, Encodable> map = getProperties(localDevice, d, oid, null, pid);
 
         final Encodable value = map.get(pid);
-        if (value instanceof ErrorClassAndCode) {
-            final ErrorClassAndCode e = (ErrorClassAndCode) value;
+        if (value instanceof ErrorClassAndCode e) {
             throw new BACnetErrorException(e.getErrorClass(), e.getErrorCode());
         }
 
@@ -171,8 +175,8 @@ public class RequestUtils {
             final ObjectIdentifier oid, final PropertyIdentifier pid, final UnsignedInteger propertyArrayIndex,
             final ReadListener callback) throws BACnetException {
         try {
-            final ReadPropertyAck ack = (ReadPropertyAck) localDevice
-                    .send(d, new ReadPropertyRequest(oid, pid, propertyArrayIndex)).get();
+            final ReadPropertyAck ack =
+                    localDevice.send(d, new ReadPropertyRequest(oid, pid, propertyArrayIndex)).get();
             if (callback != null)
                 callback.progress(1, d.getInstanceNumber(), oid, pid, ack.getPropertyArrayIndex(), ack.getValue());
             return ack.getValue();
@@ -218,8 +222,8 @@ public class RequestUtils {
             final ObjectIdentifier oid, final PropertyIdentifier pid, final UnsignedInteger propertyArrayIndex)
             throws BACnetException {
         if (d.getServicesSupported().isReadProperty()) {
-            final ReadPropertyAck ack = (ReadPropertyAck) localDevice
-                    .send(d, new ReadPropertyRequest(oid, pid, propertyArrayIndex)).get();
+            final ReadPropertyAck ack =
+                    localDevice.send(d, new ReadPropertyRequest(oid, pid, propertyArrayIndex)).get();
             return ack.getValue();
         }
 
@@ -228,8 +232,8 @@ public class RequestUtils {
             refs.add(new PropertyReference(pid, propertyArrayIndex));
             final List<ReadAccessSpecification> specs = new ArrayList<>();
             specs.add(new ReadAccessSpecification(oid, new SequenceOf<>(refs)));
-            final ReadPropertyMultipleAck ack = (ReadPropertyMultipleAck) localDevice
-                    .send(d, new ReadPropertyMultipleRequest(new SequenceOf<>(specs))).get();
+            final ReadPropertyMultipleAck ack =
+                    localDevice.send(d, new ReadPropertyMultipleRequest(new SequenceOf<>(specs))).get();
             return ack.getListOfReadAccessResults().getBase1(1).getListOfResults().getBase1(1).getReadResult()
                     .getDatum();
         }
@@ -309,7 +313,7 @@ public class RequestUtils {
 
                 ReadPropertyMultipleAck ack;
                 try {
-                    ack = (ReadPropertyMultipleAck) localDevice.send(d, request).get();
+                    ack = localDevice.send(d, request).get();
                     counter++;
 
                     final List<ReadAccessResult> results = ack.getListOfReadAccessResults().getValues();
@@ -341,9 +345,25 @@ public class RequestUtils {
                     // Repartition the remaining requests.
                     partitions = remaining.getPropertiesPartitioned(d.getMaxReadMultipleReferences());
                 } catch (final AbortAPDUException e) {
-                    LOG.warn("Chunked request failed.");
+                    LOG.warn("Chunked request failed (abort).");
                     if (AbortReason.bufferOverflow.equals(e.getApdu().getAbortReason())
                             || AbortReason.segmentationNotSupported.equals(e.getApdu().getAbortReason())) {
+                        if (partition.size() < 2)
+                            throw e;
+
+                        // Reduce the device's max references.
+                        d.reduceMaxReadMultipleReferences(partition.size());
+
+                        // Create a new PropertyReferences instance from the remaining references.
+                        final PropertyReferences remaining = new PropertyReferences(partitions);
+
+                        // Repartition the remaining requests.
+                        partitions = remaining.getPropertiesPartitioned(d.getMaxReadMultipleReferences());
+                    } else
+                        throw new BACnetException("Completed " + counter + " requests. Excepted on: " + request, e);
+                } catch (final RejectAPDUException e) {
+                    LOG.warn("Chunked request failed (reject).");
+                    if (RejectReason.bufferOverflow.equals(e.getApdu().getRejectReason())) {
                         if (partition.size() < 2)
                             throw e;
 
@@ -423,7 +443,7 @@ public class RequestUtils {
             for (final PropertyReference ref : refList) {
                 request = new ReadPropertyRequest(oid, ref.getPropertyIdentifier(), ref.getPropertyArrayIndex());
                 try {
-                    ack = (ReadPropertyAck) localDevice.send(d, request).get();
+                    ack = localDevice.send(d, request).get();
                     updater.increment(d.getInstanceNumber(), oid, ack.getPropertyIdentifier(),
                             ack.getPropertyArrayIndex(), ack.getValue());
                 } catch (final BACnetTimeoutException e) {
@@ -493,12 +513,11 @@ public class RequestUtils {
         return readProperties(localDevice, d, refs, false, callback);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Write properties
-
-    /// /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public static void writePresentValue(final LocalDevice localDevice, final RemoteDevice d,
             final ObjectIdentifier oid, final Encodable value) throws BACnetException {
@@ -578,12 +597,11 @@ public class RequestUtils {
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
     // List element write requests
-
-    /// /////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// /////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public static void addListElement(final LocalDevice localDevice, final RemoteDevice d, final ObjectIdentifier oid,
             final PropertyIdentifier pid, final Encodable value) throws BACnetException {
