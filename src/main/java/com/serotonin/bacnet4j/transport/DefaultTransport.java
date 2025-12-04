@@ -101,7 +101,7 @@ public class DefaultTransport implements Transport, Runnable {
     // Message queues
     private final Queue<Outgoing> outgoing = new ConcurrentLinkedQueue<>();
     private final Queue<NPDU> incoming = new ConcurrentLinkedQueue<>();
-    final Queue<DelayedOutgoing> delayedOutgoing = new LinkedList<>();
+    private final Queue<DelayedOutgoing> delayedOutgoing = new ConcurrentLinkedQueue<>();
 
     // Processing
     final UnackedMessages unackedMessages = new UnackedMessages();
@@ -207,11 +207,8 @@ public class DefaultTransport implements Transport, Runnable {
 
         // Cancel any queued outgoing messages.
         for (final Outgoing og : outgoing) {
-            if (og instanceof OutgoingConfirmed) {
-                final OutgoingConfirmed ogc = (OutgoingConfirmed) og;
-                if (ogc.consumer != null) {
-                    ogc.consumer.ex(new BACnetException("Cancelled due to transport shutdown"));
-                }
+            if (og instanceof OutgoingConfirmed ogc && ogc.consumer != null) {
+                ogc.consumer.ex(new BACnetException("Cancelled due to transport shutdown"));
             }
         }
 
@@ -257,6 +254,10 @@ public class DefaultTransport implements Transport, Runnable {
         return networkRouters;
     }
 
+    public int getDelayedOutgoingCount() {
+        return delayedOutgoing.size();
+    }
+
     //
     //
     // Adding new requests and responses.
@@ -268,15 +269,9 @@ public class DefaultTransport implements Transport, Runnable {
         // 16.1.2
         boolean allowSend = true;
         if (!EnableDisable.enable.equals(localDevice.getCommunicationControlState())) {
-            allowSend = false;
-
             // Check if this is an IAm.
-            if (service instanceof IAmRequest) {
-                // IAms are allowed to be sent if they are issued in accordance with the WhoIs procedure.
-                if (((IAmRequest) service).isResponseToWhoIs()) {
-                    allowSend = true;
-                }
-            }
+            // IAms are allowed to be sent if they are issued in accordance with the WhoIs procedure.
+            allowSend = service instanceof IAmRequest iamRequest && iamRequest.isResponseToWhoIs();
         }
 
         if (allowSend) {
@@ -325,22 +320,21 @@ public class DefaultTransport implements Transport, Runnable {
                 }
             }
 
-            if (messageQueued && consumer != null) {
-                consumer.queued();
-            } else if (!messageQueued) {
+            if (messageQueued) {
+                if (consumer != null) {
+                    consumer.queued();
+                }
+                ThreadUtils.notifySync(pauseLock);
+            } else {
                 LOG.debug("Transport is not running, will not queue outgoing {}", out);
                 if (consumer != null) {
                     consumer.ex(new BACnetException("Transport is not running"));
                 }
             }
-
-            ThreadUtils.notifySync(pauseLock);
-        } else {
+        } else if (consumer != null) {
             // Communication has been disabled as the result of a DeviceCommunicationControlRequest. The consumer
             // is informed with an exception.
-            if (consumer != null) {
-                consumer.ex(new CommunicationDisabledException());
-            }
+            consumer.ex(new CommunicationDisabledException());
         }
     }
 
@@ -356,7 +350,7 @@ public class DefaultTransport implements Transport, Runnable {
         // TODO remove this when it is no longer needed.
         protected final Exception stack;
 
-        public Outgoing(final Address address, final Exception stack) {
+        protected Outgoing(final Address address, final Exception stack) {
             if (address == null)
                 throw new IllegalArgumentException("address cannot be null");
             this.address = address;
@@ -380,16 +374,23 @@ public class DefaultTransport implements Transport, Runnable {
             try {
                 sendImpl();
             } catch (final BACnetRecoverableException e) {
-                LOG.info("Send delayed due to recoverable error: {}", e.getMessage());
-                delayedOutgoing.add(new DelayedOutgoing(this));
+                synchronized (runLock) {
+                    if (running) {
+                        LOG.info("Send delayed due to recoverable error: {}", e.getMessage());
+                        delayedOutgoing.add(new DelayedOutgoing(this));
+                    }
+                    else {
+                        handleException(e);
+                    }
+                }
             } catch (final BACnetException e) {
                 handleException(e);
             }
         }
 
-        abstract protected void sendImpl() throws BACnetException;
+        protected abstract void sendImpl() throws BACnetException;
 
-        abstract protected void handleException(BACnetException e);
+        protected abstract void handleException(BACnetException e);
     }
 
 
@@ -557,18 +558,11 @@ public class DefaultTransport implements Transport, Runnable {
             if (!delayedOutgoing.isEmpty()) {
                 final Iterator<DelayedOutgoing> iter = delayedOutgoing.iterator();
                 while (iter.hasNext()) {
-                    final DelayedOutgoing delayedOutgoing = iter.next();
-                    if (delayedOutgoing.isReady()) {
+                    final DelayedOutgoing delayedOutgoingItem = iter.next();
+                    if (delayedOutgoingItem.isReady()) {
                         iter.remove();
-                        synchronized (runLock) {
-                            if (running) {
-                                outgoing.add(delayedOutgoing.outgoing);
-                                LOG.info("Retrying delayed outgoing {}", delayedOutgoing.outgoing);
-                            } else {
-                                LOG.debug("Transport not running, will not retry delayed outgoing {}",
-                                        delayedOutgoing.outgoing);
-                            }
-                        }
+                        outgoing.add(delayedOutgoingItem.outgoing);
+                        LOG.info("Retrying delayed outgoing {}", delayedOutgoingItem.outgoing);
                         pause = false;
                     } else {
                         // No other entries in the list should be ready either
@@ -594,8 +588,7 @@ public class DefaultTransport implements Transport, Runnable {
     private void receiveImpl(final NPDU in) {
         if (in.isNetworkMessage()) {
             switch (in.getNetworkMessageType()) {
-                case 0x1: // I-Am-Router-To-Network
-                case 0x2: // I-Could-Be-Router-To-Network
+                case 0x1, 0x2: // I-Am-Router-To-Network, I-Could-Be-Router-To-Network
                     final ByteQueue data = in.getNetworkMessageData();
                     while (data.size() > 1) {
                         final int nn = data.popU2B();
@@ -653,9 +646,8 @@ public class DefaultTransport implements Transport, Runnable {
             return;
         }
 
-        if (apdu instanceof ConfirmedRequest) {
+        if (apdu instanceof ConfirmedRequest confAPDU) {
             // Received a request that must be handled and responded to.
-            final ConfirmedRequest confAPDU = (ConfirmedRequest) apdu;
             final byte invokeId = confAPDU.getInvokeId();
 
             try {
@@ -700,10 +692,8 @@ public class DefaultTransport implements Transport, Runnable {
             } else
                 // Just handle the message.
                 incomingConfirmedRequest(confAPDU, from, linkService, invokeId);
-        } else if (apdu instanceof UnconfirmedRequest) {
+        } else if (apdu instanceof UnconfirmedRequest ur) {
             // Received a request that must be handled with no response.
-            final UnconfirmedRequest ur = (UnconfirmedRequest) apdu;
-
             try {
                 ur.parseServiceData();
                 localDevice.getEventHandler().requestReceived(from, ur.getService());
@@ -726,14 +716,13 @@ public class DefaultTransport implements Transport, Runnable {
                 // This can legitimately happen when requests are sent for which the sender did not need the response,
                 // such as COV unsubscribes.
                 LOG.debug("Received an acknowledgement from {} for an unknown request: {}", from, ack);
-            } else if (ack instanceof SegmentACK)
-                segmentedOutgoing(key, ctx, (SegmentACK) ack);
+            } else if (ack instanceof SegmentACK sack)
+                segmentedOutgoing(key, ctx, sack);
             else if (ctx.getConsumer() != null) {
                 final ResponseConsumer consumer = ctx.getConsumer();
                 if (ack instanceof SimpleACK) {
                     consumer.success(null);
-                } else if (ack instanceof ComplexACK) {
-                    final ComplexACK cack = (ComplexACK) ack;
+                } else if (ack instanceof ComplexACK cack) {
                     if (cack.isSegmentedMessage()) {
                         try {
                             segmentedIncoming(key, cack, ctx);
