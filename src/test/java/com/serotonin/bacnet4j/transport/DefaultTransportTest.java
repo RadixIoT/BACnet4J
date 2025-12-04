@@ -420,9 +420,9 @@ public class DefaultTransportTest {
 
         assertThrows(BACnetTimeoutException.class, future::get);
 
-        // verify that 3 APDUs (1 request, 2 segAcks) and the Broadcast NPDU were sent over the network
+        // verify that 3 APDUs (1 request, 2 segAcks) and optionally the Broadcast NPDU were sent over the network
         verify(network, times(3)).sendAPDU(any(), any(), any(), anyBoolean());
-        verify(network, atLeast(2)).sendNPDU(any(), any(), any(), anyBoolean(), anyBoolean());
+        verify(network, atLeast(3)).sendNPDU(any(), any(), any(), anyBoolean(), anyBoolean());
 
         transport.terminate();
     }
