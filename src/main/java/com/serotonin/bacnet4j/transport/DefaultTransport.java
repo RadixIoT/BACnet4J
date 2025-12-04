@@ -1025,6 +1025,11 @@ public class DefaultTransport implements Transport, Runnable {
                         if (!ctx.getSegmentWindow().isEmpty()) {
                             // Return a NAK with the last sequence id received in order and start over.
                             // TODO - Sending a NAK here is not appropriate
+                            // This is the "FinalTimeout" event described in the 2020 BACnet spec section
+                            // 5.4.4.2 (or maybe 5.4.5.4) In either case, sending a NAK is not part of the transition
+                            // to the next state. If 5.4.4.2, sending an ABORT is required as part of the transition.
+                            // The state machine only defines sending a NAK as part of the transition for the
+                            // "TooManyDuplicateSegmentsReceived" or "SegmentReceivedOutOfOrder" events
                             try {
                                 network.sendAPDU(key.getAddress(), key.getLinkService(),
                                         new SegmentACK(true, key.isFromServer(), key.getInvokeId(),
