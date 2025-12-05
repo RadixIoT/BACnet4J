@@ -27,12 +27,12 @@
 
 package com.serotonin.bacnet4j.transport;
 
+import static com.serotonin.bacnet4j.TestUtils.await;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.inOrder;
@@ -52,7 +52,6 @@ import org.mockito.InOrder;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.ServiceFuture;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.apdu.APDU;
 import com.serotonin.bacnet4j.apdu.ComplexACK;
 import com.serotonin.bacnet4j.apdu.ConfirmedRequest;
@@ -372,6 +371,9 @@ public class DefaultTransportTest {
         when(network.getAllLocalAddresses()).thenReturn(new Address[] {getSourceAddress()});
         when(network.getMaxApduLength()).thenReturn(MaxApduLength.UP_TO_480);
         doCallRealMethod().when(network).sendAPDU(any(), any(), any(), anyBoolean());
+        var sendNPDUInvokeCount = new AtomicInteger(0);
+        doAnswer(invocation -> sendNPDUInvokeCount.incrementAndGet())
+                .when(network).sendNPDU(any(), any(), any(), anyBoolean(), anyBoolean());
 
         final LocalDevice localDevice = mock(LocalDevice.class);
         when(localDevice.getClock()).thenReturn(Clock.systemUTC());
@@ -393,7 +395,7 @@ public class DefaultTransportTest {
         ServiceFuture future = transport.send(to, 480, Segmentation.segmentedBoth, requestService);
 
         // Allow transport to send request
-        assertTrue(TestUtils.await(() -> transport.unackedMessages.getRequests().size() == 1, 200));
+        assertTrue(await(() -> transport.unackedMessages.getRequests().size() == 1, 200));
 
         // Obtain invokeId
         byte invokeId = transport.unackedMessages.getRequests().keySet().iterator().next().getInvokeId();
@@ -422,7 +424,7 @@ public class DefaultTransportTest {
 
         // verify that 3 APDUs (1 request, 2 segAcks) and optionally the Broadcast NPDU were sent over the network
         verify(network, times(3)).sendAPDU(any(), any(), any(), anyBoolean());
-        verify(network, atLeast(3)).sendNPDU(any(), any(), any(), anyBoolean(), anyBoolean());
+        await(() -> sendNPDUInvokeCount.get() >= 3, 10000);
 
         transport.terminate();
     }
