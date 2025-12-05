@@ -66,10 +66,8 @@ abstract public class Encodable {
 
     /**
      * Optionally validate the value before it is written into our device
-     *
-     * @throws BACnetErrorException
      */
-    abstract public void validate() throws BACnetServiceException;
+    public abstract void validate() throws BACnetServiceException;
 
     @Override
     public String toString() {
@@ -234,13 +232,11 @@ abstract public class Encodable {
             return (T) Primitive.createPrimitive(queue);
 
         try {
-            return clazz.getConstructor(new Class[] {ByteQueue.class}).newInstance(new Object[] {queue});
-        } catch (final NoSuchMethodException e) {
-            throw new BACnetException(e);
+            return clazz.getConstructor(ByteQueue.class).newInstance(queue);
         } catch (final InvocationTargetException e) {
             // Check if there is a wrapped BACnet exception
-            if (e.getCause() instanceof BACnetException)
-                throw (BACnetException) e.getCause();
+            if (e.getCause() instanceof BACnetException be)
+                throw be;
             throw new ReflectionException(e);
         } catch (final Exception e) {
             throw new BACnetException(e);
@@ -323,8 +319,7 @@ abstract public class Encodable {
         popStart(queue, contextId);
         T result;
         try {
-            result = clazz.getConstructor(new Class[] {ByteQueue.class, Integer.TYPE})
-                    .newInstance(new Object[] {queue, contextId});
+            result = clazz.getConstructor(ByteQueue.class, Integer.TYPE).newInstance(queue, contextId);
         } catch (final Exception e) {
             throw new BACnetException(e);
         }
