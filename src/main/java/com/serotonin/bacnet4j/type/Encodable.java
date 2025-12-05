@@ -448,6 +448,9 @@ abstract public class Encodable {
         }
 
         if (propertyArrayIndex == null && def.isCollection()) {
+            if (def.isArray()) {
+                return readArray(queue, def.getClazz(), contextId);
+            }
             return readSequenceOf(queue, def.getClazz(), contextId);
         }
 

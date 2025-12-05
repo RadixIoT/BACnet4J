@@ -551,11 +551,12 @@ public class BACnetObject {
                 if (prop == null) {
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.unknownProperty);
                 }
-                if (!(prop instanceof BACnetArray)) {
+                // Note that only arrays can be written by index. Lists need to be manipulated with the appropriate
+                // service, e.g. AddListElement.
+                if (!(prop instanceof BACnetArray<?> arr)) {
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.propertyIsNotAnArray);
                 }
 
-                final BACnetArray<?> arr = (BACnetArray<?>) prop;
                 if (def == null) {
                     // No property definition available, but we can check that the data type to write matches that
                     // of any existing elements.
