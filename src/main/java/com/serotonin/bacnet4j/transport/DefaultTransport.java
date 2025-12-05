@@ -28,7 +28,6 @@
 package com.serotonin.bacnet4j.transport;
 
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -208,21 +207,21 @@ public class DefaultTransport implements Transport, Runnable {
         // Cancel any queued outgoing messages.
         for (final Outgoing og : outgoing) {
             if (og instanceof OutgoingConfirmed ogc && ogc.consumer != null) {
-                ogc.consumer.ex(new BACnetException("Cancelled due to transport shutdown"));
+                ogc.consumer.ex(new BACnetException("Outgoing cancelled due to transport shutdown"));
             }
         }
 
         // cancel any delayed outgoing messages.
         for (final DelayedOutgoing delayed : delayedOutgoing) {
             if (delayed.outgoing instanceof OutgoingConfirmed ogc && ogc.consumer != null) {
-                ogc.consumer.ex(new BACnetException("Cancelled due to transport shutdown"));
+                ogc.consumer.ex(new BACnetException("Delayed outgoing cancelled due to transport shutdown"));
             }
         }
 
         // Cancel any unacked messages
         for (final UnackedMessageContext ctx : unackedMessages.getRequests().values()) {
             if (ctx.getConsumer() != null) {
-                ctx.getConsumer().ex(new BACnetException("Cancelled due to transport shutdown"));
+                ctx.getConsumer().ex(new BACnetException("Unacked cancelled due to transport shutdown"));
             }
         }
 
@@ -378,8 +377,7 @@ public class DefaultTransport implements Transport, Runnable {
                     if (running) {
                         LOG.info("Send delayed due to recoverable error: {}", e.getMessage());
                         delayedOutgoing.add(new DelayedOutgoing(this));
-                    }
-                    else {
+                    } else {
                         handleException(e);
                     }
                 }
@@ -861,7 +859,7 @@ public class DefaultTransport implements Transport, Runnable {
             try {
                 network.sendAPDU(key.getAddress(), key.getLinkService(), segment, false);
             } catch (final BACnetException e) {
-                ctx.useConsumer((consumer) -> consumer.ex(e));
+                ctx.useConsumer(consumer -> consumer.ex(e));
                 return;
             }
 
@@ -924,8 +922,8 @@ public class DefaultTransport implements Transport, Runnable {
             localDevice.getEventHandler().requestReceived(from, service);
             return service.handle(localDevice, from);
         } catch (@SuppressWarnings("unused") final NotImplementedException e) {
-            LOG.warn("Unsupported confirmed request: invokeId=" + invokeId + ", from=" + from + ", request="
-                    + service.getClass().getName());
+            LOG.warn("Unsupported confirmed request: invokeId={}, from={}, request={}", invokeId, from,
+                    service.getClass().getName());
             throw new BACnetRejectException(RejectReason.unrecognizedService, e);
         } catch (final BACnetErrorException e) {
             throw e;
@@ -1009,7 +1007,7 @@ public class DefaultTransport implements Transport, Runnable {
                     umIter.remove();
                     if (ctx.getSegmentWindow() == null) {
                         // Not a segmented message, at least as far as we know.
-                        ctx.useConsumer((consumer) -> consumer.ex(new BACnetTimeoutException()));
+                        ctx.useConsumer(consumer -> consumer.ex(new BACnetTimeoutException()));
                     } else {
                         // A segmented message.
                         var timeoutEx = new BACnetTimeoutException(
@@ -1017,14 +1015,14 @@ public class DefaultTransport implements Transport, Runnable {
                                         .formatted(key, ctx.getSegmentWindow().getFirstSequenceId(),
                                                 ctx.getOriginalApdu()));
 
-                        ctx.useConsumer((consumer) -> consumer.ex(timeoutEx));
+                        ctx.useConsumer(consumer -> consumer.ex(timeoutEx));
                         if (ctx.getConsumer() == null) {
                             LOG.warn("Timeout waiting for segment(s)", timeoutEx);
                         }
 
                         if (!ctx.getSegmentWindow().isEmpty()) {
                             // Return a NAK with the last sequence id received in order and start over.
-                            // TODO - Sending a NAK here is not appropriate
+                            // NOTE: Sending a NAK here is not appropriate
                             // This is the "FinalTimeout" event described in the 2020 BACnet spec section
                             // 5.4.4.2 (or maybe 5.4.5.4) In either case, sending a NAK is not part of the transition
                             // to the next state. If 5.4.4.2, sending an ABORT is required as part of the transition.
@@ -1054,7 +1052,7 @@ public class DefaultTransport implements Transport, Runnable {
             network.sendAPDU(key.getAddress(), key.getLinkService(), ctx.getOriginalApdu(), false);
         } catch (final BACnetException e) {
             unackedMessages.remove(key);
-            ctx.useConsumer((consumer) -> consumer.ex(e));
+            ctx.useConsumer(consumer -> consumer.ex(e));
         }
     }
 
