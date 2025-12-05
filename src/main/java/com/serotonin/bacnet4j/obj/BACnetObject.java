@@ -157,7 +157,7 @@ public class BACnetObject {
     //
     // Object notifications
     //
-    final public void initialize() {
+    public final void initialize() {
         // Notify the mixins
         for (final AbstractMixin mixin : mixins) {
             mixin.initialize();
@@ -172,7 +172,7 @@ public class BACnetObject {
     /**
      * Called when the object is removed from the device.
      */
-    final public void terminate() {
+    public final void terminate() {
         // Notify the mixins
         for (final AbstractMixin mixin : mixins) {
             mixin.terminate();
@@ -207,14 +207,14 @@ public class BACnetObject {
     protected final void addMixin(int index, final AbstractMixin mixin) {
         mixins.add(index, mixin);
 
-        if (mixin instanceof HasStatusFlagsMixin)
-            hasStatusFlagsMixin = (HasStatusFlagsMixin) mixin;
-        else if (mixin instanceof CommandableMixin)
-            commandableMixin = (CommandableMixin) mixin;
-        else if (mixin instanceof IntrinsicReportingMixin)
-            intrinsicReportingMixin = (IntrinsicReportingMixin) mixin;
-        else if (mixin instanceof CovReportingMixin)
-            changeOfValueMixin = (CovReportingMixin) mixin;
+        if (mixin instanceof HasStatusFlagsMixin m)
+            hasStatusFlagsMixin = m;
+        else if (mixin instanceof CommandableMixin m)
+            commandableMixin = m;
+        else if (mixin instanceof IntrinsicReportingMixin m)
+            intrinsicReportingMixin = m;
+        else if (mixin instanceof CovReportingMixin m)
+            changeOfValueMixin = m;
     }
 
     public void setOverridden(final boolean b) {
@@ -551,11 +551,12 @@ public class BACnetObject {
                 if (prop == null) {
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.unknownProperty);
                 }
-                if (!(prop instanceof BACnetArray)) {
+                // Note that only arrays can be written by index. Lists need to be manipulated with the appropriate
+                // service, e.g. AddListElement.
+                if (!(prop instanceof BACnetArray<?> arr)) {
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.propertyIsNotAnArray);
                 }
 
-                final BACnetArray<?> arr = (BACnetArray<?>) prop;
                 if (def == null) {
                     // No property definition available, but we can check that the data type to write matches that
                     // of any existing elements.
