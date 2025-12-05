@@ -33,6 +33,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.inOrder;
@@ -40,7 +41,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 
 import java.time.Clock;
 import java.util.ArrayList;
@@ -57,6 +57,7 @@ import com.serotonin.bacnet4j.apdu.ComplexACK;
 import com.serotonin.bacnet4j.apdu.ConfirmedRequest;
 import com.serotonin.bacnet4j.apdu.SegmentACK;
 import com.serotonin.bacnet4j.apdu.Segmentable;
+import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.event.DeviceEventHandler;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
@@ -76,7 +77,6 @@ import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.Segmentation;
-import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -344,7 +344,7 @@ public class DefaultTransportTest {
             transport.send(to, 1476, Segmentation.noSegmentation, service);
         }
 
-            // Send request; Outgoing.send() should catch BACnetRecoverableException and add to delayedOutgoing
+        // Send request; Outgoing.send() should catch BACnetRecoverableException and add to delayedOutgoing
         ServiceFuture future = transport.send(to, 1476, Segmentation.noSegmentation, service);
 
         // Give the transport thread a moment to process and enqueue into delayedOutgoing
