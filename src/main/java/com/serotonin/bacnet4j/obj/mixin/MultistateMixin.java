@@ -49,20 +49,21 @@ public class MultistateMixin extends AbstractMixin {
     protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
             throws BACnetServiceException {
         if (PropertyIdentifier.presentValue.equals(value.getPropertyIdentifier())) {
-            final UnsignedInteger pv = (UnsignedInteger) value.getValue();
+            final UnsignedInteger pv = value.getValue();
             final UnsignedInteger numStates = get(PropertyIdentifier.numberOfStates);
             if (pv.intValue() < 1 || pv.intValue() > numStates.intValue())
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.inconsistentConfiguration);
         } else if (PropertyIdentifier.numberOfStates.equals(value.getPropertyIdentifier())) {
-            final UnsignedInteger numStates = (UnsignedInteger) value.getValue();
+            final UnsignedInteger numStates = value.getValue();
             if (numStates.intValue() < 1)
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.inconsistentConfiguration);
         } else if (PropertyIdentifier.stateText.equals(value.getPropertyIdentifier())) {
-            @SuppressWarnings("unchecked") final BACnetArray<CharacterString> stateText =
-                    (BACnetArray<CharacterString>) value.getValue();
             final UnsignedInteger numStates = get(PropertyIdentifier.numberOfStates);
-            if (numStates.intValue() != stateText.getCount())
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.inconsistentConfiguration);
+            if (value.getPropertyArrayIndex() == null) {
+                final BACnetArray<CharacterString> stateText = value.getValue();
+                if (numStates.intValue() != stateText.getCount())
+                    throw new BACnetServiceException(ErrorClass.property, ErrorCode.inconsistentConfiguration);
+            }
         }
         return false;
     }
@@ -78,8 +79,7 @@ public class MultistateMixin extends AbstractMixin {
                     final BACnetArray<CharacterString> newText = new BACnetArray<>(numStates, CharacterString.EMPTY);
 
                     // Copy the old state values in.
-                    final int min = newText.getCount() < stateText.getCount() ? newText.getCount()
-                            : stateText.getCount();
+                    final int min = Math.min(newText.getCount(), stateText.getCount());
                     for (int i = 0; i < min; i++)
                         newText.set(i, stateText.get(i));
 

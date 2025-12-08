@@ -87,6 +87,10 @@ public class SequenceOf<E extends Encodable> extends BaseType implements Iterabl
     }
 
     public E getBase1(final int indexBase1) {
+        if (indexBase1 < 0 || indexBase1 > values.size()) {
+            throw new IndexOutOfBoundsException(
+                    "Base 1 index %s out of bounds for length %s".formatted(indexBase1, values.size()));
+        }
         return values.get(indexBase1 - 1);
     }
 

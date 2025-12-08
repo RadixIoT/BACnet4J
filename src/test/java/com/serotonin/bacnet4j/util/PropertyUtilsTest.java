@@ -42,7 +42,7 @@ import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.obj.BinaryValueObject;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
-import com.serotonin.bacnet4j.type.constructed.SequenceOf;
+import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.enumerated.BinaryPV;
 import com.serotonin.bacnet4j.type.enumerated.DeviceStatus;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
@@ -250,7 +250,7 @@ public class PropertyUtilsTest {
                 .add(5, ObjectType.binaryValue, 2, PropertyIdentifier.inactiveText, null, str("inactiveText")) //
                 .add(5, ObjectType.binaryValue, 2, PropertyIdentifier.activeText, null, str("activeText")) //
                 .add(6, ObjectType.device, 6, PropertyIdentifier.objectName, null, str("d6")) //
-                .add(6, ObjectType.device, 6, PropertyIdentifier.objectList, null, new SequenceOf<>( //
+                .add(6, ObjectType.device, 6, PropertyIdentifier.objectList, null, new BACnetArray<>( //
                         new ObjectIdentifier(ObjectType.device, 6), //
                         new ObjectIdentifier(ObjectType.binaryValue, 0), //
                         new ObjectIdentifier(ObjectType.binaryValue, 1), //
@@ -376,7 +376,7 @@ public class PropertyUtilsTest {
         expectedValues //
                 .add(6, ObjectType.device, 6, PropertyIdentifier.objectName, null, str("d6")) //
                 .add(6, ObjectType.device, 6, PropertyIdentifier.objectList, null,
-                        new SequenceOf<>(new ObjectIdentifier(ObjectType.device, 6)));
+                        new BACnetArray<>(new ObjectIdentifier(ObjectType.device, 6)));
 
         actualValues = PropertyUtils.readProperties(d1, refs, null, 3000);
 
