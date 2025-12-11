@@ -27,30 +27,58 @@
 
 package com.serotonin.bacnet4j.transport;
 
+import static com.serotonin.bacnet4j.TestUtils.await;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.Clock;
+import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.InOrder;
 
 import com.serotonin.bacnet4j.LocalDevice;
+import com.serotonin.bacnet4j.ServiceFuture;
 import com.serotonin.bacnet4j.apdu.APDU;
+import com.serotonin.bacnet4j.apdu.ComplexACK;
 import com.serotonin.bacnet4j.apdu.ConfirmedRequest;
 import com.serotonin.bacnet4j.apdu.SegmentACK;
 import com.serotonin.bacnet4j.apdu.Segmentable;
+import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.event.DeviceEventHandler;
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
 import com.serotonin.bacnet4j.npdu.NPCI;
 import com.serotonin.bacnet4j.npdu.NPDU;
 import com.serotonin.bacnet4j.npdu.Network;
+import com.serotonin.bacnet4j.service.acknowledgement.ReadPropertyMultipleAck;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedRequestService;
+import com.serotonin.bacnet4j.service.confirmed.DeviceCommunicationControlRequest.EnableDisable;
+import com.serotonin.bacnet4j.service.confirmed.ReadPropertyMultipleRequest;
 import com.serotonin.bacnet4j.type.constructed.Address;
+import com.serotonin.bacnet4j.type.constructed.PropertyReference;
+import com.serotonin.bacnet4j.type.constructed.ReadAccessResult;
+import com.serotonin.bacnet4j.type.constructed.ReadAccessSpecification;
+import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
+import com.serotonin.bacnet4j.type.enumerated.ObjectType;
+import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.type.enumerated.Segmentation;
+import com.serotonin.bacnet4j.type.primitive.CharacterString;
+import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 
@@ -61,6 +89,7 @@ public class DefaultTransportTest {
         final Network network = mock(Network.class);
         when(network.isThisNetwork(any())).thenReturn(true);
         when(network.getAllLocalAddresses()).thenReturn(new Address[] {getSourceAddress()});
+        doCallRealMethod().when(network).sendAPDU(any(), any(), any(), anyBoolean());
 
         final LocalDevice localDevice = mock(LocalDevice.class);
         when(localDevice.getClock()).thenReturn(Clock.systemUTC());
@@ -83,7 +112,7 @@ public class DefaultTransportTest {
         addIncomingSegmentedMessage(true, 3, 1, from, transport, null);
 
         // Wait for the message to time out.
-        ThreadUtils.sleep(transport.getSegTimeout() * 8);
+        ThreadUtils.sleep(transport.getSegTimeout() * 8L);
 
         // Clean up
         transport.terminate();
@@ -178,5 +207,303 @@ public class DefaultTransportTest {
         transport.incoming(npdu);
 
         return apdu;
+    }
+
+    @Test(timeout = 10_000)
+    public void futuresCompleteExceptionallyForRequestsSentAfterTerminate() throws Exception {
+        final Network network = mock(Network.class);
+        when(network.isThisNetwork(any())).thenReturn(true);
+
+        final LocalDevice localDevice = mock(LocalDevice.class);
+        when(localDevice.getClock()).thenReturn(Clock.systemUTC());
+        when(localDevice.getCommunicationControlState()).thenReturn(EnableDisable.enable);
+
+        final DefaultTransport sut = new DefaultTransport(network);
+        sut.setLocalDevice(localDevice);
+        sut.initialize();
+
+        final Address to = new Address(0, new byte[] {1});
+
+        sut.terminate();
+        ServiceFuture result = sut.send(to, 20, Segmentation.segmentedBoth, mock(ConfirmedRequestService.class));
+
+        BACnetException e = Assert.assertThrows(BACnetException.class, result::get);
+        Assert.assertTrue(e.getMessage().contains("not running"));
+    }
+
+    /**
+     * Reproduces the issue where the unacked message context was discarded when a duplicate SegACK was received.
+     * Expectation: Since the message context is now retained, DefaultTransport should continue processing received
+     * SegACKs and sending additional segments
+     */
+    @Test(timeout = 10_000)
+    public void duplicateSegmentAckDoesntDropCtx() throws Exception {
+        AtomicInteger apduCount = new AtomicInteger(0);
+        // Mock network and device
+        final Network network = mock(Network.class);
+        when(network.isThisNetwork(any())).thenReturn(true);
+        when(network.getAllLocalAddresses()).thenReturn(new Address[] {getSourceAddress()});
+        when(network.getMaxApduLength()).thenReturn(MaxApduLength.UP_TO_1476);
+        doAnswer(invocation -> {
+            apduCount.incrementAndGet();
+            return null;
+        }).when(network).sendAPDU(any(), any(), any(), anyBoolean());
+
+        final LocalDevice localDevice = mock(LocalDevice.class);
+        when(localDevice.getClock()).thenReturn(Clock.systemUTC());
+        when(localDevice.getServicesSupported()).thenReturn(new ServicesSupported());
+        // Ensure sending is allowed
+        when(localDevice.getCommunicationControlState()).thenReturn(EnableDisable.enable);
+
+        final DefaultTransport transport = new DefaultTransport(network);
+        transport.setLocalDevice(localDevice);
+        transport.setSegWindow(1);
+        transport.setTimeout(250);
+        transport.initialize();
+
+        final Address to = new Address(0, new byte[] {1});
+
+        final ConfirmedRequestService readPropertiesRequest = buildReadPropertyMultipleRequest(1_000);
+
+        // Send the request with a small APDU length to guarantee segmentation
+        var future = transport.send(to, 50, Segmentation.segmentedBoth, readPropertiesRequest);
+
+        awaitEquals(1, apduCount::get);
+
+        // Obtain the current invokeId from the unacked messages
+        assertEquals("expected one in-flight request", 1, transport.unackedMessages.getRequests().size());
+        byte invokeId = transport.unackedMessages.getRequests().keySet().iterator().next().getInvokeId();
+
+        final SegmentACK firstAck = new SegmentACK(false, true, invokeId, 0, transport.getSegWindow(), true);
+        addIncomingNPDU(transport, to, firstAck);
+        addIncomingNPDU(transport, to, firstAck);
+
+        // assert next window has been processed
+        awaitEquals(2, apduCount::get);
+
+        final SegmentACK secondAck = new SegmentACK(false, true, invokeId, 1, transport.getSegWindow(), true);
+        addIncomingNPDU(transport, to, secondAck);
+        addIncomingNPDU(transport, to, secondAck);
+
+        // assert next window has been processed
+        awaitEquals(3, apduCount::get);
+
+        final SegmentACK thirdAck = new SegmentACK(false, true, invokeId, 2, transport.getSegWindow(), true);
+        addIncomingNPDU(transport, to, thirdAck);
+        addIncomingNPDU(transport, to, thirdAck);
+
+        // assert next window has been processed
+        awaitEquals(4, apduCount::get);
+
+        // If we've responded to more than two duplicate segAcks, then we should be safe. But make one last check that
+        // the future doesn't hang:
+        long start = Clock.systemUTC().millis();
+        assertThrows(BACnetTimeoutException.class, future::get);
+        System.out.println("timeout:" + (Clock.systemUTC().millis() - start));
+
+        transport.terminate();
+    }
+
+    /**
+     * Reproduces the issue where the unacked message context was discarded when a confirmed request is parked in the
+     * delayedOutgoing queue due to a recoverable error (e.g., invokeId exhaustion).
+     * Expectation: When transport.terminate() is called, any such queued requests must be completed exceptionally so
+     * that threads waiting on the associated ServiceFutureImpl do not hang. This test asserts that terminate() cancels
+     * delayedOutgoing entries and the future is completed exceptionally with an indication of shutdown.
+     */
+    @Test(timeout = 10_000)
+    public void terminateCancelsDelayedOutgoing() throws Exception {
+        final Network network = mock(Network.class);
+        when(network.isThisNetwork(any())).thenReturn(true);
+        when(network.getAllLocalAddresses()).thenReturn(new Address[] {getSourceAddress()});
+        when(network.getMaxApduLength()).thenReturn(MaxApduLength.UP_TO_1476);
+        doCallRealMethod().when(network).sendAPDU(any(), any(), any(), anyBoolean());
+
+        final LocalDevice localDevice = mock(LocalDevice.class);
+        when(localDevice.getClock()).thenReturn(Clock.systemUTC());
+        when(localDevice.getServicesSupported()).thenReturn(new ServicesSupported());
+        when(localDevice.getCommunicationControlState()).thenReturn(EnableDisable.enable);
+
+        final DefaultTransport transport = new DefaultTransport(network);
+        transport.setLocalDevice(localDevice);
+        transport.setRetries(0);
+        transport.initialize();
+
+        final Address to = new Address(0, new byte[] {1});
+        // Prepare service with some payload
+        final ConfirmedRequestService service = mock(ConfirmedRequestService.class);
+        when(service.getChoiceId()).thenReturn((byte) 1);
+        doAnswer(inv -> {
+            ByteQueue q = inv.getArgument(0);
+            q.push((byte) 0x42);
+            return null;
+        }).when(service).write(any(ByteQueue.class));
+
+        // Pre-fill all 256 invokeIds to force BACnetRecoverableException in addClient
+        for (int i = 0; i < 256; i++) {
+            transport.send(to, 1476, Segmentation.noSegmentation, service);
+        }
+
+        // Send request; Outgoing.send() should catch BACnetRecoverableException and add to delayedOutgoing
+        ServiceFuture future = transport.send(to, 1476, Segmentation.noSegmentation, service);
+
+        // Give the transport thread a moment to process and enqueue into delayedOutgoing
+        awaitEquals(1, transport::getDelayedOutgoingCount, 500);
+
+        // Now terminate, which should cancel delayedOutgoing and complete the future exceptionally
+        transport.terminate();
+
+        BACnetException e = assertThrows(BACnetException.class, future::get);
+        assertTrue(e.getMessage().contains("shutdown"));
+    }
+
+    /**
+     * Reproduces the issue where the unacked message context was discarded when a segmented ComplexACK response begins
+     * (first segments received), but then no further segments of the ComplexACK arrive. This resulted in the related
+     * `ServiceFutureImpl` never completing.
+     * Expectation: Timeout while waiting for the next segment window does not discard the unacked message context, and
+     * the associated ServiceFutureImpl completes with a BACnetTimeoutException, ensuring the future is not orphaned.
+     */
+    @Test(timeout = 10_000)
+    public void segmentedResponseTimeoutCompletesFuture() throws Exception {
+        final Network network = mock(Network.class);
+        when(network.isThisNetwork(any())).thenReturn(true);
+        when(network.getAllLocalAddresses()).thenReturn(new Address[] {getSourceAddress()});
+        when(network.getMaxApduLength()).thenReturn(MaxApduLength.UP_TO_480);
+        doCallRealMethod().when(network).sendAPDU(any(), any(), any(), anyBoolean());
+        var sendNPDUInvokeCount = new AtomicInteger(0);
+        doAnswer(invocation -> sendNPDUInvokeCount.incrementAndGet())
+                .when(network).sendNPDU(any(), any(), any(), anyBoolean(), anyBoolean());
+
+        final LocalDevice localDevice = mock(LocalDevice.class);
+        when(localDevice.getClock()).thenReturn(Clock.systemUTC());
+        when(localDevice.getServicesSupported()).thenReturn(new ServicesSupported());
+        when(localDevice.getCommunicationControlState()).thenReturn(EnableDisable.enable);
+
+        final DefaultTransport transport = new DefaultTransport(network);
+        transport.setLocalDevice(localDevice);
+        transport.setTimeout(500);
+        transport.setRetries(0);
+        transport.setSegTimeout(50);
+        transport.setSegWindow(2);
+        transport.initialize();
+
+        final Address to = new Address(0, new byte[] {1});
+
+        // Force segmentation of response
+        final ConfirmedRequestService requestService = buildReadPropertyMultipleRequest(32);
+        ServiceFuture future = transport.send(to, 480, Segmentation.segmentedBoth, requestService);
+
+        // Allow transport to send request
+        assertTrue(await(() -> transport.unackedMessages.getRequests().size() == 1, 200));
+
+        // Obtain invokeId
+        byte invokeId = transport.unackedMessages.getRequests().keySet().iterator().next().getInvokeId();
+
+        // Simulate receiving the first ComplexACK segment only (segmented response), then stall
+        var ack = buildReadPropertyMultipleAck(32);
+        var bytes = new ByteQueue();
+        ack.write(bytes);
+
+        byte[] segmentBytes = new byte[200];
+
+        // send 1 of 3 segments
+        bytes.pop(segmentBytes);
+        var complexAckSegment = new ComplexACK(
+                true, true, invokeId, 0, transport.getSegWindow(), ack.getChoiceId(), new ByteQueue(segmentBytes));
+        addIncomingNPDU(transport, to, complexAckSegment);
+
+        // send 2 of 3 segments
+        bytes.pop(segmentBytes);
+        complexAckSegment = new ComplexACK(
+                true, true, invokeId, 1, transport.getSegWindow(), ack.getChoiceId(), new ByteQueue(segmentBytes)
+        );
+        addIncomingNPDU(transport, to, complexAckSegment);
+
+        assertThrows(BACnetTimeoutException.class, future::get);
+
+        // verify that 3 APDUs (1 request, 2 segAcks) and optionally the Broadcast NPDU were sent over the network
+        verify(network, times(3)).sendAPDU(any(), any(), any(), anyBoolean());
+        await(() -> sendNPDUInvokeCount.get() >= 3, 10000);
+
+        transport.terminate();
+    }
+
+    /**
+     * Scenario: A non-segmented confirmed request is sent and no acknowledgement is ever received.
+     * Expectation: The request expires via expire() and the associated ServiceFutureImpl completes
+     * with a BACnetTimeoutException (i.e., it is not orphaned and callers do not block indefinitely).
+     */
+    @Test(timeout = 10_000)
+    public void nonSegmentedTimeoutCompletesFuture() throws Exception {
+        final Network network = mock(Network.class);
+        when(network.isThisNetwork(any())).thenReturn(true);
+        when(network.getAllLocalAddresses()).thenReturn(new Address[] {getSourceAddress()});
+        when(network.getMaxApduLength()).thenReturn(MaxApduLength.UP_TO_1476);
+        doCallRealMethod().when(network).sendAPDU(any(), any(), any(), anyBoolean());
+
+        final LocalDevice localDevice = mock(LocalDevice.class);
+        when(localDevice.getClock()).thenReturn(Clock.systemUTC());
+        when(localDevice.getServicesSupported()).thenReturn(new ServicesSupported());
+        when(localDevice.getCommunicationControlState()).thenReturn(EnableDisable.enable);
+
+        final DefaultTransport transport = new DefaultTransport(network);
+        transport.setLocalDevice(localDevice);
+        transport.setTimeout(50);
+        transport.setRetries(0);
+        transport.initialize();
+
+        final Address to = new Address(0, new byte[] {1});
+        final ConfirmedRequestService service = mock(ConfirmedRequestService.class);
+        when(service.getChoiceId()).thenReturn((byte) 1);
+        doAnswer(inv -> {
+            ByteQueue q = inv.getArgument(0);
+            q.push((byte) 0x01);
+            return null;
+        }).when(service).write(any(ByteQueue.class));
+
+        ServiceFutureImpl future = (ServiceFutureImpl) transport.send(to, 1476, Segmentation.noSegmentation, service);
+
+        assertThrows(BACnetTimeoutException.class, future::get);
+
+        transport.terminate();
+    }
+
+    private static void addIncomingNPDU(final Transport transport, final Address from, final APDU apdu)
+            throws BACnetException {
+        final NPDU npdu = mock(NPDU.class);
+        when(npdu.isNetworkMessage()).thenReturn(false);
+        when(npdu.getFrom()).thenReturn(from);
+        when(npdu.getAPDU(any())).thenReturn(apdu);
+        transport.incoming(npdu);
+    }
+
+    private static ReadPropertyMultipleRequest buildReadPropertyMultipleRequest(int propertyCount) {
+        var specs = new ArrayList<ReadAccessSpecification>();
+
+        for (int i = 0; i < propertyCount; i++) {
+            specs.add(new ReadAccessSpecification(
+                    new ObjectIdentifier(ObjectType.binaryValue, i),
+                    new SequenceOf<>(new PropertyReference(PropertyIdentifier.forId(28))))
+            );
+        }
+
+        return new ReadPropertyMultipleRequest(new SequenceOf<>(specs));
+    }
+
+    private static ReadPropertyMultipleAck buildReadPropertyMultipleAck(int propertyCount) {
+        var results = new ArrayList<ReadAccessResult>();
+
+        for (int i = 0; i < propertyCount; i++) {
+            results.add(new ReadAccessResult(
+                    new ObjectIdentifier(ObjectType.binaryValue, i),
+                    new SequenceOf<>(
+                            new ReadAccessResult.Result(
+                                    PropertyIdentifier.forId(28),
+                                    null,
+                                    new CharacterString("desc"))))
+            );
+        }
+        return new ReadPropertyMultipleAck(new SequenceOf<>(results));
     }
 }

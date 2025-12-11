@@ -79,6 +79,10 @@ public class UnackedMessageContext {
         this.attemptsLeft = retries;
     }
 
+    public void resetTimer(final int timeout) {
+        this.deadline = clock.millis() + timeout;
+    }
+
     public long getDeadline() {
         return deadline;
     }

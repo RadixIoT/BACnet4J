@@ -55,11 +55,9 @@ public class ServiceFutureImpl implements ServiceFuture, ResponseConsumer {
 
     @Override
     public synchronized <T extends AcknowledgementService> T get() throws BACnetException {
-        if (done) {
-            return result();
+        while (!done) {
+            ThreadUtils.wait(this);
         }
-
-        ThreadUtils.wait(this);
 
         return result();
     }
@@ -133,6 +131,6 @@ public class ServiceFutureImpl implements ServiceFuture, ResponseConsumer {
 
     private void complete() {
         done = true;
-        notify();
+        ThreadUtils.notifyAllSync(this);
     }
 }
