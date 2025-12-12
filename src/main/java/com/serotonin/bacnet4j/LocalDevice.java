@@ -188,10 +188,10 @@ public class LocalDevice implements AutoCloseable {
     public LocalDevice(final int deviceNumber, final Transport transport) {
         this.transport = transport;
         transport.setLocalDevice(this);
-        afterInstatiation(deviceNumber);
+        afterInstantiation(deviceNumber);
     }
 
-    private void afterInstatiation(final int deviceNumber) {
+    private void afterInstantiation(final int deviceNumber) {
         try {
             // Initialize the device object.
             new DeviceObject(this, deviceNumber);
@@ -392,7 +392,6 @@ public class LocalDevice implements AutoCloseable {
     /**
      * Create a ScheduledExecutorService for use by the local device
      *
-     * @return
      * @see java.util.concurrent.ScheduledExecutorService
      */
     protected ScheduledExecutorService createScheduledExecutorService() {
@@ -400,11 +399,16 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public synchronized void terminate() {
+        terminate(10, TimeUnit.SECONDS);
+    }
+
+    public synchronized void terminate(long timeout, TimeUnit timeoutUnit) {
         if (timer != null) {
             timer.shutdown();
             try {
-                if (!timer.awaitTermination(10, TimeUnit.SECONDS))
+                if (!timer.awaitTermination(timeout, timeoutUnit)) {
                     LOG.warn("BACnet4J timer did not shutdown within 10 seconds");
+                }
             } catch (final InterruptedException e) {
                 LOG.warn("Interrupted while waiting for shutdown of executors", e);
             }
@@ -616,7 +620,7 @@ public class LocalDevice implements AutoCloseable {
     /**
      * Returns the cached remote device, or null if not found.
      *
-     * @param instanceNumber
+     * @param instanceNumber the instance number of the desired device
      * @return the remote device or null if not found.
      */
     public RemoteDevice getCachedRemoteDevice(final int instanceNumber) {
@@ -638,11 +642,11 @@ public class LocalDevice implements AutoCloseable {
      *
      * The benefits of this method are: 1) It will cache the remote device if it is found 2) No blocking is performed
      *
-     * @param instanceNumber
-     * @param callback
-     * @param timeoutCallback
-     * @param timeout
-     * @param unit
+     * @param instanceNumber  the instance number of the desired device
+     * @param callback        the callback with which to receive the device
+     * @param timeoutCallback the callback to notify of a timeout
+     * @param timeout         the timeout scalar
+     * @param unit            the timeout unit
      */
     public void getRemoteDevice(final int instanceNumber, final Consumer<RemoteDevice> callback,
             final Runnable timeoutCallback, final Runnable finallyCallback, final long timeout, final TimeUnit unit) {
@@ -687,7 +691,7 @@ public class LocalDevice implements AutoCloseable {
      * If multiple threads are likely to request a remote device reference around the same time, it may be better to use
      * the blocking method below.
      *
-     * @param instanceNumber
+     * @param instanceNumber the instance number of the desired device
      * @return the remote device future
      */
     public RemoteDeviceFuture getRemoteDevice(final int instanceNumber) {
@@ -745,7 +749,7 @@ public class LocalDevice implements AutoCloseable {
      * Returns the remote device for the given instanceNumber using the default timeout. If a cached instance is not
      * found the finder will be used to try and find it. A timeout exception is thrown if it can't be found.
      *
-     * @param instanceNumber
+     * @param instanceNumber the instance number of the desired device
      * @return the remote device
      * @throws BACnetException if anything goes wrong, including timeout.
      */
@@ -769,7 +773,7 @@ public class LocalDevice implements AutoCloseable {
      *
      * If you require the ability to cancel a request, use the non-blocking method above.
      *
-     * @param instanceNumber
+     * @param instanceNumber the instance number of the desired device
      * @return the remote device
      * @throws BACnetException if anything goes wrong, including timeout.
      */
@@ -888,25 +892,20 @@ public class LocalDevice implements AutoCloseable {
     }
 
     private Predicate<RemoteDevice> getExpirationCheck(CacheUpdate cacheUpdate) {
-        switch (cacheUpdate) {
-            case ALWAYS:
-                return d -> true;
-            case NEVER:
-                return d -> false;
-            case IF_EXPIRED:
-                return d -> remoteDeviceCache.getCachedEntity(d.getInstanceNumber()) == null;
-            default:
-                throw new IllegalArgumentException("Unknown value: " + cacheUpdate);
-        }
+        return switch (cacheUpdate) {
+            case ALWAYS -> d -> true;
+            case NEVER -> d -> false;
+            case IF_EXPIRED -> d -> remoteDeviceCache.getCachedEntity(d.getInstanceNumber()) == null;
+            default -> throw new IllegalArgumentException("Unknown value: " + cacheUpdate);
+        };
     }
 
     /**
      * Updates the remote device with the given number with the given address, but only if the remote device is cached.
      * Otherwise, nothing happens.
      *
-     * @param instanceNumber
-     * @param address
-     * @return
+     * @param instanceNumber the instance number of the device to update
+     * @param address        the device address
      */
     public void updateRemoteDevice(final int instanceNumber, final Address address) {
         if (address == null)
@@ -1039,7 +1038,6 @@ public class LocalDevice implements AutoCloseable {
 
     public ServiceFuture send(final RemoteDevice d, final ConfirmedRequestService serviceRequest) {
         ensureInitialized();
-        //        validateSupportedService(d, serviceRequest);
         return transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(),
                 serviceRequest);
     }
@@ -1058,7 +1056,6 @@ public class LocalDevice implements AutoCloseable {
     public void send(final RemoteDevice d, final ConfirmedRequestService serviceRequest,
             final ResponseConsumer consumer) {
         ensureInitialized();
-        //        validateSupportedService(d, serviceRequest);
         transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(), serviceRequest,
                 consumer);
     }
@@ -1100,15 +1097,6 @@ public class LocalDevice implements AutoCloseable {
             throw new RuntimeException("LocalDevice is not initialized");
         }
     }
-
-    // Doesn't work because the service choice id is not the same as the index in services supported.
-    // Besides, this should be done in the transport, and errors indicated to the callback.
-    //    private void validateSupportedService(RemoteDevice d, Service service) {
-    //        if (d.getServicesSupported() != null) {
-    //            if (!d.getServicesSupported().getValue()[service.getChoiceId()])
-    //                throw new BACnetRuntimeException("Remote device does not support service " + service.getClass());
-    //        }
-    //    }
 
     /*-----------------------------------------------------------
      *-----------------------------------------------------------
@@ -1159,11 +1147,7 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public void setPersistence(final IPersistence persistence) {
-        if (persistence == null) {
-            this.persistence = new NullPersistence();
-        } else {
-            this.persistence = persistence;
-        }
+        this.persistence = Objects.requireNonNullElseGet(persistence, NullPersistence::new);
     }
 
     /*-----------------------------------------------------------
@@ -1188,7 +1172,7 @@ public class LocalDevice implements AutoCloseable {
 
     @Override
     public String toString() {
-        return "" + deviceObject.getInstanceId() + ": " + deviceObject.getObjectName();
+        return deviceObject.getInstanceId() + ": " + deviceObject.getObjectName();
     }
 
     public void incrementDatabaseRevision() {
@@ -1203,18 +1187,18 @@ public class LocalDevice implements AutoCloseable {
     }
 
     /**
-     * Register a callback if other devices have the same id like us.
+     * Register a callback to use if other devices have the same id as this.
      *
-     * @param callback
+     * @param callback to notify in case of duplicate id
      */
     public void setSameDeviceIdCallback(Consumer<Address> callback) {
         sameDeviceIdCallback = callback;
     }
 
     /**
-     * Notify the callback that we have the same Device id like an other device.
+     * Notify the registered callback that another device with the same Device id was discovered.
      *
-     * @param from
+     * @param from the address of the device with the same id.
      */
     public void notifySameDeviceIdCallback(Address from) {
         if (sameDeviceIdCallback != null) {
@@ -1222,5 +1206,4 @@ public class LocalDevice implements AutoCloseable {
             execute(() -> sameDeviceIdCallback.accept(from));
         }
     }
-
 }
