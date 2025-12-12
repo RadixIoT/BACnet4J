@@ -1,14 +1,48 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
+import static com.serotonin.bacnet4j.TestUtils.await;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.awaitFalse;
+import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.time.temporal.ChronoField;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -16,7 +50,6 @@ import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.RemoteDevice;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
@@ -58,8 +91,8 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
 
     private BACnetArray<DeviceObjectPropertyReference> props;
     private final ErrorClassAndCode unknownObject = new ErrorClassAndCode(ErrorClass.object, ErrorCode.unknownObject);
-    private final ErrorClassAndCode noPropSpecified = new ErrorClassAndCode(ErrorClass.property,
-            ErrorCode.noPropertySpecified);
+    private final ErrorClassAndCode noPropSpecified =
+            new ErrorClassAndCode(ErrorClass.property, ErrorCode.noPropertySpecified);
 
     @Override
     public void afterInit() throws Exception {
@@ -88,22 +121,22 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
     @Test
     public void pollingAlignedWithOffset() throws Exception {
         // Construct the log to poll each minute, aligned, and with a 2s offset.
-        final TrendLogMultipleObject tl = new TrendLogMultipleObject(d1, 0, "tlm",
-                new LinkedListLogBuffer<LogMultipleRecord>(), true, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, props,
-                0, false, 20) //
+        final TrendLogMultipleObject tl =
+                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                        DateTime.UNSPECIFIED, props, 0, false, 20) //
                         .withPolled(1, MINUTES, true, 2, SECONDS);
 
-        assertEquals(0, tl.getBuffer().size());
+        assertEquals(0, tl.getRecordCount());
 
         //
         // Advance the clock to the polling time.
         LOG.debug("start: {}", clock.instant());
         final int seconds = (62 - clock.get(ChronoField.SECOND_OF_MINUTE) - 1) % 60 + 1;
-        clock.plus(seconds, SECONDS, 300);
+        clock.plusSeconds(seconds);
         LOG.debug("poll: {}", clock.instant());
 
-        assertEquals(1, tl.getBuffer().size());
-        final LogMultipleRecord record0 = tl.getBuffer().get(0);
+        awaitEquals(1, tl::getRecordCount);
+        final LogMultipleRecord record0 = tl.getRecord(0);
         // We asked for alignment and an offset of 2 seconds.
         assertEquals(2.0, record0.getTimestamp().getTime().getSecond(), 1.0);
         assertEquals(1, record0.getSequenceNumber());
@@ -119,11 +152,11 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(2));
 
         // Advance the clock another minute to poll again
-        clock.plus(1, MINUTES, 100);
+        clock.plusMinutes(1);
         LOG.debug("poll: {}", clock.instant());
 
-        assertEquals(2, tl.getBuffer().size());
-        final LogMultipleRecord record1 = tl.getBuffer().get(1);
+        awaitEquals(2, tl::getRecordCount);
+        final LogMultipleRecord record1 = tl.getRecord(1);
         assertEquals(2, record1.getTimestamp().getTime().getSecond());
         assertEquals((record0.getTimestamp().getTime().getMinute() + 1) % 60,
                 record1.getTimestamp().getTime().getMinute());
@@ -142,12 +175,12 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
 
         // Advance the clock to the new polling time.
         final int minutes = (62 - clock.get(ChronoField.MINUTE_OF_HOUR)) % 60;
-        clock.plus(minutes, MINUTES, 0);
+        clock.plusMinutes(minutes);
         LOG.debug("poll: {}", clock.instant());
 
-        TestUtils.assertSize(tl.getBuffer(), 3, 500);
-        assertEquals(3, tl.getBuffer().size());
-        final LogMultipleRecord record2 = tl.getBuffer().get(2);
+        awaitEquals(3, tl::getRecordCount);
+        assertEquals(3, tl.getRecordCount());
+        final LogMultipleRecord record2 = tl.getRecord(2);
         assertEquals(2, record2.getTimestamp().getTime().getMinute());
         assertEquals(3, record2.getSequenceNumber());
         assertEquals(5, record2.getLogData().getData().size());
@@ -163,9 +196,8 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         tl.trigger();
 
         // Wait for the polling to finish.
-        Thread.sleep(100);
-        TestUtils.assertSize(tl.getBuffer(), 4, 500);
-        final LogMultipleRecord record3 = tl.getBuffer().get(3);
+        awaitEquals(4, tl::getRecordCount);
+        final LogMultipleRecord record3 = tl.getRecord(3);
         assertEquals(4, record3.getSequenceNumber());
         assertEquals(5, record3.getLogData().getData().size());
         assertEquals(new Real(4), record3.getLogData().getData().get(0).getDatum());
@@ -177,39 +209,37 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
 
     @Test
     public void trigger() throws Exception {
-        final TrendLogMultipleObject tl = new TrendLogMultipleObject(d1, 0, "tlm",
-                new LinkedListLogBuffer<LogMultipleRecord>(), true, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, props,
-                0, false, 20);
+        final TrendLogMultipleObject tl =
+                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                        DateTime.UNSPECIFIED, props, 0, false, 20);
 
         final DateTime now = new DateTime(clock.millis());
 
         // The buffer should still be empty
-        assertEquals(0, tl.getBuffer().size());
+        assertEquals(0, tl.getRecordCount());
 
         // Update a monitored value
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(2));
 
         // The buffer should still be empty
-        assertEquals(0, tl.getBuffer().size());
+        assertEquals(0, tl.getRecordCount());
 
         // Update the monitored value again
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(3));
 
         // The buffer should still be empty
-        assertEquals(0, tl.getBuffer().size());
+        assertEquals(0, tl.getRecordCount());
 
         // Trigger an update
         tl.trigger();
-        Thread.sleep(300);
+        awaitEquals(1, tl::getRecordCount);
 
         // The log record should be there.
-        assertEquals(1, tl.getBuffer().size());
-        final LogMultipleRecord record0 = tl.getBuffer().get(0);
+        final LogMultipleRecord record0 = tl.getRecord(0);
         assertEquals(now, record0.getTimestamp());
         assertEquals(1, record0.getSequenceNumber());
         final LogData data0 = record0.getLogData();
-        assertEquals(
-                new SequenceOf<>( //
+        assertEquals(new SequenceOf<>( //
                         new LogDataElement(new Real(3)), //
                         new LogDataElement(new Real(0)), //
                         new LogDataElement(new ErrorClassAndCode(ErrorClass.object, ErrorCode.unknownObject)),
@@ -222,9 +252,9 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
     @Test
     public void intrinsicReporting() throws Exception {
         // Create a triggered trend log with intrinsic reporting enabled.
-        final TrendLogMultipleObject tl = new TrendLogMultipleObject(d1, 0, "tlm",
-                new LinkedListLogBuffer<LogMultipleRecord>(), true, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, props,
-                0, false, 20) //
+        final TrendLogMultipleObject tl =
+                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                        DateTime.UNSPECIFIED, props, 0, false, 20) //
                         .supportIntrinsicReporting(5, 23, new EventTransitionBits(true, true, true), NotifyType.event);
 
         final RemoteDevice rd2 = d1.getRemoteDeviceBlocking(2);
@@ -241,8 +271,8 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         //
         // Write 4 triggers and make sure no notification was sent.
         doTriggers(tl, 4);
-        assertEquals(4, tl.getBuffer().size());
-        assertEquals(0, listener.notifs.size());
+        assertEquals(4, tl.getRecordCount());
+        assertEquals(0, listener.getNotifCount());
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.recordCount));
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.totalRecordCount));
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.recordsSinceNotification));
@@ -251,27 +281,25 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         //
         // Write one more and make sure a notification was received.
         doTriggers(tl, 1);
-        Thread.sleep(50);
-        assertEquals(5, tl.getBuffer().size());
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(27), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(tl.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) tl.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(23), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(3), notif.get("priority"));
-        assertEquals(EventType.bufferReady, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
+        awaitEquals(5, tl::getRecordCount);
+        awaitEquals(1, listener::getNotifCount);
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(27), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(tl.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) tl.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(23), notif.notificationClass());
+        assertEquals(new UnsignedInteger(3), notif.priority());
+        assertEquals(EventType.bufferReady, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
         assertEquals(new NotificationParameters(
                 new BufferReadyNotif(new DeviceObjectPropertyReference(1, tl.getId(), PropertyIdentifier.logBuffer),
-                        UnsignedInteger.ZERO, new UnsignedInteger(5))),
-                notif.get("eventValues"));
+                        UnsignedInteger.ZERO, new UnsignedInteger(5))), notif.eventValues());
 
         // Validate the internally maintained values.
         assertEquals(new UnsignedInteger(5), tl.get(PropertyIdentifier.recordCount));
@@ -282,27 +310,25 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         //
         // Write another 5 triggers and ensure that the notification looks ok.
         doTriggers(tl, 5);
-        Thread.sleep(30);
-        assertEquals(10, tl.getBuffer().size());
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(27), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(tl.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) tl.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(23), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(3), notif.get("priority"));
-        assertEquals(EventType.bufferReady, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
+        awaitEquals(10, tl::getRecordCount);
+        awaitEquals(1, listener::getNotifCount);
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(27), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(tl.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) tl.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(23), notif.notificationClass());
+        assertEquals(new UnsignedInteger(3), notif.priority());
+        assertEquals(EventType.bufferReady, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
         assertEquals(new NotificationParameters(
                 new BufferReadyNotif(new DeviceObjectPropertyReference(1, tl.getId(), PropertyIdentifier.logBuffer),
-                        new UnsignedInteger(5), new UnsignedInteger(10))),
-                notif.get("eventValues"));
+                        new UnsignedInteger(5), new UnsignedInteger(10))), notif.eventValues());
 
         // Validate the internally maintained values.
         assertEquals(new UnsignedInteger(10), tl.get(PropertyIdentifier.recordCount));
@@ -315,27 +341,25 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         tl.set(PropertyIdentifier.lastNotifyRecord, new UnsignedInteger(0xFFFFFFFDL));
         tl.set(PropertyIdentifier.totalRecordCount, new UnsignedInteger(0xFFFFFFFDL));
         doTriggers(tl, 5);
-        Thread.sleep(30);
-        assertEquals(15, tl.getBuffer().size());
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(27), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(tl.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) tl.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(23), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(3), notif.get("priority"));
-        assertEquals(EventType.bufferReady, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
+        awaitEquals(15, tl::getRecordCount);
+        awaitEquals(1, listener::getNotifCount);
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(27), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(tl.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) tl.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(23), notif.notificationClass());
+        assertEquals(new UnsignedInteger(3), notif.priority());
+        assertEquals(EventType.bufferReady, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
         assertEquals(new NotificationParameters(
                 new BufferReadyNotif(new DeviceObjectPropertyReference(1, tl.getId(), PropertyIdentifier.logBuffer),
-                        new UnsignedInteger(0xFFFFFFFDL), new UnsignedInteger(3))),
-                notif.get("eventValues"));
+                        new UnsignedInteger(0xFFFFFFFDL), new UnsignedInteger(3))), notif.eventValues());
 
         // Validate the internally maintained values.
         assertEquals(new UnsignedInteger(15), tl.get(PropertyIdentifier.recordCount));
@@ -344,26 +368,26 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         assertEquals(new UnsignedInteger(3), tl.get(PropertyIdentifier.lastNotifyRecord));
     }
 
-    private static void doTriggers(final TrendLogMultipleObject tl, final int count) throws InterruptedException {
+    private static void doTriggers(final TrendLogMultipleObject tl, final int count) throws Exception {
         int remaining = count;
         while (remaining > 0) {
-            if (tl.trigger())
-                remaining--;
-            Thread.sleep(20);
+            await(tl::trigger);
+            remaining--;
         }
+        await(() -> !((Boolean) tl.get(PropertyIdentifier.trigger)).booleanValue());
     }
 
     @SuppressWarnings("unchecked")
     @Test
     public void eventReporting() throws Exception {
         // Create a triggered trend log
-        final TrendLogMultipleObject tl = new TrendLogMultipleObject(d1, 0, "tlm",
-                new LinkedListLogBuffer<LogMultipleRecord>(), true, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, props,
-                0, false, 20);
+        final TrendLogMultipleObject tl =
+                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                        DateTime.UNSPECIFIED, props, 0, false, 20);
 
         // Create the event enrollment.
-        final DeviceObjectPropertyReference ref = new DeviceObjectPropertyReference(tl.getId(),
-                PropertyIdentifier.totalRecordCount, null, d1.getId());
+        final DeviceObjectPropertyReference ref =
+                new DeviceObjectPropertyReference(tl.getId(), PropertyIdentifier.totalRecordCount, null, d1.getId());
         final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.event,
                 new EventParameter(new BufferReady(new UnsignedInteger(3), UnsignedInteger.ZERO)),
                 new EventTransitionBits(true, true, true), 23, 1000, null, null);
@@ -382,66 +406,62 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
 
         // Give the EE a chance to poll.
         clock.plusSeconds(1);
-        Thread.sleep(300);
+        quiesce();
 
         // Ensure that there are no notifications.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Trigger another notification so that a notification is sent.
         doTriggers(tl, 1);
         clock.plusSeconds(1);
-        Thread.sleep(300);
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(28), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(23), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(3), notif.get("priority"));
-        assertEquals(EventType.bufferReady, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
+        awaitEquals(1, listener::getNotifCount);
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(28), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(23), notif.notificationClass());
+        assertEquals(new UnsignedInteger(3), notif.priority());
+        assertEquals(EventType.bufferReady, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
         assertEquals(new NotificationParameters(
                 new BufferReadyNotif(new DeviceObjectPropertyReference(1, tl.getId(), PropertyIdentifier.logBuffer),
-                        UnsignedInteger.ZERO, new UnsignedInteger(3))),
-                notif.get("eventValues"));
+                        UnsignedInteger.ZERO, new UnsignedInteger(3))), notif.eventValues());
 
         // Trigger another batch of updates. One notification should be sent.
         doTriggers(tl, 7);
         clock.plusSeconds(1);
-        Thread.sleep(300);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(28), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(23), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(3), notif.get("priority"));
-        assertEquals(EventType.bufferReady, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.TRUE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
+        awaitEquals(1, listener::getNotifCount);
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(28), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(23), notif.notificationClass());
+        assertEquals(new UnsignedInteger(3), notif.priority());
+        assertEquals(EventType.bufferReady, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
         assertEquals(new NotificationParameters(
                 new BufferReadyNotif(new DeviceObjectPropertyReference(1, tl.getId(), PropertyIdentifier.logBuffer),
-                        new UnsignedInteger(3), new UnsignedInteger(10))),
-                notif.get("eventValues"));
+                        new UnsignedInteger(3), new UnsignedInteger(10))), notif.eventValues());
     }
 
     @Test
     public void stopWhenFull() throws Exception {
         // Create a triggered trend log
-        final TrendLogMultipleObject tl = new TrendLogMultipleObject(d1, 0, "tlm",
-                new LinkedListLogBuffer<LogMultipleRecord>(), true, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, props,
-                0, true, 4);
+        final TrendLogMultipleObject tl =
+                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                        DateTime.UNSPECIFIED, props, 0, true, 4);
 
         final SequenceOf<LogDataElement> logData = new SequenceOf<>( //
                 new LogDataElement(new Real(0)), //
@@ -452,78 +472,78 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
 
         // Add a couple records and validate the buffer content
         doTriggers(tl, 2);
-        assertEquals(2, tl.getBuffer().size());
-        assertEquals(logData, tl.getBuffer().get(0).getLogData().getData());
-        assertEquals(logData, tl.getBuffer().get(1).getLogData().getData());
+        assertEquals(2, tl.getRecordCount());
+        assertEquals(logData, tl.getRecord(0).getLogData().getData());
+        assertEquals(logData, tl.getRecord(1).getLogData().getData());
         assertEquals(new UnsignedInteger(2), tl.get(PropertyIdentifier.recordCount));
         assertEquals(new UnsignedInteger(2), tl.get(PropertyIdentifier.totalRecordCount));
 
         // Add another record. This will cause the buffer to be full after the buffer full notification is written.
         doTriggers(tl, 1);
-        assertEquals(4, tl.getBuffer().size());
-        assertEquals(logData, tl.getBuffer().get(0).getLogData().getData());
-        assertEquals(logData, tl.getBuffer().get(1).getLogData().getData());
-        assertEquals(logData, tl.getBuffer().get(2).getLogData().getData());
-        assertEquals(new LogStatus(true, false, false), tl.getBuffer().get(3).getLogData().getLogStatus());
+        assertEquals(4, tl.getRecordCount());
+        assertEquals(logData, tl.getRecord(0).getLogData().getData());
+        assertEquals(logData, tl.getRecord(1).getLogData().getData());
+        assertEquals(logData, tl.getRecord(2).getLogData().getData());
+        assertEquals(new LogStatus(true, false, false), tl.getRecord(3).getLogData().getLogStatus());
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.recordCount));
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.totalRecordCount));
-        assertEquals(true, tl.isLogDisabled());
+        assertTrue(tl.isLogDisabled());
 
         // Add more records. The log should not change. Advance the time just to be sure.
         clock.plusMinutes(1);
         doTriggers(tl, 2);
-        assertEquals(4, tl.getBuffer().size());
-        assertEquals(logData, tl.getBuffer().get(0).getLogData().getData());
-        assertEquals(logData, tl.getBuffer().get(1).getLogData().getData());
-        assertEquals(logData, tl.getBuffer().get(2).getLogData().getData());
-        assertEquals(new LogStatus(true, false, false), tl.getBuffer().get(3).getLogData().getLogStatus());
+        assertEquals(4, tl.getRecordCount());
+        assertEquals(logData, tl.getRecord(0).getLogData().getData());
+        assertEquals(logData, tl.getRecord(1).getLogData().getData());
+        assertEquals(logData, tl.getRecord(2).getLogData().getData());
+        assertEquals(new LogStatus(true, false, false), tl.getRecord(3).getLogData().getLogStatus());
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.recordCount));
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.totalRecordCount));
-        assertEquals(true, tl.isLogDisabled());
+        assertTrue(tl.isLogDisabled());
 
         // Set StopWhenFull to false and write a couple records.
         tl.writeProperty(null, new PropertyValue(PropertyIdentifier.stopWhenFull, Boolean.FALSE));
         tl.writeProperty(null, new PropertyValue(PropertyIdentifier.enable, Boolean.TRUE));
         doTriggers(tl, 2);
-        assertEquals(4, tl.getBuffer().size());
-        assertEquals(logData, tl.getBuffer().get(0).getLogData().getData());
-        assertEquals(new LogStatus(true, false, false), tl.getBuffer().get(1).getLogData().getLogStatus());
-        assertEquals(logData, tl.getBuffer().get(2).getLogData().getData());
-        assertEquals(logData, tl.getBuffer().get(3).getLogData().getData());
+        assertEquals(4, tl.getRecordCount());
+        assertEquals(logData, tl.getRecord(0).getLogData().getData());
+        assertEquals(new LogStatus(true, false, false), tl.getRecord(1).getLogData().getLogStatus());
+        assertEquals(logData, tl.getRecord(2).getLogData().getData());
+        assertEquals(logData, tl.getRecord(3).getLogData().getData());
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.recordCount));
         assertEquals(new UnsignedInteger(6), tl.get(PropertyIdentifier.totalRecordCount));
-        assertEquals(false, tl.isLogDisabled());
+        assertFalse(tl.isLogDisabled());
 
         // Set StopWhenFull back to true.
         tl.writeProperty(null, new PropertyValue(PropertyIdentifier.stopWhenFull, Boolean.TRUE));
-        assertEquals(4, tl.getBuffer().size());
-        assertEquals(new LogStatus(true, false, false), tl.getBuffer().get(0).getLogData().getLogStatus());
-        assertEquals(logData, tl.getBuffer().get(1).getLogData().getData());
-        assertEquals(logData, tl.getBuffer().get(2).getLogData().getData());
-        assertEquals(new LogStatus(true, false, false), tl.getBuffer().get(3).getLogData().getLogStatus());
+        assertEquals(4, tl.getRecordCount());
+        assertEquals(new LogStatus(true, false, false), tl.getRecord(0).getLogData().getLogStatus());
+        assertEquals(logData, tl.getRecord(1).getLogData().getData());
+        assertEquals(logData, tl.getRecord(2).getLogData().getData());
+        assertEquals(new LogStatus(true, false, false), tl.getRecord(3).getLogData().getLogStatus());
         assertEquals(new UnsignedInteger(4), tl.get(PropertyIdentifier.recordCount));
         assertEquals(new UnsignedInteger(7), tl.get(PropertyIdentifier.totalRecordCount));
-        assertEquals(true, tl.isLogDisabled());
+        assertTrue(tl.isLogDisabled());
     }
 
     @Test
     public void enableDisable() throws Exception {
         // Create a disabled triggered trend log
-        final TrendLogMultipleObject tl = new TrendLogMultipleObject(d1, 0, "tlm",
-                new LinkedListLogBuffer<LogMultipleRecord>(), false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, props,
-                0, true, 4);
+        final TrendLogMultipleObject tl =
+                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED,
+                        DateTime.UNSPECIFIED, props, 0, true, 4);
 
-        assertEquals(0, tl.getBuffer().size());
+        assertEquals(0, tl.getRecordCount());
 
         // Add a couple records and validate the buffer content
         doTriggers(tl, 2);
-        assertEquals(0, tl.getBuffer().size());
+        assertEquals(0, tl.getRecordCount());
 
         // Enable and write a few records.
         tl.setEnabled(false);
-        assertEquals(0, tl.getBuffer().size());
+        assertEquals(0, tl.getRecordCount());
         doTriggers(tl, 2);
-        assertEquals(0, tl.getBuffer().size());
+        assertEquals(0, tl.getRecordCount());
     }
 
     @Test
@@ -547,38 +567,40 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
                 new LogDataElement(noPropSpecified));
 
         // Create a triggered trend log
-        final TrendLogMultipleObject tl = new TrendLogMultipleObject(d1, 0, "tlm",
-                new LinkedListLogBuffer<LogMultipleRecord>(), true, startTime, stopTime, props, 0, true, 7);
+        final TrendLogMultipleObject tl =
+                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, startTime, stopTime, props,
+                        0, true, 7);
 
-        assertEquals(true, tl.isLogDisabled());
-        assertEquals(0, tl.getBuffer().size());
+        assertTrue(tl.isLogDisabled());
+        assertEquals(0, tl.getRecordCount());
 
         // Do some triggers.
         doTriggers(tl, 2);
-        assertEquals(0, tl.getBuffer().size());
+        assertEquals(0, tl.getRecordCount());
 
         // Advance the time a bit and do some triggers.
-        clock.plus(3, TimeUnit.MINUTES, 40);
-        assertEquals(true, tl.isLogDisabled());
+        clock.plusMinutes(3);
+        quiesce();
+        assertTrue(tl.isLogDisabled());
         doTriggers(tl, 2);
-        assertEquals(0, tl.getBuffer().size());
+        assertEquals(0, tl.getRecordCount());
 
         // Advance the time past the start time and do some triggers.
-        clock.plus(3, TimeUnit.MINUTES, 40);
-        assertEquals(false, tl.isLogDisabled());
+        clock.plusMinutes(3);
+        awaitFalse(tl::isLogDisabled);
         doTriggers(tl, 2);
-        assertEquals(2, tl.getBuffer().size());
+        assertEquals(2, tl.getRecordCount());
 
         // Advance the time past the stop time and do some triggers.
-        clock.plus(5, TimeUnit.MINUTES, 60);
+        clock.plusMinutes(5);
+        awaitTrue(tl::isLogDisabled);
+        awaitEquals(3, tl::getRecordCount);
         final DateTime now3 = new DateTime(clock.millis());
-        assertEquals(true, tl.isLogDisabled());
-        assertEquals(3, tl.getBuffer().size());
         doTriggers(tl, 2);
-        assertEquals(3, tl.getBuffer().size());
-        assertEquals(logData, tl.getBuffer().get(0).getLogData().getData());
-        assertEquals(logData, tl.getBuffer().get(1).getLogData().getData());
-        assertEquals(new LogStatus(true, false, false), tl.getBuffer().get(2).getLogData().getLogStatus());
+        assertEquals(3, tl.getRecordCount());
+        assertEquals(logData, tl.getRecord(0).getLogData().getData());
+        assertEquals(logData, tl.getRecord(1).getLogData().getData());
+        assertEquals(new LogStatus(true, false, false), tl.getRecord(2).getLogData().getLogStatus());
 
         // Reset the start and stop times.
         nowgg = now3.getGC();
@@ -590,55 +612,54 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         tl.writeProperty(null, PropertyIdentifier.stopTime, stopTime);
 
         doTriggers(tl, 2);
-        assertEquals(3, tl.getBuffer().size());
+        assertEquals(3, tl.getRecordCount());
 
         // Advance the time past the start time and do some triggers.
-        clock.plus(6, TimeUnit.MINUTES, 40);
-        assertEquals(false, tl.isLogDisabled());
+        clock.plusMinutes(6);
+        awaitFalse(tl::isLogDisabled);
         doTriggers(tl, 2);
-        assertEquals(5, tl.getBuffer().size());
+        assertEquals(5, tl.getRecordCount());
 
         // Advance the time past the stop time and do some triggers.
-        clock.plus(5, TimeUnit.MINUTES, 60);
-        assertEquals(true, tl.isLogDisabled());
-        assertEquals(6, tl.getBuffer().size());
+        clock.plusMinutes(5);
+        awaitTrue(tl::isLogDisabled);
+        awaitEquals(6, tl::getRecordCount);
         doTriggers(tl, 2);
-        assertEquals(6, tl.getBuffer().size());
+        assertEquals(6, tl.getRecordCount());
     }
 
     @Test
     public void readLogBuffer() throws Exception {
         // Create a triggered trend log
-        final TrendLogMultipleObject tl = new TrendLogMultipleObject(d1, 0, "tlm",
-                new LinkedListLogBuffer<LogMultipleRecord>(), true, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, props,
-                0, true, 7);
+        final TrendLogMultipleObject tl =
+                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                        DateTime.UNSPECIFIED, props, 0, true, 7);
 
         // Try to do a network read of the buffer. It should not be readable.
-        TestUtils.assertBACnetServiceException(() -> {
-            tl.readProperty(PropertyIdentifier.logBuffer, null);
-        }, ErrorClass.property, ErrorCode.readAccessDenied);
+        assertBACnetServiceException(() -> tl.readProperty(PropertyIdentifier.logBuffer, null), ErrorClass.property,
+                ErrorCode.readAccessDenied);
     }
 
     @Test
     public void purge() throws Exception {
         // Create a triggered trend log
-        final TrendLogMultipleObject tl = new TrendLogMultipleObject(d1, 0, "tlm",
-                new LinkedListLogBuffer<LogMultipleRecord>(), true, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, props,
-                0, true, 7);
+        final TrendLogMultipleObject tl =
+                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                        DateTime.UNSPECIFIED, props, 0, true, 7);
 
         // Trigger a few updates.
         doTriggers(tl, 2);
-        assertEquals(2, tl.getBuffer().size());
+        assertEquals(2, tl.getRecordCount());
 
         // Set the record count to non-zero.
-        TestUtils.assertBACnetServiceException(() -> {
-            tl.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, new UnsignedInteger(1)));
-        }, ErrorClass.property, ErrorCode.writeAccessDenied);
+        assertBACnetServiceException(
+                () -> tl.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, new UnsignedInteger(1))),
+                ErrorClass.property, ErrorCode.writeAccessDenied);
 
         // Set the record count to zero. There should be one log status record.
         tl.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, UnsignedInteger.ZERO));
-        assertEquals(1, tl.getBuffer().size());
-        assertEquals(new LogStatus(false, true, false), tl.getBuffer().get(0).getLogData().getLogStatus());
+        assertEquals(1, tl.getRecordCount());
+        assertEquals(new LogStatus(false, true, false), tl.getRecord(0).getLogData().getLogStatus());
     }
 
     @Test
@@ -654,14 +675,14 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
                 new LogDataElement(noPropSpecified));
 
         // Create a triggered trend log
-        final TrendLogMultipleObject tl = new TrendLogMultipleObject(d1, 0, "tlm",
-                new LinkedListLogBuffer<LogMultipleRecord>(), true, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, props,
-                0, true, 100);
+        final TrendLogMultipleObject tl =
+                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                        DateTime.UNSPECIFIED, props, 0, true, 100);
 
         doTriggers(tl, 2);
-        assertEquals(2, tl.getBuffer().size());
-        assertEquals(logData1, tl.getBuffer().get(0).getLogData().getData());
-        assertEquals(logData1, tl.getBuffer().get(1).getLogData().getData());
+        assertEquals(2, tl.getRecordCount());
+        assertEquals(logData1, tl.getRecord(0).getLogData().getData());
+        assertEquals(logData1, tl.getRecord(1).getLogData().getData());
 
         final BACnetArray<DeviceObjectPropertyReference> newProps = new BACnetArray<>( //
                 // Remote
@@ -687,9 +708,9 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         tl.writeProperty(null, new PropertyValue(PropertyIdentifier.logDeviceObjectProperty, newProps));
 
         doTriggers(tl, 2);
-        assertEquals(3, tl.getBuffer().size());
-        assertEquals(new LogStatus(false, true, false), tl.getBuffer().get(0).getLogData().getLogStatus());
-        assertEquals(logData2, tl.getBuffer().get(1).getLogData().getData());
-        assertEquals(logData2, tl.getBuffer().get(2).getLogData().getData());
+        assertEquals(3, tl.getRecordCount());
+        assertEquals(new LogStatus(false, true, false), tl.getRecord(0).getLogData().getLogStatus());
+        assertEquals(logData2, tl.getRecord(1).getLogData().getData());
+        assertEquals(logData2, tl.getRecord(2).getLogData().getData());
     }
 }

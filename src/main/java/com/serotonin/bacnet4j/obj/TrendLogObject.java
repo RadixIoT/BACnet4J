@@ -1,8 +1,36 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,8 +95,8 @@ public class TrendLogObject extends BACnetObject {
                 new DeviceObjectPropertyReference(localDevice.getInstanceNumber(), localDevice.getId(),
                         PropertyIdentifier.databaseRevision),
                 60, false, 100) //
-                        .supportIntrinsicReporting(20, 0, new EventTransitionBits(false, false, false),
-                                NotifyType.event);
+                .supportIntrinsicReporting(20, 0, new EventTransitionBits(false, false, false),
+                        NotifyType.event);
     }
 
     private final LogBuffer<LogRecord> buffer;
@@ -182,7 +210,7 @@ public class TrendLogObject extends BACnetObject {
 
         final PropertyIdentifier[] triggerProps = new PropertyIdentifier[] { //
                 PropertyIdentifier.totalRecordCount, //
-                PropertyIdentifier.notificationThreshold };
+                PropertyIdentifier.notificationThreshold};
 
         // Now add the mixin.
         addMixin(new IntrinsicReportingMixin(this, algo, null, PropertyIdentifier.totalRecordCount, triggerProps)
@@ -204,8 +232,33 @@ public class TrendLogObject extends BACnetObject {
         return logDisabled;
     }
 
+    /**
+     * @deprecated This method return a buffer that may not be thread-safe. Use {@link #doWithBuffer} instead.
+     * This method will be removed in a future major version.
+     */
+    @Deprecated
     public LogBuffer<LogRecord> getBuffer() {
         return buffer;
+    }
+
+    public void doWithBuffer(Consumer<LogBuffer<LogRecord>> consumer) {
+        synchronized (buffer) {
+            consumer.accept(buffer);
+        }
+    }
+
+    public int getRecordCount() {
+        // Synchronize the buffer before requesting the size because we don't know the implementation of the buffer,
+        // and whether the operation is atomic or not.
+        synchronized (buffer) {
+            return buffer.size();
+        }
+    }
+
+    public LogRecord getRecord(int index) {
+        synchronized (buffer) {
+            return buffer.get(index);
+        }
     }
 
     public void setEnabled(final boolean enabled) {
@@ -216,7 +269,7 @@ public class TrendLogObject extends BACnetObject {
      * Locally trigger a poll.
      *
      * @return true if the trigger was done, false if the trigger value was already true, indicating that a trigger
-     *         was already in progress.
+     * was already in progress.
      */
     public synchronized boolean trigger() {
         final Boolean trigger = get(PropertyIdentifier.trigger);

@@ -1,0 +1,81 @@
+name: bacnet4j
+
+services:
+  # This is the container in which the tests are run.
+  bacnet-11:
+    image: maven:3-eclipse-temurin-17-alpine
+    depends_on:
+      bacnet-22:
+        condition: service_healthy
+      bacnet-33:
+        condition: service_healthy
+    networks:
+      bacnet-network-1:
+        ipv4_address: 192.168.1.11
+      bacnet-network-2:
+        ipv4_address: 192.168.2.11
+    tmpfs:
+      - /home/.m2
+    volumes:
+      - ${PWD}:/app:rw
+      - ${PWD}/target/docker-target:/app/target:rw
+      - ${MAVEN_REPOSITORY:-${HOME}/.m2/repository}:/home/.m2/repository:ro
+    working_dir: /app
+    environment:
+      MAVEN_CONFIG: /home/.m2
+    command: mvn -Duser.home=/home -o verify
+
+  # This container hosts a BACnet4J instance that sends unicasts and broadcasts that the testing container can receive.
+  bacnet-22:
+    image: azul/zulu-openjdk-alpine:17-jre-headless
+    healthcheck:
+      # See DockerRemoteDevice, which creates running.txt after the local devices has been initialized. The file is
+      # created in the tmp so that it is not shared by the volume mappings.
+      test: sh -c "[ -f /tmp/running.txt ]"
+      interval: 1s
+      timeout: 1s
+      retries: 1
+      start_period: 5s
+      start_interval: 1s
+    networks:
+      bacnet-network-1:
+        ipv4_address: 192.168.1.22
+      bacnet-network-2:
+        ipv4_address: 192.168.2.22
+    volumes:
+      - ${PWD}/target:/target:ro
+    entrypoint: ["java", "-cp", "/target/test-classes:/target/*:/target/dependency/*"]
+    command: ["com.serotonin.bacnet4j.docker.DockerRemoteDevice", "docker-remote-device-22.properties"]
+
+  bacnet-33:
+    image: azul/zulu-openjdk-alpine:17-jre-headless
+    healthcheck:
+      # See DockerRemoteDevice, which creates running.txt after the local devices has been initialized. The file is
+      # created in the tmp so that it is not shared by the volume mappings.
+      test: sh -c "[ -f /tmp/running.txt ]"
+      interval: 1s
+      timeout: 1s
+      retries: 1
+      start_period: 5s
+      start_interval: 1s
+    networks:
+      bacnet-network-1:
+        ipv4_address: 192.168.1.33
+      bacnet-network-2:
+        ipv4_address: 192.168.2.33
+    volumes:
+      - ${PWD}/target:/target:ro
+    entrypoint: ["java", "-cp", "/target/test-classes:/target/*:/target/dependency/*"]
+    command: ["com.serotonin.bacnet4j.docker.DockerRemoteDevice", "docker-remote-device-33.properties"]
+
+networks:
+  bacnet-network-1:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.1.0/24
+  bacnet-network-2:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.2.0/24

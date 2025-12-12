@@ -1,16 +1,42 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.advanceClock;
+import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
 import com.serotonin.bacnet4j.type.constructed.PropertyValue;
@@ -26,22 +52,22 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 /**
  * @author Matthew
  */
-public class AveragingObjectTest extends AbstractTest {
-    static final Logger LOG = LoggerFactory.getLogger(AveragingObjectTest.class);
+public class
 
+AveragingObjectTest extends AbstractTest {
     private AveragingObject a;
 
     @Override
     public void afterInit() throws Exception {
         // Poll every 5s
-        a = new AveragingObject(d1, 0, "a0", new DeviceObjectPropertyReference(1,
-                new ObjectIdentifier(ObjectType.device, 1), PropertyIdentifier.systemStatus), 60, 12);
+        a = new AveragingObject(d1, 0, "a0",
+                new DeviceObjectPropertyReference(1, new ObjectIdentifier(ObjectType.device, 1),
+                        PropertyIdentifier.systemStatus), 60, 12);
     }
 
     @Test
     public void real() throws Exception {
-        // Let the initial poll complete
-        Thread.sleep(50);
+        ObjectTestUtils.ObjectWriteNotifier<AveragingObject> notif = ObjectTestUtils.createObjectWriteNotifier(a);
 
         final AnalogInputObject ai = new AnalogInputObject(d1, 0, "ai0", 0, EngineeringUnits.noUnits, false);
 
@@ -60,7 +86,9 @@ public class AveragingObjectTest extends AbstractTest {
 
         // Set to 1 and poll.
         ai.set(PropertyIdentifier.presentValue, new Real(1));
-        clock.plus(5, TimeUnit.SECONDS, 20);
+        // Wait for the valid-samples property, because that is the last property written in the poll.
+        advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(1)));
         final DateTime ts1 = new DateTime(clock.millis());
         assertEquals(new Real(1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts1, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
@@ -73,7 +101,8 @@ public class AveragingObjectTest extends AbstractTest {
 
         // Set to 5 and poll
         ai.set(PropertyIdentifier.presentValue, new Real(5));
-        clock.plus(5, TimeUnit.SECONDS, 20);
+        advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(2)));
         final DateTime ts2 = new DateTime(clock.millis());
         assertEquals(new Real(1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts1, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
@@ -86,7 +115,8 @@ public class AveragingObjectTest extends AbstractTest {
 
         // Set to 3 and poll
         ai.set(PropertyIdentifier.presentValue, new Real(3));
-        clock.plus(5, TimeUnit.SECONDS, 20);
+        advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(3)));
         assertEquals(new Real(1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts1, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
         assertEquals(new Real(3), a.readProperty(PropertyIdentifier.averageValue));
@@ -98,7 +128,8 @@ public class AveragingObjectTest extends AbstractTest {
 
         // Set to 10 and poll
         ai.set(PropertyIdentifier.presentValue, new Real(10));
-        clock.plus(5, TimeUnit.SECONDS, 20);
+        advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(4)));
         final DateTime ts4 = new DateTime(clock.millis());
         assertEquals(new Real(1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts1, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
@@ -111,7 +142,8 @@ public class AveragingObjectTest extends AbstractTest {
 
         // Set to 9 and poll 7 times
         ai.set(PropertyIdentifier.presentValue, new Real(9));
-        clock.plus(35, TimeUnit.SECONDS, 5, TimeUnit.SECONDS, 20, 0);
+        advanceClock(clock, 35, TimeUnit.SECONDS, 5, TimeUnit.SECONDS, notif::clear,
+                () -> notif.waitFor(PropertyIdentifier.validSamples, null));
         assertEquals(new Real(1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts1, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
         assertEquals(7.454F, ((Real) a.readProperty(PropertyIdentifier.averageValue)).floatValue(), 0.001F);
@@ -123,7 +155,8 @@ public class AveragingObjectTest extends AbstractTest {
 
         // Set to -1 and poll
         ai.set(PropertyIdentifier.presentValue, new Real(-1));
-        clock.plus(5, TimeUnit.SECONDS, 20);
+        advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(12)));
         final DateTime ts12 = new DateTime(clock.millis());
         assertEquals(new Real(-1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts12, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
@@ -136,7 +169,8 @@ public class AveragingObjectTest extends AbstractTest {
 
         // Set to 8 and poll
         ai.set(PropertyIdentifier.presentValue, new Real(8));
-        clock.plus(5, TimeUnit.SECONDS, 20);
+        advanceClock(clock, 5, TimeUnit.SECONDS, notif::clear,
+                () -> notif.waitFor(PropertyIdentifier.validSamples, new UnsignedInteger(12)));
         assertEquals(new Real(-1), a.readProperty(PropertyIdentifier.minimumValue));
         assertEquals(ts12, a.readProperty(PropertyIdentifier.minimumValueTimestamp));
         assertEquals(7.333F, ((Real) a.readProperty(PropertyIdentifier.averageValue)).floatValue(), 0.001F);
@@ -165,8 +199,7 @@ public class AveragingObjectTest extends AbstractTest {
 
     @Test
     public void propertyConformanceReadOnly() {
-        TestUtils.assertBACnetServiceException(
-                () -> a.writeProperty(null,
+        assertBACnetServiceException(() -> a.writeProperty(null,
                         new PropertyValue(PropertyIdentifier.validSamples, null, UnsignedInteger.ZERO, null)),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
     }

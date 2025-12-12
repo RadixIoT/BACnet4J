@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.util.sero;
 
 import java.util.List;
@@ -157,12 +156,9 @@ public class ArrayUtils {
      * Returns the value of the bits in the given range. Ranges can extend multiple bytes. No range checking is done.
      * Invalid ranges will result in {@link ArrayIndexOutOfBoundsException}.
      *
-     * @param b
-     *            the array of bytes.
-     * @param offset
-     *            the location at which to begin
-     * @param length
-     *            the number of bits to include in the value.
+     * @param b      the array of bytes.
+     * @param offset the location at which to begin
+     * @param length the number of bits to include in the value.
      * @return the value of the bits in the range.
      */
     public static long bitRangeValueLong(final byte[] b, final int offset, final int length) {
@@ -184,7 +180,7 @@ public class ArrayUtils {
         return result;
     }
 
-    private static int[] bitFromMask = { 0xff, 0x7f, 0x3f, 0x1f, 0xf, 0x7, 0x3, 0x1 };
+    private static int[] bitFromMask = {0xff, 0x7f, 0x3f, 0x1f, 0xf, 0x7, 0x3, 0x1};
 
     public static int bitRangeValue(final byte[] b, final int offset, final int length) {
         return (int) bitRangeValueLong(b, offset, length);

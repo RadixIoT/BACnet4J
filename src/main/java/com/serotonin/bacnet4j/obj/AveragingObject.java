@@ -1,3 +1,30 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
 import java.util.LinkedList;
@@ -107,7 +134,7 @@ public class AveragingObject extends BACnetObject {
     }
 
     @Override
-    protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
+    protected synchronized void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
             final Encodable newValue) {
         if (pid.equals(PropertyIdentifier.attemptedSamples)) {
             reset();
@@ -148,9 +175,9 @@ public class AveragingObject extends BACnetObject {
         final UnsignedInteger windowInterval = get(PropertyIdentifier.windowInterval);
         final UnsignedInteger windowSamples = get(PropertyIdentifier.windowSamples);
 
-        final long periodMillis = windowInterval.intValue() * 1000 / windowSamples.intValue();
+        final long periodMillis = windowInterval.intValue() * 1000L / windowSamples.intValue();
 
-        pollingFuture = getLocalDevice().scheduleAtFixedRate(() -> doPoll(), 0, periodMillis, TimeUnit.MILLISECONDS);
+        pollingFuture = getLocalDevice().scheduleAtFixedRate(this::doPoll, 1, periodMillis, TimeUnit.MILLISECONDS);
     }
 
     private synchronized void doPoll() {
@@ -168,8 +195,7 @@ public class AveragingObject extends BACnetObject {
         Sample newSample = null;
         if (value instanceof ErrorClassAndCode) {
             LOG.warn("Error returned for value from poll: {}", value);
-        } else if (!(value instanceof Boolean || value instanceof SignedInteger || value instanceof UnsignedInteger
-                || value instanceof Enumerated || value instanceof Real)) {
+        } else if (!(value instanceof Boolean || value instanceof SignedInteger || value instanceof UnsignedInteger || value instanceof Enumerated || value instanceof Real)) {
             LOG.warn("Unsupported data type returned from poll: {}", value);
         } else {
             newSample = new Sample((Primitive) value, new DateTime(getLocalDevice().getClock().millis()));
@@ -235,24 +261,16 @@ public class AveragingObject extends BACnetObject {
         LOG.debug("Finished poll");
     }
 
-    static class Sample {
-        final Primitive value;
-        final DateTime timestamp;
-
-        public Sample(final Primitive value, final DateTime timestamp) {
-            this.value = value;
-            this.timestamp = timestamp;
-        }
-
+    record Sample(Primitive value, DateTime timestamp) {
         float getValue() {
-            if (value instanceof Boolean)
-                return ((Boolean) value).booleanValue() ? 1 : 0;
-            if (value instanceof SignedInteger)
-                return ((SignedInteger) value).intValue();
-            if (value instanceof UnsignedInteger)
-                return ((UnsignedInteger) value).intValue();
-            if (value instanceof Enumerated)
-                return ((Enumerated) value).intValue();
+            if (value instanceof Boolean v)
+                return v.booleanValue() ? 1 : 0;
+            if (value instanceof SignedInteger v)
+                return v.intValue();
+            if (value instanceof UnsignedInteger v)
+                return v.intValue();
+            if (value instanceof Enumerated v)
+                return v.intValue();
             return ((Real) value).floatValue();
         }
     }

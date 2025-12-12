@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.type.error;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
@@ -39,52 +38,22 @@ abstract public class BaseError extends BaseType {
     public static BaseError createBaseError(final int choice, final ByteQueue queue) throws BACnetException {
         try {
             queue.mark();
-            switch (choice) {
-            case 8:
-            case 9:
-                return new ChangeListError(queue);
-            case 10:
-                return new CreateObjectError(queue);
-            case 16:
-                return new WritePropertyMultipleError(queue);
-            case 18:
-                return new ConfirmedPrivateTransferError(queue);
-            case 22:
-                return new VTCloseError(queue);
-            case 30:
-                return new SubscribeCovPropertyMultipleError(queue);
-            case 0:
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-            case 5:
-            case 6:
-            case 7:
-            case 11:
-            case 12:
-            case 14:
-            case 15:
-            case 17:
-            case 19:
-            case 20:
-            case 21:
-            case 23:
-            case 26:
-            case 27:
-            case 28:
-            case 29:
-            case 31:
-            case 127:
-                return new ErrorClassAndCode(queue);
-            default:
-                throw new BACnetException("Could not map error choice to class: " + choice);
-            }
+            return switch (choice) {
+                case 8, 9 -> new ChangeListError(queue);
+                case 10 -> new CreateObjectError(queue);
+                case 16 -> new WritePropertyMultipleError(queue);
+                case 18 -> new ConfirmedPrivateTransferError(queue);
+                case 22 -> new VTCloseError(queue);
+                case 30 -> new SubscribeCovPropertyMultipleError(queue);
+                case 0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 14, 15, 17, 19, 20, 21, 23, 26, 27, 28, 29, 31, 127 ->
+                        new ErrorClassAndCode(queue);
+                default -> throw new BACnetException("Could not map error choice to class: " + choice);
+            };
         } catch (final BACnetErrorException e) {
             // Some devices do not send a properly formatted error. In case of error, try just parsing as a BaseError.
             if (e.getBacnetError().getError().getErrorClassAndCode().getErrorClass().isOneOf(ErrorClass.property)
                     && e.getBacnetError().getError().getErrorClassAndCode().getErrorCode()
-                            .isOneOf(ErrorCode.missingRequiredParameter)) {
+                    .isOneOf(ErrorCode.missingRequiredParameter)) {
                 queue.reset();
                 return new ErrorClassAndCode(queue);
             }

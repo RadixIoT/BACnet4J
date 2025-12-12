@@ -1,16 +1,41 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
+import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
-
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
-import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkUtils;
 import com.serotonin.bacnet4j.service.confirmed.SubscribeCOVRequest;
@@ -50,8 +75,6 @@ import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class LifeSafetyZoneObjectTest extends AbstractTest {
-    static final Logger LOG = LoggerFactory.getLogger(LifeSafetyZoneObjectTest.class);
-
     private LifeSafetyZoneObject lsz;
     private NotificationClassObject nc;
     private EventNotifListener listener;
@@ -80,8 +103,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
                 new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        quiesce();
+        assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
         assertEquals(LifeSafetyState.quiet, lsz.get(PropertyIdentifier.presentValue));
@@ -89,61 +112,61 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         // Do a state change. Write a value to indicate a change of state failure. After 5s the alarm will be raised.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.tamper);
-        clock.plus(4500, TimeUnit.MILLISECONDS, 4500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(4500);
+        quiesce();
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 80);
-        assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(new StatusFlags(true, false, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
+        clock.plusMillis(600);
+        awaitEquals(EventState.lifeSafetyAlarm, () -> lsz.readProperty(PropertyIdentifier.eventState));
+        awaitEquals(new StatusFlags(true, false, false, false), () -> lsz.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.lifeSafetyAlarm.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(100), notif.get("priority"));
-        assertEquals(EventType.changeOfLifeSafety, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.lifeSafetyAlarm, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(new ChangeOfLifeSafetyNotif(LifeSafetyState.tamper, LifeSafetyMode.on,
-                        new StatusFlags(true, false, false, false), LifeSafetyOperation.none)),
-                notif.get("eventValues"));
+        awaitEquals(1, listener::getNotifCount);
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(lsz.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.lifeSafetyAlarm.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(100), notif.priority());
+        assertEquals(EventType.changeOfLifeSafety, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.lifeSafetyAlarm, notif.toState());
+        assertEquals(new NotificationParameters(new ChangeOfLifeSafetyNotif(LifeSafetyState.tamper, LifeSafetyMode.on,
+                new StatusFlags(true, false, false, false), LifeSafetyOperation.none)), notif.eventValues());
 
         // Return to normal. After 12s the notification will be sent.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.quiet);
-        clock.plus(11500, TimeUnit.MILLISECONDS, 11500, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState)); // Still lifeSafetyAlarm at this point.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(new StatusFlags(false, false, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
+        clock.plusMillis(11500);
+        quiesce();
+        assertEquals(EventState.lifeSafetyAlarm,
+                lsz.readProperty(PropertyIdentifier.eventState)); // Still lifeSafetyAlarm at this point.
+        clock.plusMillis(600);
+        awaitEquals(EventState.normal, () -> lsz.readProperty(PropertyIdentifier.eventState));
+        awaitEquals(new StatusFlags(false, false, false, false),
+                () -> lsz.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(200), notif.get("priority"));
-        assertEquals(EventType.changeOfLifeSafety, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.lifeSafetyAlarm, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(new ChangeOfLifeSafetyNotif(LifeSafetyState.quiet, LifeSafetyMode.on,
-                        new StatusFlags(false, false, false, false), LifeSafetyOperation.none)),
-                notif.get("eventValues"));
+        awaitEquals(1, listener::getNotifCount);
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(lsz.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(200), notif.priority());
+        assertEquals(EventType.changeOfLifeSafety, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.lifeSafetyAlarm, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
+        assertEquals(new NotificationParameters(new ChangeOfLifeSafetyNotif(LifeSafetyState.quiet, LifeSafetyMode.on,
+                new StatusFlags(false, false, false, false), LifeSafetyOperation.none)), notif.eventValues());
     }
 
     /**
@@ -157,21 +180,24 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         // Do a state change. Write a value to indicate a change of state failure. After 5s the alarm will be raised.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
-        clock.plus(4999, TimeUnit.MILLISECONDS, 4999, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(4999);
+        quiesce();
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        clock.plus(1, TimeUnit.MILLISECONDS, 1, TimeUnit.MILLISECONDS, 0, 80);
-        assertEquals(EventState.offnormal, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
-        listener.notifs.clear();
+        clock.plusMillis(1);
+        awaitEquals(EventState.offnormal, () -> lsz.readProperty(PropertyIdentifier.eventState));
+        awaitEquals(1, listener::getNotifCount);
+        listener.clearNotifs();
 
         // Return to normal. After 12s the notification will be sent.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.quiet);
-        clock.plus(11999, TimeUnit.MILLISECONDS, 11999, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal, lsz.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
-        clock.plus(1, TimeUnit.MILLISECONDS, 1, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(11999);
+        quiesce();
+        assertEquals(EventState.offnormal,
+                lsz.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
+        clock.plusMillis(1);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
-        listener.notifs.clear();
+        listener.clearNotifs();
     }
 
     /**
@@ -187,15 +213,15 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         // Write a value to indicate offnormal and advance the clock to just before the time delay.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
-        clock.plus(4999, TimeUnit.MILLISECONDS, 4999, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(4999);
+        quiesce();
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Change the mode. Notification should be sent immediately.
         lsz.writePropertyInternal(PropertyIdentifier.mode, LifeSafetyMode.fast);
-        Thread.sleep(40);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.offnormal, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
     }
 
     /**
@@ -210,22 +236,23 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
         // Write a value to indicate lifeSafetyAlarm and advance the clock to past the the time delay.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testSupervisory);
-        clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
-        listener.notifs.clear();
+        clock.plusMillis(5000);
+        awaitEquals(EventState.lifeSafetyAlarm, () -> lsz.readProperty(PropertyIdentifier.eventState));
+        awaitEquals(1, listener::getNotifCount);
+        listener.clearNotifs();
 
         // Set the same lifeSafetyAlarm and advance the clock to past the the time delay. No notification should be sent.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testSupervisory);
-        clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(5000);
+        quiesce();
         assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Change to a different lifeSafetyAlarm and advance the clock to past the the time delay.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.tamper);
-        clock.plus(5000, TimeUnit.MILLISECONDS, 5000, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.lifeSafetyAlarm, lsz.readProperty(PropertyIdentifier.eventState));
-        assertEquals(1, listener.notifs.size());
+        clock.plusMillis(5000);
+        awaitEquals(EventState.lifeSafetyAlarm, () -> lsz.readProperty(PropertyIdentifier.eventState));
+        awaitEquals(1, listener::getNotifCount);
     }
 
     @SuppressWarnings("unchecked")
@@ -238,8 +265,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
                 new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
 
         // Ensure that initializing the intrinsic reporting didn't fire any notifications.
-        Thread.sleep(40);
-        assertEquals(0, listener.notifs.size());
+        quiesce();
+        assertEquals(0, listener.getNotifCount());
 
         // Check the starting values.
         assertEquals(LifeSafetyState.quiet, lsz.get(PropertyIdentifier.presentValue));
@@ -248,33 +275,33 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         //
         // Write a fault value.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.faultAlarm);
-        Thread.sleep(40);
+
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.fault.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(5), notif.get("priority"));
-        assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.fault, notif.get("toState"));
-        ChangeOfReliabilityNotif cor = ((NotificationParameters) notif.get("eventValues")).getParameter();
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(lsz.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.fault.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(5), notif.priority());
+        assertEquals(EventType.changeOfReliability, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.fault, notif.toState());
+        ChangeOfReliabilityNotif cor = ((NotificationParameters) notif.eventValues()).getParameter();
         assertEquals(Reliability.multiStateFault, cor.getReliability());
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(0).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.faultAlarm,
                 LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
-        assertEquals(null, cor.getPropertyValues().get(0).getPriority());
+        assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.on), cor.getPropertyValues().get(1));
         assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
                 cor.getPropertyValues().get(2));
@@ -282,33 +309,32 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         //
         // Write a different mode.
         lsz.writePropertyInternal(PropertyIdentifier.mode, LifeSafetyMode.fast);
-        Thread.sleep(40);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.fault.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(5), notif.get("priority"));
-        assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.fault, notif.get("fromState"));
-        assertEquals(EventState.fault, notif.get("toState"));
-        cor = ((NotificationParameters) notif.get("eventValues")).getParameter();
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(lsz.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.fault.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(5), notif.priority());
+        assertEquals(EventType.changeOfReliability, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.fault, notif.fromState());
+        assertEquals(EventState.fault, notif.toState());
+        cor = ((NotificationParameters) notif.eventValues()).getParameter();
         assertEquals(Reliability.multiStateFault, cor.getReliability());
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(0).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.faultAlarm,
                 LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
-        assertEquals(null, cor.getPropertyValues().get(0).getPriority());
+        assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.fast), cor.getPropertyValues().get(1));
         assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
                 cor.getPropertyValues().get(2));
@@ -316,41 +342,40 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         //
         // Write the same fault state.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.faultAlarm);
-        Thread.sleep(40);
+        quiesce();
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         //
         // Write a different fault state.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.fault);
-        Thread.sleep(40);
+        awaitEquals(1, listener::getNotifCount);
         assertEquals(EventState.fault, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(true, true, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.fault.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(5), notif.get("priority"));
-        assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.fault, notif.get("fromState"));
-        assertEquals(EventState.fault, notif.get("toState"));
-        cor = ((NotificationParameters) notif.get("eventValues")).getParameter();
+        notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(lsz.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.fault.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(5), notif.priority());
+        assertEquals(EventType.changeOfReliability, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.fault, notif.fromState());
+        assertEquals(EventState.fault, notif.toState());
+        cor = ((NotificationParameters) notif.eventValues()).getParameter();
         assertEquals(Reliability.multiStateFault, cor.getReliability());
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(0).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.fault,
                 LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
-        assertEquals(null, cor.getPropertyValues().get(0).getPriority());
+        assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.fast), cor.getPropertyValues().get(1));
         assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
                 cor.getPropertyValues().get(2));
@@ -360,174 +385,170 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         // 1) change of reliability from fault to normal
         // 2) change of life safety from normal to normal for the previous change in mode.
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.active);
-        Thread.sleep(40);
+        awaitEquals(2, listener::getNotifCount);
         assertEquals(EventState.normal, lsz.readProperty(PropertyIdentifier.eventState));
         assertEquals(new StatusFlags(false, false, false, false), lsz.readProperty(PropertyIdentifier.statusFlags));
-        assertEquals(2, listener.notifs.size());
 
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.fault.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(200), notif.get("priority"));
-        assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.fault, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
-        cor = ((NotificationParameters) notif.get("eventValues")).getParameter();
+        notif = listener.removeNotif(0);
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(lsz.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.fault.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(200), notif.priority());
+        assertEquals(EventType.changeOfReliability, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.fault, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
+        cor = ((NotificationParameters) notif.eventValues()).getParameter();
         assertEquals(Reliability.noFaultDetected, cor.getReliability());
         assertEquals(new StatusFlags(false, false, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(0).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(0).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(0).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.active,
                 LifeSafetyState.forId(((Enumerated) cor.getPropertyValues().get(0).getValue()).intValue()));
-        assertEquals(null, cor.getPropertyValues().get(0).getPriority());
+        assertNull(cor.getPropertyValues().get(0).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.fast), cor.getPropertyValues().get(1));
         assertEquals(new PropertyValue(PropertyIdentifier.operationExpected, LifeSafetyOperation.none),
                 cor.getPropertyValues().get(2));
 
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(lsz.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.fault.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(200), notif.get("priority"));
-        assertEquals(EventType.changeOfLifeSafety, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(new ChangeOfLifeSafetyNotif(LifeSafetyState.active, LifeSafetyMode.fast,
-                        new StatusFlags(false, false, false, false), LifeSafetyOperation.none)),
-                notif.get("eventValues"));
+        notif = listener.removeNotif(0);
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(lsz.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) lsz.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.fault.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(200), notif.priority());
+        assertEquals(EventType.changeOfLifeSafety, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
+        assertEquals(new NotificationParameters(new ChangeOfLifeSafetyNotif(LifeSafetyState.active, LifeSafetyMode.fast,
+                new StatusFlags(false, false, false, false), LifeSafetyOperation.none)), notif.eventValues());
     }
 
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReporting() throws Exception {
-        final DeviceObjectPropertyReference pvRef = new DeviceObjectPropertyReference(1, lsz.getId(),
-                PropertyIdentifier.presentValue);
-        final DeviceObjectPropertyReference modeRef = new DeviceObjectPropertyReference(1, lsz.getId(),
-                PropertyIdentifier.mode);
+        final DeviceObjectPropertyReference pvRef =
+                new DeviceObjectPropertyReference(1, lsz.getId(), PropertyIdentifier.presentValue);
+        final DeviceObjectPropertyReference modeRef =
+                new DeviceObjectPropertyReference(1, lsz.getId(), PropertyIdentifier.mode);
         final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", pvRef, NotifyType.alarm,
                 new EventParameter(new ChangeOfLifeSafety(new UnsignedInteger(30),
                         new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory), //
                         new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), //
-                        modeRef)),
-                new EventTransitionBits(true, true, true), 17, 1000, new UnsignedInteger(50), //
-                new FaultParameter(new FaultLifeSafety(
-                        new BACnetArray<>(LifeSafetyState.fault, LifeSafetyState.faultAlarm), modeRef)));
+                        modeRef)), new EventTransitionBits(true, true, true), 17, 1000, new UnsignedInteger(50), //
+                new FaultParameter(
+                        new FaultLifeSafety(new BACnetArray<>(LifeSafetyState.fault, LifeSafetyState.faultAlarm),
+                                modeRef)));
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        Thread.sleep(40);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         //
         // Go to alarm value
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.testAlarm);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until just before the time delay.
-        clock.plus(29500, TimeUnit.MILLISECONDS, 29500, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(29500);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         // Wait until after the time delay.
-        clock.plus(600, TimeUnit.MILLISECONDS, 600, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.offnormal, ee.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(600);
+        awaitEquals(EventState.offnormal, () -> ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.offnormal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(100), notif.get("priority"));
-        assertEquals(EventType.changeOfLifeSafety, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.offnormal, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(new ChangeOfLifeSafetyNotif(LifeSafetyState.testAlarm, LifeSafetyMode.on,
-                        new StatusFlags(false, false, false, false), LifeSafetyOperation.none)),
-                notif.get("eventValues"));
+        awaitEquals(1, listener::getNotifCount);
+        EventNotifListener.Notif notif = listener.removeNotif(0);
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.offnormal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(100), notif.priority());
+        assertEquals(EventType.changeOfLifeSafety, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.offnormal, notif.toState());
+        assertEquals(new NotificationParameters(
+                new ChangeOfLifeSafetyNotif(LifeSafetyState.testAlarm, LifeSafetyMode.on,
+                        new StatusFlags(false, false, false, false), LifeSafetyOperation.none)), notif.eventValues());
 
         //
         // Change mode. Notification is sent immediately.
         lsz.writePropertyInternal(PropertyIdentifier.mode, LifeSafetyMode.disarmed);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.offnormal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(100), notif.get("priority"));
-        assertEquals(EventType.changeOfLifeSafety, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.offnormal, notif.get("fromState"));
-        assertEquals(EventState.offnormal, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(
-                        new ChangeOfLifeSafetyNotif(LifeSafetyState.testAlarm, LifeSafetyMode.disarmed,
-                                new StatusFlags(false, false, false, false), LifeSafetyOperation.none)),
-                notif.get("eventValues"));
+        awaitEquals(1, listener::getNotifCount);
+        notif = listener.removeNotif(0);
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.offnormal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(100), notif.priority());
+        assertEquals(EventType.changeOfLifeSafety, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.offnormal, notif.fromState());
+        assertEquals(EventState.offnormal, notif.toState());
+        assertEquals(new NotificationParameters(
+                new ChangeOfLifeSafetyNotif(LifeSafetyState.testAlarm, LifeSafetyMode.disarmed,
+                        new StatusFlags(false, false, false, false), LifeSafetyOperation.none)), notif.eventValues());
 
         //
         // Go to fault value
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.fault);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
+        clock.plusMillis(1100);
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.fault.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(5), notif.get("priority"));
-        assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.offnormal, notif.get("fromState"));
-        assertEquals(EventState.fault, notif.get("toState"));
-        ChangeOfReliabilityNotif cor = ((NotificationParameters) notif.get("eventValues")).getParameter();
+        awaitEquals(1, listener::getNotifCount);
+        notif = listener.removeNotif(0);
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.fault.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(5), notif.priority());
+        assertEquals(EventType.changeOfReliability, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.offnormal, notif.fromState());
+        assertEquals(EventState.fault, notif.toState());
+        ChangeOfReliabilityNotif cor = ((NotificationParameters) notif.eventValues()).getParameter();
         assertEquals(Reliability.multiStateFault, cor.getReliability());
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(4, cor.getPropertyValues().size());
         assertEquals(new PropertyValue(PropertyIdentifier.objectPropertyReference, pvRef),
                 cor.getPropertyValues().get(0));
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(1).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(1).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(1).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.fault.intValue(),
                 ((Enumerated) cor.getPropertyValues().get(1).getValue()).intValue());
-        assertEquals(null, cor.getPropertyValues().get(1).getPriority());
+        assertNull(cor.getPropertyValues().get(1).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.reliability, Reliability.noFaultDetected),
                 cor.getPropertyValues().get(2));
         assertEquals(new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
@@ -537,36 +558,36 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         // Return to normal
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.blocked);
         // Allow the EE to poll
-        clock.plus(1100, TimeUnit.MILLISECONDS, 1100, TimeUnit.MILLISECONDS, 0, 40);
-        assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
+        clock.plusMillis(1100);
+        awaitEquals(EventState.normal, () -> ee.readProperty(PropertyIdentifier.eventState));
 
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(ee.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.normal.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(17), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(200), notif.get("priority"));
-        assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.alarm, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.fault, notif.get("fromState"));
-        assertEquals(EventState.normal, notif.get("toState"));
-        cor = ((NotificationParameters) notif.get("eventValues")).getParameter();
+        awaitEquals(1, listener::getNotifCount);
+        notif = listener.removeNotif(0);
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(ee.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) ee.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.normal.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(17), notif.notificationClass());
+        assertEquals(new UnsignedInteger(200), notif.priority());
+        assertEquals(EventType.changeOfReliability, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.alarm, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.fault, notif.fromState());
+        assertEquals(EventState.normal, notif.toState());
+        cor = ((NotificationParameters) notif.eventValues()).getParameter();
         assertEquals(Reliability.noFaultDetected, cor.getReliability());
         assertEquals(new StatusFlags(false, false, false, false), cor.getStatusFlags());
         assertEquals(4, cor.getPropertyValues().size());
         assertEquals(new PropertyValue(PropertyIdentifier.objectPropertyReference, pvRef),
                 cor.getPropertyValues().get(0));
         assertEquals(PropertyIdentifier.presentValue, cor.getPropertyValues().get(1).getPropertyIdentifier());
-        assertEquals(null, cor.getPropertyValues().get(1).getPropertyArrayIndex());
+        assertNull(cor.getPropertyValues().get(1).getPropertyArrayIndex());
         assertEquals(LifeSafetyState.blocked.intValue(),
                 ((Enumerated) cor.getPropertyValues().get(1).getValue()).intValue());
-        assertEquals(null, cor.getPropertyValues().get(1).getPriority());
+        assertNull(cor.getPropertyValues().get(1).getPriority());
         assertEquals(new PropertyValue(PropertyIdentifier.reliability, Reliability.noFaultDetected),
                 cor.getPropertyValues().get(2));
         assertEquals(new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)),
@@ -584,19 +605,17 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         //
         // Subscribe for notifications. Doing so should cause an initial notification to be sent.
         d2.send(rd1,
-                new SubscribeCOVRequest(new UnsignedInteger(987), lsz.getId(), Boolean.FALSE, new UnsignedInteger(600)))
+                        new SubscribeCOVRequest(new UnsignedInteger(987), lsz.getId(), Boolean.FALSE, new UnsignedInteger(600)))
                 .get();
-        Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(987), notif.get("subscriberProcessIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(lsz.getId(), notif.get("monitoredObjectIdentifier"));
-        assertEquals(new UnsignedInteger(600), notif.get("timeRemaining"));
-        assertEquals(
-                new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, LifeSafetyState.quiet),
+        awaitEquals(1, listener::getNotifCount);
+        CovNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(lsz.getId(), notif.monitoredObjectIdentifier());
+        assertEquals(new UnsignedInteger(600), notif.timeRemaining());
+        assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, LifeSafetyState.quiet),
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
-                notif.get("listOfValues"));
+                notif.listOfValues());
 
         //
         // Change the present value to send another notification. Advance the clock to test time remaining
@@ -604,17 +623,15 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         clock.plusMinutes(2);
 
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.blocked);
-        Thread.sleep(40);
-        assertEquals(1, listener.notifs.size());
-        notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(987), notif.get("subscriberProcessIdentifier"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(lsz.getId(), notif.get("monitoredObjectIdentifier"));
-        assertEquals(new UnsignedInteger(480), notif.get("timeRemaining"));
-        assertEquals(
-                new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, LifeSafetyState.blocked),
+        awaitEquals(1, listener::getNotifCount);
+        notif = listener.removeNotif(0);
+        assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(lsz.getId(), notif.monitoredObjectIdentifier());
+        assertEquals(new UnsignedInteger(480), notif.timeRemaining());
+        assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, LifeSafetyState.blocked),
                         new PropertyValue(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false))),
-                notif.get("listOfValues"));
+                notif.listOfValues());
     }
 
     @Test
@@ -627,43 +644,35 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(new ValueSource(TestNetworkUtils.toAddress(10)), lsz.get(PropertyIdentifier.valueSource));
 
         // Write a mode that is not accepted
-        TestUtils.assertBACnetServiceException(
-                () -> lsz.writeProperty(new ValueSource(TestNetworkUtils.toAddress(10)),
-                        new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.manned)),
-                ErrorClass.property, ErrorCode.valueOutOfRange);
+        assertBACnetServiceException(() -> lsz.writeProperty(new ValueSource(TestNetworkUtils.toAddress(10)),
+                        new PropertyValue(PropertyIdentifier.mode, LifeSafetyMode.manned)), ErrorClass.property,
+                ErrorCode.valueOutOfRange);
 
         // Write a good memberOf list
-        lsz.writeProperty(null,
-                new PropertyValue(PropertyIdentifier.memberOf,
-                        new SequenceOf<>(new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
-                                new ObjectIdentifier(ObjectType.lifeSafetyZone, 0)))));
+        lsz.writeProperty(null, new PropertyValue(PropertyIdentifier.memberOf, new SequenceOf<>(
+                new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
+                        new ObjectIdentifier(ObjectType.lifeSafetyZone, 0)))));
 
         // Write a bad memberOf list
-        TestUtils.assertBACnetServiceException(
-                () -> lsz.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.memberOf,
-                                new SequenceOf<>(new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
-                                        new ObjectIdentifier(ObjectType.lifeSafetyPoint, 0))))),
-                ErrorClass.property, ErrorCode.unsupportedObjectType);
+        assertBACnetServiceException(() -> lsz.writeProperty(null, new PropertyValue(PropertyIdentifier.memberOf,
+                        new SequenceOf<>(new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
+                                new ObjectIdentifier(ObjectType.lifeSafetyPoint, 0))))), ErrorClass.property,
+                ErrorCode.unsupportedObjectType);
 
         // Write a good zoneMembers list
-        lsz.writeProperty(null,
-                new PropertyValue(PropertyIdentifier.zoneMembers,
-                        new SequenceOf<>( //
-                                new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
-                                        new ObjectIdentifier(ObjectType.lifeSafetyPoint, 0)), //
-                                new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
-                                        new ObjectIdentifier(ObjectType.lifeSafetyZone, 0)))));
+        lsz.writeProperty(null, new PropertyValue(PropertyIdentifier.zoneMembers, new SequenceOf<>( //
+                new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
+                        new ObjectIdentifier(ObjectType.lifeSafetyPoint, 0)), //
+                new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
+                        new ObjectIdentifier(ObjectType.lifeSafetyZone, 0)))));
 
         // Write a bad memberOf list
-        TestUtils.assertBACnetServiceException(
-                () -> lsz.writeProperty(null,
-                        new PropertyValue(PropertyIdentifier.memberOf,
-                                new SequenceOf<>( //
-                                        new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
-                                                new ObjectIdentifier(ObjectType.group, 0)), //
-                                        new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
-                                                new ObjectIdentifier(ObjectType.loop, 0))))),
-                ErrorClass.property, ErrorCode.unsupportedObjectType);
+        assertBACnetServiceException(
+                () -> lsz.writeProperty(null, new PropertyValue(PropertyIdentifier.memberOf, new SequenceOf<>( //
+                        new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
+                                new ObjectIdentifier(ObjectType.group, 0)), //
+                        new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
+                                new ObjectIdentifier(ObjectType.loop, 0))))), ErrorClass.property,
+                ErrorCode.unsupportedObjectType);
     }
 }

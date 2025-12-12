@@ -1,9 +1,37 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j;
 
 import static com.serotonin.bacnet4j.TestUtils.assertListEqualsIgnoreOrder;
+import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
 import static com.serotonin.bacnet4j.TestUtils.toList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,8 +39,6 @@ import java.util.List;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
@@ -51,7 +77,6 @@ import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
-import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 
 /**
  * Primarily this is a test of the DefaultTransport, but also tests aspects of Network and LocalDevice.
@@ -59,8 +84,6 @@ import com.serotonin.bacnet4j.util.sero.ThreadUtils;
  * @author Matthew
  */
 public class MessagingTest {
-    static final Logger LOG = LoggerFactory.getLogger(MessagingTest.class);
-
     private TestNetworkMap map;
 
     @Before
@@ -82,19 +105,18 @@ public class MessagingTest {
         });
         d1.initialize();
 
-        final Address a2 = new NetworkSourceAddress(Address.LOCAL_NETWORK, new byte[] { 2 });
+        final Address a2 = new NetworkSourceAddress(Address.LOCAL_NETWORK, new byte[] {2});
         final TestNetwork network2 = new TestNetwork(map, a2, 200);
         final LocalDevice d2 = new LocalDevice(2, new DefaultTransport(network2));
         d2.initialize();
 
         d1.sendLocalBroadcast(new WhoIsRequest());
 
-        ThreadUtils.sleep(1000);
+        awaitTrue(() -> o.getValue() != null);
 
         d1.terminate();
         d2.terminate();
 
-        assertNotNull(o.getValue());
         assertEquals(a2, o.getValue().getAddress());
     }
 
@@ -105,8 +127,8 @@ public class MessagingTest {
         d1.initialize();
 
         // Create the second local device.
-        final LocalDevice d2 = new LocalDevice(2,
-                new DefaultTransport(new TestNetwork(map, new Address(new byte[] { 2 }), 200)));
+        final LocalDevice d2 =
+                new LocalDevice(2, new DefaultTransport(new TestNetwork(map, new Address(new byte[] {2}), 200)));
         createAnalogValue(d2, 0);
         d2.initialize();
 
@@ -135,16 +157,13 @@ public class MessagingTest {
         assertEquals(1, readResult.getListOfResults().getCount());
         final Result result = readResult.getListOfResults().getBase1(1);
         assertEquals(PropertyIdentifier.objectList, result.getPropertyIdentifier());
-        @SuppressWarnings("unchecked")
-        final SequenceOf<ObjectIdentifier> idList = (SequenceOf<ObjectIdentifier>) result.getReadResult().getDatum();
+        final SequenceOf<ObjectIdentifier> idList = result.getReadResult().getDatum();
         assertEquals(2, idList.getCount());
         assertEquals(d2.getId(), idList.getBase1(1));
         assertEquals(new ObjectIdentifier(ObjectType.analogValue, 0), idList.getBase1(2));
 
         // Send the same request, but with a null consumer.
         d1.send(r2, new ReadPropertyMultipleRequest(new SequenceOf<>(specs)), null);
-        // Give the request a moment to complete.
-        ThreadUtils.sleep(40);
 
         d1.terminate();
         d2.terminate();
@@ -186,16 +205,12 @@ public class MessagingTest {
         assertEquals(1, readResult.getListOfResults().getCount());
         final Result result = readResult.getListOfResults().getBase1(1);
         assertEquals(PropertyIdentifier.objectList, result.getPropertyIdentifier());
-        @SuppressWarnings("unchecked")
-        final SequenceOf<ObjectIdentifier> idList = (SequenceOf<ObjectIdentifier>) result.getReadResult().getDatum();
+        final SequenceOf<ObjectIdentifier> idList = result.getReadResult().getDatum();
         assertEquals(1001, idList.getCount());
         assertEquals(d2.getId(), idList.getBase1(1));
-        //        Assert.assertEquals(av0, idList.get(2));
 
         // Send the same request, but with a null consumer.
         d1.send(r2, new ReadPropertyMultipleRequest(new SequenceOf<>(specs)), null);
-        // Give the request a moment to complete.
-        ThreadUtils.sleep(200);
 
         d1.terminate();
         d2.terminate();
@@ -231,14 +246,12 @@ public class MessagingTest {
         final ReadPropertyAck ack = future.get();
 
         assertEquals(av0, ack.getEventObjectIdentifier());
-        assertEquals(null, ack.getPropertyArrayIndex());
+        assertNull(ack.getPropertyArrayIndex());
         assertEquals(PropertyIdentifier.presentValue, ack.getPropertyIdentifier());
         assertEquals(new Real(3.14F), ack.getValue());
 
         // Send the same request, but with a null consumer.
         d1.send(r2, new ReadPropertyRequest(av0, PropertyIdentifier.presentValue), null);
-        // Give the request a moment to complete.
-        ThreadUtils.sleep(200);
 
         d1.terminate();
         d2.terminate();
@@ -281,16 +294,14 @@ public class MessagingTest {
 
         // Send the same request, but with a null consumer.
         d1.send(r2, new WritePropertyMultipleRequest(new SequenceOf<>(specs)), null);
-        // Give the request a moment to complete.
-        ThreadUtils.sleep(200);
 
         // Read one of the just-written values and verify.
         final ReadPropertyAck ack = d1.send(r2,
-                new ReadPropertyRequest(new ObjectIdentifier(ObjectType.analogValue, 567), PropertyIdentifier.units))
+                        new ReadPropertyRequest(new ObjectIdentifier(ObjectType.analogValue, 567), PropertyIdentifier.units))
                 .get();
 
         assertEquals(new ObjectIdentifier(ObjectType.analogValue, 567), ack.getEventObjectIdentifier());
-        assertEquals(null, ack.getPropertyArrayIndex());
+        assertNull(ack.getPropertyArrayIndex());
         assertEquals(PropertyIdentifier.units, ack.getPropertyIdentifier());
         assertEquals(EngineeringUnits.btus, ack.getValue());
 
@@ -311,11 +322,10 @@ public class MessagingTest {
 
         // Read properties from d2
         final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>( //
-                new ReadAccessSpecification(new ObjectIdentifier(ObjectType.analogValue, 0),
-                        new SequenceOf<>( //
-                                new PropertyReference(PropertyIdentifier.presentValue), //
-                                new PropertyReference(PropertyIdentifier.units), //
-                                new PropertyReference(PropertyIdentifier.statusFlags))));
+                new ReadAccessSpecification(new ObjectIdentifier(ObjectType.analogValue, 0), new SequenceOf<>( //
+                        new PropertyReference(PropertyIdentifier.presentValue), //
+                        new PropertyReference(PropertyIdentifier.units), //
+                        new PropertyReference(PropertyIdentifier.statusFlags))));
         final ReadPropertyMultipleAck ack = d1.send(rd2, new ReadPropertyMultipleRequest(listOfReadAccessSpecs)).get();
 
         assertEquals(1, ack.getListOfReadAccessResults().getCount());
@@ -349,11 +359,10 @@ public class MessagingTest {
 
         // Read properties from d2 that don't exist.
         final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>( //
-                new ReadAccessSpecification(new ObjectIdentifier(ObjectType.analogValue, 0),
-                        new SequenceOf<>( //
-                                new PropertyReference(PropertyIdentifier.presentValue), //
-                                new PropertyReference(PropertyIdentifier.units), //
-                                new PropertyReference(PropertyIdentifier.statusFlags))));
+                new ReadAccessSpecification(new ObjectIdentifier(ObjectType.analogValue, 0), new SequenceOf<>( //
+                        new PropertyReference(PropertyIdentifier.presentValue), //
+                        new PropertyReference(PropertyIdentifier.units), //
+                        new PropertyReference(PropertyIdentifier.statusFlags))));
         try {
             d1.send(rd2, new ReadPropertyMultipleRequest(listOfReadAccessSpecs)).get();
         } catch (final ErrorAPDUException e) {
@@ -369,8 +378,7 @@ public class MessagingTest {
                 .writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.noUnits) //
                 .writePropertyInternal(PropertyIdentifier.outOfService, Boolean.FALSE) //
                 .writePropertyInternal(PropertyIdentifier.eventState, EventState.normal) //
-                .writePropertyInternal(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false)) //
-        ;
+                .writePropertyInternal(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false));
         localDevice.addObject(bo);
         return bo;
     }

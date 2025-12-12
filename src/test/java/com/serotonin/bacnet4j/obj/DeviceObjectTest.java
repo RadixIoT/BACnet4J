@@ -1,10 +1,39 @@
+/*
+ * ============================================================================
+ * GNU General Public License
+ * ============================================================================
+ *
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * When signing a commercial license with Radix IoT LLC,
+ * the following extension to GPL is made. A special exception to the GPL is
+ * included to allow you to distribute a combined work that includes BAcnet4J
+ * without being obliged to provide the source code for any proprietary components.
+ *
+ * See www.radixiot.com for commercial license options.
+ */
+
 package com.serotonin.bacnet4j.obj;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
+import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
-import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -12,8 +41,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
@@ -55,8 +82,6 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.RequestUtils;
 
 public class DeviceObjectTest extends AbstractTest {
-    static final Logger LOG = LoggerFactory.getLogger(DeviceObjectTest.class);
-
     private AnalogValueObject av0;
 
     @Override
@@ -151,7 +176,7 @@ public class DeviceObjectTest extends AbstractTest {
         //clock.plusSeconds((60 - clock.get(ChronoField.SECOND_OF_MINUTE)) % 60);
         //Advance past 4hrs to make sure there is at least 1 change
         final int minutes = 240; //(1445 - clock.get(ChronoField.MINUTE_OF_DAY)) % 240;
-        clock.plus(minutes, MINUTES, 0);
+        clock.plusMinutes(minutes);
 
         latch.await(1, TimeUnit.SECONDS);
 
@@ -160,13 +185,13 @@ public class DeviceObjectTest extends AbstractTest {
         assertNotNull(d3Time.get());
 
         final int offsetHundredths = TimeZone.getDefault().getOffset(clock.millis()) / 10;
-        final int adjustedHundredths = (d3Time.get().getTime().getHundredthInDay() + offsetHundredths + 8_640_000)
-                % 8_640_000;
+        final int adjustedHundredths =
+                (d3Time.get().getTime().getHundredthInDay() + offsetHundredths + 8_640_000) % 8_640_000;
         assertEquals(new DateTime(d1), d2Time.get());
         assertEquals(d2Time.get().getTime().getHundredthInDay(), adjustedHundredths);
 
-        assertEquals(false, d2Utc.get());
-        assertEquals(true, d3Utc.get());
+        assertFalse(d2Utc.get());
+        assertTrue(d3Utc.get());
     }
 
     @Test
@@ -182,8 +207,7 @@ public class DeviceObjectTest extends AbstractTest {
 
         d1.getRemoteDevice(2).get();
         d1.getRemoteDevice(3).get();
-        assertEquals(
-                new SequenceOf<>(new AddressBinding(d2.getId(), d2.getAllLocalAddresses()[0]),
+        assertEquals(new SequenceOf<>(new AddressBinding(d2.getId(), d2.getAllLocalAddresses()[0]),
                         new AddressBinding(d3.getId(), d3.getAllLocalAddresses()[0])),
                 d1.getDeviceObject().readProperty(PropertyIdentifier.deviceAddressBinding));
     }
@@ -197,28 +221,28 @@ public class DeviceObjectTest extends AbstractTest {
         d1.terminate();
         // Restart the device.
         d1.initialize(RestartReason.warmstart);
-        TimeStamp ts = new TimeStamp(new DateTime(d1));
-        Thread.sleep(40);
+        // The time of device restart is set on device instantiation using the system clock, before the warp clock
+        // is set. So, we can't use the warp clock time here, but have to instead get the property from the device.
+        TimeStamp ts = d1.getDeviceObject().get(PropertyIdentifier.timeOfDeviceRestart);
 
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(UnsignedInteger.ZERO, notif.get("subscriberProcessIdentifier"));
-        assertEquals(d1.getId(), notif.get("monitoredObjectIdentifier"));
-        assertEquals(UnsignedInteger.ZERO, notif.get("timeRemaining"));
-        assertEquals(d1.getId(), notif.get("initiatingDevice"));
-        assertEquals(
-                new SequenceOf<>(new PropertyValue(PropertyIdentifier.systemStatus, DeviceStatus.operational),
+        awaitEquals(1, listener::getNotifCount);
+        CovNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(UnsignedInteger.ZERO, notif.subscriberProcessIdentifier());
+        assertEquals(d1.getId(), notif.monitoredObjectIdentifier());
+        assertEquals(UnsignedInteger.ZERO, notif.timeRemaining());
+        assertEquals(d1.getId(), notif.initiatingDevice());
+        assertEquals(new SequenceOf<>(new PropertyValue(PropertyIdentifier.systemStatus, DeviceStatus.operational),
                         new PropertyValue(PropertyIdentifier.timeOfDeviceRestart, ts),
                         new PropertyValue(PropertyIdentifier.lastRestartReason, RestartReason.warmstart)),
-                notif.get("listOfValues"));
+                notif.listOfValues());
     }
 
     @SuppressWarnings("unchecked")
     @Test
     public void intrinsicAlarms() throws Exception {
         final DeviceObject dev = d1.getDeviceObject();
-        final NotificationClassObject nc = new NotificationClassObject(d1, 7, "nc7", 100, 5, 200,
-                new EventTransitionBits(false, false, false));
+        final NotificationClassObject nc =
+                new NotificationClassObject(d1, 7, "nc7", 100, 5, 200, new EventTransitionBits(false, false, false));
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.FALSE,
                 new EventTransitionBits(true, true, true)));
@@ -228,31 +252,29 @@ public class DeviceObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         dev.supportIntrinsicReporting(7, new EventTransitionBits(true, true, true), NotifyType.event);
-        assertEquals(0, listener.notifs.size());
+        assertEquals(0, listener.getNotifCount());
 
         // Write a fault reliability value.
         dev.writePropertyInternal(PropertyIdentifier.reliability, Reliability.memberFault);
         assertEquals(EventState.fault, dev.readProperty(PropertyIdentifier.eventState));
-        Thread.sleep(100);
         // Ensure that a proper looking event notification was received.
-        assertEquals(1, listener.notifs.size());
-        final Map<String, Object> notif = listener.notifs.remove(0);
-        assertEquals(new UnsignedInteger(10), notif.get("processIdentifier"));
-        assertEquals(rd1.getObjectIdentifier(), notif.get("initiatingDevice"));
-        assertEquals(dev.getId(), notif.get("eventObjectIdentifier"));
-        assertEquals(((BACnetArray<TimeStamp>) dev.readProperty(PropertyIdentifier.eventTimeStamps))
-                .getBase1(EventState.fault.getTransitionIndex()), notif.get("timeStamp"));
-        assertEquals(new UnsignedInteger(7), notif.get("notificationClass"));
-        assertEquals(new UnsignedInteger(5), notif.get("priority"));
-        assertEquals(EventType.changeOfReliability, notif.get("eventType"));
-        assertEquals(null, notif.get("messageText"));
-        assertEquals(NotifyType.event, notif.get("notifyType"));
-        assertEquals(Boolean.FALSE, notif.get("ackRequired"));
-        assertEquals(EventState.normal, notif.get("fromState"));
-        assertEquals(EventState.fault, notif.get("toState"));
-        assertEquals(
-                new NotificationParameters(new ChangeOfReliabilityNotif(Reliability.memberFault,
-                        new StatusFlags(true, true, false, false), new SequenceOf<PropertyValue>())),
-                notif.get("eventValues"));
+        awaitEquals(1, listener::getNotifCount);
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(new UnsignedInteger(10), notif.processIdentifier());
+        assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
+        assertEquals(dev.getId(), notif.eventObjectIdentifier());
+        assertEquals(((BACnetArray<TimeStamp>) dev.readProperty(PropertyIdentifier.eventTimeStamps)).getBase1(
+                EventState.fault.getTransitionIndex()), notif.timeStamp());
+        assertEquals(new UnsignedInteger(7), notif.notificationClass());
+        assertEquals(new UnsignedInteger(5), notif.priority());
+        assertEquals(EventType.changeOfReliability, notif.eventType());
+        assertNull(notif.messageText());
+        assertEquals(NotifyType.event, notif.notifyType());
+        assertEquals(Boolean.FALSE, notif.ackRequired());
+        assertEquals(EventState.normal, notif.fromState());
+        assertEquals(EventState.fault, notif.toState());
+        assertEquals(new NotificationParameters(
+                new ChangeOfReliabilityNotif(Reliability.memberFault, new StatusFlags(true, true, false, false),
+                        new SequenceOf<>())), notif.eventValues());
     }
 }

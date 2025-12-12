@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,24 +12,22 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.transport;
 
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -102,12 +100,13 @@ public class DefaultTransport implements Transport, Runnable {
     // Message queues
     private final Queue<Outgoing> outgoing = new ConcurrentLinkedQueue<>();
     private final Queue<NPDU> incoming = new ConcurrentLinkedQueue<>();
-    private final Queue<DelayedOutgoing> delayedOutgoing = new LinkedList<>();
+    private final Queue<DelayedOutgoing> delayedOutgoing = new ConcurrentLinkedQueue<>();
 
     // Processing
     final UnackedMessages unackedMessages = new UnackedMessages();
     private Thread thread;
     private volatile boolean running = true;
+    private final Object runLock = new Object();
     private final Object pauseLock = new Object();
 
     public DefaultTransport(final Network network) {
@@ -182,7 +181,9 @@ public class DefaultTransport implements Transport, Runnable {
     public void initialize() throws Exception {
         servicesSupported = localDevice.getServicesSupported();
 
-        running = true;
+        synchronized (runLock) {
+            running = true;
+        }
         network.initialize(this);
         thread = new Thread(this, "BACnet4J transport for device " + localDevice.getInstanceNumber());
         thread.start();
@@ -195,25 +196,32 @@ public class DefaultTransport implements Transport, Runnable {
     @Override
     public void terminate() {
         // Stop the processing thread.
-        running = false;
+        LOG.debug("Terminating transport");
+        synchronized (runLock) {
+            running = false;
+        }
         ThreadUtils.notifySync(pauseLock);
         if (thread != null)
             ThreadUtils.join(thread);
 
         // Cancel any queued outgoing messages.
         for (final Outgoing og : outgoing) {
-            if (og instanceof OutgoingConfirmed) {
-                final OutgoingConfirmed ogc = (OutgoingConfirmed) og;
-                if (ogc.consumer != null) {
-                    ogc.consumer.ex(new BACnetException("Cancelled due to transport shutdown"));
-                }
+            if (og instanceof OutgoingConfirmed ogc && ogc.consumer != null) {
+                ogc.consumer.ex(new BACnetException("Outgoing cancelled due to transport shutdown"));
+            }
+        }
+
+        // cancel any delayed outgoing messages.
+        for (final DelayedOutgoing delayed : delayedOutgoing) {
+            if (delayed.outgoing instanceof OutgoingConfirmed ogc && ogc.consumer != null) {
+                ogc.consumer.ex(new BACnetException("Delayed outgoing cancelled due to transport shutdown"));
             }
         }
 
         // Cancel any unacked messages
         for (final UnackedMessageContext ctx : unackedMessages.getRequests().values()) {
             if (ctx.getConsumer() != null) {
-                ctx.getConsumer().ex(new BACnetException("Cancelled due to transport shutdown"));
+                ctx.getConsumer().ex(new BACnetException("Unacked cancelled due to transport shutdown"));
             }
         }
 
@@ -245,6 +253,10 @@ public class DefaultTransport implements Transport, Runnable {
         return networkRouters;
     }
 
+    public int getDelayedOutgoingCount() {
+        return delayedOutgoing.size();
+    }
+
     //
     //
     // Adding new requests and responses.
@@ -256,19 +268,21 @@ public class DefaultTransport implements Transport, Runnable {
         // 16.1.2
         boolean allowSend = true;
         if (!EnableDisable.enable.equals(localDevice.getCommunicationControlState())) {
-            allowSend = false;
-
             // Check if this is an IAm.
-            if (service instanceof IAmRequest) {
-                // IAms are allowed to be sent if they are issued in accordance with the WhoIs procedure.
-                if (((IAmRequest) service).isResponseToWhoIs()) {
-                    allowSend = true;
-                }
-            }
+            // IAms are allowed to be sent if they are issued in accordance with the WhoIs procedure.
+            allowSend = service instanceof IAmRequest iamRequest && iamRequest.isResponseToWhoIs();
         }
 
         if (allowSend) {
-            outgoing.add(new OutgoingUnconfirmed(address, service, broadcast, new Exception()));
+            var out = new OutgoingUnconfirmed(address, service, broadcast, new Exception());
+            synchronized (runLock) {
+                if (running) {
+                    outgoing.add(out);
+                } else {
+                    LOG.debug("Transport is not running, will not queue outgoing {}", out);
+                }
+            }
+
             ThreadUtils.notifySync(pauseLock);
         }
     }
@@ -289,10 +303,34 @@ public class DefaultTransport implements Transport, Runnable {
             final ConfirmedRequestService service, final ResponseConsumer consumer) {
         // 16.1.2
         if (EnableDisable.enable.equals(localDevice.getCommunicationControlState())) {
-            outgoing.add(new OutgoingConfirmed(address, maxAPDULengthAccepted, segmentationSupported, service, consumer,
-                    new Exception()));
-            ThreadUtils.notifySync(pauseLock);
-        } else {
+            var out = new OutgoingConfirmed(
+                    address,
+                    maxAPDULengthAccepted,
+                    segmentationSupported,
+                    service,
+                    consumer,
+                    new Exception()
+            );
+
+            boolean messageQueued = false;
+            synchronized (runLock) {
+                if (running) {
+                    messageQueued = outgoing.add(out);
+                }
+            }
+
+            if (messageQueued) {
+                if (consumer != null) {
+                    consumer.queued();
+                }
+                ThreadUtils.notifySync(pauseLock);
+            } else {
+                LOG.debug("Transport is not running, will not queue outgoing {}", out);
+                if (consumer != null) {
+                    consumer.ex(new BACnetException("Transport is not running"));
+                }
+            }
+        } else if (consumer != null) {
             // Communication has been disabled as the result of a DeviceCommunicationControlRequest. The consumer
             // is informed with an exception.
             consumer.ex(new CommunicationDisabledException());
@@ -311,7 +349,7 @@ public class DefaultTransport implements Transport, Runnable {
         // TODO remove this when it is no longer needed.
         protected final Exception stack;
 
-        public Outgoing(final Address address, final Exception stack) {
+        protected Outgoing(final Address address, final Exception stack) {
             if (address == null)
                 throw new IllegalArgumentException("address cannot be null");
             this.address = address;
@@ -335,17 +373,24 @@ public class DefaultTransport implements Transport, Runnable {
             try {
                 sendImpl();
             } catch (final BACnetRecoverableException e) {
-                LOG.info("Send delayed due to recoverable error: {}", e.getMessage());
-                delayedOutgoing.add(new DelayedOutgoing(this));
+                synchronized (runLock) {
+                    if (running) {
+                        LOG.info("Send delayed due to recoverable error: {}", e.getMessage());
+                        delayedOutgoing.add(new DelayedOutgoing(this));
+                    } else {
+                        handleException(e);
+                    }
+                }
             } catch (final BACnetException e) {
                 handleException(e);
             }
         }
 
-        abstract protected void sendImpl() throws BACnetException;
+        protected abstract void sendImpl() throws BACnetException;
 
-        abstract protected void handleException(BACnetException e);
+        protected abstract void handleException(BACnetException e);
     }
+
 
     class OutgoingConfirmed extends Outgoing {
         private final int maxAPDULengthAccepted;
@@ -403,6 +448,9 @@ public class DefaultTransport implements Transport, Runnable {
 
             ctx.setOriginalApdu(apdu);
             sendForResponse(key, ctx);
+            if (consumer != null) {
+                consumer.sent();
+            }
         }
 
         @Override
@@ -421,6 +469,7 @@ public class DefaultTransport implements Transport, Runnable {
                     + ", linkService=" + linkService + "]";
         }
     }
+
 
     class OutgoingUnconfirmed extends Outgoing {
         private final UnconfirmedRequestService service;
@@ -449,6 +498,7 @@ public class DefaultTransport implements Transport, Runnable {
                     + ", linkService=" + linkService + "]";
         }
     }
+
 
     class DelayedOutgoing {
         final Outgoing outgoing;
@@ -506,11 +556,11 @@ public class DefaultTransport implements Transport, Runnable {
             if (!delayedOutgoing.isEmpty()) {
                 final Iterator<DelayedOutgoing> iter = delayedOutgoing.iterator();
                 while (iter.hasNext()) {
-                    final DelayedOutgoing delayedOutgoing = iter.next();
-                    if (delayedOutgoing.isReady()) {
+                    final DelayedOutgoing delayedOutgoingItem = iter.next();
+                    if (delayedOutgoingItem.isReady()) {
                         iter.remove();
-                        outgoing.add(delayedOutgoing.outgoing);
-                        LOG.info("Retrying delayed outgoing {}", delayedOutgoing.outgoing);
+                        outgoing.add(delayedOutgoingItem.outgoing);
+                        LOG.info("Retrying delayed outgoing {}", delayedOutgoingItem.outgoing);
                         pause = false;
                     } else {
                         // No other entries in the list should be ready either
@@ -536,43 +586,45 @@ public class DefaultTransport implements Transport, Runnable {
     private void receiveImpl(final NPDU in) {
         if (in.isNetworkMessage()) {
             switch (in.getNetworkMessageType()) {
-            case 0x1: // I-Am-Router-To-Network
-            case 0x2: // I-Could-Be-Router-To-Network
-                final ByteQueue data = in.getNetworkMessageData();
-                while (data.size() > 1) {
-                    final int nn = data.popU2B();
-                    LOG.debug("Adding network router {} for network {}", in.getFrom().getMacAddress(), nn);
-                    networkRouters.put(nn, in.getFrom().getMacAddress());
-                }
-                break;
-            case 0x3: // Reject-Message-To-Network
-                String reason;
-                final int reasonCode = in.getNetworkMessageData().popU1B();
-                if (reasonCode == 0)
-                    reason = "Other error";
-                else if (reasonCode == 1)
-                    reason = "The router is not directly connected to DNET and cannot find a router to DNET on any " //
-                            + "directly connected network using Who-Is-Router-To-Network messages.";
-                else if (reasonCode == 2)
-                    reason = "The router is busy and unable to accept messages for the specified DNET at the " //
-                            + "present time.";
-                else if (reasonCode == 3)
-                    reason = "It is an unknown network layer message type. The DNET returned in this case is a " //
-                            + "local matter.";
-                else if (reasonCode == 4)
-                    reason = "The message is too long to be routed to this DNET.";
-                else if (reasonCode == 5)
-                    reason = "The source message was rejected due to a BACnet security error and that error cannot " //
-                            + " be forwarded to the source device. See Clause 24.12.1.1 for more details on the " //
-                            + "generation of Reject-Message-To-Network messages indicating this reason.";
-                else if (reasonCode == 6)
-                    reason = "The source message was rejected due to errors in the addressing. The length of the " //
-                            + "DADR or SADR was determined to be invalid.";
-                else
-                    reason = "Unknown reason code";
-                LOG.warn("Received Reject-Message-To-Network with reason '{}': {}", reasonCode, reason);
-                break;
-            default:
+                case 0x1, 0x2: // I-Am-Router-To-Network, I-Could-Be-Router-To-Network
+                    final ByteQueue data = in.getNetworkMessageData();
+                    while (data.size() > 1) {
+                        final int nn = data.popU2B();
+                        LOG.debug("Adding network router {} for network {}", in.getFrom().getMacAddress(), nn);
+                        networkRouters.put(nn, in.getFrom().getMacAddress());
+                    }
+                    break;
+                case 0x3: // Reject-Message-To-Network
+                    String reason;
+                    final int reasonCode = in.getNetworkMessageData().popU1B();
+                    if (reasonCode == 0)
+                        reason = "Other error";
+                    else if (reasonCode == 1)
+                        reason = "The router is not directly connected to DNET and cannot find a router to DNET on any "
+                                //
+                                + "directly connected network using Who-Is-Router-To-Network messages.";
+                    else if (reasonCode == 2)
+                        reason = "The router is busy and unable to accept messages for the specified DNET at the " //
+                                + "present time.";
+                    else if (reasonCode == 3)
+                        reason = "It is an unknown network layer message type. The DNET returned in this case is a " //
+                                + "local matter.";
+                    else if (reasonCode == 4)
+                        reason = "The message is too long to be routed to this DNET.";
+                    else if (reasonCode == 5)
+                        reason = "The source message was rejected due to a BACnet security error and that error cannot "
+                                //
+                                + " be forwarded to the source device. See Clause 24.12.1.1 for more details on the " //
+                                + "generation of Reject-Message-To-Network messages indicating this reason.";
+                    else if (reasonCode == 6)
+                        reason =
+                                "The source message was rejected due to errors in the addressing. The length of the " //
+                                        + "DADR or SADR was determined to be invalid.";
+                    else
+                        reason = "Unknown reason code";
+                    LOG.warn("Received Reject-Message-To-Network with reason '{}': {}", reasonCode, reason);
+                    break;
+                default:
             }
         } else {
             receiveAPDU(in);
@@ -592,9 +644,8 @@ public class DefaultTransport implements Transport, Runnable {
             return;
         }
 
-        if (apdu instanceof ConfirmedRequest) {
+        if (apdu instanceof ConfirmedRequest confAPDU) {
             // Received a request that must be handled and responded to.
-            final ConfirmedRequest confAPDU = (ConfirmedRequest) apdu;
             final byte invokeId = confAPDU.getInvokeId();
 
             try {
@@ -605,7 +656,8 @@ public class DefaultTransport implements Transport, Runnable {
                 } catch (final BACnetException e1) {
                     LOG.warn("Error sending error response", e1);
                 }
-                LOG.warn("Receiving a confirmed service request that ist not supported or available. TYPE_ID '{}'", confAPDU.getServiceChoice());
+                LOG.warn("Receiving a confirmed service request that ist not supported or available. TYPE_ID '{}'",
+                        confAPDU.getServiceChoice());
                 return;
             }
 
@@ -638,10 +690,8 @@ public class DefaultTransport implements Transport, Runnable {
             } else
                 // Just handle the message.
                 incomingConfirmedRequest(confAPDU, from, linkService, invokeId);
-        } else if (apdu instanceof UnconfirmedRequest) {
+        } else if (apdu instanceof UnconfirmedRequest ur) {
             // Received a request that must be handled with no response.
-            final UnconfirmedRequest ur = (UnconfirmedRequest) apdu;
-
             try {
                 ur.parseServiceData();
                 localDevice.getEventHandler().requestReceived(from, ur.getService());
@@ -653,7 +703,7 @@ public class DefaultTransport implements Transport, Runnable {
             }
         } else {
             // Must be an acknowledgement
-            LOG.debug("incomingApdu: recieved an acknowledgement from {}", from);
+            LOG.debug("incomingApdu: received an acknowledgement from {}", from);
 
             final AckAPDU ack = (AckAPDU) apdu;
             final UnackedMessageKey key = new UnackedMessageKey(from, linkService, ack.getOriginalInvokeId(),
@@ -664,14 +714,13 @@ public class DefaultTransport implements Transport, Runnable {
                 // This can legitimately happen when requests are sent for which the sender did not need the response,
                 // such as COV unsubscribes.
                 LOG.debug("Received an acknowledgement from {} for an unknown request: {}", from, ack);
-            } else if (ack instanceof SegmentACK)
-                segmentedOutgoing(key, ctx, (SegmentACK) ack);
+            } else if (ack instanceof SegmentACK sack)
+                segmentedOutgoing(key, ctx, sack);
             else if (ctx.getConsumer() != null) {
                 final ResponseConsumer consumer = ctx.getConsumer();
                 if (ack instanceof SimpleACK) {
                     consumer.success(null);
-                } else if (ack instanceof ComplexACK) {
-                    final ComplexACK cack = (ComplexACK) ack;
+                } else if (ack instanceof ComplexACK cack) {
                     if (cack.isSegmentedMessage()) {
                         try {
                             segmentedIncoming(key, cack, ctx);
@@ -725,8 +774,9 @@ public class DefaultTransport implements Transport, Runnable {
                     LOG.debug("Sending ack for segment {}, key={}", lastSeq, key);
 
                     // Send an acknowledgement
-                    network.sendAPDU(key.getAddress(), key.getLinkService(), new SegmentACK(false, !key.isFromServer(),
-                            msg.getInvokeId(), lastSeq, windowSize, !segmentWindow.isMessageComplete()), false);
+                    network.sendAPDU(key.getAddress(), key.getLinkService(),
+                            new SegmentACK(false, !key.isFromServer(), msg.getInvokeId(), lastSeq, windowSize,
+                                    !segmentWindow.isMessageComplete()), false);
 
                     // Append the window onto the original response.
                     for (final Segmentable segment : segmentWindow.getSegments()) {
@@ -788,10 +838,13 @@ public class DefaultTransport implements Transport, Runnable {
             return;
         }
 
-        // This may be a segment ack for an inter-window segment. We ignore all segment acks except for the
-        // one for the last segment that was sent.
-        if (ack.getSequenceNumber() < ctx.getLastIdSent())
+        if (ack.getSequenceNumber() < ctx.getLastIdSent()) {
+            // This is likely a duplicate SegmentACK.
+            // 2020 BACnet spec 5.4.4.2, reset segment timer and wait for next SegmentAck
+            unackedMessages.add(key, ctx);
+            ctx.resetTimer(segTimeout);
             return;
+        }
 
         int remaining = ack.getActualWindowSize();
 
@@ -799,14 +852,14 @@ public class DefaultTransport implements Transport, Runnable {
         int sequenceNumber = ctx.getLastIdSent();
         while (remaining > 0 && ctx.getServiceData().size() > 0) {
             final ByteQueue segData = ctx.getNextSegment();
-            final APDU segment = ctx.getSegmentTemplate().clone(ctx.getServiceData().size() > 0, ++sequenceNumber,
-                    ack.getActualWindowSize(), segData);
+            final APDU segment = ctx.getSegmentTemplate()
+                    .clone(ctx.getServiceData().size() > 0, ++sequenceNumber, ack.getActualWindowSize(), segData);
 
             LOG.debug("Sending segment {} for {}", sequenceNumber, key);
             try {
                 network.sendAPDU(key.getAddress(), key.getLinkService(), segment, false);
             } catch (final BACnetException e) {
-                ctx.useConsumer((consumer) -> consumer.ex(e));
+                ctx.useConsumer(consumer -> consumer.ex(e));
                 return;
             }
 
@@ -869,8 +922,8 @@ public class DefaultTransport implements Transport, Runnable {
             localDevice.getEventHandler().requestReceived(from, service);
             return service.handle(localDevice, from);
         } catch (@SuppressWarnings("unused") final NotImplementedException e) {
-            LOG.warn("Unsupported confirmed request: invokeId=" + invokeId + ", from=" + from + ", request="
-                    + service.getClass().getName());
+            LOG.warn("Unsupported confirmed request: invokeId={}, from={}, request={}", invokeId, from,
+                    service.getClass().getName());
             throw new BACnetRejectException(RejectReason.unrecognizedService, e);
         } catch (final BACnetErrorException e) {
             throw e;
@@ -891,19 +944,19 @@ public class DefaultTransport implements Transport, Runnable {
             response.write(serviceData);
 
             // Check if we need to segment the message.
-            if (serviceData.size() > request.getMaxApduLengthAccepted().getMaxLengthInt()
-                    - ComplexACK.getHeaderSize(false)) {
-                final int maxServiceData = request.getMaxApduLengthAccepted().getMaxLengthInt()
-                        - ComplexACK.getHeaderSize(true);
+            if (serviceData.size() > request.getMaxApduLengthAccepted().getMaxLengthInt() - ComplexACK.getHeaderSize(
+                    false)) {
+                final int maxServiceData =
+                        request.getMaxApduLengthAccepted().getMaxLengthInt() - ComplexACK.getHeaderSize(true);
                 // Check if the device can accept what we want to send.
                 if (!request.isSegmentedResponseAccepted()) {
-                    LOG.warn("Response too big to send to device without segmentation");                   
-                    throw new BACnetAbortException(AbortReason.bufferOverflow);         
+                    LOG.warn("Response too big to send to device without segmentation");
+                    throw new BACnetAbortException(AbortReason.bufferOverflow);
                 }
                 final int segmentsRequired = serviceData.size() / maxServiceData + 1;
                 if (segmentsRequired > request.getMaxSegmentsAccepted().getMaxSegments() || segmentsRequired > 255) {
                     LOG.warn("Response too big to send to device; too many segments required");
-                    throw new BACnetAbortException(AbortReason.bufferOverflow); 
+                    throw new BACnetAbortException(AbortReason.bufferOverflow);
                 }
                 LOG.debug("Sending confirmed response as segmented with {} segments", segmentsRequired);
                 // Prepare the segmenting session.
@@ -954,26 +1007,34 @@ public class DefaultTransport implements Transport, Runnable {
                     umIter.remove();
                     if (ctx.getSegmentWindow() == null) {
                         // Not a segmented message, at least as far as we know.
-                        ctx.useConsumer((consumer) -> consumer.ex(new BACnetTimeoutException()));
+                        ctx.useConsumer(consumer -> consumer.ex(new BACnetTimeoutException()));
                     } else {
                         // A segmented message.
-                        if (ctx.getSegmentWindow().isEmpty()) {
-                            // No segments received. Return a timeout.
-                            ctx.useConsumer((consumer) -> consumer.ex(new BACnetTimeoutException(
-                                    "Timeout while waiting for segment part: invokeId=" + key.getInvokeId()
-                                            + ", sequenceId=" + ctx.getSegmentWindow().getFirstSequenceId())));
-                        } else if (ctx.getSegmentWindow().isEmpty())
-                            LOG.warn("No segments received for message " + ctx.getOriginalApdu());
-                        else {
+                        var timeoutEx = new BACnetTimeoutException(
+                                "Timeout while waiting for segment part: key=%s, sequenceId=%s, apdu=%s"
+                                        .formatted(key, ctx.getSegmentWindow().getFirstSequenceId(),
+                                                ctx.getOriginalApdu()));
+
+                        ctx.useConsumer(consumer -> consumer.ex(timeoutEx));
+                        if (ctx.getConsumer() == null) {
+                            LOG.warn("Timeout waiting for segment(s)", timeoutEx);
+                        }
+
+                        if (!ctx.getSegmentWindow().isEmpty()) {
                             // Return a NAK with the last sequence id received in order and start over.
+                            // NOTE: Sending a NAK here is not appropriate
+                            // This is the "FinalTimeout" event described in the 2020 BACnet spec section
+                            // 5.4.4.2 (or maybe 5.4.5.4) In either case, sending a NAK is not part of the transition
+                            // to the next state. If 5.4.4.2, sending an ABORT is required as part of the transition.
+                            // The state machine only defines sending a NAK as part of the transition for the
+                            // "TooManyDuplicateSegmentsReceived" or "SegmentReceivedOutOfOrder" events
                             try {
                                 network.sendAPDU(key.getAddress(), key.getLinkService(),
                                         new SegmentACK(true, key.isFromServer(), key.getInvokeId(),
                                                 ctx.getSegmentWindow().getLatestSequenceId(),
-                                                ctx.getSegmentWindow().getWindowSize(), true),
-                                        false);
+                                                ctx.getSegmentWindow().getWindowSize(), true), false);
                             } catch (final BACnetException ex) {
-                                ctx.useConsumer((consumer) -> consumer.ex(ex));
+                                LOG.warn("Error sending NAK after timeout", ex);
                             }
                         }
                     }
@@ -991,7 +1052,7 @@ public class DefaultTransport implements Transport, Runnable {
             network.sendAPDU(key.getAddress(), key.getLinkService(), ctx.getOriginalApdu(), false);
         } catch (final BACnetException e) {
             unackedMessages.remove(key);
-            ctx.useConsumer((consumer) -> consumer.ex(e));
+            ctx.useConsumer(consumer -> consumer.ex(e));
         }
     }
 

@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.service.acknowledgement;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
@@ -43,6 +42,7 @@ public class AtomicReadFileAck extends AcknowledgementService {
     public static final byte TYPE_ID = 6;
 
     private static final ChoiceOptions choiceOptions = new ChoiceOptions();
+
     static {
         choiceOptions.addContextual(0, StreamAccessAck.class);
         choiceOptions.addContextual(1, RecordAccessAck.class);
@@ -64,7 +64,7 @@ public class AtomicReadFileAck extends AcknowledgementService {
     public static int getHeaderSize() {
         return 3;
     }
-    
+
     @Override
     public byte getChoiceId() {
         return TYPE_ID;
@@ -88,7 +88,7 @@ public class AtomicReadFileAck extends AcknowledgementService {
     public boolean isStreamAccess() {
         return accessMethod.getDatum() instanceof StreamAccessAck;
     }
-    
+
     public StreamAccessAck getStreamAccess() {
         return accessMethod.getDatum();
     }
@@ -96,7 +96,7 @@ public class AtomicReadFileAck extends AcknowledgementService {
     public boolean isRecordAccess() {
         return accessMethod.getDatum() instanceof RecordAccessAck;
     }
-    
+
     public RecordAccessAck getRecordAccess() {
         return accessMethod.getDatum();
     }
@@ -160,7 +160,7 @@ public class AtomicReadFileAck extends AcknowledgementService {
         public static int getHeaderSize() {
             return 5;
         }
-                
+
         public SignedInteger getFileStartPosition() {
             return fileStartPosition;
         }
@@ -205,6 +205,7 @@ public class AtomicReadFileAck extends AcknowledgementService {
             return true;
         }
     }
+
 
     public static class RecordAccessAck extends BaseType {
         private final SignedInteger fileStartRecord;

@@ -1,9 +1,9 @@
 /*
  * ============================================================================
-` * GNU General Public License
+ * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j;
 
 import java.time.Clock;
@@ -45,6 +44,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -102,14 +102,13 @@ import lohbihler.warp.WarpScheduledExecutorService;
 import lohbihler.warp.WarpUtils;
 
 /**
- * Enhancements:
- * - Optional persistence of COV subscriptions
- * - default character string encoding
- * - persistence of recipient lists in notification forwarder object
+ * Enhancements: - Optional persistence of COV subscriptions - default character string encoding - persistence of
+ * recipient lists in notification forwarder object
  */
-public class LocalDevice {
+public class LocalDevice implements AutoCloseable {
     static final Logger LOG = LoggerFactory.getLogger(LocalDevice.class);
-    public static final String VERSION = "6.0.0";
+    public static final String VERSION =
+            Objects.requireNonNullElse(LocalDevice.class.getPackage().getImplementationVersion(), "unknown");
 
     private final Transport transport;
 
@@ -135,9 +134,9 @@ public class LocalDevice {
 
     /**
      * A map of devices for which lookups resulted in a timeout. Keeping this information around means that processes
-     * that loop though lists of objects and so potentially ask for the same remote device multiple times don't need
-     * to wait for the full timeout period each time. The key of the map is the device id, and the value is the time
-     * at which it is ok to look for the device again. See timeoutDeviceRetention.
+     * that loop though lists of objects and so potentially ask for the same remote device multiple times don't need to
+     * wait for the full timeout period each time. The key of the map is the device id, and the value is the time at
+     * which it is ok to look for the device again. See timeoutDeviceRetention.
      */
     private final Map<Integer, Long> timeoutDevices = new HashMap<>();
 
@@ -175,7 +174,7 @@ public class LocalDevice {
 
     private ScheduledExecutorService timer;
 
-    //Callback if other devices have the same id like us
+    // Callback if other devices have the same id like us
     private Consumer<Address> sameDeviceIdCallback;
 
     /**
@@ -333,7 +332,7 @@ public class LocalDevice {
                     @Override
                     public void iAmReceived(final RemoteDevice d) {
                         LOG.info("Device id {} is not available", d.getInstanceNumber());
-                        idList.remove(new Integer(d.getInstanceNumber()));
+                        idList.remove(Integer.valueOf(d.getInstanceNumber()));
                     }
                 };
 
@@ -376,14 +375,12 @@ public class LocalDevice {
                     restartNotificationRecipients);
         }
         final UnconfirmedCovNotificationRequest restartNotif = new UnconfirmedCovNotificationRequest(
-                UnsignedInteger.ZERO, getId(), getId(), UnsignedInteger.ZERO,
-                new SequenceOf<>(
-                        new PropertyValue(PropertyIdentifier.systemStatus,
-                                deviceObject.get(PropertyIdentifier.systemStatus)),
-                        new PropertyValue(PropertyIdentifier.timeOfDeviceRestart,
-                                deviceObject.get(PropertyIdentifier.timeOfDeviceRestart)),
-                        new PropertyValue(PropertyIdentifier.lastRestartReason,
-                                deviceObject.get(PropertyIdentifier.lastRestartReason))));
+                UnsignedInteger.ZERO, getId(), getId(), UnsignedInteger.ZERO, new SequenceOf<>(
+                new PropertyValue(PropertyIdentifier.systemStatus, deviceObject.get(PropertyIdentifier.systemStatus)),
+                new PropertyValue(PropertyIdentifier.timeOfDeviceRestart,
+                        deviceObject.get(PropertyIdentifier.timeOfDeviceRestart)),
+                new PropertyValue(PropertyIdentifier.lastRestartReason,
+                        deviceObject.get(PropertyIdentifier.lastRestartReason))));
         for (final Recipient recipient : restartNotificationRecipients) {
             final Address address = recipient.toAddress(this);
             send(address, restartNotif);
@@ -394,6 +391,7 @@ public class LocalDevice {
 
     /**
      * Create a ScheduledExecutorService for use by the local device
+     *
      * @return
      * @see java.util.concurrent.ScheduledExecutorService
      */
@@ -419,11 +417,11 @@ public class LocalDevice {
         return initialized;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Executors
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Executors
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     /**
      * Schedules the given command for later execution.
@@ -462,11 +460,11 @@ public class LocalDevice {
         timer.execute(task);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Device configuration.
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Device configuration
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     public String getPassword() {
         return password;
@@ -502,11 +500,11 @@ public class LocalDevice {
         return transport.getTimeout();
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Local object management
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Local object management
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     public BACnetObject getObjectRequired(final ObjectIdentifier id) throws BACnetServiceException {
         final BACnetObject o = getObject(id);
@@ -609,11 +607,11 @@ public class LocalDevice {
         return deviceObject.get(PropertyIdentifier.protocolServicesSupported);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Remote device management
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Remote device management
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     /**
      * Returns the cached remote device, or null if not found.
@@ -626,7 +624,7 @@ public class LocalDevice {
     }
 
     public RemoteDevice getCachedRemoteDevice(final Address address) {
-        return remoteDeviceCache.getCachedEntity((rd) -> rd.getAddress().equals(address));
+        return remoteDeviceCache.getCachedEntity(rd -> rd.getAddress().equals(address));
     }
 
     public RemoteDevice removeCachedRemoteDevice(final int instanceNumber) {
@@ -638,9 +636,7 @@ public class LocalDevice {
      * the callback is called by the calling thread. Otherwise, a finder will be used to try to find it. If this is
      * successful the device will be cached.
      *
-     * The benefits of this method are:
-     * 1) It will cache the remote device if it is found
-     * 2) No blocking is performed
+     * The benefits of this method are: 1) It will cache the remote device if it is found 2) No blocking is performed
      *
      * @param instanceNumber
      * @param callback
@@ -664,7 +660,7 @@ public class LocalDevice {
                 timeoutCallback.run();
             } else {
                 LOG.debug("Requesting the remote device from the remote device finder: {}", instanceNumber);
-                RemoteDeviceFinder.findDevice(this, instanceNumber, (cbrd) -> {
+                RemoteDeviceFinder.findDevice(this, instanceNumber, cbrd -> {
                     forgetDeviceTimeout(instanceNumber);
 
                     // Cache the device.
@@ -685,12 +681,11 @@ public class LocalDevice {
      * will be set immediately. Otherwise, a finder will be used to try to find it. If this is successful the device
      * will be cached.
      *
-     * The benefits of this method are:
-     * 1) It will cache the remote device if it is found.
-     * 2) It returns a cancelable future.
+     * The benefits of this method are: 1) It will cache the remote device if it is found. 2) It returns a cancelable
+     * future.
      *
-     * If multiple threads are likely to request a remote device reference around the same time, it may be better to
-     * use the blocking method below.
+     * If multiple threads are likely to request a remote device reference around the same time, it may be better to use
+     * the blocking method below.
      *
      * @param instanceNumber
      * @return the remote device future
@@ -752,18 +747,16 @@ public class LocalDevice {
      *
      * @param instanceNumber
      * @return the remote device
-     * @throws BACnetException
-     *             if anything goes wrong, including timeout.
+     * @throws BACnetException if anything goes wrong, including timeout.
      */
     public RemoteDevice getRemoteDeviceBlocking(final int instanceNumber) throws BACnetException {
         return getRemoteDeviceBlocking(instanceNumber, transport.getTimeout());
     }
 
     /**
-     * A list of existing futures for each device. Multiple threads may want the same device,
-     * and so we also them all to wait on the same future. This has timeout implications since
-     * the timeout will be based upon the first thread that made the request, meaning that
-     * subsequent threads may experience a shorter timeout than requested.
+     * A list of existing futures for each device. Multiple threads may want the same device, and so we also them all to
+     * wait on the same future. This has timeout implications since the timeout will be based upon the first thread that
+     * made the request, meaning that subsequent threads may experience a shorter timeout than requested.
      */
     private final Map<Integer, RemoteDeviceFuture> futures = new HashMap<>();
 
@@ -771,16 +764,14 @@ public class LocalDevice {
      * Returns the remote device for the given instanceNumber. If a cached instance is not found the finder will be used
      * to try and find it. A timeout exception is thrown if it can't be found.
      *
-     * The benefits of this method are:
-     * 1) It will cache the remote device if it is found.
-     * 2) Multiple threads that request the same remote device around the same time will be joined on the same request
+     * The benefits of this method are: 1) It will cache the remote device if it is found. 2) Multiple threads that
+     * request the same remote device around the same time will be joined on the same request
      *
      * If you require the ability to cancel a request, use the non-blocking method above.
      *
      * @param instanceNumber
      * @return the remote device
-     * @throws BACnetException
-     *             if anything goes wrong, including timeout.
+     * @throws BACnetException if anything goes wrong, including timeout.
      */
     public RemoteDevice getRemoteDeviceBlocking(final int instanceNumber, final long timeoutMillis)
             throws BACnetException {
@@ -831,7 +822,8 @@ public class LocalDevice {
 
                         // Cache the device.
                         if (rd != null) {
-                            remoteDeviceCache.putEntity(instanceNumber, rd, cachePolicies.getDevicePolicy(instanceNumber));
+                            remoteDeviceCache.putEntity(instanceNumber, rd,
+                                    cachePolicies.getDevicePolicy(instanceNumber));
                         }
                     }
                 }
@@ -841,37 +833,76 @@ public class LocalDevice {
         return rd;
     }
 
+    @Override
+    public synchronized void close() throws Exception {
+        if (initialized) {
+            terminate();
+        }
+    }
+
+    public enum CacheUpdate {
+        /**
+         * Always update the remote device cache, even if the existing entry has not expired.
+         */
+        ALWAYS,
+        /**
+         * Never update the remote device cache, even if the existing entry has expired.
+         */
+        NEVER,
+        /**
+         * Only update the remote device cache if the existing entry has expired.
+         */
+        IF_EXPIRED
+    }
+
     public RemoteDeviceDiscoverer startRemoteDeviceDiscovery() {
-        return startRemoteDeviceDiscovery(null);
+        return startRemoteDeviceDiscovery(CacheUpdate.NEVER, null);
+    }
+
+    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(final Consumer<RemoteDevice> callback) {
+        return startRemoteDeviceDiscovery(CacheUpdate.NEVER, callback);
     }
 
     /**
      * Creates and starts a remote device discovery. Discovered devices are added to the cache as they are found. The
      * returned discoverer must be stopped by the caller.
      *
-     * @param callback
-     *            optional client callback
+     * @param cacheUpdate controls if the remote device cache should be updated
+     * @param callback    optional client callback
      * @return the discoverer, which must be stopped by the caller
      */
-    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(final Consumer<RemoteDevice> callback) {
-        final Consumer<RemoteDevice> cachingCallback = (d) -> {
+    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(CacheUpdate cacheUpdate,
+            final Consumer<RemoteDevice> callback) {
+        final RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(this, discoveredDevice -> {
             // Cache the device.
-            remoteDeviceCache.putEntity(d.getInstanceNumber(), d, cachePolicies.getDevicePolicy(d.getInstanceNumber()));
+            remoteDeviceCache.putEntity(discoveredDevice.getInstanceNumber(), discoveredDevice,
+                    cachePolicies.getDevicePolicy(discoveredDevice.getInstanceNumber()));
 
             // Call the given callback
-            if (callback != null)
-                callback.accept(d);
-        };
-
-        final RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(this, cachingCallback);
+            if (callback != null) {
+                callback.accept(discoveredDevice);
+            }
+        }, getExpirationCheck(cacheUpdate));
         discoverer.start();
-
         return discoverer;
     }
 
+    private Predicate<RemoteDevice> getExpirationCheck(CacheUpdate cacheUpdate) {
+        switch (cacheUpdate) {
+            case ALWAYS:
+                return d -> true;
+            case NEVER:
+                return d -> false;
+            case IF_EXPIRED:
+                return d -> remoteDeviceCache.getCachedEntity(d.getInstanceNumber()) == null;
+            default:
+                throw new IllegalArgumentException("Unknown value: " + cacheUpdate);
+        }
+    }
+
     /**
-     * Updates the remote device with the given number with the given address, but only if the
-     * remote device is cached. Otherwise, nothing happens.
+     * Updates the remote device with the given number with the given address, but only if the remote device is cached.
+     * Otherwise, nothing happens.
      *
      * @param instanceNumber
      * @param address
@@ -882,14 +913,16 @@ public class LocalDevice {
             throw new NullPointerException("address cannot be null");
         final RemoteDevice d = getCachedRemoteDevice(instanceNumber);
         if (d != null) {
-            if(address instanceof NetworkSourceAddress) {
-                LOG.debug("Updating address with source info, newAddress={}, existingAddress={}", address, d.getAddress());
-                //We can confidently change the network number
+            if (address instanceof NetworkSourceAddress) {
+                LOG.debug("Updating address with source info, newAddress={}, existingAddress={}", address,
+                        d.getAddress());
+                // We can confidently change the network number
                 d.setAddress(address);
-            }else {
+            } else {
                 Address newAddress = new Address(d.getAddress().getNetworkNumber().intValue(), address.getMacAddress());
-                LOG.debug("Not updating address without source info, newAddress={}, existingAddress={}", address, d.getAddress());
-                //This address can be from the source of the socket message (link service)
+                LOG.debug("Not updating address without source info, newAddress={}, existingAddress={}", newAddress,
+                        d.getAddress());
+                // This address can be from the source of the socket message (link service)
                 // and may not be what we really want to update here.  It was decided in 5.0.0
                 // to track incoming addresses via the NetworkSourceAddress class
                 // and not blindly set the remote devices new address here
@@ -937,15 +970,14 @@ public class LocalDevice {
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Cached property management
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Cached property management
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     //
     // Get properties
-
     public <T extends Encodable> T getCachedRemoteProperty(final int did, final ObjectIdentifier oid,
             final PropertyIdentifier pid) {
         return getCachedRemoteProperty(did, oid, pid, null);
@@ -969,8 +1001,7 @@ public class LocalDevice {
 
     public void setCachedRemoteProperty(final int did, final ObjectIdentifier oid, final PropertyIdentifier pid,
             final UnsignedInteger pin, final Encodable value) {
-        if (value instanceof ErrorClassAndCode) {
-            final ErrorClassAndCode e = (ErrorClassAndCode) value;
+        if (value instanceof ErrorClassAndCode e) {
             if (ErrorClass.device.equals(e.getErrorClass())) {
                 // Don't cache devices if the error is about the device. In fact, delete the cached device.
                 remoteDeviceCache.removeEntity(did);
@@ -1000,12 +1031,14 @@ public class LocalDevice {
         return rd.removeObjectProperty(oid, pid, pin);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Message sending
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Message sending
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
+
     public ServiceFuture send(final RemoteDevice d, final ConfirmedRequestService serviceRequest) {
+        ensureInitialized();
         //        validateSupportedService(d, serviceRequest);
         return transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(),
                 serviceRequest);
@@ -1077,11 +1110,11 @@ public class LocalDevice {
     //        }
     //    }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Communication control
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Communication control
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     private final Object communicationControlMonitor = new Object();
     private EnableDisable communicationControlState = EnableDisable.enable;
@@ -1115,11 +1148,11 @@ public class LocalDevice {
         return communicationControlState;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Persistence
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Persistence
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     public IPersistence getPersistence() {
         return persistence;
@@ -1133,11 +1166,11 @@ public class LocalDevice {
         }
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    // Convenience methods
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /*-----------------------------------------------------------
+     *-----------------------------------------------------------
+     * Convenience methods
+     *-----------------------------------------------------------
+     -----------------------------------------------------------*/
 
     public Address[] getAllLocalAddresses() {
         return transport.getNetwork().getAllLocalAddresses();
@@ -1171,6 +1204,7 @@ public class LocalDevice {
 
     /**
      * Register a callback if other devices have the same id like us.
+     *
      * @param callback
      */
     public void setSameDeviceIdCallback(Consumer<Address> callback) {
@@ -1184,12 +1218,9 @@ public class LocalDevice {
      */
     public void notifySameDeviceIdCallback(Address from) {
         if (sameDeviceIdCallback != null) {
-            //Do this async
-            execute(() -> {
-                sameDeviceIdCallback.accept(from);
-            });
+            // Do this async
+            execute(() -> sameDeviceIdCallback.accept(from));
         }
     }
-
 
 }

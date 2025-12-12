@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2015 Infinite Automation Software. All rights reserved.
+ * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,20 +12,19 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
- * When signing a commercial license with Infinite Automation Software,
+ * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
  * included to allow you to distribute a combined work that includes BAcnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
- * See www.infiniteautomation.com for commercial license options.
- *
- * @author Matthew Lohbihler
+ * See www.radixiot.com for commercial license options.
  */
+
 package com.serotonin.bacnet4j.npdu.ip;
 
 import java.io.IOException;
@@ -45,6 +44,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +63,7 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 /**
  * Use IpNetworkBuilder to create.
  */
-public class IpNetwork extends Network implements Runnable {
+public class IpNetwork extends Network {
     static final Logger LOG = LoggerFactory.getLogger(IpNetwork.class);
 
     public static final byte BVLC_TYPE = (byte) 0x81;
@@ -92,8 +92,8 @@ public class IpNetwork extends Network implements Runnable {
     private ScheduledFuture<?> foreignRegistrationMaintenance;
 
     // Runtime
-    private Thread thread;
-    private DatagramSocket socket;
+    private DatagramSocket unicastSocket;
+    private DatagramSocket broadcastSocket;
     private OctetString broadcastMAC;
     private InetSocketAddress localBindAddress;
     private byte[] subnetMask;
@@ -131,8 +131,16 @@ public class IpNetwork extends Network implements Runnable {
         return localBindAddress;
     }
 
-    public String getBroadcastAddresss() {
+    public String getBroadcastAddress() {
         return broadcastAddressStr;
+    }
+
+    /**
+     * @deprecated Incorrectly spelled method. Use getBroadcastAddress() instead.
+     */
+    @Deprecated(since = "6.1.0")
+    public String getBroadcastAddresss() {
+        return getBroadcastAddress();
     }
 
     @Override
@@ -147,10 +155,11 @@ public class IpNetwork extends Network implements Runnable {
 
     /**
      * Get the network socket, useful for routing purposes
+     *
      * @return
      */
     public DatagramSocket getSocket() {
-        return socket;
+        return unicastSocket;
     }
 
     @Override
@@ -158,30 +167,58 @@ public class IpNetwork extends Network implements Runnable {
         super.initialize(transport);
 
         localBindAddress = InetAddrCache.get(localBindAddressStr, port);
+        unicastSocket = createSocket(localBindAddress);
 
+        broadcastMAC = IpNetworkUtils.toOctetString(broadcastAddressStr, port);
+        subnetMask = BACnetUtils.dottedStringToBytes(subnetMaskStr);
+
+        if (!DEFAULT_BIND_IP.equals(localBindAddressStr) && (SystemUtils.IS_OS_LINUX || SystemUtils.IS_OS_MAC)) {
+            // If the bind address is the wildcard address (i.e. 0.0.0.0) then we will get messages to the broadcast
+            // addresses automatically. The same is true if the OS is Windows regardless of the bind address. But on
+            // Linux we need to open a socket on the broadcast address and get the broadcasts that way.
+            try {
+                InetSocketAddress broadcastAddress = InetAddrCache.get(broadcastAddressStr, port);
+                broadcastSocket = createSocket(broadcastAddress);
+            } catch (final SocketException e) {
+                unicastSocket.close();
+                throw e;
+            }
+        }
+
+        // If the bindings were successful, start the listener threads.
+        Thread unicastThread = new Thread(() -> listen(unicastSocket),
+                "BACnet4J IP socket listener for " + transport.getLocalDevice().getId());
+        unicastThread.start();
+
+        if (broadcastSocket != null) {
+            Thread broadcastThread = new Thread(() -> listen(broadcastSocket),
+                    "BACnet4J IP broadcast socket listener for " + transport.getLocalDevice().getId());
+            broadcastThread.start();
+        }
+    }
+
+    private DatagramSocket createSocket(final InetSocketAddress bindAddress) throws SocketException {
+        LOG.info("Binding to address {}", bindAddress);
+        final DatagramSocket socket;
         if (reuseAddress) {
             socket = new DatagramSocket(null);
             socket.setReuseAddress(true);
             if (!socket.getReuseAddress())
-                LOG.warn("reuseAddress was set, but not supported by the underlying platform");
-            socket.bind(localBindAddress);
+                LOG.warn("reuseAddress was set but not supported by the underlying platform");
+            socket.bind(bindAddress);
         } else
-            socket = new DatagramSocket(localBindAddress);
+            socket = new DatagramSocket(bindAddress);
         socket.setBroadcast(true);
-
-        //        broadcastAddress = new Address(broadcastIp, port, new Network(0xffff, new byte[0]));
-        broadcastMAC = IpNetworkUtils.toOctetString(broadcastAddressStr, port);
-        subnetMask = BACnetUtils.dottedStringToBytes(subnetMaskStr);
-
-        thread = new Thread(this, "BACnet4J IP socket listener for " + transport.getLocalDevice().getId());
-        thread.start();
+        return socket;
     }
 
     @Override
     public void terminate() {
         unregisterAsForeignDevice();
-        if (socket != null)
-            socket.close();
+        if (unicastSocket != null)
+            unicastSocket.close();
+        if (broadcastSocket != null)
+            broadcastSocket.close();
         if (ftdMaintenance != null)
             ftdMaintenance.cancel(false);
     }
@@ -205,13 +242,11 @@ public class IpNetwork extends Network implements Runnable {
      * If the device is to be un-registered, the registerAsForeignDevice method should be called. This will be done
      * automatically if the local device is terminated.
      *
-     * @param addr
-     *            The address of the BBMD where our device wants to be registered
-     * @param timeToLive
-     *            The time until we are automatically removed out of the FDT
-     * @throws BACnetException
-     *             if a timeout occurs, a NAK is received, the device is already registered as a foreign device, or
-     *             the request could not be sent.
+     * @param addr       The address of the BBMD where our device wants to be registered
+     * @param timeToLive The time until we are automatically removed out of the FDT
+     * @throws BACnetException if a timeout occurs, a NAK is received, the device is already registered as a foreign
+     *                         device, or
+     *                         the request could not be sent.
      */
     public void registerAsForeignDevice(final InetSocketAddress addr, final int timeToLive) throws BACnetException {
         if (timeToLive < 1)
@@ -309,7 +344,7 @@ public class IpNetwork extends Network implements Runnable {
     private void sendPacket(final InetSocketAddress addr, final byte[] data) throws BACnetException {
         try {
             final DatagramPacket packet = new DatagramPacket(data, data.length, addr);
-            socket.send(packet);
+            unicastSocket.send(packet);
             bytesOut += data.length;
         } catch (final Exception e) {
             throw new BACnetException(e);
@@ -318,8 +353,7 @@ public class IpNetwork extends Network implements Runnable {
 
     //
     // For receiving
-    @Override
-    public void run() {
+    private void listen(final DatagramSocket socket) {
         final byte[] buffer = new byte[MESSAGE_LENGTH];
         final DatagramPacket p = new DatagramPacket(buffer, buffer.length);
 
@@ -344,7 +378,8 @@ public class IpNetwork extends Network implements Runnable {
     }
 
     @Override
-    protected NPDU handleIncomingDataImpl(final ByteQueue queue, final OctetString linkService) throws Exception {
+    protected NPDU handleIncomingDataImpl(final ByteQueue queue, final OctetString linkService)
+            throws Exception {
         LOG.trace("Received request from {}", linkService);
 
         // Initial parsing of IP message.
@@ -363,9 +398,9 @@ public class IpNetwork extends Network implements Runnable {
         if (function == 0x0) {
             final int result = BACnetUtils.popShort(queue);
 
-           if (result == 0x10)
-                LOG.error("Write-Broadcast-Distrubution-Table failed!");  
-           else if (result == 0x20)
+            if (result == 0x10)
+                LOG.error("Write-Broadcast-Distrubution-Table failed!");
+            else if (result == 0x20)
                 LOG.error("Read-Broadcast-Distrubution-Table failed!");
             else if (result == 0x30)
                 LOG.error("Register-Foreign-Device failed!");
@@ -459,7 +494,7 @@ public class IpNetwork extends Network implements Runnable {
     public static InetAddress getDefaultLocalInetAddress() throws UnknownHostException, SocketException {
         for (final NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
             for (final InetAddress addr : Collections.list(iface.getInetAddresses())) {
-                if (!addr.isLoopbackAddress() && addr.isSiteLocalAddress())
+                if (!addr.isLoopbackAddress())
                     return addr;
             }
         }
@@ -473,7 +508,7 @@ public class IpNetwork extends Network implements Runnable {
             final ArrayList<Address> result = new ArrayList<>();
             for (final NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
                 for (final InetAddress addr : Collections.list(iface.getInetAddresses())) {
-                    if (!addr.isLoopbackAddress() && addr.isSiteLocalAddress())
+                    if (!addr.isLoopbackAddress())
                         result.add(getAddress(addr));
                 }
             }
@@ -556,6 +591,7 @@ public class IpNetwork extends Network implements Runnable {
         byte[] distributionMask;
     }
 
+
     static class FDTEntry {
         InetSocketAddress address;
         int timeToLive;
@@ -620,9 +656,9 @@ public class IpNetwork extends Network implements Runnable {
                 response.pushU2B(0x20); // NAK
             }
         } else {
-                response.push(0); // Result
-                response.pushU2B(6); // Length
-                response.pushU2B(0x20); // NAK
+            response.push(0); // Result
+            response.pushU2B(6); // Length
+            response.pushU2B(0x20); // NAK
         }
         sendPacket(IpNetworkUtils.getInetSocketAddress(origin), response.popAll());
     }
@@ -778,7 +814,8 @@ public class IpNetwork extends Network implements Runnable {
                 }
 
                 fd.timeToLive = timeToLive;
-                fd.endTime = getTransport().getLocalDevice().getClock().millis() + (timeToLive + 30) * 1000; // Adds a 30-second grace period, as per J.5.2.3
+                fd.endTime = getTransport().getLocalDevice().getClock()
+                        .millis() + (timeToLive + 30) * 1000; // Adds a 30-second grace period, as per J.5.2.3
 
                 response.pushU2B(0); // Success
             }
@@ -802,8 +839,8 @@ public class IpNetwork extends Network implements Runnable {
                     list.pushU2B(e.timeToLive);
 
                     int remaining = (int) (e.endTime - now) / 1000;
-                    if (remaining < 0) 
-                    // Hasn't yet been cleaned up.
+                    if (remaining < 0)
+                        // Hasn't yet been cleaned up.
                         remaining = 0;
                     if (remaining > 65535)
                         remaining = 65535;
@@ -984,7 +1021,7 @@ public class IpNetwork extends Network implements Runnable {
         pushISA(queue, fdtEntry);
         sendPacket(addr, queue.popAll());
     }
-    
+
     /**
      * Enable BBMD support. Allow other device to register as BBMD or foreign device. *
      */
