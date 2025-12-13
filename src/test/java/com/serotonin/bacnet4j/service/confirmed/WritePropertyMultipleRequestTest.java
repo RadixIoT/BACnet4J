@@ -54,13 +54,13 @@ public class WritePropertyMultipleRequestTest {
     private final TestNetworkMap map = new TestNetworkMap();
     private LocalDevice localDevice;
     private LocalDevice remoteDevice;
-    private final int localDeviceId = 1;
-    private final int remoteDeviceId = 2;
     private MultistateValueObject msv0;
     private RemoteDevice remoteDeviceReference;
 
     @Before
     public void before() throws Exception {
+        var localDeviceId = 1;
+        var remoteDeviceId = 2;
         localDevice = new LocalDevice(localDeviceId, new DefaultTransport(new TestNetwork(map, localDeviceId, 0)))
                 .initialize();
         remoteDevice = new LocalDevice(remoteDeviceId, new DefaultTransport(new TestNetwork(map, remoteDeviceId, 0)))
@@ -85,7 +85,7 @@ public class WritePropertyMultipleRequestTest {
     @Test
     public void writableProperties() throws BACnetException {
         var stateText = new BACnetArray<>(new CharacterString("A"), new CharacterString("B"), new CharacterString("C"),
-                new CharacterString("D"));
+                new CharacterString("D"), new CharacterString("E"));
         var recipients = new SequenceOf<>(new Recipient(TestNetworkUtils.toAddress(21)),
                 new Recipient(TestNetworkUtils.toAddress(22)));
         var writeAccessSpecs = new SequenceOf<>(
@@ -108,13 +108,15 @@ public class WritePropertyMultipleRequestTest {
         );
         localDevice.send(remoteDeviceReference, new WritePropertyMultipleRequest(writeAccessSpecs)).get();
 
-
         BACnetArray<CharacterString> newStateText = msv0.get(PropertyIdentifier.stateText);
-        assertEquals(4, newStateText.size());
+        assertEquals(5, newStateText.size());
         assertEquals("A", newStateText.getBase1(1).getValue());
         assertEquals("B", newStateText.getBase1(2).getValue());
         assertEquals("CC", newStateText.getBase1(3).getValue());
         assertEquals("D", newStateText.getBase1(4).getValue());
+        assertEquals("E", newStateText.getBase1(5).getValue());
+        assertEquals(new UnsignedInteger(5), msv0.get(PropertyIdentifier.numberOfStates));
+
         assertEquals("my new description", msv0.get(PropertyIdentifier.description).toString());
         SequenceOf<UnsignedInteger> newAlarmValues = msv0.get(PropertyIdentifier.alarmValues);
         assertEquals(3, newAlarmValues.size());
@@ -126,5 +128,36 @@ public class WritePropertyMultipleRequestTest {
         assertEquals(2, newRecipients.size());
         assertEquals(21, (int) newRecipients.getBase1(1).getAddress().getMacAddress().getBytes()[0]);
         assertEquals(22, (int) newRecipients.getBase1(2).getAddress().getMacAddress().getBytes()[0]);
+    }
+
+    @Test
+    public void decreaseArraySize() throws BACnetException {
+        var writeAccessSpecs = new SequenceOf<>(new WriteAccessSpecification(msv0.getId(), new SequenceOf<>(
+                new PropertyValue(PropertyIdentifier.stateText, new UnsignedInteger(0), new UnsignedInteger(2), null)
+        )));
+        localDevice.send(remoteDeviceReference, new WritePropertyMultipleRequest(writeAccessSpecs)).get();
+
+        BACnetArray<CharacterString> newStateText = msv0.get(PropertyIdentifier.stateText);
+        assertEquals(2, newStateText.size());
+        assertEquals("a", newStateText.getBase1(1).getValue());
+        assertEquals("b", newStateText.getBase1(2).getValue());
+        assertEquals(new UnsignedInteger(2), msv0.get(PropertyIdentifier.numberOfStates));
+    }
+
+    @Test
+    public void increaseArraySize() throws BACnetException {
+        var writeAccessSpecs = new SequenceOf<>(new WriteAccessSpecification(msv0.getId(), new SequenceOf<>(
+                new PropertyValue(PropertyIdentifier.stateText, new UnsignedInteger(0), new UnsignedInteger(5), null)
+        )));
+        localDevice.send(remoteDeviceReference, new WritePropertyMultipleRequest(writeAccessSpecs)).get();
+
+        BACnetArray<CharacterString> newStateText = msv0.get(PropertyIdentifier.stateText);
+        assertEquals(5, newStateText.size());
+        assertEquals("a", newStateText.getBase1(1).getValue());
+        assertEquals("b", newStateText.getBase1(2).getValue());
+        assertEquals("c", newStateText.getBase1(3).getValue());
+        assertEquals("d", newStateText.getBase1(4).getValue());
+        assertEquals(CharacterString.EMPTY, newStateText.getBase1(5));
+        assertEquals(new UnsignedInteger(5), msv0.get(PropertyIdentifier.numberOfStates));
     }
 }

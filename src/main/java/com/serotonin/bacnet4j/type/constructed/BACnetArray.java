@@ -32,7 +32,10 @@ import java.util.List;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
+import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.type.Encodable;
+import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
+import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class BACnetArray<E extends Encodable> extends SequenceOf<E> {
@@ -66,6 +69,19 @@ public class BACnetArray<E extends Encodable> extends SequenceOf<E> {
 
     public BACnetArray(final ByteQueue queue, final Class<E> clazz, final int contextId) throws BACnetException {
         super(queue, clazz, contextId);
+    }
+
+    public void setSize(final int size, E defaultValue) throws BACnetServiceException {
+        if (size < 0) {
+            throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
+        }
+        while (size != values.size()) {
+            if (size > values.size()) {
+                values.add(defaultValue);
+            } else {
+                values.remove(values.size() - 1);
+            }
+        }
     }
 
     public BACnetArray<E> putBase1(final int indexBase1, final E value) {

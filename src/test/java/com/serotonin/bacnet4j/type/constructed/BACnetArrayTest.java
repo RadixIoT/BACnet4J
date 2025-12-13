@@ -28,11 +28,12 @@
 package com.serotonin.bacnet4j.type.constructed;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
+import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 
 public class BACnetArrayTest {
@@ -44,22 +45,41 @@ public class BACnetArrayTest {
         arr.setBase1(1, new CharacterString("A"));
         arr.setBase1(3, new CharacterString("C"));
         assertEquals(3, arr.getCount());
-        assertEquals(arr.getBase1(1), new CharacterString("A"));
-        assertEquals(arr.getBase1(2), CharacterString.EMPTY);
-        assertEquals(arr.getBase1(3), new CharacterString("C"));
+        assertEquals(new CharacterString("A"), arr.getBase1(1));
+        assertEquals(CharacterString.EMPTY, arr.getBase1(2));
+        assertEquals(new CharacterString("C"), arr.getBase1(3));
 
-        try {
-            arr.remove(2);
-            Assert.fail("Should have failed");
-        } catch (@SuppressWarnings("unused") final BACnetRuntimeException e) {
-            // no op
-        }
+        assertThrows(BACnetRuntimeException.class, () -> arr.remove(2));
+        assertThrows(BACnetRuntimeException.class, () -> arr.add(CharacterString.EMPTY));
+    }
 
-        try {
-            arr.add(new CharacterString("D"));
-            Assert.fail("Should have failed");
-        } catch (@SuppressWarnings("unused") final BACnetRuntimeException e) {
-            // no op
-        }
+    @Test
+    public void changeSize() throws BACnetServiceException {
+        final BACnetArray<CharacterString> arr = new BACnetArray<>(
+                new CharacterString("a"),
+                new CharacterString("b"),
+                new CharacterString("c"),
+                new CharacterString("d")
+        );
+
+        arr.setSize(7, CharacterString.EMPTY);
+        assertEquals(7, arr.getCount());
+        assertEquals(new CharacterString("a"), arr.getBase1(1));
+        assertEquals(new CharacterString("b"), arr.getBase1(2));
+        assertEquals(new CharacterString("c"), arr.getBase1(3));
+        assertEquals(new CharacterString("d"), arr.getBase1(4));
+        assertEquals(CharacterString.EMPTY, arr.getBase1(5));
+        assertEquals(CharacterString.EMPTY, arr.getBase1(6));
+        assertEquals(CharacterString.EMPTY, arr.getBase1(7));
+
+        arr.setSize(2, CharacterString.EMPTY);
+        assertEquals(2, arr.getCount());
+        assertEquals(new CharacterString("a"), arr.getBase1(1));
+        assertEquals(new CharacterString("b"), arr.getBase1(2));
+
+        assertThrows(BACnetServiceException.class, () -> arr.setSize(-1, CharacterString.EMPTY));
+
+        arr.setSize(0, CharacterString.EMPTY);
+        assertEquals(0, arr.getCount());
     }
 }
