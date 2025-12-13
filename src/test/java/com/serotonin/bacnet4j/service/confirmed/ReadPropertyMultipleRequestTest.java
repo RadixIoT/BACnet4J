@@ -30,6 +30,7 @@ package com.serotonin.bacnet4j.service.confirmed;
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.junit.After;
 import org.junit.Before;
@@ -44,6 +45,7 @@ import com.serotonin.bacnet4j.obj.GroupObject;
 import com.serotonin.bacnet4j.service.acknowledgement.ReadPropertyMultipleAck;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.constructed.Address;
+import com.serotonin.bacnet4j.type.constructed.BaseType;
 import com.serotonin.bacnet4j.type.constructed.PropertyReference;
 import com.serotonin.bacnet4j.type.constructed.ReadAccessResult;
 import com.serotonin.bacnet4j.type.constructed.ReadAccessResult.Result;
@@ -54,8 +56,11 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
+import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class ReadPropertyMultipleRequestTest {
     private final TestNetworkMap map = new TestNetworkMap();
@@ -79,6 +84,8 @@ public class ReadPropertyMultipleRequestTest {
 
     @Test
     public void allProperties() throws BACnetException {
+        g0.writePropertyInternal(PropertyIdentifier.forId(888), new TestProprietary(999, true));
+
         final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(
                 new ReadAccessSpecification(g0.getId(), PropertyIdentifier.all));
         final ReadPropertyMultipleAck ack = (ReadPropertyMultipleAck) new ReadPropertyMultipleRequest(
@@ -186,4 +193,56 @@ public class ReadPropertyMultipleRequestTest {
                 new ErrorClassAndCode(ErrorClass.object, ErrorCode.unknownObject)), results1.get(1));
     }
 
+    static class TestProprietary extends BaseType {
+        private final UnsignedInteger testUnsigned;
+        private final com.serotonin.bacnet4j.type.primitive.Boolean testBoolean;
+
+        public TestProprietary(int testUnsigned, boolean testBoolean) {
+            this(new UnsignedInteger(testUnsigned), com.serotonin.bacnet4j.type.primitive.Boolean.valueOf(testBoolean));
+        }
+
+        public TestProprietary(final UnsignedInteger testUnsigned,
+                final com.serotonin.bacnet4j.type.primitive.Boolean testBoolean) {
+            this.testUnsigned = testUnsigned;
+            this.testBoolean = testBoolean;
+        }
+
+        @Override
+        public void write(final ByteQueue queue) {
+            write(queue, testUnsigned, 0);
+            write(queue, testBoolean, 1);
+        }
+
+        public TestProprietary(final ByteQueue queue) throws BACnetException {
+            testUnsigned = read(queue, UnsignedInteger.class, 0);
+            testBoolean = read(queue, com.serotonin.bacnet4j.type.primitive.Boolean.class, 1);
+        }
+
+        public UnsignedInteger getTestUnsigned() {
+            return testUnsigned;
+        }
+
+        public Boolean getTestBoolean() {
+            return testBoolean;
+        }
+
+        @Override
+        public String toString() {
+            return "TestProprietary{testUnsigned=" + testUnsigned + ", testBoolean=" + testBoolean + "}";
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass())
+                return false;
+            TestProprietary that = (TestProprietary) o;
+            return Objects.equals(testUnsigned, that.testUnsigned) && Objects.equals(testBoolean,
+                    that.testBoolean);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(testUnsigned, testBoolean);
+        }
+    }
 }
