@@ -86,7 +86,7 @@ public class ReadPropertyMultipleRequest extends ConfirmedRequestService {
         for (final ReadAccessSpecification req : listOfReadAccessSpecs) {
             results = new ArrayList<>();
             oid = req.getObjectIdentifier();
-            //Handling for unitialized device request. See 15.7.2 and standard test 135.1-2013 9.18.1.3
+            //Handling for uninitialized device request. See 15.7.2 and standard test 135.1-2013 9.18.1.3
             if (oid.getObjectType()
                     .equals(ObjectType.device) && oid.getInstanceNumber() == ObjectIdentifier.UNINITIALIZED) {
                 oid = new ObjectIdentifier(ObjectType.device, localDevice.getInstanceNumber());
