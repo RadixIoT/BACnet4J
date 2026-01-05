@@ -558,10 +558,14 @@ public class BACnetObject {
                 }
 
                 if (pin.intValue() == 0) {
-                    // Writing the size of the array is not allowed here because specific cases need to define what
-                    // value to use as a default when an array is being expanded. This condition therefore needs to
-                    // be handled in mixins or objects.
-                    throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
+                    if (value.getValue() instanceof UnsignedInteger) {
+                        // Writing the size of the array is not allowed here because specific cases need to define what
+                        // value to use as a default when an array is being expanded. This condition therefore needs to
+                        // be handled in mixins or objects.
+                        throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
+                    }
+                    // Can only write an unsigned integer to the zero-index.
+                    throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidArrayIndex);
                 } else {
                     if (def == null) {
                         // No property definition available, but we can check that the data type to write matches that

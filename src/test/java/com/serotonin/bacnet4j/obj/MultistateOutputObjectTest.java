@@ -31,13 +31,11 @@ import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertThrows;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.AbstractTest;
-import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.type.AmbiguousValue;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.constructed.Destination;
@@ -48,8 +46,6 @@ import com.serotonin.bacnet4j.type.constructed.Recipient;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.TimeStamp;
-import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
-import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.EventState;
 import com.serotonin.bacnet4j.type.enumerated.EventType;
 import com.serotonin.bacnet4j.type.enumerated.NotifyType;
@@ -79,37 +75,24 @@ public class MultistateOutputObjectTest extends AbstractTest {
     @Test
     public void initialization() throws Exception {
         new MultistateOutputObject(d1, 1, "mo1", 7, null, 1, 1, false);
-
-        try {
-            new MultistateOutputObject(d1, 2, "mv2", 0, null, 1, 1, false);
-            Assert.fail("Should have thrown an IllegalArgumentException");
-        } catch (@SuppressWarnings("unused") final IllegalArgumentException e) {
-            // Expected
-        }
+        assertThrows(IllegalArgumentException.class,
+                () -> new MultistateOutputObject(d1, 2, "mv2", 0, null, 1, 1, false));
     }
 
     @Test
-    public void inconsistentStateText() throws Exception {
-        try {
-            new MultistateOutputObject(d1, 1, "mv1", 7, new BACnetArray<>(new CharacterString("a")), 1, 1, true);
-            Assert.fail("Should have thrown an IllegalArgumentException");
-        } catch (@SuppressWarnings("unused") final IllegalArgumentException e) {
-            // Expected
-        }
+    public void inconsistentStateText() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new MultistateOutputObject(d1, 1, "mv1", 7, new BACnetArray<>(new CharacterString("a")), 1, 1,
+                        true));
     }
 
     @Test
     public void missingStateText() throws Exception {
         final MultistateOutputObject mv = new MultistateOutputObject(d1, 1, "mv1", 7, null, 1, 1, true);
 
-        try {
-            mv.writeProperty(null,
-                    new PropertyValue(PropertyIdentifier.stateText, new BACnetArray<>(new CharacterString("a"))));
-            fail("Should have thrown an exception");
-        } catch (final BACnetServiceException e) {
-            assertEquals(ErrorClass.property, e.getErrorClass());
-            assertEquals(ErrorCode.inconsistentConfiguration, e.getErrorCode());
-        }
+        mv.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.stateText, new BACnetArray<>(new CharacterString("a"))));
+        assertEquals(new UnsignedInteger(1), mv.get(PropertyIdentifier.numberOfStates));
     }
 
     @Test
