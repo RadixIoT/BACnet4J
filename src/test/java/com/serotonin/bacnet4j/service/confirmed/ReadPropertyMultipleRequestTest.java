@@ -95,14 +95,15 @@ public class ReadPropertyMultipleRequestTest {
         assertEquals(1, readAccessResults.size());
         assertEquals(g0.getId(), readAccessResults.get(0).getObjectIdentifier());
         final List<Result> results = readAccessResults.get(0).getListOfResults().getValues();
-        assertEquals(6, results.size());
+        assertEquals(7, results.size());
         assertEquals(new Result(PropertyIdentifier.objectType, null, ObjectType.group), results.get(0));
         assertEquals(new Result(PropertyIdentifier.listOfGroupMembers, null, new SequenceOf<>()), results.get(1));
         assertEquals(new Result(PropertyIdentifier.presentValue, null, new SequenceOf<>()), results.get(2));
-        assertEquals(new Result(PropertyIdentifier.objectIdentifier, null, g0.getId()), results.get(3));
+        assertEquals(new Result(PropertyIdentifier.forId(888), null, new TestProprietary(999, true)), results.get(3));
+        assertEquals(new Result(PropertyIdentifier.objectIdentifier, null, g0.getId()), results.get(4));
         assertEquals(new Result(PropertyIdentifier.description, null, new CharacterString("my description")),
-                results.get(4));
-        assertEquals(new Result(PropertyIdentifier.objectName, null, new CharacterString("g0")), results.get(5));
+                results.get(5));
+        assertEquals(new Result(PropertyIdentifier.objectName, null, new CharacterString("g0")), results.get(6));
     }
 
     @Test

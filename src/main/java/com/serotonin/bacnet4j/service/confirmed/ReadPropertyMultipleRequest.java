@@ -29,6 +29,7 @@ package com.serotonin.bacnet4j.service.confirmed;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetException;
@@ -150,12 +151,18 @@ public class ReadPropertyMultipleRequest extends ConfirmedRequestService {
         if (obj == null) {
             results.add(new Result(pid, pin, new ErrorClassAndCode(ErrorClass.object, ErrorCode.unknownObject)));
         } else if (pid.intValue() == PropertyIdentifier.all.intValue()) {
-            for (final ObjectPropertyTypeDefinition def : ObjectProperties
-                    .getObjectPropertyTypeDefinitions(obj.getId().getObjectType())) {
+            // Some object properties can be dynamically created, so we can't just return those properties that are
+            // already defined in the object.
+            var pids = ObjectProperties.getObjectPropertyTypeDefinitions(obj.getId().getObjectType()).stream()
+                    .map(d -> d.getPropertyTypeDefinition().getPropertyIdentifier()).collect(
+                            Collectors.toSet());
+            // Include properties that are defined in the object to ensure that proprietary properties are returned.
+            pids.addAll(obj.getPropertyIds());
+
+            for (PropertyIdentifier op : pids) {
                 // Do not add the property list
-                if (def.getPropertyTypeDefinition().getPropertyIdentifier() != PropertyIdentifier.propertyList) {
-                    addNonSpecialProperty(obj, results, def.getPropertyTypeDefinition().getPropertyIdentifier(), pin,
-                            true);
+                if (op != PropertyIdentifier.propertyList) {
+                    addNonSpecialProperty(obj, results, op, pin, true);
                 }
             }
         } else if (pid.intValue() == PropertyIdentifier.required.intValue()) {
@@ -183,12 +190,10 @@ public class ReadPropertyMultipleRequest extends ConfirmedRequestService {
         try {
             results.add(new Result(pid, pin, obj.readPropertyRequired(pid, pin)));
         } catch (final BACnetServiceException e) {
-            if (ignoreNotFound && e.getErrorClass() == ErrorClass.property
-                    && e.getErrorCode() == ErrorCode.unknownProperty) {
-                // ignore
-            } else {
-                results.add(new Result(pid, pin, new ErrorClassAndCode(e.getErrorClass(), e.getErrorCode())));
+            if (ignoreNotFound && e.getErrorClass() == ErrorClass.property && e.getErrorCode() == ErrorCode.unknownProperty) {
+                return;
             }
+            results.add(new Result(pid, pin, new ErrorClassAndCode(e.getErrorClass(), e.getErrorCode())));
         }
     }
 }
