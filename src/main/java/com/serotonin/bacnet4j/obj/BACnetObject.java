@@ -557,22 +557,33 @@ public class BACnetObject {
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.propertyIsNotAnArray);
                 }
 
-                if (def == null) {
-                    // No property definition available, but we can check that the data type to write matches that
-                    // of any existing elements.
-                    if (arr.getCount() > 0) {
-                        if (arr.getBase1(1).getClass() != value.getValue().getClass()) {
-                            throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
-                        }
+                if (pin.intValue() == 0) {
+                    if (value.getValue() instanceof UnsignedInteger) {
+                        // Writing the size of the array is not allowed here because specific cases need to define what
+                        // value to use as a default when an array is being expanded. This condition therefore needs to
+                        // be handled in mixins or objects.
+                        throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
                     }
-                } else {
-                    if (!def.getPropertyTypeDefinition().getClazz().isAssignableFrom(value.getValue().getClass()))
-                        throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
-                }
-
-                // Index check.
-                if (pin.intValue() < 1 || pin.intValue() > arr.getCount()) {
+                    // Can only write an unsigned integer to the zero-index.
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidArrayIndex);
+                } else {
+                    if (def == null) {
+                        // No property definition available, but we can check that the data type to write matches that
+                        // of any existing elements.
+                        if (arr.getCount() > 0) {
+                            if (arr.getBase1(1).getClass() != value.getValue().getClass()) {
+                                throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
+                            }
+                        }
+                    } else {
+                        if (!def.getPropertyTypeDefinition().getClazz().isAssignableFrom(value.getValue().getClass()))
+                            throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
+                    }
+
+                    // Index check.
+                    if (pin.intValue() < 1 || pin.intValue() > arr.getCount()) {
+                        throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidArrayIndex);
+                    }
                 }
             }
         }
