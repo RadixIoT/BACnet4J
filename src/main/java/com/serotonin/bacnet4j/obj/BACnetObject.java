@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -405,6 +406,10 @@ public class BACnetObject {
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidArrayIndex);
 
         return array.getBase1(index);
+    }
+
+    public Set<PropertyIdentifier> getPropertyIds() {
+        return properties.keySet();
     }
 
     /**
