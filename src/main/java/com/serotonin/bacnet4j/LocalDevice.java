@@ -365,7 +365,7 @@ public class LocalDevice implements AutoCloseable {
         //
         // Send restart notifications.
 
-        // The defaulting of the list of receipients is done here because sometimes the network has to be initialized
+        // The defaulting of the list of recipients is done here because sometimes the network has to be initialized
         // before the local broadcast address is known.
         SequenceOf<Recipient> restartNotificationRecipients = getPersistence().loadSequenceOf(
                 deviceObject.getPersistenceKey(PropertyIdentifier.restartNotificationRecipients), Recipient.class);

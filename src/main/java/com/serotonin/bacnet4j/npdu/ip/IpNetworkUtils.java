@@ -198,4 +198,29 @@ public class IpNetworkUtils {
         sb.append(addr & 0xFF);
         return sb.toString();
     }
+
+    public static boolean matchWithMask(String address1, String address2, String mask) {
+        return matchWithMask(IpAddressUtils.toIpAddress(address1), IpAddressUtils.toIpAddress(address2),
+                IpAddressUtils.toIpAddress(mask));
+    }
+
+    /**
+     * Determines if the given addresses are equal when applying the given mask. All arrays must have at least 4 bytes,
+     * and only those 4 bytes are considered.
+     *
+     * @param address1 the first address to match
+     * @param address2 the second address to match
+     * @param mask     the mask to apply
+     * @return true if the addresses match
+     */
+    public static boolean matchWithMask(byte[] address1, byte[] address2, byte[] mask) {
+        for (int i = 0; i < 4; i++) {
+            final int b1 = address1[i] & mask[i];
+            final int b2 = address2[i] & mask[i];
+            if (b1 != b2) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
