@@ -63,6 +63,19 @@ The dependency information is BACnet4J pre 5.0 is:
 
 Releases
 ========
+*Version 6.1.0*
+
+- Previously upon a final timeout for a segmented request or response, BACnet4J would issue a segment NAK to the peer  
+  device. This was deemed to be inappropriate, and so was removed.
+- Issues regarding the use of BACnet4J as a BBMD and initializing it with a wildcard bind address (i.e. 0.0.0.0) have
+  been fixed.
+- The means by which multistate text can be altered has been expanded. There are now four ways: 1) the state text
+  array can be rewritten entirely, 2) the number of states can be changed, 3) the size of the array can be changed by
+  writing a new value to the array's 0 index, and 4) by writing new individual state text values.
+- A request to an object for all properties will now also return proprietary properties.
+- The timeout for the termination of a local device can now be specified in user code.
+- Bug fixes and dependency upgrades.
+
 *Version 6.0.2*
 
 - Previously, when an IAm was received, calls to `DeviceEventListener.iAmReceived` would be called in the transport
