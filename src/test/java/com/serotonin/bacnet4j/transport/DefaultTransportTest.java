@@ -62,7 +62,6 @@ import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.event.DeviceEventHandler;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
-import com.serotonin.bacnet4j.npdu.NPCI;
 import com.serotonin.bacnet4j.npdu.NPDU;
 import com.serotonin.bacnet4j.npdu.Network;
 import com.serotonin.bacnet4j.service.acknowledgement.ReadPropertyMultipleAck;
@@ -117,14 +116,6 @@ public class DefaultTransportTest {
 
         // Clean up
         transport.terminate();
-    }
-
-    private static ByteQueue createNPDU(final APDU apdu) {
-        final ByteQueue npdu = new ByteQueue();
-        final NPCI npci = new NPCI(null, null, apdu.expectsReply());
-        npci.write(npdu);
-        apdu.write(npdu);
-        return npdu;
     }
 
     private static Address getSourceAddress() {
