@@ -82,8 +82,9 @@ public class IpNetworkOriginalBroadcastTest {
         localDevice = mock(LocalDevice.class);
         Transport transport = mock(Transport.class);
         doReturn(localDevice).when(transport).getLocalDevice();
-        network.initialize(transport);
+        // Ensure that BBMD can be enabled before the network is initialized.
         network.enableBBMD();
+        network.initialize(transport);
     }
 
     @Test

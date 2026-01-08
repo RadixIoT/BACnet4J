@@ -200,6 +200,8 @@ public class IpNetwork extends Network {
 
         localAddresses = getLocalAddressList();
         localAddress = getLocalAddress();
+
+        initializeBBMD();
     }
 
     protected DatagramSocket createSocket(final InetSocketAddress bindAddress) throws SocketException {
@@ -211,8 +213,9 @@ public class IpNetwork extends Network {
             if (!socket.getReuseAddress())
                 LOG.warn("reuseAddress was set but not supported by the underlying platform");
             socket.bind(bindAddress);
-        } else
+        } else {
             socket = new DatagramSocket(bindAddress);
+        }
         socket.setBroadcast(true);
         return socket;
     }
@@ -1039,14 +1042,20 @@ public class IpNetwork extends Network {
      * Enable BBMD support. Allow other device to register as BBMD or foreign device. *
      */
     public void enableBBMD() {
-        if (!bbmdEnabled.get()) {
-            bbmdEnabled.set(true);
-            broadcastDistributionTable.clear();
+        bbmdEnabled.set(true);
+        initializeBBMD();
+    }
 
-            // As a default we add an entry for this self, using the first non-wildcard address.
-            var local = getLocalAddress();
-            broadcastDistributionTable.add(
-                    new BDTEntry(local.getAddress().getAddress(), local.getPort(), BDTEntry.DEFAULT_DISTRIBUTION_MASK));
+    protected void initializeBBMD() {
+        // BBMD must be enabled and the network needs to be initialized before BBMD initialization.
+        if (bbmdEnabled.get() && localBindAddress != null) {
+            if (broadcastDistributionTable.isEmpty()) {
+                // If the BDT is still empty, as a default we add an entry for this self, using the first
+                // non-wildcard address.
+                var local = getLocalAddress();
+                broadcastDistributionTable.add(new BDTEntry(local.getAddress().getAddress(), local.getPort(),
+                        BDTEntry.DEFAULT_DISTRIBUTION_MASK));
+            }
 
             // Add a job to expire foreign device registrations.
             ftdMaintenance = getTransport().getLocalDevice().scheduleAtFixedRate(() -> {
