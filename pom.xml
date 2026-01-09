@@ -206,6 +206,13 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>pl.pragmatists</groupId>
+            <artifactId>JUnitParams</artifactId>
+            <version>1.1.1</version>
+            <scope>test</scope>
+        </dependency>
+        
     </dependencies>
     <issueManagement>
         <url>https://github.com/infiniteautomation/BACnet4J/issues</url>
