@@ -161,6 +161,15 @@ public class BACnetObjectTest extends AbstractTest {
     }
 
     @Test
+    public void undefinedArrayWriteDataToArraySize() {
+        TestUtils.assertBACnetServiceException(() -> {
+            d2.getObject(d2.getId()).writeProperty(null,
+                    new PropertyValue(PropertyIdentifier.forId(6789), UnsignedInteger.ZERO, new UnsignedInteger(10),
+                            null));
+        }, ErrorClass.property, ErrorCode.writeAccessDenied);
+    }
+
+    @Test
     public void undefinedArrayWriteElementLowIndex() {
         // Returns invalid data type because the index of 0 indicates a write to the array length, which expects
         // an UnsignedInteger

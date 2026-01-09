@@ -58,13 +58,32 @@ public class MultistateMixin extends AbstractMixin {
             if (numStates.intValue() < 1)
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.inconsistentConfiguration);
         } else if (PropertyIdentifier.stateText.equals(value.getPropertyIdentifier())) {
-            final UnsignedInteger numStates = get(PropertyIdentifier.numberOfStates);
-            if (value.getPropertyArrayIndex() == null) {
-                final BACnetArray<CharacterString> stateText = value.getValue();
-                if (numStates.intValue() != stateText.getCount())
-                    throw new BACnetServiceException(ErrorClass.property, ErrorCode.inconsistentConfiguration);
+            UnsignedInteger pin = value.getPropertyArrayIndex();
+            if (pin != null && pin.intValue() == 0) {
+                // Ensure that the new array size is an integer.
+                if (!(value.getValue() instanceof UnsignedInteger)) {
+                    throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
+                }
+                return true;
             }
         }
+        return false;
+    }
+
+    @Override
+    protected boolean writeProperty(ValueSource valueSource, PropertyValue value)
+            throws BACnetServiceException {
+        if (PropertyIdentifier.stateText.equals(value.getPropertyIdentifier())) {
+            UnsignedInteger pin = value.getPropertyArrayIndex();
+            if (pin != null && pin.intValue() == 0) {
+                UnsignedInteger size = value.getValue();
+                BACnetArray<CharacterString> states = get(PropertyIdentifier.stateText);
+                var newText = copyArrayWithNewSize(states, size.intValue());
+                writePropertyInternal(PropertyIdentifier.stateText, newText);
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -76,16 +95,27 @@ public class MultistateMixin extends AbstractMixin {
                 final BACnetArray<CharacterString> stateText = get(PropertyIdentifier.stateText);
                 if (stateText != null) {
                     final int numStates = ((UnsignedInteger) newValue).intValue();
-                    final BACnetArray<CharacterString> newText = new BACnetArray<>(numStates, CharacterString.EMPTY);
-
-                    // Copy the old state values in.
-                    final int min = Math.min(newText.getCount(), stateText.getCount());
-                    for (int i = 0; i < min; i++)
-                        newText.set(i, stateText.get(i));
-
+                    final BACnetArray<CharacterString> newText = copyArrayWithNewSize(stateText, numStates);
                     writePropertyInternal(PropertyIdentifier.stateText, newText);
                 }
             }
+        } else if (PropertyIdentifier.stateText.equals(pid)) {
+            var stateText = (BACnetArray<?>) newValue;
+            UnsignedInteger numberOfStates = get(PropertyIdentifier.numberOfStates);
+            if (stateText.size() != numberOfStates.intValue()) {
+                writePropertyInternal(PropertyIdentifier.numberOfStates, new UnsignedInteger(stateText.size()));
+            }
         }
+    }
+
+    private BACnetArray<CharacterString> copyArrayWithNewSize(BACnetArray<CharacterString> oldText, int newSize) {
+        final BACnetArray<CharacterString> newText = new BACnetArray<>(newSize, CharacterString.EMPTY);
+
+        // Copy the old state values in.
+        final int min = Math.min(newText.getCount(), oldText.getCount());
+        for (int i = 0; i < min; i++)
+            newText.set(i, oldText.get(i));
+
+        return newText;
     }
 }
