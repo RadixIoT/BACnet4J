@@ -28,8 +28,17 @@
 package com.serotonin.bacnet4j.npdu.ip;
 
 import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assume.assumeTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 
+import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.junit.Test;
@@ -42,6 +51,9 @@ import com.serotonin.bacnet4j.docker.DockerRemoteDevice;
 import com.serotonin.bacnet4j.event.DefaultDeviceEventListener;
 import com.serotonin.bacnet4j.event.DeviceEventListener;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
+import com.serotonin.bacnet4j.transport.Transport;
+import com.serotonin.bacnet4j.type.constructed.Address;
+import com.serotonin.bacnet4j.util.sero.IpAddressUtils;
 
 /**
  * These tests assume the existence of the remote devices created by the docker compose, and so only runs if being
@@ -119,4 +131,56 @@ public class IpNetworkTest {
         }
     }
 
+    @Test
+    public void getLocalAddressWithWildcardBindAddress() throws Exception {
+        var port = 48706;
+        IpNetwork network = spy(new IpNetworkBuilder()
+                .withBroadcast("1.2.3.255", 24)
+                .build());
+        doReturn(List.of(
+                new Address(IpNetworkUtils.toOctetString("0.0.0.0", port)),
+                new Address(IpNetworkUtils.toOctetString("2.3.4.5", port)),
+                new Address(IpNetworkUtils.toOctetString("3.4.4.5", port))
+        )).when(network).getLocalAddressList();
+
+        doNothing().when(network).listen(any());
+        doReturn(null).when(network).createSocket(any());
+
+        LocalDevice localDevice = mock(LocalDevice.class);
+        Transport transport = mock(Transport.class);
+        doReturn(localDevice).when(transport).getLocalDevice();
+        network.initialize(transport);
+
+        InetSocketAddress addr = network.getLocalAddress();
+        assertArrayEquals(IpAddressUtils.toIpAddress("2.3.4.5"), addr.getAddress().getAddress());
+        assertEquals(port, addr.getPort());
+
+    }
+
+    @Test
+    public void getLocalAddressWithASpecificBindAddress() throws Exception {
+        var port = 48706;
+        IpNetwork network = spy(new IpNetworkBuilder()
+                .withLocalBindAddress("1.2.3.4")
+                .withPort(port)
+                .withBroadcast("1.2.3.255", 24)
+                .build());
+        doReturn(List.of(
+                new Address(IpNetworkUtils.toOctetString("0.0.0.0", port)),
+                new Address(IpNetworkUtils.toOctetString("2.3.4.5", port)),
+                new Address(IpNetworkUtils.toOctetString("3.4.4.5", port))
+        )).when(network).getLocalAddressList();
+
+        doNothing().when(network).listen(any());
+        doReturn(null).when(network).createSocket(any());
+
+        LocalDevice localDevice = mock(LocalDevice.class);
+        Transport transport = mock(Transport.class);
+        doReturn(localDevice).when(transport).getLocalDevice();
+        network.initialize(transport);
+
+        InetSocketAddress addr = network.getLocalAddress();
+        assertArrayEquals(IpAddressUtils.toIpAddress("1.2.3.4"), addr.getAddress().getAddress());
+        assertEquals(port, addr.getPort());
+    }
 }
