@@ -28,6 +28,8 @@
 package com.serotonin.bacnet4j.npdu.ip;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -67,5 +69,15 @@ public class IpNetworkUtilsTest {
         assertEquals(0xFFFFFFFCL, IpNetworkUtils.createMask(30));
         assertEquals(0xFFFFFFFEL, IpNetworkUtils.createMask(31));
         assertEquals(0xFFFFFFFFL, IpNetworkUtils.createMask(32));
+    }
+
+    @Test
+    public void matchWithMask() {
+        assertTrue(IpNetworkUtils.matchWithMask("1.2.3.4", "1.2.3.5", "255.255.255.0"));
+        assertTrue(IpNetworkUtils.matchWithMask("1.2.3.4", "1.2.3.5", "255.255.255.254"));
+        assertFalse(IpNetworkUtils.matchWithMask("1.2.3.4", "1.2.3.5", "255.255.255.255"));
+        assertTrue(IpNetworkUtils.matchWithMask("0.0.0.0", "255.255.255.255", "0.0.0.0"));
+        assertFalse(IpNetworkUtils.matchWithMask("0.0.0.0", "255.255.255.255", "128.0.0.0"));
+        assertFalse(IpNetworkUtils.matchWithMask("0.0.0.0", "255.255.255.255", "0.64.0.0"));
     }
 }
