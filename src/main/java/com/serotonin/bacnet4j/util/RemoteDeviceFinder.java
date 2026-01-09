@@ -19,7 +19,7 @@
  *
  * When signing a commercial license with Radix IoT LLC,
  * the following extension to GPL is made. A special exception to the GPL is
- * included to allow you to distribute a combined work that includes BAcnet4J
+ * included to allow you to distribute a combined work that includes BACnet4J
  * without being obliged to provide the source code for any proprietary components.
  *
  * See www.radixiot.com for commercial license options.
@@ -176,7 +176,7 @@ public class RemoteDeviceFinder {
                     return remoteDevice;
                 }
 
-                // done() was not call, so ensure that the listener is removed from the event handler
+                // done() was not called, so ensure that the listener is removed from the event handler
                 localDevice.getEventHandler().removeListener(listener);
 
                 LOG.debug("Throwing timeout");
