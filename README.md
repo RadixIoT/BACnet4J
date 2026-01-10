@@ -63,6 +63,11 @@ The dependency information is BACnet4J pre 5.0 is:
 
 Releases
 ========
+*Version 6.1.0*
+
+- The way in which new character encodings for `CharacterString`s can be added has been simplified. Thanks to
+  https://github.com/balbusm for this submission.
+
 *Version 6.0.2*
 
 - Previously, when an IAm was received, calls to `DeviceEventListener.iAmReceived` would be called in the transport
