@@ -176,7 +176,7 @@ public class RemoteDeviceFinder {
                     return remoteDevice;
                 }
 
-                // done() was not call, so ensure that the listener is removed from the event handler
+                // done() was not called, so ensure that the listener is removed from the event handler
                 localDevice.getEventHandler().removeListener(listener);
 
                 LOG.debug("Throwing timeout");

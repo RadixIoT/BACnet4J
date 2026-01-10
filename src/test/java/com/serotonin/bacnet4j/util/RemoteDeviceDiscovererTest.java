@@ -28,14 +28,17 @@
 package com.serotonin.bacnet4j.util;
 
 import static com.serotonin.bacnet4j.TestUtils.assertListEqualsIgnoreOrder;
+import static com.serotonin.bacnet4j.TestUtils.await;
 import static com.serotonin.bacnet4j.TestUtils.indexOf;
 import static com.serotonin.bacnet4j.TestUtils.toList;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiPredicate;
 
 import org.junit.Assert;
@@ -43,9 +46,16 @@ import org.junit.Test;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
+import com.serotonin.bacnet4j.RemoteObject;
+import com.serotonin.bacnet4j.enums.MaxApduLength;
+import com.serotonin.bacnet4j.event.DeviceEventAdapter;
+import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
+import com.serotonin.bacnet4j.service.unconfirmed.IHaveRequest;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
+import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 
 public class RemoteDeviceDiscovererTest {
     private final TestNetworkMap map = new TestNetworkMap();
@@ -211,10 +221,46 @@ public class RemoteDeviceDiscovererTest {
             }
         }
 
-        Assert.assertTrue(results.isEmpty());
+        assertTrue(results.isEmpty());
     }
 
     private LocalDevice createLocalDevice(int address) {
         return new LocalDevice(address, new DefaultTransport(new TestNetwork(map, address, 1)));
+    }
+
+    @Test
+    public void alternateMaxApduLength() throws Exception {
+        try (LocalDevice d1 = createLocalDevice(1); LocalDevice d2 = createLocalDevice(2)) {
+            d2.getDeviceObject().writePropertyInternal(PropertyIdentifier.maxApduLengthAccepted,
+                    MaxApduLength.UP_TO_50.getMaxLength());
+            d2.getDeviceObject()
+                    .writePropertyInternal(PropertyIdentifier.segmentationSupported, Segmentation.noSegmentation);
+
+            d1.initialize();
+            d2.initialize();
+
+            IHaveRequest iHave = new IHaveRequest(d2.getId(), d2.getDeviceObject().getId(),
+                    d2.getDeviceObject().get(PropertyIdentifier.objectName));
+            d2.sendGlobalBroadcast(iHave);
+
+            AtomicBoolean received = new AtomicBoolean();
+            d1.getEventHandler().addListener(new DeviceEventAdapter() {
+                @Override
+                public void iHaveReceived(final RemoteDevice d, final RemoteObject o) {
+                    System.out.println("IHave received");
+                    try {
+                        DiscoveryUtils.getExtendedDeviceInformation(d1, d);
+                        System.out.println(
+                                "ExtendedDeviceInformation received: model name=" + d.getModelName() + ", maxApduLength=" + d.getMaxAPDULengthAccepted());
+                    } catch (BACnetException e) {
+                        System.out.println("Exception while getting extended device information: " + e.getMessage());
+                    }
+                    received.set(true);
+                }
+            });
+
+            await(received::get);
+            assertTrue(received.get());
+        }
     }
 }

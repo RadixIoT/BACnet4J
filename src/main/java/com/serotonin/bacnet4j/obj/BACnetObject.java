@@ -45,7 +45,7 @@ import com.serotonin.bacnet4j.obj.mixin.CovReportingMixin;
 import com.serotonin.bacnet4j.obj.mixin.HasStatusFlagsMixin;
 import com.serotonin.bacnet4j.obj.mixin.ObjectIdAndNameMixin;
 import com.serotonin.bacnet4j.obj.mixin.PropertyListMixin;
-import com.serotonin.bacnet4j.obj.mixin.event.IntrinsicReportingMixin;
+import com.serotonin.bacnet4j.obj.mixin.event.EventReportingMixin;
 import com.serotonin.bacnet4j.service.acknowledgement.GetAlarmSummaryAck.AlarmSummary;
 import com.serotonin.bacnet4j.service.acknowledgement.GetEnrollmentSummaryAck.EnrollmentSummary;
 import com.serotonin.bacnet4j.service.acknowledgement.GetEventInformationAck.EventSummary;
@@ -88,7 +88,7 @@ public class BACnetObject {
     private final List<AbstractMixin> mixins = new ArrayList<>();
     private CommandableMixin commandableMixin;
     private HasStatusFlagsMixin hasStatusFlagsMixin;
-    private IntrinsicReportingMixin intrinsicReportingMixin;
+    private EventReportingMixin eventReportingMixin;
     private CovReportingMixin changeOfValueMixin;
 
     // Configuration
@@ -212,8 +212,8 @@ public class BACnetObject {
             hasStatusFlagsMixin = m;
         else if (mixin instanceof CommandableMixin m)
             commandableMixin = m;
-        else if (mixin instanceof IntrinsicReportingMixin m)
-            intrinsicReportingMixin = m;
+        else if (mixin instanceof EventReportingMixin m)
+            eventReportingMixin = m;
         else if (mixin instanceof CovReportingMixin m)
             changeOfValueMixin = m;
     }
@@ -274,9 +274,9 @@ public class BACnetObject {
             final EventState eventStateAcknowledged, final TimeStamp timeStamp,
             final CharacterString acknowledgmentSource, final TimeStamp timeOfAcknowledgment)
             throws BACnetServiceException {
-        if (intrinsicReportingMixin == null)
+        if (eventReportingMixin == null)
             throw new BACnetServiceException(ErrorClass.object, ErrorCode.noAlarmConfigured);
-        intrinsicReportingMixin.acknowledgeAlarm(acknowledgingProcessIdentifier, eventStateAcknowledged, timeStamp,
+        eventReportingMixin.acknowledgeAlarm(acknowledgingProcessIdentifier, eventStateAcknowledged, timeStamp,
                 acknowledgmentSource, timeOfAcknowledgment);
     }
 
@@ -287,14 +287,14 @@ public class BACnetObject {
     }
 
     public AlarmSummary getAlarmSummary() {
-        if (intrinsicReportingMixin != null)
-            return intrinsicReportingMixin.getAlarmSummary();
+        if (eventReportingMixin != null)
+            return eventReportingMixin.getAlarmSummary();
         return null;
     }
 
     public EventSummary getEventSummary() {
-        if (intrinsicReportingMixin != null)
-            return intrinsicReportingMixin.getEventSummary();
+        if (eventReportingMixin != null)
+            return eventReportingMixin.getEventSummary();
         return null;
     }
 
@@ -302,8 +302,8 @@ public class BACnetObject {
             final RecipientProcess enrollmentFilter, final EventStateFilter eventStateFilter,
             final EventType eventTypeFilter, final PriorityFilter priorityFilter,
             final UnsignedInteger notificationClassFilter) {
-        if (intrinsicReportingMixin != null)
-            return intrinsicReportingMixin.getEnrollmentSummary(acknowledgmentFilter, enrollmentFilter,
+        if (eventReportingMixin != null)
+            return eventReportingMixin.getEnrollmentSummary(acknowledgmentFilter, enrollmentFilter,
                     eventStateFilter, eventTypeFilter, priorityFilter, notificationClassFilter);
         return null;
     }
@@ -350,8 +350,6 @@ public class BACnetObject {
      * Reads the given property. All mixins and the object are notified with beforeReadProperty prior to getting the
      * value from the internal map.
      *
-     * @param pid
-     * @return
      * @throws BACnetServiceException if the object objected to the read
      */
     @SuppressWarnings("unchecked")
@@ -368,8 +366,6 @@ public class BACnetObject {
      * Reads the given property. All mixins and the object are notified with beforeReadProperty prior to getting the
      * value from the internal map. Will not return null.
      *
-     * @param pid
-     * @return
      * @throws BACnetServiceException if the object objected to the read, or if the property was not found (was null).
      */
     public final Encodable readPropertyRequired(final PropertyIdentifier pid) throws BACnetServiceException {
@@ -383,9 +379,6 @@ public class BACnetObject {
      * Reads the given one-based index of the array for the given pid. All mixins and the object are notified with
      * beforeReadProperty prior to getting the value from the internal map.
      *
-     * @param pid
-     * @param propertyArrayIndex
-     * @return
      * @throws BACnetServiceException if the object objected to the read
      */
     public final Encodable readProperty(final PropertyIdentifier pid, final UnsignedInteger propertyArrayIndex)
@@ -394,10 +387,9 @@ public class BACnetObject {
         if (propertyArrayIndex == null)
             return result;
 
-        if (!(result instanceof BACnetArray<?>))
+        if (!(result instanceof BACnetArray<?> array))
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.propertyIsNotAnArray);
 
-        final SequenceOf<?> array = (SequenceOf<?>) result;
         final int index = propertyArrayIndex.intValue();
         if (index == 0)
             return new UnsignedInteger(array.getCount());
@@ -416,9 +408,6 @@ public class BACnetObject {
      * Reads the given one-based index of the array for the given pid. All mixins and the object are notified with
      * beforeReadProperty prior to getting the value from the internal map. Will not return null.
      *
-     * @param pid
-     * @param propertyArrayIndex
-     * @return
      * @throws BACnetServiceException if the object objected to the read, or if the property was not found (was null).
      */
     public final Encodable readPropertyRequired(final PropertyIdentifier pid, final UnsignedInteger propertyArrayIndex)
@@ -437,9 +426,6 @@ public class BACnetObject {
     /**
      * Write a property with no notifications. Circumvents the object and all mixins for validations, handling, and
      * post-write notifications.
-     *
-     * @param pid
-     * @param value
      */
     protected void set(final PropertyIdentifier pid, final Encodable value) {
         properties.put(pid, value);
@@ -464,10 +450,6 @@ public class BACnetObject {
     /**
      * Entry point for writing a property via services. Provides validation, write handling, and post-write
      * notifications via the object itself and mixins.
-     *
-     * @param value
-     * @return
-     * @throws BACnetServiceException
      */
     @SuppressWarnings("unchecked")
     public BACnetObject writeProperty(final ValueSource valueSource, final PropertyValue value)
@@ -620,10 +602,6 @@ public class BACnetObject {
      * Entry point for changing a property circumventing object/mixin validation and write handling. Used primarily for
      * object configuration and property writes from mixins themselves, but can also be used by client code to set
      * object properties. Calls mixin "after write" methods and fires COV subscriptions.
-     *
-     * @param pid
-     * @param value
-     * @return
      */
     public BACnetObject writePropertyInternal(final PropertyIdentifier pid, final Encodable value) {
         final Encodable oldValue = properties.get(pid);
@@ -645,8 +623,8 @@ public class BACnetObject {
     /**
      * Allows the object itself to validate the property before being written.
      *
-     * @param valueSource
-     * @param value
+     * @param valueSource the value source
+     * @param value       the value to validate
      * @return true if no more validation should occur, including the generic data type validation.
      * @throws BACnetServiceException to abort the write.
      */
@@ -658,9 +636,9 @@ public class BACnetObject {
     /**
      * Allows notification to the object itself of a property write, in the same manner as it works for mixins.
      *
-     * @param pid
-     * @param oldValue
-     * @param newValue
+     * @param pid      the property identifier
+     * @param oldValue the old value
+     * @param newValue the new value
      */
     protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
             final Encodable newValue) {
@@ -670,8 +648,7 @@ public class BACnetObject {
     /**
      * Allows notification to the object itself before a property read.
      *
-     * @param pid
-     * @throws BACnetServiceException
+     * @param pid the property identifier
      */
     protected void beforeReadProperty(final PropertyIdentifier pid) throws BACnetServiceException {
         // no op
