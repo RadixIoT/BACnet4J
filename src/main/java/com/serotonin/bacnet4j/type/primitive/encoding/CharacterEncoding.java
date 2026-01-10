@@ -5,7 +5,6 @@ import static com.serotonin.bacnet4j.type.primitive.encoding.StandardCharacterEn
 import java.util.Objects;
 
 public class CharacterEncoding {
-
     private final byte encoding;
     private final int codePage;
 

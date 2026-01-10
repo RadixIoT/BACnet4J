@@ -57,6 +57,7 @@ import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.SignedInteger;
 import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import com.serotonin.bacnet4j.type.primitive.encoding.CharacterEncoding;
 import com.serotonin.bacnet4j.type.primitive.encoding.StandardCharacterEncodings;
 import com.serotonin.bacnet4j.util.RequestUtils;
 
@@ -73,7 +74,7 @@ public class BACnetObjectTest extends AbstractTest {
         d2.writePropertyInternal(PropertyIdentifier.forId(6789),
                 new BACnetArray<>(new Real(0), new Real(1), new Real(2)));
         d2.writePropertyInternal(PropertyIdentifier.protocolVersion,
-                new CharacterString(StandardCharacterEncodings.ANSI_X3_4, "hxzy-1.01"));
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "hxzy-1.01"));
     }
 
     @Test

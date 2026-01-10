@@ -35,7 +35,6 @@ import static com.serotonin.bacnet4j.type.primitive.encoding.StandardCharacterEn
 import java.util.List;
 import java.util.Objects;
 import java.util.ServiceLoader;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
@@ -47,10 +46,7 @@ import com.serotonin.bacnet4j.type.primitive.encoding.CharacterEncoding;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class CharacterString extends Primitive {
-
     public static final byte TYPE_ID = 7;
-
-
 
     // load encoders before creating EMPTY
     private static final List<CharacterEncoder> characterEncoders = loadEncoders();
@@ -66,17 +62,17 @@ public class CharacterString extends Primitive {
     }
 
     /**
-     * According to Oracle java documentation about Charset, the behavior of optional charsets may vary between java
-     * platform implementations.
-     * This concerns ISO_10646_UCS_4 (UTF-32), IBM_MS_DBCS and JIS_C_6226.
-     *
-     * @param encoding
-     * @param value
+     * @deprecated use CharacterEncoding constructor instead.
      */
+    @Deprecated(since = "6.1.0")
     public CharacterString(final byte encoding, final String value) {
         this(new CharacterEncoding(encoding, defaultCodingPage(encoding)), value);
     }
 
+    /**
+     * According to Oracle java documentation about Charset, the behavior of optional charsets may vary between java
+     * platform implementations. This concerns ISO_10646_UCS_4 (UTF-32), IBM_MS_DBCS and JIS_C_6226.
+     */
     public CharacterString(final CharacterEncoding encoding, final String value) {
         this.encoding = encoding;
         try {
@@ -140,7 +136,7 @@ public class CharacterString extends Primitive {
     private CharacterEncoding createCharacterEncoding(ByteQueue queue) {
         byte encodingValue = queue.pop();
         if (encodingValue != IBM_MS_DBCS) {
-            return new CharacterEncoding(encodingValue, NO_CODE_PAGE);
+            return new CharacterEncoding(encodingValue);
         }
         //Decode the codePage
         int codePage = queue.popU2B();
@@ -167,8 +163,7 @@ public class CharacterString extends Primitive {
 
     private static List<CharacterEncoder> loadEncoders() {
         ServiceLoader<CharacterEncoder> loader = ServiceLoader.load(CharacterEncoder.class);
-        return StreamSupport.stream(loader.spliterator(), false)
-                .collect(Collectors.toList());
+        return StreamSupport.stream(loader.spliterator(), false).toList();
     }
 
     @Override

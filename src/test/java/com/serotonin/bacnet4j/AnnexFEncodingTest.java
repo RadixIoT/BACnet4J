@@ -162,6 +162,7 @@ import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import com.serotonin.bacnet4j.type.primitive.encoding.CharacterEncoding;
 import com.serotonin.bacnet4j.type.primitive.encoding.StandardCharacterEncodings;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
@@ -179,7 +180,7 @@ public class AnnexFEncodingTest {
         final AcknowledgeAlarmRequest acknowledgeAlarmRequest = new AcknowledgeAlarmRequest(new UnsignedInteger(1),
                 new ObjectIdentifier(ObjectType.analogInput, 2), EventState.highLimit,
                 new TimeStamp(new UnsignedInteger(16)),
-                new CharacterString(StandardCharacterEncodings.ANSI_X3_4, "MDL"),
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "MDL"),
                 new TimeStamp(
                         new DateTime(new Date(1992, Month.JUNE, 21, DayOfWeek.UNSPECIFIED), new Time(13, 3, 41, 9))));
 
@@ -436,7 +437,8 @@ public class AnnexFEncodingTest {
     @Test
     public void e1_9aTest() {
         final LifeSafetyOperationRequest lifeSafetyOperationRequest = new LifeSafetyOperationRequest(
-                new UnsignedInteger(18), new CharacterString(StandardCharacterEncodings.ANSI_X3_4, "MDL"),
+                new UnsignedInteger(18),
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "MDL"),
                 LifeSafetyOperation.reset, new ObjectIdentifier(ObjectType.lifeSafetyPoint, 1));
 
         final ConfirmedRequest pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED,
@@ -727,7 +729,7 @@ public class AnnexFEncodingTest {
     public void e3_3aTest() {
         final List<PropertyValue> propertyValues = new ArrayList<>();
         propertyValues.add(new PropertyValue(PropertyIdentifier.objectName, null,
-                new CharacterString(StandardCharacterEncodings.ANSI_X3_4, "Trend 1"), null));
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "Trend 1"), null));
         propertyValues
                 .add(new PropertyValue(PropertyIdentifier.fileAccessMethod, null, FileAccessMethod.recordAccess, null));
         final ConfirmedRequestService service = new CreateObjectRequest(ObjectType.file,
@@ -980,7 +982,8 @@ public class AnnexFEncodingTest {
     @Test
     public void e4_1aTest() {
         final ConfirmedRequestService service = new DeviceCommunicationControlRequest(new UnsignedInteger(5),
-                EnableDisable.disable, new CharacterString(StandardCharacterEncodings.ANSI_X3_4, "#egbdf!"));
+                EnableDisable.disable,
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "#egbdf!"));
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_1024,
                 (byte) 5, (byte) 0, 0, service);
         compare(pdu, "00040511090519012D080023656762646621");
@@ -1022,7 +1025,7 @@ public class AnnexFEncodingTest {
     @Test
     public void e4_4aTest() {
         final ConfirmedRequestService service = new ReinitializeDeviceRequest(ReinitializedStateOfDevice.warmstart,
-                new CharacterString(StandardCharacterEncodings.ANSI_X3_4, "AbCdEfGh"));
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "AbCdEfGh"));
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_128,
                 (byte) 2, (byte) 0, 0, service);
         compare(pdu, "0001021409011D09004162436445664768");
@@ -1038,7 +1041,8 @@ public class AnnexFEncodingTest {
     public void e4_5aTest() {
         final ConfirmedRequestService service = new ConfirmedTextMessageRequest(
                 new ObjectIdentifier(ObjectType.device, 5), MessagePriority.normal,
-                new CharacterString(StandardCharacterEncodings.ANSI_X3_4, "PM required for PUMP347"));
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4),
+                        "PM required for PUMP347"));
         final APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_128,
                 (byte) 3, (byte) 0, 0, service);
         compare(pdu, "000103130C0200000529003D1800504D20726571756972656420666F722050554D50333437");
@@ -1054,7 +1058,8 @@ public class AnnexFEncodingTest {
     public void e4_6Test() {
         final UnconfirmedRequestService service = new UnconfirmedTextMessageRequest(
                 new ObjectIdentifier(ObjectType.device, 5), MessagePriority.normal,
-                new CharacterString(StandardCharacterEncodings.ANSI_X3_4, "PM required for PUMP347"));
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4),
+                        "PM required for PUMP347"));
         final APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "10050C0200000529003D1800504D20726571756972656420666F722050554D50333437");
     }
@@ -1070,7 +1075,7 @@ public class AnnexFEncodingTest {
     @Test
     public void e4_8aTest() {
         final UnconfirmedRequestService service = new WhoHasRequest(null,
-                new CharacterString(StandardCharacterEncodings.ANSI_X3_4, "OATemp"));
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "OATemp"));
         final APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "10073D07004F4154656D70");
     }
@@ -1079,7 +1084,7 @@ public class AnnexFEncodingTest {
     public void e4_8bTest() {
         final UnconfirmedRequestService service = new IHaveRequest(new ObjectIdentifier(ObjectType.device, 8),
                 new ObjectIdentifier(ObjectType.analogInput, 3),
-                new CharacterString(StandardCharacterEncodings.ANSI_X3_4, "OATemp"));
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "OATemp"));
         final APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "1001C402000008C4000000037507004F4154656D70");
     }
@@ -1096,7 +1101,7 @@ public class AnnexFEncodingTest {
     public void e4_8dTest() {
         final UnconfirmedRequestService service = new IHaveRequest(new ObjectIdentifier(ObjectType.device, 8),
                 new ObjectIdentifier(ObjectType.analogInput, 3),
-                new CharacterString(StandardCharacterEncodings.ANSI_X3_4, "OATemp"));
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "OATemp"));
         final APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "1001C402000008C4000000037507004F4154656D70");
     }

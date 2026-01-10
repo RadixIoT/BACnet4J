@@ -5,11 +5,10 @@ import java.io.UnsupportedEncodingException;
 import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 
 public abstract class AbstractDbcsCharacterEncoder extends AbstractCharacterEncoder {
- 
     private final CharacterEncoding characterEncoding;
     private final String javaCharsetName;
 
-    public AbstractDbcsCharacterEncoder(CharacterEncoding characterEncoding, String javaCharsetName) {
+    protected AbstractDbcsCharacterEncoder(CharacterEncoding characterEncoding, String javaCharsetName) {
         super(characterEncoding, javaCharsetName);
         this.characterEncoding = characterEncoding;
         this.javaCharsetName = javaCharsetName;

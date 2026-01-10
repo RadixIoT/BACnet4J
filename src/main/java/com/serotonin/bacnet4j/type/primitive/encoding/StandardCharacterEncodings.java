@@ -1,7 +1,6 @@
 package com.serotonin.bacnet4j.type.primitive.encoding;
 
 public class StandardCharacterEncodings {
-
     private StandardCharacterEncodings() {
     }
 
@@ -14,5 +13,4 @@ public class StandardCharacterEncodings {
 
     public static final int CODE_PAGE_LATIN_1 = 850;
     public static final int NO_CODE_PAGE = -1;
-
 }
