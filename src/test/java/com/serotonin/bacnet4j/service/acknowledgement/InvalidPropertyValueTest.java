@@ -46,6 +46,8 @@ import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import com.serotonin.bacnet4j.type.primitive.encoding.CharacterEncoding;
+import com.serotonin.bacnet4j.type.primitive.encoding.StandardCharacterEncodings;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 /**
@@ -71,7 +73,7 @@ public class InvalidPropertyValueTest {
 
         //String protocol version which is Invalid as per the spec
         deviceResultList.add(new Result(PropertyIdentifier.protocolVersion, new UnsignedInteger(0),
-                new CharacterString(CharacterString.Encodings.ANSI_X3_4, "hxzy-1.01")));
+                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "hxzy-1.01")));
 
         SequenceOf<Result> deviceResults = new SequenceOf<>(deviceResultList);
 

@@ -75,6 +75,8 @@ Releases
 - A request to an object for all properties will now also return proprietary properties.
 - The timeout for the termination of a local device can now be specified in user code.
 - Bug fixes and dependency upgrades.
+- The way in which new character encodings for `CharacterString`s can be added has been simplified. Thanks to
+  https://github.com/balbusm for this submission.
 
 *Version 6.0.2*
 
