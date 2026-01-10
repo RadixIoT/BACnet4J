@@ -37,7 +37,7 @@ import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
 import com.serotonin.bacnet4j.type.enumerated.RejectReason;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
-abstract public class ConfirmedRequestService extends Service {
+public abstract class ConfirmedRequestService extends Service {
     public static void checkConfirmedRequestService(final ServicesSupported services, final byte type)
             throws BACnetRejectException {
         if (type == AcknowledgeAlarmRequest.TYPE_ID && services.isAcknowledgeAlarm()) // 0
@@ -206,7 +206,7 @@ abstract public class ConfirmedRequestService extends Service {
         return result;
     }
 
-    abstract public AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException;
+    public abstract AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException;
 
     /**
      * This method determines whether responses to requests are sent when the device has had its communication set

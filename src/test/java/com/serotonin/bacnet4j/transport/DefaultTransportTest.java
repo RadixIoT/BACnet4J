@@ -34,6 +34,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.inOrder;
@@ -61,7 +62,6 @@ import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.event.DeviceEventHandler;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
-import com.serotonin.bacnet4j.npdu.NPCI;
 import com.serotonin.bacnet4j.npdu.NPDU;
 import com.serotonin.bacnet4j.npdu.Network;
 import com.serotonin.bacnet4j.service.acknowledgement.ReadPropertyMultipleAck;
@@ -116,19 +116,6 @@ public class DefaultTransportTest {
 
         // Clean up
         transport.terminate();
-
-        // Ensure the NAK was sent.
-        final SegmentACK nak = new SegmentACK(true, false, (byte) 0, 1, 3, true);
-        final ByteQueue nakNpdu = createNPDU(nak);
-        verify(network).sendNPDU(from, null, nakNpdu, false, nak.expectsReply());
-    }
-
-    private static ByteQueue createNPDU(final APDU apdu) {
-        final ByteQueue npdu = new ByteQueue();
-        final NPCI npci = new NPCI(null, null, apdu.expectsReply());
-        npci.write(npdu);
-        apdu.write(npdu);
-        return npdu;
     }
 
     private static Address getSourceAddress() {
@@ -422,9 +409,13 @@ public class DefaultTransportTest {
 
         assertThrows(BACnetTimeoutException.class, future::get);
 
-        // verify that 3 APDUs (1 request, 2 segAcks) and optionally the Broadcast NPDU were sent over the network
-        verify(network, times(3)).sendAPDU(any(), any(), any(), anyBoolean());
-        await(() -> sendNPDUInvokeCount.get() >= 3, 10000);
+        // verify that 2 APDUs (1 request, 1 segAck) and optionally the Broadcast NPDU were sent over the network
+        await(() -> sendNPDUInvokeCount.get() >= 2, 10000);
+        verify(network, times(2)).sendAPDU(any(), any(), any(), anyBoolean());
+        verify(network, times(1)).sendAPDU(eq(new Address(new byte[] {0x1})), eq(null), any(ConfirmedRequest.class),
+                eq(false));
+        var segAck = new SegmentACK(false, false, (byte) 0, 0, 2, true);
+        verify(network, times(1)).sendAPDU(new Address(new byte[] {0x1}), null, segAck, false);
 
         transport.terminate();
     }
