@@ -81,6 +81,8 @@ Releases
 - Previously, when an IAm was received, calls to `DeviceEventListener.iAmReceived` would be called in the transport
   thread if the source remote device had already been cached. All calls are now made from a thread from a pool. This
   prevents errors where requests are made from the transport thread and simplifies client code.
+- All event management objects can now handle behaviours such as alarm/event acknowledgement, instead of only intrinsic
+  alarms having this ability.
 
 *Version 6.0.1*
 

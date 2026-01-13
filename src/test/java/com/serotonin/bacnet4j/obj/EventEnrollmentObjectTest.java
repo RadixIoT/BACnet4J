@@ -35,7 +35,11 @@ import static org.junit.Assert.assertNull;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.AbstractTest;
+import com.serotonin.bacnet4j.RemoteDevice;
+import com.serotonin.bacnet4j.service.confirmed.AcknowledgeAlarmRequest;
+import com.serotonin.bacnet4j.service.confirmed.WritePropertyRequest;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
+import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.Destination;
 import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
 import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
@@ -62,6 +66,7 @@ import com.serotonin.bacnet4j.type.notificationParameters.ChangeOfReliabilityNot
 import com.serotonin.bacnet4j.type.notificationParameters.ChangeOfStateNotif;
 import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
+import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -373,5 +378,79 @@ public class EventEnrollmentObjectTest extends AbstractTest {
                                 new PropertyValue(PropertyIdentifier.reliability, Reliability.noFaultDetected),
                                 new PropertyValue(PropertyIdentifier.statusFlags,
                                         new StatusFlags(false, false, false, false))))), notif.eventValues());
+    }
+
+    @Test
+    public void eventAcknowledgement() throws Exception {
+        nc.writePropertyInternal(PropertyIdentifier.ackRequired, new EventTransitionBits(true, true, true));
+
+        final DeviceObjectPropertyReference ref =
+                new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
+                        PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
+        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee0", ref, NotifyType.alarm,
+                new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
+                new EventTransitionBits(true, true, true), 5, 100, null, new FaultParameter(
+                new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90)))));
+
+        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
+                new EventTransitionBits(true, true, true)));
+
+        // Create an event listener on d2 to catch the event notifications.
+        final EventNotifListener listener = new EventNotifListener();
+        d2.getEventHandler().addListener(listener);
+
+        // Write a fault value. Alarm will be sent.
+        av1.writePropertyInternal(PropertyIdentifier.minPresValue, new Real(5));
+        clock.plusMillis(100);
+        awaitEquals(1, listener::getNotifCount);
+
+        // Check that the transition is marked as not acknowledged.
+        assertEquals(new EventTransitionBits(true, false, true), ee.get(PropertyIdentifier.ackedTransitions));
+
+        // Ensure that an event notification needing acknowledgement was received.
+        EventNotifListener.Notif notif = listener.removeNotif();
+        assertEquals(Boolean.TRUE, notif.ackRequired());
+
+        // Acknowledge the event.
+        RemoteDevice rd = d2.getRemoteDevice(notif.initiatingDevice().getInstanceNumber()).get();
+        var response = d2.send(rd,
+                new AcknowledgeAlarmRequest(notif.processIdentifier(), notif.eventObjectIdentifier(), notif.toState(),
+                        notif.timeStamp(), new CharacterString("Event acknowledgement test"),
+                        new TimeStamp(new DateTime(d2)))).get();
+        assertNull(response);
+
+        // Ensure that the event is acknowledged.
+        assertEquals(new EventTransitionBits(true, true, true), ee.get(PropertyIdentifier.ackedTransitions));
+
+        // A notification of the acknowledgement should have been sent.
+        awaitEquals(1, listener::getNotifCount);
+        notif = listener.removeNotif();
+        assertEquals(NotifyType.ackNotification, notif.notifyType());
+    }
+
+    @Test
+    public void configureEventEnrollment() throws Exception {
+        final DeviceObjectPropertyReference ref =
+                new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
+                        PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
+        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee0", ref, NotifyType.alarm,
+                new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
+                new EventTransitionBits(true, true, true), 5, 100, null, new FaultParameter(
+                new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90)))));
+
+        // Change the event parameters of the enrollment.
+        var response = d2.send(rd1, new WritePropertyRequest(ee.getId(), PropertyIdentifier.eventParameters, null,
+                new EventParameter(new OutOfRange(new UnsignedInteger(10), new Real(300), new Real(700), new Real(10))),
+                null)).get();
+        assertNull(response);
+
+        // Verify that the changes have been written.
+        EventParameter newParams = ee.get(PropertyIdentifier.eventParameters);
+        OutOfRange newOor = newParams.getChoice().getDatum();
+        assertEquals(new UnsignedInteger(10), newOor.getTimeDelay());
+        assertEquals(new Real(300), newOor.getLowLimit());
+        assertEquals(new Real(700), newOor.getHighLimit());
+        assertEquals(new Real(10), newOor.getDeadband());
     }
 }
