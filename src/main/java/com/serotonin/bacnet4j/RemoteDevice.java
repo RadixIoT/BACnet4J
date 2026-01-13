@@ -70,7 +70,7 @@ public class RemoteDevice implements Serializable {
     }
 
     /**
-     * Add properties that are in in 'that' if they are not already in 'this'.
+     * Add properties that are in 'that' if they are not already in 'this'.
      *
      * @param that
      */
