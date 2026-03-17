@@ -203,9 +203,12 @@ public class IpNetworkTest extends AbstractTest {
     public void registerAsForeignDevice() throws Exception {
         IpNetwork network = spy(new IpNetworkBuilder().withBroadcast("1.2.3.255", 24).build());
 
+        var ttl = Duration.ofHours(12);
+        var renewal = Duration.ofHours(6);
+
         var totalSuccesses = new AtomicInteger(0);
         var totalFailures = new AtomicInteger(0);
-        var retryDelayProvider = new IpNetwork.ForeignDeviceRegistrationRetryDelayProvider() {
+        var retryDelayProvider = new IpNetwork.ForeignDeviceRegistrationRetryDelayPolicy() {
             int failures = 0;
 
             @Override
@@ -224,7 +227,15 @@ public class IpNetworkTest extends AbstractTest {
                 }
                 return Duration.ofSeconds(30);
             }
+
+            @Override
+            public Duration renewalMargin(Duration timeToLive) {
+                // Attempt re-registration after half of the lease time has expired.
+                return Duration.ofSeconds(timeToLive.getSeconds() / 2);
+            }
         };
+
+        assertEquals(Duration.ofSeconds(60 * 60 * 6), Duration.ofHours(6));
 
         var future = mock(ScheduledFuture.class);
         doReturn(false).when(future).isCancelled();
@@ -249,7 +260,7 @@ public class IpNetworkTest extends AbstractTest {
                 .when(network).sendForeignDeviceRegistration();
 
         network.registerAsForeignDevice(InetSocketAddress.createUnresolved("1.2.3.4", IpNetwork.DEFAULT_PORT),
-                Duration.ofHours(12), retryDelayProvider);
+                ttl, retryDelayProvider);
         assertEquals(0, totalSuccesses.get());
         assertEquals(0, totalFailures.get());
         verify(localDevice, times(1)).schedule(any(), eq(0L), eq(TimeUnit.SECONDS));
@@ -264,7 +275,7 @@ public class IpNetworkTest extends AbstractTest {
         task.get().run();
         assertEquals(1, totalSuccesses.get());
         assertEquals(1, totalFailures.get());
-        verify(localDevice, times(1)).schedule(any(), anyLong(), any());
+        verify(localDevice, times(1)).schedule(any(), eq(renewal.getSeconds()), eq(TimeUnit.SECONDS));
         clearInvocations(localDevice);
 
         task.get().run();
@@ -282,7 +293,7 @@ public class IpNetworkTest extends AbstractTest {
         task.get().run();
         assertEquals(2, totalSuccesses.get());
         assertEquals(3, totalFailures.get());
-        verify(localDevice, times(1)).schedule(any(), anyLong(), any());
+        verify(localDevice, times(1)).schedule(any(), eq(renewal.getSeconds()), eq(TimeUnit.SECONDS));
         clearInvocations(localDevice);
 
         network.unregisterAsForeignDevice();

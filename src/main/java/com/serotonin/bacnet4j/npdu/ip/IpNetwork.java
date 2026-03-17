@@ -305,19 +305,24 @@ public class IpNetwork extends Network {
     }
 
     /**
-     * The provider that tells the foreign device registration process how long to wait before a retry is attempted
-     * after a registration failure.
+     * The policy that tells the foreign device registration process how long to wait before a retry is attempted
+     * after a registration failure. It also allows the specification of the renewal margin, or the time before a lease
+     * ends to attempt a re-registration.
      * <p>
      * Default methods are an example of how it can work. More sophisticated implementations might provide exponential
      * backoff or different results based upon the given exception.
      */
-    public interface ForeignDeviceRegistrationRetryDelayProvider {
+    public interface ForeignDeviceRegistrationRetryDelayPolicy {
         default void registrationSucceeded() {
             // Allows implementations to reset after a series of failures.
         }
 
         default Duration registrationFailed(BACnetException e) {
             return Duration.ofSeconds(10);
+        }
+
+        default Duration renewalMargin(Duration timeToLive) {
+            return Duration.ofSeconds(30);
         }
     }
 
@@ -326,17 +331,18 @@ public class IpNetwork extends Network {
      * is non-blocking.
      * <p>
      * If a registration attempt succeeds, a re-registration will be scheduled for just before the current registration
-     * times out. If the registration attempt fails, the `retryDelayProvider` will be asked for the delay before a
+     * times out. If the registration attempt fails, the `retryDelayPolicy` will be asked for the delay before a
      * retry. This process will not end until the unregisterAsForeignDevice method is called.
      * <p>
      * The unregisterAsForeignDevice method will be called automatically if the local device is terminated.
      *
-     * @param addr               The address of the BBMD where our device wants to be registered
-     * @param timeToLive         The time in seconds until we are automatically removed out of the FDT
-     * @param retryDelayProvider provides the amount of
+     * @param addr             The address of the BBMD where our device wants to be registered
+     * @param timeToLive       The time in seconds until we are automatically removed out of the FDT
+     * @param retryDelayPolicy Provides the amount of time to delay before attempting another registration after a
+     *                         failure.
      */
     public void registerAsForeignDevice(InetSocketAddress addr, Duration timeToLive,
-            ForeignDeviceRegistrationRetryDelayProvider retryDelayProvider) {
+            ForeignDeviceRegistrationRetryDelayPolicy retryDelayPolicy) {
         int ttlSeconds = (int) timeToLive.getSeconds();
         if (ttlSeconds < 1)
             throw new IllegalArgumentException("timeToLive cannot be less than 1");
@@ -351,7 +357,7 @@ public class IpNetwork extends Network {
             foreignBBMD = addr;
             foreignTTL = ttlSeconds;
 
-            ForeignDeviceRegistrant registrant = new ForeignDeviceRegistrant(retryDelayProvider);
+            ForeignDeviceRegistrant registrant = new ForeignDeviceRegistrant(retryDelayPolicy);
 
             // Initially schedule to run immediately.
             foreignRegistrationMaintenance =
@@ -360,10 +366,10 @@ public class IpNetwork extends Network {
     }
 
     class ForeignDeviceRegistrant implements Runnable {
-        private final ForeignDeviceRegistrationRetryDelayProvider retryDelayProvider;
+        private final ForeignDeviceRegistrationRetryDelayPolicy retryDelayPolicy;
 
-        ForeignDeviceRegistrant(ForeignDeviceRegistrationRetryDelayProvider retryDelayProvider) {
-            this.retryDelayProvider = retryDelayProvider;
+        ForeignDeviceRegistrant(ForeignDeviceRegistrationRetryDelayPolicy retryDelayPolicy) {
+            this.retryDelayPolicy = retryDelayPolicy;
         }
 
         public void run() {
@@ -378,11 +384,11 @@ public class IpNetwork extends Network {
                 try {
                     sendForeignDeviceRegistration();
                     LOG.info("Successfully registered as foreign device");
-                    retryDelayProvider.registrationSucceeded();
+                    retryDelayPolicy.registrationSucceeded();
 
-                    // Successful registration. Schedule the next re-registration for 30 seconds before the timeout.
-                    int interval = foreignTTL - 30;
-                    // ... but since the ttl can be less than 30, we need to correct.
+                    // Successful registration. Schedule the next re-registration.
+                    int interval = foreignTTL -
+                            (int) retryDelayPolicy.renewalMargin(Duration.ofSeconds(foreignTTL)).getSeconds();
                     if (interval < 15) {
                         // Minimum of 15s.
                         interval = 15;
@@ -391,7 +397,7 @@ public class IpNetwork extends Network {
                 } catch (final BACnetException e) {
                     LOG.warn("Failed to register foreign device", e);
                     // Failure. Ask the retry provider what to do.
-                    delay = (int) retryDelayProvider.registrationFailed(e).toSeconds();
+                    delay = (int) retryDelayPolicy.registrationFailed(e).toSeconds();
                     if (delay < 0) {
                         delay = 0;
                     }
