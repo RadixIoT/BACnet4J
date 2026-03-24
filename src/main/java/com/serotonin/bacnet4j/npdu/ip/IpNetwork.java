@@ -36,6 +36,7 @@ import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -243,19 +244,22 @@ public class IpNetwork extends Network {
     /**
      * Attempts an initial registration of this device as a foreign device in a BBMD. This method blocks until the
      * response (ACK or NAK) is received, or a timeout occurs (no response).
-     *
+     * <p>
      * If the device is successfully registered (ACK), regular re-registration requests will be sent to maintain the
      * registration. If any of these requests fail, the local device's exception dispatcher will be notified.
-     *
-     * If the device is to be un-registered, the registerAsForeignDevice method should be called. This will be done
-     * automatically if the local device is terminated.
+     * <p>
+     * If the device is to be un-registered, the {@link #unregisterAsForeignDevice} method should be called. This will
+     * be done automatically if the local device is terminated.
      *
      * @param addr       The address of the BBMD where our device wants to be registered
      * @param timeToLive The time until we are automatically removed out of the FDT
      * @throws BACnetException if a timeout occurs, a NAK is received, the device is already registered as a foreign
-     *                         device, or
-     *                         the request could not be sent.
+     *                         device, or the request could not be sent.
+     * @deprecated This method has two different mechanisms for handling registration failures: one when first called,
+     * and a second for re-registrations. Plus, the handling for the second case is . The new method below that
+     * consolidates error handling should be used instead.
      */
+    @Deprecated(since = "6.1.0")
     public void registerAsForeignDevice(final InetSocketAddress addr, final int timeToLive) throws BACnetException {
         if (timeToLive < 1)
             throw new IllegalArgumentException("timeToLive cannot be less than 1");
@@ -297,6 +301,125 @@ public class IpNetwork extends Network {
                     }
                 }
             }, interval, interval, TimeUnit.SECONDS);
+        }
+    }
+
+    /**
+     * The policy that tells the foreign device registration process how long to wait before a retry is attempted
+     * after a registration failure. It also allows the specification of the renewal margin, or the amount of time
+     * before a lease ends to attempt a re-registration.
+     * <p>
+     * Default methods are an example of how it can work. More sophisticated implementations might provide exponential
+     * backoff or different results based upon the given exception.
+     */
+    public interface ForeignDeviceRegistrationRetryDelayPolicy {
+        /**
+         * Notifies this policy that a (re)registration has succeeded. This provides the policy an opportunity to reset,
+         * or perhaps to dismiss an error condition.
+         */
+        default void registrationSucceeded() {
+            // Allows implementations to reset after a series of failures.
+        }
+
+        /**
+         * @param e the exception that caused the registration to fail.
+         * @return the amount of time to wait before attempting the registration again.
+         */
+        default Duration registrationFailed(BACnetException e) {
+            return Duration.ofSeconds(10);
+        }
+
+        /**
+         * Provides the renewal margin, or the amount of time before a lease ends to attempt a re-registration.
+         *
+         * @param timeToLive the original TTL given for the registration.
+         * @return the amount of time before the end of the lease to attempt a re-registration
+         */
+        default Duration renewalMargin(Duration timeToLive) {
+            return Duration.ofSeconds(30);
+        }
+    }
+
+    /**
+     * Starts the process of registration and re-registration of this device as a foreign device in a BBMD. This method
+     * is non-blocking.
+     * <p>
+     * If a registration attempt succeeds, a re-registration will be scheduled for just before the current registration
+     * times out. If the registration attempt fails, the `retryDelayPolicy` will be asked for the delay before a
+     * retry. This process will not end until the {@link #unregisterAsForeignDevice} method is called.
+     * <p>
+     * The {@link #unregisterAsForeignDevice} method will be called automatically if the local device is terminated.
+     *
+     * @param addr             The address of the BBMD where our device wants to be registered
+     * @param timeToLive       The time in seconds until we are automatically removed out of the FDT
+     * @param retryDelayPolicy Provides the amount of time to delay before attempting another registration after a
+     *                         failure.
+     */
+    public void registerAsForeignDevice(InetSocketAddress addr, Duration timeToLive,
+            ForeignDeviceRegistrationRetryDelayPolicy retryDelayPolicy) {
+        int ttlSeconds = (int) timeToLive.getSeconds();
+        if (ttlSeconds < 1)
+            throw new IllegalArgumentException("timeToLive cannot be less than 1");
+        if (getTransport() == null || getTransport().getLocalDevice() == null)
+            throw new IllegalArgumentException(
+                    "Network must be used within a local device before foreign device registration can be performed.");
+
+        synchronized (foreignBBMDLock) {
+            if (foreignBBMD != null)
+                throw new IllegalStateException("Already registered as a foreign device");
+
+            foreignBBMD = addr;
+            foreignTTL = ttlSeconds;
+
+            ForeignDeviceRegistrant registrant = new ForeignDeviceRegistrant(retryDelayPolicy);
+
+            // Initially schedule to run immediately.
+            foreignRegistrationMaintenance =
+                    getTransport().getLocalDevice().schedule(registrant, 0, TimeUnit.SECONDS);
+        }
+    }
+
+    class ForeignDeviceRegistrant implements Runnable {
+        private final ForeignDeviceRegistrationRetryDelayPolicy retryDelayPolicy;
+
+        ForeignDeviceRegistrant(ForeignDeviceRegistrationRetryDelayPolicy retryDelayPolicy) {
+            this.retryDelayPolicy = retryDelayPolicy;
+        }
+
+        public void run() {
+            synchronized (foreignBBMDLock) {
+                // Ensure expected state.
+                if (foreignRegistrationMaintenance == null || foreignRegistrationMaintenance.isCancelled()) {
+                    // Abort
+                    return;
+                }
+
+                int delay;
+                try {
+                    sendForeignDeviceRegistration();
+                    LOG.info("Successfully registered as foreign device");
+                    retryDelayPolicy.registrationSucceeded();
+
+                    // Successful registration. Schedule the next re-registration.
+                    int interval = foreignTTL -
+                            (int) retryDelayPolicy.renewalMargin(Duration.ofSeconds(foreignTTL)).getSeconds();
+                    if (interval < 15) {
+                        // Minimum of 15s.
+                        interval = 15;
+                    }
+                    delay = interval;
+                } catch (final BACnetException e) {
+                    LOG.warn("Failed to register foreign device", e);
+                    // Failure. Ask the retry provider what to do.
+                    delay = (int) retryDelayPolicy.registrationFailed(e).toSeconds();
+                    if (delay < 0) {
+                        delay = 0;
+                    }
+                }
+
+                foreignRegistrationMaintenance =
+                        getTransport().getLocalDevice().schedule(this, delay, TimeUnit.SECONDS);
+            }
         }
     }
 
@@ -1022,7 +1145,7 @@ public class IpNetwork extends Network {
 
     /**
      * Utility method that allows the de-registration of an arbitrary foreign device in a BBMD. If the intention is
-     * to unregister this device, the unregisterAsForeignDevice method should be used instead.
+     * to unregister this device, the {@link #unregisterAsForeignDevice} method should be used instead.
      *
      * @param addr     the address at which to find the FDT
      * @param fdtEntry the entry to remove
