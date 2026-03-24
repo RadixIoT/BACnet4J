@@ -248,8 +248,8 @@ public class IpNetwork extends Network {
      * If the device is successfully registered (ACK), regular re-registration requests will be sent to maintain the
      * registration. If any of these requests fail, the local device's exception dispatcher will be notified.
      * <p>
-     * If the device is to be un-registered, the unregisterAsForeignDevice method should be called. This will be done
-     * automatically if the local device is terminated.
+     * If the device is to be un-registered, the {@link #unregisterAsForeignDevice} method should be called. This will
+     * be done automatically if the local device is terminated.
      *
      * @param addr       The address of the BBMD where our device wants to be registered
      * @param timeToLive The time until we are automatically removed out of the FDT
@@ -306,21 +306,35 @@ public class IpNetwork extends Network {
 
     /**
      * The policy that tells the foreign device registration process how long to wait before a retry is attempted
-     * after a registration failure. It also allows the specification of the renewal margin, or the time before a lease
-     * ends to attempt a re-registration.
+     * after a registration failure. It also allows the specification of the renewal margin, or the amount of time
+     * before a lease ends to attempt a re-registration.
      * <p>
      * Default methods are an example of how it can work. More sophisticated implementations might provide exponential
      * backoff or different results based upon the given exception.
      */
     public interface ForeignDeviceRegistrationRetryDelayPolicy {
+        /**
+         * Notifies this policy that a (re)registration has succeeded. This provides the policy an opportunity to reset,
+         * or perhaps to dismiss an error condition.
+         */
         default void registrationSucceeded() {
             // Allows implementations to reset after a series of failures.
         }
 
+        /**
+         * @param e the exception that caused the registration to fail.
+         * @return the amount of time to wait before attempting the registration again.
+         */
         default Duration registrationFailed(BACnetException e) {
             return Duration.ofSeconds(10);
         }
 
+        /**
+         * Provides the renewal margin, or the amount of time before a lease ends to attempt a re-registration.
+         *
+         * @param timeToLive the original TTL given for the registration.
+         * @return the amount of time before the end of the lease to attempt a re-registration
+         */
         default Duration renewalMargin(Duration timeToLive) {
             return Duration.ofSeconds(30);
         }
@@ -332,9 +346,9 @@ public class IpNetwork extends Network {
      * <p>
      * If a registration attempt succeeds, a re-registration will be scheduled for just before the current registration
      * times out. If the registration attempt fails, the `retryDelayPolicy` will be asked for the delay before a
-     * retry. This process will not end until the unregisterAsForeignDevice method is called.
+     * retry. This process will not end until the {@link #unregisterAsForeignDevice} method is called.
      * <p>
-     * The unregisterAsForeignDevice method will be called automatically if the local device is terminated.
+     * The {@link #unregisterAsForeignDevice} method will be called automatically if the local device is terminated.
      *
      * @param addr             The address of the BBMD where our device wants to be registered
      * @param timeToLive       The time in seconds until we are automatically removed out of the FDT
@@ -1131,7 +1145,7 @@ public class IpNetwork extends Network {
 
     /**
      * Utility method that allows the de-registration of an arbitrary foreign device in a BBMD. If the intention is
-     * to unregister this device, the unregisterAsForeignDevice method should be used instead.
+     * to unregister this device, the {@link #unregisterAsForeignDevice} method should be used instead.
      *
      * @param addr     the address at which to find the FDT
      * @param fdtEntry the entry to remove
