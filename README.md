@@ -65,7 +65,10 @@ Releases
 ========
 *Version 6.1.0*
 
-- Previously upon a final timeout for a segmented request or response, BACnet4J would issue a segment NAK to the peer  
+- Created a new foreign device registration process that is failure-tolerant, allowing user code to determine the amount
+  of time to delay before retrying a registration request after a failure. This differs from the original in that
+  initial registration failures needed to be handled differently from re-registration failures.
+- Previously upon a final timeout for a segmented request or response, BACnet4J would issue a segment NAK to the peer
   device. This was deemed to be inappropriate, and so was removed.
 - Issues regarding the use of BACnet4J as a BBMD and initializing it with a wildcard bind address (i.e. 0.0.0.0) have
   been fixed.
