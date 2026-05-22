@@ -32,24 +32,31 @@ import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.service.acknowledgement.ReadPropertyAck;
 import com.serotonin.bacnet4j.service.confirmed.ReadPropertyRequest;
-import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 
 public class DiscoveryUtils {
+    private DiscoveryUtils() {
+    }
+
     public static void getExtendedDeviceInformation(final LocalDevice localDevice, final RemoteDevice d)
             throws BACnetException {
-        final ObjectIdentifier oid = d.getObjectIdentifier();
+        var oid = d.getObjectIdentifier();
 
-        // Get the device's supported services
+        // maxApduLengthAccepted and segmentationSupported need to be known to make requests to the device without
+        // having to use hopeful defaults.
+        ensurePropertyKnown(localDevice, d, oid, PropertyIdentifier.maxApduLengthAccepted);
+        ensurePropertyKnown(localDevice, d, oid, PropertyIdentifier.segmentationSupported);
+
+        // Ensure the device's supported services are known so we know if we can use read property multiple or not.
         if (d.getServicesSupported() == null) {
-            final ReadPropertyAck supportedServicesAck = (ReadPropertyAck) localDevice
+            ReadPropertyAck ack = localDevice
                     .send(d, new ReadPropertyRequest(oid, PropertyIdentifier.protocolServicesSupported)).get();
-            d.setDeviceProperty(PropertyIdentifier.protocolServicesSupported, supportedServicesAck.getValue());
+            d.setDeviceProperty(PropertyIdentifier.protocolServicesSupported, ack.getValue());
         }
 
         // Uses the readProperties method here because this list will probably be extended.
-        final PropertyReferences properties = new PropertyReferences();
+        var properties = new PropertyReferences();
         addIfMissing(d, properties, PropertyIdentifier.objectName);
         addIfMissing(d, properties, PropertyIdentifier.protocolVersion);
         addIfMissing(d, properties, PropertyIdentifier.vendorIdentifier);
@@ -58,10 +65,10 @@ public class DiscoveryUtils {
 
         if (properties.size() > 0) {
             // Only send a request if we have to.
-            final PropertyValues values = RequestUtils.readProperties(localDevice, d, properties, false, null);
+            var values = RequestUtils.readProperties(localDevice, d, properties, false, null);
 
-            values.forEach((opr) -> {
-                final Encodable value = values.getNullOnError(oid, opr.getPropertyIdentifier());
+            values.forEach(opr -> {
+                var value = values.getNullOnError(oid, opr.getPropertyIdentifier());
                 d.setDeviceProperty(opr.getPropertyIdentifier(), value);
             });
         }
@@ -71,5 +78,13 @@ public class DiscoveryUtils {
             final PropertyIdentifier pid) {
         if (d.getDeviceProperty(pid) == null)
             properties.add(d.getObjectIdentifier(), pid);
+    }
+
+    private static void ensurePropertyKnown(LocalDevice localDevice, RemoteDevice d, ObjectIdentifier oid,
+            PropertyIdentifier pid) throws BACnetException {
+        if (d.getDeviceProperty(pid) == null) {
+            ReadPropertyAck ack = localDevice.send(d.getAddress(), new ReadPropertyRequest(oid, pid)).get();
+            d.setDeviceProperty(pid, ack.getValue());
+        }
     }
 }

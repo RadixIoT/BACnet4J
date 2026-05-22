@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.cache.CachePolicies;
 import com.serotonin.bacnet4j.cache.RemoteEntityCache;
+import com.serotonin.bacnet4j.cache.RemoteEntityCachePolicy;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.event.DefaultReinitializeDeviceHandler;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
@@ -94,6 +95,7 @@ import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import com.serotonin.bacnet4j.util.DiscoveryUtils;
 import com.serotonin.bacnet4j.util.RemoteDeviceDiscoverer;
 import com.serotonin.bacnet4j.util.RemoteDeviceFinder;
 import com.serotonin.bacnet4j.util.RemoteDeviceFinder.RemoteDeviceFuture;
@@ -430,31 +432,36 @@ public class LocalDevice implements AutoCloseable {
     /**
      * Schedules the given command for later execution.
      */
-    public ScheduledFuture<?> schedule(final Runnable command, final long period, final TimeUnit unit) {
-        return timer.schedule(command, period, unit);
+    @SuppressWarnings("unchecked")
+    public <T> ScheduledFuture<T> schedule(final Runnable command, final long period, final TimeUnit unit) {
+        return (ScheduledFuture<T>) timer.schedule(command, period, unit);
     }
 
     /**
      * Schedules the given command for later execution.
      */
-    public ScheduledFuture<?> scheduleAtFixedRate(final Runnable command, final long initialDelay, final long period,
-            final TimeUnit unit) {
-        return timer.scheduleAtFixedRate(command, initialDelay, period, unit);
+    @SuppressWarnings("unchecked")
+    public <T> ScheduledFuture<T> scheduleAtFixedRate(final Runnable command, final long initialDelay,
+            final long period, final TimeUnit unit) {
+        return (ScheduledFuture<T>) timer.scheduleAtFixedRate(command, initialDelay, period, unit);
     }
 
     /**
      * Schedules the given command for later execution.
      */
-    public ScheduledFuture<?> scheduleWithFixedDelay(final Runnable command, final long initialDelay, final long delay,
+    @SuppressWarnings("unchecked")
+    public <T> ScheduledFuture<T> scheduleWithFixedDelay(final Runnable command, final long initialDelay,
+            final long delay,
             final TimeUnit unit) {
-        return timer.scheduleWithFixedDelay(command, initialDelay, delay, unit);
+        return (ScheduledFuture<T>) timer.scheduleWithFixedDelay(command, initialDelay, delay, unit);
     }
 
     /**
      * Submits the given task for immediate execution.
      */
-    public Future<?> submit(final Runnable task) {
-        return timer.submit(task);
+    @SuppressWarnings("unchecked")
+    public <T> Future<T> submit(final Runnable task) {
+        return (Future<T>) timer.submit(task);
     }
 
     /**
@@ -767,10 +774,10 @@ public class LocalDevice implements AutoCloseable {
     /**
      * Returns the remote device for the given instanceNumber. If a cached instance is not found the finder will be used
      * to try and find it. A timeout exception is thrown if it can't be found.
-     *
+     * <p/>
      * The benefits of this method are: 1) It will cache the remote device if it is found. 2) Multiple threads that
      * request the same remote device around the same time will be joined on the same request
-     *
+     * <p/>
      * If you require the ability to cancel a request, use the non-blocking method above.
      *
      * @param instanceNumber the instance number of the desired device
@@ -835,6 +842,18 @@ public class LocalDevice implements AutoCloseable {
         }
 
         return rd;
+    }
+
+    public void addRemoteDevice(RemoteDevice rd) throws BACnetException {
+        // Ensure that the remote device has all the required properties. Is a no op if it has already been fully
+        // configured.
+        DiscoveryUtils.getExtendedDeviceInformation(this, rd);
+        // Add to cache with a policy to never expire because this was not automatically discovered.
+        remoteDeviceCache.putEntity(rd.getInstanceNumber(), rd, RemoteEntityCachePolicy.NEVER_EXPIRE);
+    }
+
+    public void removeRemoteDevice(int deviceId) {
+        remoteDeviceCache.removeEntity(deviceId);
     }
 
     @Override

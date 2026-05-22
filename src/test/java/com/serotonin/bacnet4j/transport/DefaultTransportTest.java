@@ -212,7 +212,7 @@ public class DefaultTransportTest {
         final Address to = new Address(0, new byte[] {1});
 
         sut.terminate();
-        ServiceFuture result = sut.send(to, 20, Segmentation.segmentedBoth, mock(ConfirmedRequestService.class));
+        ServiceFuture result = sut.send(to, 50, Segmentation.segmentedBoth, mock(ConfirmedRequestService.class));
 
         BACnetException e = Assert.assertThrows(BACnetException.class, result::get);
         Assert.assertTrue(e.getMessage().contains("not running"));

@@ -27,8 +27,13 @@
 
 package com.serotonin.bacnet4j.type.constructed;
 
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.type.primitive.BitString;
@@ -371,30 +376,32 @@ public class ServicesSupported extends BitString {
         getValue()[43] = confirmedCovNotificationMultiple;
     }
 
-    @Override
-    public String toString() {
+    @FunctionalInterface
+    public interface ServiceIteratorConsumer {
+        void accept(PropertyDescriptor serviceProperty) throws IllegalAccessException, InvocationTargetException;
+    }
+
+    public void iterateProperties(ServiceIteratorConsumer consumer) {
         try {
-            StringBuilder result = new StringBuilder("ServicesSupported[");
-            Method[] methods = this.getClass().getDeclaredMethods();
-            boolean first = true;
-            for (Method method : methods) {
-                if (method.getReturnType() == boolean.class) {
-                    if (first) {
-                        first = false;
-                    } else {
-                        result.append(", ");
-                    }
-                    result.append(method.getName().substring(2));
-                    result.append('=');
-                    result.append(method.invoke(this));
-                }
-            }
-            result.append(']');
-            return result.toString();
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-            //Should never happen
+            Arrays.stream(Introspector.getBeanInfo(getClass(), BitString.class).getPropertyDescriptors())
+                    .sorted(Comparator.comparing(PropertyDescriptor::getName))
+                    .forEach(pd -> {
+                        try {
+                            consumer.accept(pd);
+                        } catch (IllegalAccessException | InvocationTargetException ex) {
+                            throw new RuntimeException(ex.getMessage(), ex);
+                        }
+
+                    });
+        } catch (IntrospectionException ex) {
             throw new RuntimeException(ex.getMessage(), ex);
         }
     }
 
+    @Override
+    public String toString() {
+        var props = new ArrayList<String>();
+        iterateProperties(prop -> props.add(prop.getName() + "=" + prop.getReadMethod().invoke(this)));
+        return "ServicesSupported[" + String.join(", ", props) + "]";
+    }
 }
