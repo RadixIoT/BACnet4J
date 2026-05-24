@@ -1019,12 +1019,10 @@ public class LocalDevice implements AutoCloseable {
 
     public void setCachedRemoteProperty(final int did, final ObjectIdentifier oid, final PropertyIdentifier pid,
             final UnsignedInteger pin, final Encodable value) {
-        if (value instanceof ErrorClassAndCode e) {
-            if (ErrorClass.device.equals(e.getErrorClass())) {
-                // Don't cache devices if the error is about the device. In fact, delete the cached device.
-                remoteDeviceCache.removeEntity(did);
-                return;
-            }
+        if (value instanceof ErrorClassAndCode e && ErrorClass.device.equals(e.getErrorClass())) {
+            // Don't cache devices if the error is about the device. In fact, delete the cached device.
+            remoteDeviceCache.removeEntity(did);
+            return;
         }
 
         final RemoteDevice rd = getCachedRemoteDevice(did);
