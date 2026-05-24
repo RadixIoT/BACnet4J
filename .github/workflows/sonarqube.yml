@@ -5,16 +5,22 @@ on:
       - main
   pull_request:
     types: [ opened, synchronize, reopened ]
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build:
     name: Build and analyze
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
       - name: Set up JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           java-version: 17
           distribution: 'zulu'
@@ -24,24 +30,30 @@ jobs:
       - name: Fetch latest IntelliJ release version
         id: get_version
         run: |
-          version=$(curl "https://data.services.jetbrains.com/products/releases?code=IIC&latest=true&type=release" | jq -r ".IIC[0].version")
-          echo "version=$version" >> $GITHUB_OUTPUT
+          VERSION=$(curl -fSL --proto "=https" --proto-redir "=https" "https://data.services.jetbrains.com/products/releases?code=IIU&latest=true&type=release" | jq -r ".IIU[0].version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       - name: Cache IntelliJ
         id: cache_idea
-        uses: actions/cache@v3
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: /tmp/idea
           key: idea-${{ steps.get_version.outputs.version }}
       - name: Download IntelliJ
         if: steps.cache_idea.outputs.cache-hit != 'true'
+        env:
+          IDEA_VERSION: ${{ steps.get_version.outputs.version }}
         run: |
-          curl -L -o /tmp/idea.tar.gz "https://download.jetbrains.com/idea/ideaIC-${{ steps.get_version.outputs.version }}.tar.gz"
-          mkdir -p /tmp/idea && tar -xzf /tmp/idea.tar.gz -C /tmp/idea --strip-components=1
+          cd /tmp
+          TARBALL="ideaIU-${IDEA_VERSION}.tar.gz"
+          curl -fSL --proto "=https" --proto-redir "=https" -O "https://download.jetbrains.com/idea/${TARBALL}"
+          curl -fSL --proto "=https" --proto-redir "=https" -O "https://download.jetbrains.com/idea/${TARBALL}.sha256"
+          sha256sum -c "${TARBALL}.sha256"
+          mkdir -p /tmp/idea && tar -xzf "${TARBALL}" -C /tmp/idea --strip-components=1
       - name: Check code format with IntelliJ command line formatter
         run: | #https://www.jetbrains.com/help/idea/command-line-formatter.html
           /tmp/idea/bin/format.sh . -r -settings ".idea/codeStyles/Project.xml" -mask "*.java" -dry
       - name: Cache SonarCloud packages
-        uses: actions/cache@v3
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
