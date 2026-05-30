@@ -49,6 +49,7 @@ import com.serotonin.bacnet4j.apdu.SegmentACK;
 import com.serotonin.bacnet4j.apdu.Segmentable;
 import com.serotonin.bacnet4j.apdu.SimpleACK;
 import com.serotonin.bacnet4j.apdu.UnconfirmedRequest;
+import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.enums.MaxSegments;
 import com.serotonin.bacnet4j.exception.BACnetAbortException;
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
@@ -301,6 +302,19 @@ public class DefaultTransport implements Transport, Runnable {
     @Override
     public void send(final Address address, final int maxAPDULengthAccepted, final Segmentation segmentationSupported,
             final ConfirmedRequestService service, final ResponseConsumer consumer) {
+        if (address == null) {
+            throw new IllegalArgumentException("address cannot be null");
+        }
+        if (maxAPDULengthAccepted < MaxApduLength.UP_TO_50.getMaxLengthInt()) {
+            throw new IllegalArgumentException("invalid maxAPDULengthAccepted: " + maxAPDULengthAccepted);
+        }
+        if (segmentationSupported == null) {
+            throw new IllegalArgumentException("segmentation supported cannot be null");
+        }
+        if (service == null) {
+            throw new IllegalArgumentException("service cannot be null");
+        }
+
         // 16.1.2
         if (EnableDisable.enable.equals(localDevice.getCommunicationControlState())) {
             var out = new OutgoingConfirmed(
@@ -537,6 +551,7 @@ public class DefaultTransport implements Transport, Runnable {
                 } catch (final Exception e) {
                     LOG.error("Error during send: {}", out, e);
                     LOG.error("Original send stack", out.stack);
+                    out.handleException(new BACnetException("Error during send", e));
                 }
                 pause = false;
             }

@@ -20,7 +20,7 @@
         <url>https://www.infiniteautomation.com/</url>
     </organization>
     <properties>
-        <revision>6.1.0-SNAPSHOT</revision>
+        <revision>6.2.0-SNAPSHOT</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <additionalDeploymentRepositoryId>additional-deployment-repository</additionalDeploymentRepositoryId>
         <maven.compiler.release>17</maven.compiler.release>
@@ -212,7 +212,7 @@
             <version>1.1.1</version>
             <scope>test</scope>
         </dependency>
-        
+
     </dependencies>
     <issueManagement>
         <url>https://github.com/infiniteautomation/BACnet4J/issues</url>

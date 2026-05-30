@@ -812,7 +812,7 @@ public class IpNetwork extends Network {
                 response.pushU2B(0x10); // NAK
             }
         } else {
-            response.pushU2B(0x10); // NAK  
+            response.pushU2B(0x10); // NAK
         }
         sendPacket(IpNetworkUtils.getInetSocketAddress(origin), response.popAll());
     }

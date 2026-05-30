@@ -27,6 +27,7 @@
 
 package com.serotonin.bacnet4j;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 import com.serotonin.bacnet4j.cache.RemoteEntityCache;
@@ -43,14 +44,15 @@ import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class RemoteDevice implements Serializable {
+    @Serial
     private static final long serialVersionUID = 6338537708566242078L;
 
-    private final LocalDevice localDevice;
-    private final ObjectIdentifier deviceOid;
-    private Address address;
-    private Object userData;
+    private final transient LocalDevice localDevice;
+    private final transient ObjectIdentifier deviceOid;
+    private transient Address address;
+    private transient Object userData;
     private int maxReadMultipleReferences = -1;
-    private final RemoteEntityCache<ObjectIdentifier, RemoteObject> remoteObjectCache;
+    private final transient RemoteEntityCache<ObjectIdentifier, RemoteObject> remoteObjectCache;
 
     public RemoteDevice(final LocalDevice localDevice, final int instanceNumber) {
         this.localDevice = localDevice;
@@ -69,30 +71,6 @@ public class RemoteDevice implements Serializable {
         this.address = address;
     }
 
-    /**
-     * Add properties that are in 'that' if they are not already in 'this'.
-     *
-     * @param that
-     */
-    //    public void merge(final RemoteDevice that) {
-    //        synchronized (objects) {
-    //            for (final Map.Entry<ObjectIdentifier, RemoteObject> e : that.objects.entrySet()) {
-    //                if (e.getValue() != null) {
-    //                    final RemoteObject o = objects.get(e.getKey());
-    //                    if (o == null) {
-    //                        objects.put(e.getKey(), e.getValue());
-    //                    } else {
-    //                        o.merge(e.getValue());
-    //                    }
-    //                }
-    //            }
-    //        }
-    //
-    //        if (userData != null)
-    //            userData = that.userData;
-    //        if (maxReadMultipleReferences != -1)
-    //            maxReadMultipleReferences = that.maxReadMultipleReferences;
-    //    }
     public int getInstanceNumber() {
         return deviceOid.getInstanceNumber();
     }
@@ -153,16 +131,13 @@ public class RemoteDevice implements Serializable {
 
     public void setObjectProperty(final ObjectIdentifier oid, final PropertyIdentifier pid, final UnsignedInteger pin,
             final Encodable value) {
-        if (value instanceof ErrorClassAndCode) {
-            final ErrorClassAndCode e = (ErrorClassAndCode) value;
-            if (ErrorClass.object.equals(e.getErrorClass())) {
-                // Don't create objects if the error is about the object.
-                // But don't remove the object because it is possible to get error responses on objects that
-                // didn't cause the error. For example, a read multiple request can contain requests for properties
-                // of multiple objects. But if only one of these objects doesn't exist, an error is returned for the
-                // whole request, and this error can be assigned to the objects that do exist.
-                return;
-            }
+        if (value instanceof ErrorClassAndCode e && ErrorClass.object.equals(e.getErrorClass())) {
+            // Don't create objects if the error is about the object.
+            // But don't remove the object because it is possible to get error responses on objects that
+            // didn't cause the error. For example, a read multiple request can contain requests for properties
+            // of multiple objects. But if only one of these objects doesn't exist, an error is returned for the
+            // whole request, and this error can be assigned to the objects that do exist.
+            return;
         }
 
         synchronized (remoteObjectCache) {
@@ -214,7 +189,7 @@ public class RemoteDevice implements Serializable {
     }
 
     public Segmentation getSegmentationSupported() {
-        return (Segmentation) getDeviceProperty(PropertyIdentifier.segmentationSupported);
+        return getDeviceProperty(PropertyIdentifier.segmentationSupported);
     }
 
     public int getVendorIdentifier() {
@@ -234,18 +209,18 @@ public class RemoteDevice implements Serializable {
     }
 
     public ServicesSupported getServicesSupported() {
-        return (ServicesSupported) getDeviceProperty(PropertyIdentifier.protocolServicesSupported);
+        return getDeviceProperty(PropertyIdentifier.protocolServicesSupported);
     }
 
     public int getUnsignedIntegerProperty(final PropertyIdentifier pid) {
-        final UnsignedInteger p = (UnsignedInteger) getDeviceProperty(pid);
+        final UnsignedInteger p = getDeviceProperty(pid);
         if (p == null)
             return -1;
         return p.intValue();
     }
 
     public String getCharacterStringProperty(final PropertyIdentifier pid) {
-        final CharacterString p = (CharacterString) getDeviceProperty(pid);
+        final CharacterString p = getDeviceProperty(pid);
         if (p == null)
             return null;
         return p.getValue();
