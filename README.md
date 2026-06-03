@@ -63,6 +63,15 @@ The dependency information is BACnet4J pre 5.0 is:
 
 Releases
 ========
+*Version 6.2.0*
+
+- Methods `LocalDevice.addRemoteDevice(RemoteDevice)` and `LocalDevice.removeRemoteDevice(int)` have been added to allow
+  callers to manually manage the remote device cache, which is useful when a device address is known in advance rather
+  than discovered via broadcast, in particular when devices cannot communicate via broadcast (i.e. WhoIs and IAm).
+  Devices added this way are cached with NEVER_EXPIRE and have their extended properties fetched automatically via
+  DiscoveryUtils.getExtendedDeviceInformation if the required properties are not already present in the remote device.
+- LocalDevice scheduler methods: Made generic (Future) to eliminate unchecked cast warnings at call sites.
+
 *Version 6.1.0*
 
 - Created a new foreign device registration process that is failure-tolerant, allowing user code to determine the amount
