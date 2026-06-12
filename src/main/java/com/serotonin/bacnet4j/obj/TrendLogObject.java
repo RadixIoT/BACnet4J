@@ -211,7 +211,7 @@ public class TrendLogObject extends BACnetObject {
 
         // Now add the mixin.
         addMixin(new IntrinsicReportingMixin(this, algo, null, PropertyIdentifier.totalRecordCount, triggerProps)
-                .withPostNotificationAction((notifParams) -> {
+                .withPostNotificationAction(notifParams -> {
                     if (notifParams.getParameter() instanceof BufferReadyNotif brn) {
                         // After a notification has been sent, a couple values need to be updated.
                         writePropertyInternal(PropertyIdentifier.lastNotifyRecord, brn.getCurrentNotification());

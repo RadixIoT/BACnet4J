@@ -162,7 +162,7 @@ public class TrendLogMultipleObject extends BACnetObject {
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
 
-        // Prepare the object with all of the properties that intrinsic reporting will need.
+        // Prepare the object with all the properties that intrinsic reporting will need.
         // User-defined properties
         writePropertyInternal(PropertyIdentifier.notificationThreshold, new UnsignedInteger(notificationThreshold));
         writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
