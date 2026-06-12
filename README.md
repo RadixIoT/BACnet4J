@@ -69,11 +69,11 @@ Releases
   initialization problems. Instead, objects need to be explicitly added to the local device after instantiation. Many
   examples can be found in the unit tests, but e.g.:
 
-```java
+```
 // Old code
-var av = new AnalogValueObject(localDevice, ...)
+var av = new AnalogValueObject(localDevice, ...);
 // New code
-var av = localDevice.addObject(new AnalogVAlueObject(localDevice, ...))
+var av = localDevice.addObject(new AnalogValueObject(localDevice, ...));
 ```
 
 *Version 6.2.0*
