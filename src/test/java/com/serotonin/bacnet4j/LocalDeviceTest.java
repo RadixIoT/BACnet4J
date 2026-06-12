@@ -34,6 +34,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -61,8 +62,10 @@ import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
 import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
+import com.serotonin.bacnet4j.obj.AnalogInputObject;
 import com.serotonin.bacnet4j.obj.DeviceObject;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
+import com.serotonin.bacnet4j.type.enumerated.EngineeringUnits;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.util.DiscoveryUtils;
@@ -123,18 +126,18 @@ public class LocalDeviceTest {
         future1.get();
         future2.get();
 
-        assertSame(rd21.getValue(), rd22.getValue());
-        assertNotNull(rd21.getValue().getDeviceProperty(PropertyIdentifier.protocolServicesSupported));
-        assertNotNull(rd21.getValue().getDeviceProperty(PropertyIdentifier.objectName));
-        assertNotNull(rd21.getValue().getDeviceProperty(PropertyIdentifier.protocolVersion));
-        assertNotNull(rd21.getValue().getDeviceProperty(PropertyIdentifier.vendorIdentifier));
-        assertNotNull(rd21.getValue().getDeviceProperty(PropertyIdentifier.modelName));
+        assertSame(rd21.get(), rd22.get());
+        assertNotNull(rd21.get().getDeviceProperty(PropertyIdentifier.protocolServicesSupported));
+        assertNotNull(rd21.get().getDeviceProperty(PropertyIdentifier.objectName));
+        assertNotNull(rd21.get().getDeviceProperty(PropertyIdentifier.protocolVersion));
+        assertNotNull(rd21.get().getDeviceProperty(PropertyIdentifier.vendorIdentifier));
+        assertNotNull(rd21.get().getDeviceProperty(PropertyIdentifier.modelName));
 
         // Ask for it again. Should be the same instance.
         final RemoteDevice rd23 = d1.getRemoteDevice(2).get();
 
         // Device is cached, so it will still be the same instance.
-        assertSame(rd21.getValue(), rd23);
+        assertSame(rd21.get(), rd23);
     }
 
     @Test(expected = BACnetTimeoutException.class)
@@ -174,12 +177,12 @@ public class LocalDeviceTest {
         final MutableObject<RemoteDevice> rd21 = new MutableObject<>();
         d1.getRemoteDevice(2, rd21::setValue, null, null, 1, TimeUnit.SECONDS);
 
-        awaitTrue(() -> rd21.getValue() != null);
-        assertSame(rd21.getValue(), d1.getCachedRemoteDevice(2));
+        awaitTrue(() -> rd21.get() != null);
+        assertSame(rd21.get(), d1.getCachedRemoteDevice(2));
     }
 
-    @Test(expected = BACnetServiceException.class)
-    public void createSecondDevice() throws BACnetServiceException {
+    @Test
+    public void createSecondDevice() {
         final LocalDevice ld = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
         final DeviceObject o = new DeviceObject(ld, 2);
 
@@ -187,7 +190,17 @@ public class LocalDeviceTest {
         assertEquals(1, ld.getLocalObjects().size());
 
         // Try to add the device manually, and ensure that this fails.
-        ld.addObject(o);
+        assertThrows(BACnetServiceException.class, () -> ld.addObject(o));
+    }
+
+    @Test
+    public void wrongLocalDevice() {
+        var ld = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
+        var ld2 = new LocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 0)));
+        var o = new AnalogInputObject(ld2, 3, "ai", 0, EngineeringUnits.noUnits, false);
+
+        // Try to add the object to the wrong local device.
+        assertThrows(IllegalArgumentException.class, () -> ld.addObject(o));
     }
 
     @SuppressWarnings("unused")
