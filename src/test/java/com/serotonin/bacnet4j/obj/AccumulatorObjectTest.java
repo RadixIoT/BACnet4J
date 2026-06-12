@@ -356,7 +356,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        Thread.sleep(500);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 

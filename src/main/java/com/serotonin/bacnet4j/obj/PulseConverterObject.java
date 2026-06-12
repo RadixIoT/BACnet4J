@@ -109,7 +109,7 @@ public class PulseConverterObject extends BACnetObject {
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
 
-        // Prepare the object with all of the properties that intrinsic reporting will need.
+        // Prepare the object with all the properties that intrinsic reporting will need.
         writePropertyInternal(PropertyIdentifier.timeDelay, new UnsignedInteger(timeDelay));
         writePropertyInternal(PropertyIdentifier.notificationClass, new UnsignedInteger(notificationClass));
         writePropertyInternal(PropertyIdentifier.highLimit, new Real(highLimit));
@@ -159,10 +159,10 @@ public class PulseConverterObject extends BACnetObject {
                     long newValue = 0;
                     if (value == null) {
                         pollingError = "Unknown property " + ref;
-                    } else if (value instanceof UnsignedInteger) {
-                        newValue = ((UnsignedInteger) value).longValue();
-                    } else if (value instanceof SignedInteger) {
-                        newValue = ((SignedInteger) value).longValue();
+                    } else if (value instanceof UnsignedInteger ui) {
+                        newValue = ui.longValue();
+                    } else if (value instanceof SignedInteger si) {
+                        newValue = si.longValue();
                     } else {
                         pollingError = "Invalid input reference data type: " + value.getClass();
                     }
@@ -187,7 +187,7 @@ public class PulseConverterObject extends BACnetObject {
                     LOG.info("Poll succeeded");
                     writePropertyInternal(PropertyIdentifier.reliability, Reliability.noFaultDetected);
                 } else {
-                    LOG.warn("Polling error: " + pollingError);
+                    LOG.warn("Polling error: {}", pollingError);
                     writePropertyInternal(PropertyIdentifier.reliability, Reliability.configurationError);
                 }
                 lastPollingError = pollingError;

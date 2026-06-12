@@ -184,7 +184,7 @@ public class TrendLogMultipleObject extends BACnetObject {
 
         // Now add the mixin.
         addMixin(new IntrinsicReportingMixin(this, algo, null, PropertyIdentifier.totalRecordCount, triggerProps)
-                .withPostNotificationAction((notifParams) -> {
+                .withPostNotificationAction(notifParams -> {
                     // After a notification has been sent, a couple values need to be updated.
                     final BufferReadyNotif brn = (BufferReadyNotif) notifParams.getParameter();
                     writePropertyInternal(PropertyIdentifier.lastNotifyRecord, brn.getCurrentNotification());
@@ -391,7 +391,7 @@ public class TrendLogMultipleObject extends BACnetObject {
             final DateTime now = getNow();
             final long diff = startTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
             if (diff > 0) {
-                startTimeFuture = getLocalDevice().schedule(() -> evaluateLogDisabled(), diff, TimeUnit.MILLISECONDS);
+                startTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
             }
         }
         evaluateLogDisabled();
@@ -403,7 +403,7 @@ public class TrendLogMultipleObject extends BACnetObject {
             final DateTime now = getNow();
             final long diff = stopTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
             if (diff > 0) {
-                stopTimeFuture = getLocalDevice().schedule(() -> evaluateLogDisabled(), diff, TimeUnit.MILLISECONDS);
+                stopTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
             }
         }
         evaluateLogDisabled();
@@ -535,17 +535,17 @@ public class TrendLogMultipleObject extends BACnetObject {
             elements.add(element);
         }
 
-        final LogMultipleRecord record = new LogMultipleRecord(now, new LogData(new SequenceOf<>(elements)));
-        addLogRecord(record);
+        final LogMultipleRecord rec = new LogMultipleRecord(now, new LogData(new SequenceOf<>(elements)));
+        addLogRecord(rec);
     }
 
-    private synchronized void addLogRecord(final LogMultipleRecord record) {
+    private synchronized void addLogRecord(final LogMultipleRecord rec) {
         // Check if logging is allowed.
         if (logDisabled)
             return;
 
         // Add the new record.
-        addLogRecordImpl(record);
+        addLogRecordImpl(rec);
 
         fullCheck();
     }
@@ -559,7 +559,7 @@ public class TrendLogMultipleObject extends BACnetObject {
         }
     }
 
-    private void addLogRecordImpl(final LogMultipleRecord record) {
+    private void addLogRecordImpl(final LogMultipleRecord rec) {
         final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
 
         synchronized (buffer) {
@@ -569,7 +569,7 @@ public class TrendLogMultipleObject extends BACnetObject {
                 buffer.remove();
             }
 
-            buffer.add(record);
+            buffer.add(rec);
         }
 
         updateRecordCount();
@@ -585,7 +585,7 @@ public class TrendLogMultipleObject extends BACnetObject {
         if (totalRecordCount.longValue() == 0)
             // Value overflowed. As per 12.30.21 set to 1.
             totalRecordCount = new UnsignedInteger(1);
-        record.setSequenceNumber(totalRecordCount.longValue());
+        rec.setSequenceNumber(totalRecordCount.longValue());
         writePropertyInternal(PropertyIdentifier.totalRecordCount, totalRecordCount);
     }
 

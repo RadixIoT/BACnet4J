@@ -88,8 +88,7 @@ public class TrendLogObject extends BACnetObject {
     static final Logger LOG = LoggerFactory.getLogger(TrendLogObject.class);
 
     // CreateObject constructor
-    public static TrendLogObject create(final LocalDevice localDevice, final int instanceNumber)
-            throws BACnetServiceException {
+    public static TrendLogObject create(final LocalDevice localDevice, final int instanceNumber) {
         return new TrendLogObject(localDevice, instanceNumber, ObjectType.trendLog.toString() + " " + instanceNumber,
                 new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED,
                 new DeviceObjectPropertyReference(localDevice.getInstanceNumber(), localDevice.getId(),
@@ -190,7 +189,7 @@ public class TrendLogObject extends BACnetObject {
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
 
-        // Prepare the object with all of the properties that intrinsic reporting will need.
+        // Prepare the object with all the properties that intrinsic reporting will need.
         // User-defined properties
         writePropertyInternal(PropertyIdentifier.notificationThreshold, new UnsignedInteger(notificationThreshold));
         writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
@@ -213,9 +212,8 @@ public class TrendLogObject extends BACnetObject {
         // Now add the mixin.
         addMixin(new IntrinsicReportingMixin(this, algo, null, PropertyIdentifier.totalRecordCount, triggerProps)
                 .withPostNotificationAction((notifParams) -> {
-                    if (notifParams.getParameter() instanceof BufferReadyNotif) {
+                    if (notifParams.getParameter() instanceof BufferReadyNotif brn) {
                         // After a notification has been sent, a couple values need to be updated.
-                        final BufferReadyNotif brn = (BufferReadyNotif) notifParams.getParameter();
                         writePropertyInternal(PropertyIdentifier.lastNotifyRecord, brn.getCurrentNotification());
                         writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
                     }
@@ -426,7 +424,7 @@ public class TrendLogObject extends BACnetObject {
             final DateTime now = getNow();
             final long diff = startTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
             if (diff > 0) {
-                startTimeFuture = getLocalDevice().schedule(() -> evaluateLogDisabled(), diff, TimeUnit.MILLISECONDS);
+                startTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
             }
         }
         evaluateLogDisabled();
@@ -438,7 +436,7 @@ public class TrendLogObject extends BACnetObject {
             final DateTime now = getNow();
             final long diff = stopTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
             if (diff > 0) {
-                stopTimeFuture = getLocalDevice().schedule(() -> evaluateLogDisabled(), diff, TimeUnit.MILLISECONDS);
+                stopTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
             }
         }
         evaluateLogDisabled();
@@ -548,13 +546,13 @@ public class TrendLogObject extends BACnetObject {
                 }
 
                 offsetToUse = intervalOffset.intValue() * 10;
-                offsetToUse %= period;
+                offsetToUse %= (int) period;
             }
 
             initialDelay += offsetToUse;
             initialDelay %= period;
 
-            pollingFuture = getLocalDevice().scheduleAtFixedRate(() -> doPoll(), initialDelay, period,
+            pollingFuture = getLocalDevice().scheduleAtFixedRate(this::doPoll, initialDelay, period,
                     TimeUnit.MILLISECONDS);
 
         } else if (loggingType.equals(LoggingType.cov)) {
@@ -602,7 +600,7 @@ public class TrendLogObject extends BACnetObject {
                             LOG.warn("Requested property not found in COV notification: {}", listOfValues);
                             updateConfigurationError(true);
                         } else {
-                            LOG.debug("COV update: " + value);
+                            LOG.debug("COV update: {}", value);
                             addLogRecord(LogRecord.createFromMonitoredValue(getNow(), value, statusFlags));
                         }
                     }
@@ -687,10 +685,10 @@ public class TrendLogObject extends BACnetObject {
         final Encodable value = values.getNoErrorCheck(monitored.getObjectIdentifier(),
                 new PropertyReference(monitored.getPropertyIdentifier(), monitored.getPropertyArrayIndex()));
 
-        LogRecord record;
+        LogRecord rec;
         boolean error = false;
         if (value instanceof ErrorClassAndCode) {
-            record = LogRecord.createFromMonitoredValue(now, value, null);
+            rec = LogRecord.createFromMonitoredValue(now, value, null);
             error = true;
             LOG.warn("Error returned for value from poll: {}", value);
         } else {
@@ -700,15 +698,15 @@ public class TrendLogObject extends BACnetObject {
             if (statusFlags instanceof ErrorClassAndCode) {
                 error = true;
                 LOG.warn("Error returned for statusFlags from poll: {}", value);
-                record = LogRecord.createFromMonitoredValue(now, value, null);
+                rec = LogRecord.createFromMonitoredValue(now, value, null);
             } else {
-                record = LogRecord.createFromMonitoredValue(now, value, (StatusFlags) statusFlags);
+                rec = LogRecord.createFromMonitoredValue(now, value, (StatusFlags) statusFlags);
             }
         }
 
         updateConfigurationError(error);
 
-        addLogRecord(record);
+        addLogRecord(rec);
     }
 
     private void updateConfigurationError(final boolean error) {
@@ -722,13 +720,13 @@ public class TrendLogObject extends BACnetObject {
         }
     }
 
-    private synchronized void addLogRecord(final LogRecord record) {
+    private synchronized void addLogRecord(final LogRecord rec) {
         // Check if logging is allowed.
         if (logDisabled)
             return;
 
         // Add the new record.
-        addLogRecordImpl(record);
+        addLogRecordImpl(rec);
 
         fullCheck();
     }
@@ -742,7 +740,7 @@ public class TrendLogObject extends BACnetObject {
         }
     }
 
-    private void addLogRecordImpl(final LogRecord record) {
+    private void addLogRecordImpl(final LogRecord rec) {
         final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
 
         synchronized (buffer) {
@@ -752,7 +750,7 @@ public class TrendLogObject extends BACnetObject {
                 buffer.remove();
             }
 
-            buffer.add(record);
+            buffer.add(rec);
         }
 
         updateRecordCount();
@@ -768,7 +766,7 @@ public class TrendLogObject extends BACnetObject {
         if (totalRecordCount.longValue() == 0)
             // Value overflowed. As per 12.25.16 set to 1.
             totalRecordCount = new UnsignedInteger(1);
-        record.setSequenceNumber(totalRecordCount.longValue());
+        rec.setSequenceNumber(totalRecordCount.longValue());
         writePropertyInternal(PropertyIdentifier.totalRecordCount, totalRecordCount);
     }
 

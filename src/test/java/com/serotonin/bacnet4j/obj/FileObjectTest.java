@@ -66,7 +66,7 @@ public class FileObjectTest extends AbstractTest {
     @Test
     public void streamWriteFileSize() throws Exception {
         // Write a zero file size.
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(file)));
             f.writeProperty(null, PropertyIdentifier.fileSize, UnsignedInteger.ZERO);
             assertEquals(UnsignedInteger.ZERO, f.readProperty(PropertyIdentifier.fileSize, null));
@@ -74,7 +74,7 @@ public class FileObjectTest extends AbstractTest {
         });
 
         // Write > 0 and < file size.
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(file)));
             f.writeProperty(null, PropertyIdentifier.fileSize, new UnsignedInteger(100));
             assertEquals(new UnsignedInteger(100), f.readProperty(PropertyIdentifier.fileSize, null));
@@ -82,7 +82,7 @@ public class FileObjectTest extends AbstractTest {
         });
 
         // Write a file size == size
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(file)));
             f.writeProperty(null, PropertyIdentifier.fileSize, new UnsignedInteger(922));
             assertEquals(new UnsignedInteger(922), f.readProperty(PropertyIdentifier.fileSize, null));
@@ -90,7 +90,7 @@ public class FileObjectTest extends AbstractTest {
         });
 
         // Write a file size > size
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(file)));
             f.writeProperty(null, PropertyIdentifier.fileSize, new UnsignedInteger(1001));
             assertEquals(new UnsignedInteger(1001), f.readProperty(PropertyIdentifier.fileSize, null));
@@ -101,7 +101,7 @@ public class FileObjectTest extends AbstractTest {
     @Test
     public void recordWriteFileSize() throws Exception {
         // Write a zero record count.
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(file)));
             f.writeProperty(null, PropertyIdentifier.fileSize, UnsignedInteger.ZERO);
             assertEquals(UnsignedInteger.ZERO, f.readProperty(PropertyIdentifier.recordCount, null));
@@ -110,7 +110,7 @@ public class FileObjectTest extends AbstractTest {
         });
 
         // Write > 0 and < size record count.
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(file)));
             f.writeProperty(null, PropertyIdentifier.fileSize, new UnsignedInteger(100));
             assertEquals(new UnsignedInteger(2), f.readProperty(PropertyIdentifier.recordCount, null));
@@ -119,7 +119,7 @@ public class FileObjectTest extends AbstractTest {
         });
 
         // Write > 0 and < size record count.
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(file)));
             //Since Newlines are CRLF on windows and CR on OSX and LF on Unix
             if (SystemUtils.IS_OS_WINDOWS)
@@ -135,7 +135,7 @@ public class FileObjectTest extends AbstractTest {
         });
 
         // Write a record count == size
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(file)));
             if (SystemUtils.IS_OS_WINDOWS)
                 f.writeProperty(null, PropertyIdentifier.fileSize, new UnsignedInteger(922));
@@ -150,7 +150,7 @@ public class FileObjectTest extends AbstractTest {
         });
 
         // Write a record count > size
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(file)));
             if (SystemUtils.IS_OS_WINDOWS)
                 f.writeProperty(null, PropertyIdentifier.fileSize, new UnsignedInteger(1001));
@@ -210,7 +210,7 @@ public class FileObjectTest extends AbstractTest {
     @Test
     public void recordWriteRecordCount() throws Exception {
         // Write a zero record count.
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(file)));
             f.writeProperty(null, PropertyIdentifier.recordCount, UnsignedInteger.ZERO);
             assertEquals(UnsignedInteger.ZERO, f.readProperty(PropertyIdentifier.recordCount, null));
@@ -219,7 +219,7 @@ public class FileObjectTest extends AbstractTest {
         });
 
         // Write > 0 and < size record count.
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(file)));
             f.writeProperty(null, PropertyIdentifier.recordCount, new UnsignedInteger(10));
             assertEquals(new UnsignedInteger(10), f.readProperty(PropertyIdentifier.recordCount, null));
@@ -232,7 +232,7 @@ public class FileObjectTest extends AbstractTest {
         });
 
         // Write a record count == size
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(file)));
             f.writeProperty(null, PropertyIdentifier.recordCount, new UnsignedInteger(14));
             assertEquals(new UnsignedInteger(14), f.readProperty(PropertyIdentifier.recordCount, null));
@@ -245,7 +245,7 @@ public class FileObjectTest extends AbstractTest {
         });
 
         // Write a record count > size
-        doInCopy((file) -> {
+        doInCopy(file -> {
             final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(file)));
             f.writeProperty(null, PropertyIdentifier.recordCount, new UnsignedInteger(25));
             assertEquals(new UnsignedInteger(25), f.readProperty(PropertyIdentifier.recordCount, null));

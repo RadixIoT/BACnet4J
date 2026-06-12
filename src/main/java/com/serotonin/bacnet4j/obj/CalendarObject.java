@@ -54,8 +54,7 @@ public class CalendarObject extends BACnetObject {
     static final Logger LOG = LoggerFactory.getLogger(CalendarObject.class);
 
     // CreateObject constructor
-    public static CalendarObject create(final LocalDevice localDevice, final int instanceNumber)
-            throws BACnetServiceException {
+    public static CalendarObject create(final LocalDevice localDevice, final int instanceNumber) {
         return new CalendarObject(localDevice, instanceNumber, ObjectType.calendar.toString() + " " + instanceNumber,
                 new SequenceOf<>());
     }

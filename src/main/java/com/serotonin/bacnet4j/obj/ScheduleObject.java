@@ -103,7 +103,7 @@ public class ScheduleObject extends BACnetObject {
      * failures, restarts, and the like.
      */
     private ScheduledFuture<?> periodicWriter;
-    private volatile DateTime lastUpdateTime;
+    private DateTime lastUpdateTime;
 
     public ScheduleObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final DateRange effectivePeriod, final BACnetArray<DailySchedule> weeklySchedule,

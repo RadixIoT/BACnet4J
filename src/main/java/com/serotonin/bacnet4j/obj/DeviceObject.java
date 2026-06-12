@@ -337,10 +337,10 @@ public class DeviceObject extends BACnetObject {
 
     private MasterNode getMasterNode() {
         final Network network = getLocalDevice().getNetwork();
-        if (network instanceof MstpNetwork) {
-            final MstpNode node = ((MstpNetwork) network).getNode();
-            if (node instanceof MasterNode) {
-                return (MasterNode) node;
+        if (network instanceof MstpNetwork mstp) {
+            final MstpNode node = mstp.getNode();
+            if (node instanceof MasterNode manager) {
+                return manager;
             }
         }
         return null;

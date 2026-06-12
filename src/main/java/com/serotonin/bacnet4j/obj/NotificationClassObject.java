@@ -60,8 +60,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class NotificationClassObject extends BACnetObject {
     // CreateObject constructor
-    public static NotificationClassObject create(final LocalDevice localDevice, final int instanceNumber)
-            throws BACnetServiceException {
+    public static NotificationClassObject create(final LocalDevice localDevice, final int instanceNumber) {
         return new NotificationClassObject(localDevice, instanceNumber,
                 ObjectType.notificationClass + " " + instanceNumber, 20, 10, 30,
                 new EventTransitionBits(false, false, false))
@@ -72,7 +71,7 @@ public class NotificationClassObject extends BACnetObject {
 
     public NotificationClassObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final int toOffnormalPriority, final int toFaultPriority, final int toNormalPriority,
-            final EventTransitionBits ackRequired) throws BACnetServiceException {
+            final EventTransitionBits ackRequired) {
         this(localDevice, instanceNumber, name, new BACnetArray<>(new UnsignedInteger(toOffnormalPriority),
                 new UnsignedInteger(toFaultPriority), new UnsignedInteger(toNormalPriority)), ackRequired);
 

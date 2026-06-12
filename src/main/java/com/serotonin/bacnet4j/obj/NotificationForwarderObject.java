@@ -192,7 +192,7 @@ public class NotificationForwarderObject extends BACnetObject {
                 }
 
                 // Send to subscribers
-                forEachSubscriber((subscription) -> {
+                forEachSubscriber(subscription -> {
                     Address address;
                     try {
                         address = subscription.getRecipient().toAddress(getLocalDevice());
@@ -312,7 +312,7 @@ public class NotificationForwarderObject extends BACnetObject {
                             }
                             // Update the subscription with the new values.
                             subscription.setIssueConfirmedNotifications(ens.getIssueConfirmedNotifications());
-                            subscription.setExpiryMillis(now + ens.getTimeRemaining().intValue() * 1000);
+                            subscription.setExpiryMillis(now + ens.getTimeRemaining().intValue() * 1000L);
                         }
                     }
 
@@ -361,7 +361,7 @@ public class NotificationForwarderObject extends BACnetObject {
         // Dynamically construct the list of subscribers.
         final SequenceOf<EventNotificationSubscription> subscribedRecipients = new SequenceOf<>(subscriptions.size());
         final long now = getLocalDevice().getClock().millis();
-        forEachSubscriber((subscription) -> {
+        forEachSubscriber(subscription -> {
             // Convert to seconds, using a ceiling.
             int timeRemaining = (int) ((subscription.getExpiryMillis() - now + 999) / 1000);
             // The forEachSubscriber method should ensure that no expired subscriptions appear here, but just make
