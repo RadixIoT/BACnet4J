@@ -66,7 +66,7 @@ public class AtomicReadFileRequestTest {
     @Before
     public void before() throws Exception {
         d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0))).initialize();
-        ai = new AnalogInputObject(d1, 0, "ai", 0, EngineeringUnits.noUnits, false);
+        ai = d1.addObject(new AnalogInputObject(d1, 0, "ai", 0, EngineeringUnits.noUnits, false));
     }
 
     @After
@@ -75,7 +75,7 @@ public class AtomicReadFileRequestTest {
     }
 
     @Test
-    public void errors() throws Exception {
+    public void errors() {
         // Use an oid what doesn't exist.
         TestUtils.assertRequestHandleException(() -> {
             new AtomicReadFileRequest(new ObjectIdentifier(ObjectType.file, 0),
@@ -94,7 +94,7 @@ public class AtomicReadFileRequestTest {
     @Test
     public void stream() throws Exception {
         // Create the file object to use.
-        final FileObject f = new FileObject(d1, 0, "test", new StreamAccess(new File(path)));
+        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(new File(path))));
 
         // Read starting at -1.
         TestUtils.assertRequestHandleException(() -> {
@@ -153,7 +153,7 @@ public class AtomicReadFileRequestTest {
     @Test
     public void record() throws Exception {
         // Create the file object to use.
-        final FileObject f = new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(new File(path)));
+        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(new File(path))));
 
         // Read starting at -1.
         TestUtils.assertRequestHandleException(() -> {

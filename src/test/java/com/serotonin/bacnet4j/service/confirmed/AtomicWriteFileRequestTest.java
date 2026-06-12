@@ -70,7 +70,7 @@ public class AtomicWriteFileRequestTest {
     @Before
     public void before() throws Exception {
         d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0))).initialize();
-        ai = new AnalogInputObject(d1, 0, "ai", 0, EngineeringUnits.noUnits, false);
+        ai = d1.addObject(new AnalogInputObject(d1, 0, "ai", 0, EngineeringUnits.noUnits, false));
     }
 
     @After
@@ -98,7 +98,7 @@ public class AtomicWriteFileRequestTest {
     @Test
     public void stream() throws Exception {
         // Create the file object to use.
-        final FileObject f = new FileObject(d1, 0, "test", new StreamAccess(new File(path)));
+        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(new File(path))));
 
         // Write starting at -2.
         TestUtils.assertRequestHandleException(() -> {
@@ -116,7 +116,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write into an existing range.
         doInCopy((file) -> {
-            final FileObject f1 = new FileObject(d1, 1, "test", new StreamAccess(file));
+            final FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(600), new OctetString("!@#$%".getBytes()))).handle(d1, null);
@@ -134,7 +134,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write to exactly the end of the file.
         doInCopy((file) -> {
-            final FileObject f1 = new FileObject(d1, 1, "test", new StreamAccess(file));
+            final FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(917), new OctetString("!@#$%".getBytes()))).handle(d1, null);
@@ -152,7 +152,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write a bit beyond the end of the file.
         doInCopy((file) -> {
-            final FileObject f1 = new FileObject(d1, 1, "test", new StreamAccess(file));
+            final FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(919), new OctetString("!@#$%".getBytes()))).handle(d1, null);
@@ -170,7 +170,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write starting beyond the end of the file.
         doInCopy((file) -> {
-            final FileObject f1 = new FileObject(d1, 1, "test", new StreamAccess(file));
+            final FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(930), new OctetString("!@#$%".getBytes()))).handle(d1, null);
@@ -189,7 +189,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write append.
         doInCopy((file) -> {
-            final FileObject f1 = new FileObject(d1, 1, "test", new StreamAccess(file));
+            final FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(-1), new OctetString("!@#$%".getBytes()))).handle(d1, null);
@@ -209,7 +209,7 @@ public class AtomicWriteFileRequestTest {
     @Test
     public void record() throws Exception {
         // Create the file object to use.
-        final FileObject f = new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(new File(path)));
+        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new CrlfDelimitedFileAccess(new File(path))));
 
         // Write starting at -2.
         TestUtils.assertRequestHandleException(() -> {
@@ -228,7 +228,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write of an existing range.
         doInCopy((file) -> {
-            final FileObject f1 = new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file));
+            final FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file)));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.RecordAccess(
                             new SignedInteger(0), new UnsignedInteger(3), new SequenceOf<>( //
@@ -255,7 +255,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write past the end of the file
         doInCopy((file) -> {
-            final FileObject f1 = new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file));
+            final FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file)));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.RecordAccess(
                             new SignedInteger(12), new UnsignedInteger(3), new SequenceOf<>( //
@@ -281,7 +281,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write starting past the end of the file
         doInCopy((file) -> {
-            final FileObject f1 = new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file));
+            final FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file)));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.RecordAccess(
                             new SignedInteger(16), new UnsignedInteger(3), new SequenceOf<>( //
@@ -311,7 +311,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write appending
         doInCopy((file) -> {
-            final FileObject f1 = new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file));
+            final FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new CrlfDelimitedFileAccess(file)));
             final AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.RecordAccess(
                             new SignedInteger(-1), new UnsignedInteger(3), new SequenceOf<>( //
@@ -342,7 +342,7 @@ public class AtomicWriteFileRequestTest {
         doInCopy((file) -> {
             final long originalTime = file.lastModified();
             Thread.sleep(1); // Ensures that the time changes from  the original
-            final FileObject f1 = new FileObject(d1, 1, "test", new StreamAccess(file));
+            final FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
             new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(600), new OctetString("!@#$%".getBytes()))).handle(d1, null);

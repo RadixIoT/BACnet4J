@@ -62,7 +62,7 @@ public class FileObject extends BACnetObject {
     private final ReentrantLock lock = new ReentrantLock();
 
     public FileObject(final LocalDevice localDevice, final int instanceNumber, final String fileType,
-            final FileAccess fileAccess) throws BACnetServiceException {
+            final FileAccess fileAccess) {
         super(localDevice, ObjectType.file, instanceNumber, fileAccess.getName());
         this.fileAccess = fileAccess;
 
@@ -77,8 +77,6 @@ public class FileObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.fileType, new CharacterString(fileType));
         writePropertyInternal(PropertyIdentifier.fileAccessMethod, fileAccess.getAccessMethod());
         writePropertyInternal(PropertyIdentifier.archive, Boolean.FALSE);
-
-        localDevice.addObject(this);
     }
 
     public ReentrantLock getLock() {

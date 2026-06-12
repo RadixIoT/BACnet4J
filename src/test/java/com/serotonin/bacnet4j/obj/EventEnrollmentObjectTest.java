@@ -78,13 +78,14 @@ public class EventEnrollmentObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        av0 = new AnalogValueObject(d3, 0, "av0", 0, EngineeringUnits.noUnits, false);
+        av0 = d3.addObject(new AnalogValueObject(d3, 0, "av0", 0, EngineeringUnits.noUnits, false));
         av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.noFaultDetected);
 
-        av1 = new AnalogValueObject(d3, 1, "av1", 0, EngineeringUnits.noUnits, false);
+        av1 = d3.addObject(new AnalogValueObject(d3, 1, "av1", 0, EngineeringUnits.noUnits, false));
         av1.writePropertyInternal(PropertyIdentifier.minPresValue, new Real(50));
 
-        nc = new NotificationClassObject(d1, 5, "nc5", 100, 5, 200, new EventTransitionBits(false, false, false));
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 5, "nc5", 100, 5, 200, new EventTransitionBits(false, false, false)));
     }
 
     @SuppressWarnings("unchecked")
@@ -97,9 +98,10 @@ public class EventEnrollmentObjectTest extends AbstractTest {
                 new PropertyStates(Reliability.activationFailure), //
                 new PropertyStates(Reliability.communicationFailure), //
                 new PropertyStates(Reliability.configurationError));
-        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee0", ref, NotifyType.event,
+        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee0", ref, NotifyType.event,
                 new EventParameter(new ChangeOfState(new UnsignedInteger(1), alarmValues)),
-                new EventTransitionBits(true, true, true), 5, 100, null, null);
+                new EventTransitionBits(true, true, true), 5, 100, null, null));
 
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
@@ -259,10 +261,11 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         final DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
                         PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
-        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee0", ref, NotifyType.alarm,
+        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee0", ref, NotifyType.alarm,
                 new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
                 new EventTransitionBits(true, true, true), 5, 100, null, new FaultParameter(
-                new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90)))));
+                new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90))))));
 
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
@@ -387,10 +390,10 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         final DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
                         PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
-        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee0", ref, NotifyType.alarm,
+        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(d1, 0, "ee0", ref, NotifyType.alarm,
                 new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
                 new EventTransitionBits(true, true, true), 5, 100, null, new FaultParameter(
-                new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90)))));
+                new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90))))));
 
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
@@ -434,10 +437,11 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         final DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
                         PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
-        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee0", ref, NotifyType.alarm,
+        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee0", ref, NotifyType.alarm,
                 new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
                 new EventTransitionBits(true, true, true), 5, 100, null, new FaultParameter(
-                new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90)))));
+                new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90))))));
 
         // Change the event parameters of the enrollment.
         var response = d2.send(rd1, new WritePropertyRequest(ee.getId(), PropertyIdentifier.eventParameters, null,

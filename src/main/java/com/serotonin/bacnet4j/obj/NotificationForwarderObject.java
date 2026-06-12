@@ -211,7 +211,6 @@ public class NotificationForwarderObject extends BACnetObject {
         };
 
         localDevice.getEventHandler().addListener(eventListener);
-        localDevice.addObject(this);
     }
 
     private void sendNotification(final UnsignedInteger processIdentifier,

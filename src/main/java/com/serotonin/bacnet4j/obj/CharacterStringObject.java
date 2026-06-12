@@ -30,7 +30,6 @@ package com.serotonin.bacnet4j.obj;
 import java.util.Objects;
 
 import com.serotonin.bacnet4j.LocalDevice;
-import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.mixin.CommandableMixin;
 import com.serotonin.bacnet4j.obj.mixin.HasStatusFlagsMixin;
 import com.serotonin.bacnet4j.obj.mixin.ReadOnlyPropertyMixin;
@@ -47,17 +46,8 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
  * @author Phillip Dunlap, based on BinaryValueObject
  */
 public class CharacterStringObject extends BACnetObject {
-
-    /**
-     * @param localDevice
-     * @param instanceNumber
-     * @param name
-     * @param presentValue
-     * @param outOfService
-     * @throws BACnetServiceException
-     */
     public CharacterStringObject(LocalDevice localDevice, int instanceNumber,
-            String name, final CharacterString presentValue, final boolean outOfService) throws BACnetServiceException {
+            String name, final CharacterString presentValue, final boolean outOfService) {
         super(localDevice, ObjectType.characterstringValue, instanceNumber, name);
 
 
@@ -74,8 +64,6 @@ public class CharacterStringObject extends BACnetObject {
                 PropertyIdentifier.eventTimeStamps, PropertyIdentifier.eventMessageTexts));
 
         writePropertyInternal(PropertyIdentifier.presentValue, presentValue);
-
-        localDevice.addObject(this);
     }
 
     public CharacterStringObject supportCommandable(final CharacterString relinquishDefault) {
@@ -88,7 +76,4 @@ public class CharacterStringObject extends BACnetObject {
         _supportCovReporting(null, null);
         return this;
     }
-
-
-
 }

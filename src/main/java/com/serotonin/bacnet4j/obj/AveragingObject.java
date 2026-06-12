@@ -71,7 +71,7 @@ public class AveragingObject extends BACnetObject {
 
     public AveragingObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final DeviceObjectPropertyReference objectPropertyReference, final int windowInterval,
-            final int windowSamples) throws BACnetServiceException {
+            final int windowSamples) {
         super(localDevice, ObjectType.averaging, instanceNumber, name);
 
         Objects.requireNonNull(objectPropertyReference);
@@ -95,8 +95,6 @@ public class AveragingObject extends BACnetObject {
 
         updateMonitoredProperty();
         reinitializePolling();
-
-        localDevice.addObject(this);
     }
 
     private void reset() {

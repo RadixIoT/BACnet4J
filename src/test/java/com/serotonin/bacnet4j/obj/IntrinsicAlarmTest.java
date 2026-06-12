@@ -87,16 +87,17 @@ public class IntrinsicAlarmTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        bv = new BinaryValueObject(d1, 0, "bvName1", BinaryPV.inactive, true);
+        bv = d1.addObject(new BinaryValueObject(d1, 0, "bvName1", BinaryPV.inactive, true));
         bv.writePropertyInternal(PropertyIdentifier.outOfService, Boolean.FALSE);
 
-        mv = new MultistateValueObject(d1, 0, "mvName1", 7, new BACnetArray<>(new CharacterString( //
+        mv = d1.addObject(new MultistateValueObject(d1, 0, "mvName1", 7, new BACnetArray<>(new CharacterString( //
                 "normal1"), new CharacterString("normal2"), new CharacterString("normal3"), //
                 new CharacterString("alarm1"), new CharacterString("alarm2"), //
-                new CharacterString("fault1"), new CharacterString("fault2")), 1, true);
+                new CharacterString("fault1"), new CharacterString("fault2")), 1, true));
         mv.writePropertyInternal(PropertyIdentifier.outOfService, Boolean.FALSE);
 
-        nc = new NotificationClassObject(d1, 7, "nc7", 100, 5, 200, new EventTransitionBits(true, true, true));
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 7, "nc7", 100, 5, 200, new EventTransitionBits(true, true, true)));
     }
 
     @Test

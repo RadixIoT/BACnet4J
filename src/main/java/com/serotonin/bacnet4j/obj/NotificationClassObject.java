@@ -63,7 +63,7 @@ public class NotificationClassObject extends BACnetObject {
     public static NotificationClassObject create(final LocalDevice localDevice, final int instanceNumber)
             throws BACnetServiceException {
         return new NotificationClassObject(localDevice, instanceNumber,
-                ObjectType.notificationClass.toString() + " " + instanceNumber, 20, 10, 30,
+                ObjectType.notificationClass + " " + instanceNumber, 20, 10, 30,
                 new EventTransitionBits(false, false, false))
                 .supportIntrinsicReporting(new EventTransitionBits(false, false, false), NotifyType.event);
     }
@@ -80,8 +80,7 @@ public class NotificationClassObject extends BACnetObject {
     }
 
     public NotificationClassObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final BACnetArray<UnsignedInteger> priority, final EventTransitionBits ackRequired)
-            throws BACnetServiceException {
+            final BACnetArray<UnsignedInteger> priority, final EventTransitionBits ackRequired) {
         super(localDevice, ObjectType.notificationClass, instanceNumber, name);
 
         writePropertyInternal(PropertyIdentifier.notificationClass, new UnsignedInteger(instanceNumber));
@@ -91,13 +90,11 @@ public class NotificationClassObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false));
 
         addMixin(new HasStatusFlagsMixin(this));
-
-        localDevice.addObject(this);
     }
 
     public NotificationClassObject supportIntrinsicReporting(final EventTransitionBits eventEnable,
             final NotifyType notifyType) {
-        // Prepare the object with all of the properties that intrinsic reporting will need.
+        // Prepare the object with all the properties that intrinsic reporting will need.
         // User-defined properties
         writePropertyInternal(PropertyIdentifier.eventEnable, eventEnable);
         writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);

@@ -85,14 +85,12 @@ public class MultistateValueObject extends BACnetObject {
         if (!outOfService) {
             writePropertyInternal(PropertyIdentifier.outOfService, Boolean.valueOf(outOfService));
         }
-
-        localDevice.addObject(this);
     }
 
     public MultistateValueObject supportIntrinsicReporting(final int timeDelay, final int notificationClass,
             final BACnetArray<UnsignedInteger> alarmValues, final BACnetArray<UnsignedInteger> faultValues,
             final EventTransitionBits eventEnable, final NotifyType notifyType, final int timeDelayNormal) {
-        // Prepare the object with all of the properties that intrinsic reporting will need.
+        // Prepare the object with all the properties that intrinsic reporting will need.
         // User-defined properties
         writePropertyInternal(PropertyIdentifier.timeDelay, new UnsignedInteger(timeDelay));
         writePropertyInternal(PropertyIdentifier.notificationClass, new UnsignedInteger(notificationClass));

@@ -94,8 +94,8 @@ public class ObjectIdAndNameMixinTest {
     @Test
     public void uniqueInstanceNumber() throws Exception {
         final LocalDevice d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0))).initialize();
-        final GroupObject go0 = new GroupObject(d1, 0, "go0", new SequenceOf<>());
-        final GroupObject go1 = new GroupObject(d1, 1, "go1", new SequenceOf<>());
+        final GroupObject go0 = d1.addObject(new GroupObject(d1, 0, "go0", new SequenceOf<>()));
+        final GroupObject go1 = d1.addObject(new GroupObject(d1, 1, "go1", new SequenceOf<>()));
         TestUtils.assertBACnetServiceException(() -> {
             go0.writeProperty(null, new PropertyValue(PropertyIdentifier.objectIdentifier, go1.getId()));
         }, ErrorClass.property, ErrorCode.duplicateObjectId);
@@ -112,8 +112,8 @@ public class ObjectIdAndNameMixinTest {
     @Test
     public void uniqueName() throws Exception {
         final LocalDevice d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0))).initialize();
-        final GroupObject go0 = new GroupObject(d1, 0, "go0", new SequenceOf<>());
-        new GroupObject(d1, 1, "go1", new SequenceOf<>());
+        final GroupObject go0 = d1.addObject(new GroupObject(d1, 0, "go0", new SequenceOf<>()));
+        d1.addObject(new GroupObject(d1, 1, "go1", new SequenceOf<>()));
         TestUtils.assertBACnetServiceException(() -> {
             go0.writeProperty(null, new PropertyValue(PropertyIdentifier.objectName, new CharacterString("go1")));
         }, ErrorClass.property, ErrorCode.duplicateName);

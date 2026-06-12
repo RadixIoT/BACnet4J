@@ -184,7 +184,8 @@ public class RequestUtilsTest {
     public void sendOneAtATimeOnError() throws Exception {
         final LocalDevice d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0))).initialize();
         final LocalDevice d2 = new LocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 0))).initialize();
-        final AnalogInputObject ai = new AnalogInputObject(d2, 0, "ai", 0, EngineeringUnits.noUnits, false);
+        final AnalogInputObject ai = d2.addObject(new AnalogInputObject(
+                d2, 0, "ai", 0, EngineeringUnits.noUnits, false));
         final RemoteDevice rd2 = d1.getRemoteDeviceBlocking(2);
 
         final List<Map<String, Object>> listenerUpdates = new ArrayList<>();

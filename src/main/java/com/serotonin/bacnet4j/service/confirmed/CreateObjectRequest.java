@@ -72,23 +72,23 @@ public class CreateObjectRequest extends ConfirmedRequestService {
 
     public static final byte TYPE_ID = 10;
 
-    private static ChoiceOptions choiceOptions = new ChoiceOptions();
+    private static final ChoiceOptions choiceOptions = new ChoiceOptions();
 
     static {
         choiceOptions.addContextual(0, ObjectType.class);
         choiceOptions.addContextual(1, ObjectIdentifier.class);
     }
 
-    private static Map<ObjectType, ObjectCreator> creators = new HashMap<>();
+    private static final Map<ObjectType, ObjectCreator> creators = new HashMap<>();
 
     static {
-        creators.put(ObjectType.calendar, (d, number) -> CalendarObject.create(d, number));
-        creators.put(ObjectType.eventLog, (d, number) -> EventLogObject.create(d, number));
-        creators.put(ObjectType.group, (d, number) -> GroupObject.create(d, number));
-        creators.put(ObjectType.notificationClass, (d, number) -> NotificationClassObject.create(d, number));
-        creators.put(ObjectType.schedule, (d, number) -> ScheduleObject.create(d, number));
-        creators.put(ObjectType.trendLog, (d, number) -> TrendLogObject.create(d, number));
-        creators.put(ObjectType.trendLogMultiple, (d, number) -> TrendLogMultipleObject.create(d, number));
+        creators.put(ObjectType.calendar, CalendarObject::create);
+        creators.put(ObjectType.eventLog, EventLogObject::create);
+        creators.put(ObjectType.group, GroupObject::create);
+        creators.put(ObjectType.notificationClass, NotificationClassObject::create);
+        creators.put(ObjectType.schedule, ScheduleObject::create);
+        creators.put(ObjectType.trendLog, TrendLogObject::create);
+        creators.put(ObjectType.trendLogMultiple, TrendLogMultipleObject::create);
     }
 
     private final Choice objectSpecifier;
@@ -169,7 +169,7 @@ public class CreateObjectRequest extends ConfirmedRequestService {
         try {
             final BACnetObject bo;
             try {
-                bo = creator.create(localDevice, instanceNumber);
+                bo = localDevice.addObject(creator.create(localDevice, instanceNumber));
             } catch (final BACnetServiceException e) {
                 throw createException(e.getErrorClass(), e.getErrorCode(), 0);
             }
@@ -243,7 +243,7 @@ public class CreateObjectRequest extends ConfirmedRequestService {
     }
 
     @FunctionalInterface
-    public static interface ObjectCreator {
+    public interface ObjectCreator {
         BACnetObject create(LocalDevice d, int instanceNumber) throws BACnetServiceException;
     }
 }

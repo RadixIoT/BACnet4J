@@ -86,13 +86,13 @@ public class DeviceObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        av0 = new AnalogValueObject(d1, 0, "av0", 50, EngineeringUnits.amperes, false);
-        new AnalogValueObject(d1, 1, "av1", 50, EngineeringUnits.amperes, false);
-        new AnalogValueObject(d1, 2, "av2", 50, EngineeringUnits.amperes, false);
-        new BinaryValueObject(d1, 0, "bv0", BinaryPV.inactive, false);
-        new BinaryValueObject(d1, 1, "bv1", BinaryPV.inactive, false);
-        new BinaryValueObject(d1, 2, "bv2", BinaryPV.inactive, false);
-        new BinaryValueObject(d1, 3, "bv3", BinaryPV.inactive, false);
+        av0 = d1.addObject(new AnalogValueObject(d1, 0, "av0", 50, EngineeringUnits.amperes, false));
+        d1.addObject(new AnalogValueObject(d1, 1, "av1", 50, EngineeringUnits.amperes, false));
+        d1.addObject(new AnalogValueObject(d1, 2, "av2", 50, EngineeringUnits.amperes, false));
+        d1.addObject(new BinaryValueObject(d1, 0, "bv0", BinaryPV.inactive, false));
+        d1.addObject(new BinaryValueObject(d1, 1, "bv1", BinaryPV.inactive, false));
+        d1.addObject(new BinaryValueObject(d1, 2, "bv2", BinaryPV.inactive, false));
+        d1.addObject(new BinaryValueObject(d1, 3, "bv3", BinaryPV.inactive, false));
     }
 
     @Test
@@ -241,8 +241,8 @@ public class DeviceObjectTest extends AbstractTest {
     @Test
     public void intrinsicAlarms() throws Exception {
         final DeviceObject dev = d1.getDeviceObject();
-        final NotificationClassObject nc =
-                new NotificationClassObject(d1, 7, "nc7", 100, 5, 200, new EventTransitionBits(false, false, false));
+        final NotificationClassObject nc = d1.addObject(new NotificationClassObject(
+                d1, 7, "nc7", 100, 5, 200, new EventTransitionBits(false, false, false)));
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.FALSE,
                 new EventTransitionBits(true, true, true)));

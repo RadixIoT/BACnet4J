@@ -109,14 +109,14 @@ public class BackupRestoreTest {
                 final File streamFile = copy(file, "stream");
                 final File recordFile = copy(file, "record");
 
-                final FileObject stream = new FileObject(localDevice,
+                final FileObject stream = localDevice.addObject(new FileObject(localDevice,
                         localDevice.getNextInstanceObjectNumber(ObjectType.file), "configurationFile",
-                        new StreamAccess(streamFile));
-                final FileObject record = new FileObject(localDevice,
+                        new StreamAccess(streamFile)));
+                final FileObject rec = localDevice.addObject(new FileObject(localDevice,
                         localDevice.getNextInstanceObjectNumber(ObjectType.file), "configurationFile",
-                        new CrlfDelimitedFileAccess(recordFile));
+                        new CrlfDelimitedFileAccess(recordFile)));
                 localDevice.getDeviceObject().writePropertyInternal(PropertyIdentifier.configurationFiles,
-                        new BACnetArray<>(stream.getId(), record.getId()));
+                        new BACnetArray<>(stream.getId(), rec.getId()));
             }
 
             // Override finishRestore to check the copied files and ensure that they match the originals.
@@ -133,8 +133,8 @@ public class BackupRestoreTest {
                     final FileObject stream = (FileObject) localDevice.getObject(configurationFiles.get(0));
                     final File restoredStream = ((StreamAccess) stream.getFileAccess()).getFile();
 
-                    final FileObject record = (FileObject) localDevice.getObject(configurationFiles.get(1));
-                    final File restoredRecord = ((CrlfDelimitedFileAccess) record.getFileAccess()).getFile();
+                    final FileObject rec = (FileObject) localDevice.getObject(configurationFiles.get(1));
+                    final File restoredRecord = ((CrlfDelimitedFileAccess) rec.getFileAccess()).getFile();
 
                     try {
                         TestUtils.assertFileContentEquals(restoredStream, file);

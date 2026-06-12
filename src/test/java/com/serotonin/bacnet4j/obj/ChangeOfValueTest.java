@@ -82,7 +82,8 @@ public class ChangeOfValueTest extends AbstractTest {
             assertEquals(ErrorCode.unknownObject, e.getError().getErrorCode());
         }
 
-        final AnalogValueObject av = new AnalogValueObject(d1, 0, "av0", 10, EngineeringUnits.amperes, false);
+        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+                d1, 0, "av0", 10, EngineeringUnits.amperes, false));
 
         try {
             d2.send(rd1, new SubscribeCOVRequest(new UnsignedInteger(4), av.getId(), Boolean.TRUE,
@@ -112,7 +113,8 @@ public class ChangeOfValueTest extends AbstractTest {
             assertEquals(ErrorCode.unknownObject, e.getError().getErrorCode());
         }
 
-        final AnalogValueObject av = new AnalogValueObject(d1, 0, "av0", 10, EngineeringUnits.amperes, false);
+        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+                d1, 0, "av0", 10, EngineeringUnits.amperes, false));
 
         try {
             d2.send(rd1, new SubscribeCOVPropertyRequest(new UnsignedInteger(4),
@@ -134,7 +136,8 @@ public class ChangeOfValueTest extends AbstractTest {
 
     @Test
     public void objectCov() throws Exception {
-        final AnalogValueObject av = new AnalogValueObject(d1, 0, "av0", 10, EngineeringUnits.amperes, false);
+        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+                d1, 0, "av0", 10, EngineeringUnits.amperes, false));
         av.supportCovReporting(4);
 
         final CovNotifListener listener = new CovNotifListener();
@@ -219,7 +222,8 @@ public class ChangeOfValueTest extends AbstractTest {
 
     @Test
     public void unsubscribe() throws Exception {
-        final AnalogValueObject av = new AnalogValueObject(d1, 0, "av0", 10, EngineeringUnits.amperes, false);
+        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+                d1, 0, "av0", 10, EngineeringUnits.amperes, false));
         av.supportCovReporting(4);
 
         final CovNotifListener listener = new CovNotifListener();
@@ -251,7 +255,8 @@ public class ChangeOfValueTest extends AbstractTest {
 
     @Test
     public void propertyCov() throws Exception {
-        final AnalogValueObject av = new AnalogValueObject(d1, 0, "av0", 10, EngineeringUnits.amperes, false);
+        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+                d1, 0, "av0", 10, EngineeringUnits.amperes, false));
         av.supportCovReporting(4);
 
         final CovNotifListener listener = new CovNotifListener();
@@ -317,10 +322,10 @@ public class ChangeOfValueTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void multipleClients() throws Exception {
-        final AnalogValueObject av0 = new AnalogValueObject(d1, 0, "av0", 10, EngineeringUnits.amperes, false) //
-                .supportCovReporting(0);
-        final AnalogValueObject av1 = new AnalogValueObject(d1, 1, "av1", 10, EngineeringUnits.amperes, true) //
-                .supportCovReporting(0);
+        final AnalogValueObject av0 = d1.addObject(new AnalogValueObject(
+                d1, 0, "av0", 10, EngineeringUnits.amperes, false).supportCovReporting(0));
+        final AnalogValueObject av1 = d1.addObject(new AnalogValueObject(
+                d1, 1, "av1", 10, EngineeringUnits.amperes, true).supportCovReporting(0));
 
         final CovNotifListener listener2 = new CovNotifListener();
         d2.getEventHandler().addListener(listener2);
@@ -513,8 +518,8 @@ public class ChangeOfValueTest extends AbstractTest {
 
     @Test
     public void nonStandardProperties() throws Exception {
-        final AnalogValueObject av =
-                new AnalogValueObject(d1, 0, "av0", 10, EngineeringUnits.amperes, false).supportCovReporting(4);
+        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+                d1, 0, "av0", 10, EngineeringUnits.amperes, false).supportCovReporting(4));
 
         final CovNotifListener listener = new CovNotifListener();
         d2.getEventHandler().addListener(listener);
@@ -543,10 +548,10 @@ public class ChangeOfValueTest extends AbstractTest {
 
     @Test
     public void valueSourceCommandable() throws Exception {
-        final AnalogValueObject av =
-                new AnalogValueObject(d1, 0, "av0", 10, EngineeringUnits.amperes, false).supportCommandable(0) //
-                        .supportValueSource() //
-                        .supportCovReporting(4);
+        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+                d1, 0, "av0", 10, EngineeringUnits.amperes, false).supportCommandable(0) //
+                .supportValueSource() //
+                .supportCovReporting(4));
 
         final CovNotifListener listener = new CovNotifListener();
         d2.getEventHandler().addListener(listener);

@@ -29,9 +29,6 @@ package com.serotonin.bacnet4j.obj;
 
 import java.util.Objects;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.mixin.ReadOnlyPropertyMixin;
@@ -51,17 +48,14 @@ import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 
 public class GroupObject extends BACnetObject {
-    static final Logger LOG = LoggerFactory.getLogger(GroupObject.class);
-
     // CreateObject constructor
-    public static GroupObject create(final LocalDevice localDevice, final int instanceNumber)
-            throws BACnetServiceException {
+    public static GroupObject create(final LocalDevice localDevice, final int instanceNumber) {
         return new GroupObject(localDevice, instanceNumber, ObjectType.group.toString() + " " + instanceNumber,
                 new SequenceOf<>());
     }
 
     public GroupObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final SequenceOf<ReadAccessSpecification> listOfGroupMembers) throws BACnetServiceException {
+            final SequenceOf<ReadAccessSpecification> listOfGroupMembers) {
         super(localDevice, ObjectType.group, instanceNumber, name);
 
         Objects.requireNonNull(listOfGroupMembers);
@@ -70,8 +64,6 @@ public class GroupObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.listOfGroupMembers, listOfGroupMembers);
 
         addMixin(new ReadOnlyPropertyMixin(this, PropertyIdentifier.presentValue));
-
-        localDevice.addObject(this);
     }
 
     @Override

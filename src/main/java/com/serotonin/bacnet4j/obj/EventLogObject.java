@@ -97,7 +97,7 @@ public class EventLogObject extends BACnetObject {
      */
     public EventLogObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final LogBuffer<EventLogRecord> buffer, final boolean enable, final DateTime startTime,
-            final DateTime stopTime, final boolean stopWhenFull, final int bufferSize) throws BACnetServiceException {
+            final DateTime stopTime, final boolean stopWhenFull, final int bufferSize) {
         super(localDevice, ObjectType.eventLog, instanceNumber, name);
 
         Objects.requireNonNull(localDevice);
@@ -142,8 +142,6 @@ public class EventLogObject extends BACnetObject {
             }
         };
         localDevice.getEventHandler().addListener(eventListener);
-
-        localDevice.addObject(this);
     }
 
     public EventLogObject supportIntrinsicReporting(final int notificationThreshold, final int notificationClass,

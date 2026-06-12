@@ -79,8 +79,9 @@ public class PulseConverterObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        pc = new PulseConverterObject(d1, 0, "pc", 0, 7.5F, EngineeringUnits.amperes, false);
-        nc = new NotificationClassObject(d1, 54, "nc54", 100, 5, 200, new EventTransitionBits(true, true, true));
+        pc = d1.addObject(new PulseConverterObject(d1, 0, "pc", 0, 7.5F, EngineeringUnits.amperes, false));
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 54, "nc54", 100, 5, 200, new EventTransitionBits(true, true, true)));
     }
 
     @SuppressWarnings("unchecked")
@@ -427,9 +428,10 @@ public class PulseConverterObjectTest extends AbstractTest {
         awaitEquals(new StatusFlags(false, true, false, false), () -> pc.get(PropertyIdentifier.statusFlags));
 
         // Add the accumulator object. Polling should now succeed.
-        final AccumulatorObject a = new AccumulatorObject(d1, 0, "a", 50, 0, EngineeringUnits.amperes, false,
+        final AccumulatorObject a = d1.addObject(new AccumulatorObject(
+                d1, 0, "a", 50, 0, EngineeringUnits.amperes, false,
                 new Scale(new SignedInteger(10)), new Prescale(new UnsignedInteger(1), new UnsignedInteger(1)), 1000,
-                5);
+                5));
         clock.plusSeconds(5);
         awaitEquals(Reliability.noFaultDetected, () -> pc.get(PropertyIdentifier.reliability));
         awaitEquals(new StatusFlags(false, false, false, false), () -> pc.get(PropertyIdentifier.statusFlags));

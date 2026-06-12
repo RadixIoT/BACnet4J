@@ -50,7 +50,8 @@ public class NotificationClassObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        nc = new NotificationClassObject(d1, 0, "notifClass", 100, 5, 200, new EventTransitionBits(true, true, true));
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 0, "notifClass", 100, 5, 200, new EventTransitionBits(true, true, true)));
     }
 
     /**

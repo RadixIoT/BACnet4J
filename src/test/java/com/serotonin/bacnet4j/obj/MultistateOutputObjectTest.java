@@ -64,12 +64,14 @@ public class MultistateOutputObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        mo = new MultistateOutputObject(d1, 0, "mo", 5, new BACnetArray<>(new CharacterString("Off"), //
-                new CharacterString("On"), //
-                new CharacterString("Auto"), //
-                new CharacterString("Fan"), //
-                new CharacterString("Other")), 2, 5, false);
-        nc = new NotificationClassObject(d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false));
+        mo = d1.addObject(new MultistateOutputObject(d1, 0, "mo", 5, new BACnetArray<>(
+                new CharacterString("Off"),
+                new CharacterString("On"),
+                new CharacterString("Auto"),
+                new CharacterString("Fan"),
+                new CharacterString("Other")), 2, 5, false));
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false)));
     }
 
     @Test
@@ -81,9 +83,9 @@ public class MultistateOutputObjectTest extends AbstractTest {
 
     @Test
     public void inconsistentStateText() {
+        var stateText = new BACnetArray<>(new CharacterString("a"));
         assertThrows(IllegalArgumentException.class,
-                () -> new MultistateOutputObject(d1, 1, "mv1", 7, new BACnetArray<>(new CharacterString("a")), 1, 1,
-                        true));
+                () -> new MultistateOutputObject(d1, 1, "mv1", 7, stateText, 1, 1, true));
     }
 
     @Test
@@ -160,7 +162,7 @@ public class MultistateOutputObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.offnormal, notif.toState());
-        CommandFailureNotif commandFailure = ((NotificationParameters) notif.eventValues()).getParameter();
+        CommandFailureNotif commandFailure = notif.eventValues().getParameter();
         assertEquals(new UnsignedInteger(2),
                 AmbiguousValue.convertTo(commandFailure.getCommandValue(), UnsignedInteger.class));
         assertEquals(new StatusFlags(true, false, false, false), commandFailure.getStatusFlags());
@@ -213,10 +215,10 @@ public class MultistateOutputObjectTest extends AbstractTest {
 
         final DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(1, mo.getId(), PropertyIdentifier.presentValue);
-        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
+        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(new CommandFailure(new UnsignedInteger(30),
                         new DeviceObjectPropertyReference(1, mo.getId(), PropertyIdentifier.feedbackValue))),
-                new EventTransitionBits(true, true, true), 17, 1000, null, null);
+                new EventTransitionBits(true, true, true), 17, 1000, null, null));
 
         // Set up the notification destination
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);

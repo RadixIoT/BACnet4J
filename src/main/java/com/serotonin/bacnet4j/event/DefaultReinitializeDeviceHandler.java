@@ -105,10 +105,6 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
 
     /**
      * Override as required.
-     *
-     * @param localDevice
-     * @param from
-     * @throws BACnetErrorException
      */
     protected void coldstart(final LocalDevice localDevice, final Address from) throws BACnetErrorException {
         throw new BACnetErrorException(ErrorClass.device, ErrorCode.notConfigured);
@@ -116,10 +112,6 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
 
     /**
      * Override as required.
-     *
-     * @param localDevice
-     * @param from
-     * @throws BACnetErrorException
      */
     protected void warmstart(final LocalDevice localDevice, final Address from) throws BACnetErrorException {
         throw new BACnetErrorException(ErrorClass.device, ErrorCode.notConfigured);
@@ -127,10 +119,6 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
 
     /**
      * Override as required.
-     *
-     * @param localDevice
-     * @param from
-     * @throws BACnetErrorException
      */
     protected void startBackup(final LocalDevice localDevice, final Address from) throws BACnetErrorException {
         LOG.info("Starting backup");
@@ -178,8 +166,8 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
                 Files.copy(file.toPath(), copy.toPath());
 
                 final int instanceNumber = localDevice.getNextInstanceObjectNumber(ObjectType.file);
-                final FileObject fo = new FileObject(localDevice, instanceNumber, "configurationFile",
-                        new StreamAccess(copy));
+                final FileObject fo = localDevice.addObject(new FileObject(localDevice, instanceNumber,
+                        "configurationFile", new StreamAccess(copy)));
                 fileOids.add(fo.getId());
             }
             configurationFiles = new BACnetArray<>(fileOids);
@@ -191,10 +179,6 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
 
     /**
      * Override as required.
-     *
-     * @param localDevice
-     * @param from
-     * @throws BACnetErrorException
      */
     protected void endBackup(final LocalDevice localDevice, final Address from) throws BACnetErrorException {
         LOG.info("Ending backup");
@@ -213,7 +197,7 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
         final UnsignedInteger backupFailureTimeout = localDevice.getDeviceObject()
                 .get(PropertyIdentifier.backupFailureTimeout);
         if (backupFailureTimeout.intValue() > 0) {
-            backupStateMonitor = new BackupStateMonitor(localDevice, from, backupFailureTimeout.intValue() * 1000);
+            backupStateMonitor = new BackupStateMonitor(localDevice, from, backupFailureTimeout.intValue() * 1000L);
         }
     }
 
@@ -313,7 +297,7 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
             try {
                 final FileObject fo = (FileObject) localDevice.removeObject(fileOid);
                 if (!fo.getFileAccess().delete()) {
-                    LOG.warn("Failed to delete configuration file " + fo.getFileAccess().getName());
+                    LOG.warn("Failed to delete configuration file {}", fo.getFileAccess().getName());
                 }
             } catch (final BACnetServiceException e) {
                 LOG.error("Error while trying to remove configuration file", e);
@@ -326,10 +310,6 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
 
     /**
      * Override as required.
-     *
-     * @param localDevice
-     * @param from
-     * @throws BACnetErrorException
      */
     protected void startRestore(final LocalDevice localDevice, final Address from) throws BACnetErrorException {
         LOG.info("Starting restore");
@@ -392,7 +372,7 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
 
     /**
      * This method should be overridden to properly validate and implement the files that were restored. Since not all
-     * of the configuration files were necessarily written, and since new file objects may have been created for new
+     * the configuration files were necessarily written, and since new file objects may have been created for new
      * files, the list of files should be derived from the existing file objects. Also, file objects that are detected
      * as being new should be removed as required, since this handler will only remove file objects that it created, as
      * given by the configurationFiles property.

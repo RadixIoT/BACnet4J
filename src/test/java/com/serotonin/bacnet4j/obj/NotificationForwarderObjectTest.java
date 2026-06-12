@@ -105,9 +105,8 @@ public class NotificationForwarderObjectTest extends AbstractTest {
 
     @Test
     public void subscriptions() throws Exception {
-        final NotificationForwarderObject nf =
-                new NotificationForwarderObject(d1, 0, "nf", false, new ProcessIdSelection(Null.instance), portFilter,
-                        false);
+        final NotificationForwarderObject nf = d1.addObject(new NotificationForwarderObject(
+                d1, 0, "nf", false, new ProcessIdSelection(Null.instance), portFilter, false));
 
         // Add a few subscribers.
         new AddListElementRequest(nf.getId(), PropertyIdentifier.subscribedRecipients, null, new SequenceOf<>(
@@ -193,20 +192,19 @@ public class NotificationForwarderObjectTest extends AbstractTest {
 
     @Test
     public void notifications() throws Exception {
-        final NotificationForwarderObject nf =
-                new NotificationForwarderObject(d1, 0, "nf", false, new ProcessIdSelection(Null.instance), portFilter,
-                        false);
+        final NotificationForwarderObject nf = d1.addObject(new NotificationForwarderObject(
+                d1, 0, "nf", false, new ProcessIdSelection(Null.instance), portFilter, false));
 
         // Create EventLog objects to track forwardings
-        final EventLogObject el2 =
-                new EventLogObject(d2, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, false, 100);
-        final EventLogObject el3 =
-                new EventLogObject(d3, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, false, 100);
-        final EventLogObject el4 =
-                new EventLogObject(d4, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, false, 100);
+        final EventLogObject el2 = d2.addObject(new EventLogObject(
+                d2, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, false, 100));
+        final EventLogObject el3 = d3.addObject(new EventLogObject(
+                d3, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, false, 100));
+        final EventLogObject el4 = d4.addObject(new EventLogObject(
+                d4, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, false, 100));
 
         // Add el2 and el3 as recipients, and el4 as a subscriber. el3 is set to not receive toNormal.
         new AddListElementRequest(nf.getId(), PropertyIdentifier.recipientList, null, new SequenceOf<>(
@@ -316,9 +314,8 @@ public class NotificationForwarderObjectTest extends AbstractTest {
 
         d1.setPersistence(new FilePersistence(file));
 
-        NotificationForwarderObject nf =
-                new NotificationForwarderObject(d1, 0, "nf", false, new ProcessIdSelection(Null.instance), portFilter,
-                        false);
+        NotificationForwarderObject nf = d1.addObject(new NotificationForwarderObject(
+                d1, 0, "nf", false, new ProcessIdSelection(Null.instance), portFilter, false));
 
         // Ensure that there are no recipients or subscriptions.
         SequenceOf<Destination> recipients = nf.readProperty(PropertyIdentifier.subscribedRecipients);
@@ -352,8 +349,8 @@ public class NotificationForwarderObjectTest extends AbstractTest {
 
         //
         // Create the object new again and ensure that the lists were loaded from the file.
-        nf = new NotificationForwarderObject(d1, 0, "nf", false, new ProcessIdSelection(Null.instance), portFilter,
-                false);
+        nf = d1.addObject(new NotificationForwarderObject(
+                d1, 0, "nf", false, new ProcessIdSelection(Null.instance), portFilter, false));
         recipients = nf.readProperty(PropertyIdentifier.recipientList);
         assertEquals(2, recipients.size());
         subscriptions = nf.readProperty(PropertyIdentifier.subscribedRecipients);

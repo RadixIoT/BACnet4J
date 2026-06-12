@@ -80,10 +80,9 @@ public class TrendLogMultipleObject extends BACnetObject {
     static final Logger LOG = LoggerFactory.getLogger(TrendLogMultipleObject.class);
 
     // CreateObject constructor
-    public static TrendLogMultipleObject create(final LocalDevice localDevice, final int instanceNumber)
-            throws BACnetServiceException {
+    public static TrendLogMultipleObject create(final LocalDevice localDevice, final int instanceNumber) {
         return new TrendLogMultipleObject(localDevice, instanceNumber,
-                ObjectType.trendLogMultiple.toString() + " " + instanceNumber, new LinkedListLogBuffer<>(), false,
+                ObjectType.trendLogMultiple + " " + instanceNumber, new LinkedListLogBuffer<>(), false,
                 DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, new BACnetArray<>(), 60, false, 100) //
                 .supportIntrinsicReporting(20, 0, new EventTransitionBits(false, false, false),
                         NotifyType.event);
@@ -101,7 +100,7 @@ public class TrendLogMultipleObject extends BACnetObject {
     public TrendLogMultipleObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final LogBuffer<LogMultipleRecord> buffer, final boolean enable, final DateTime startTime,
             final DateTime stopTime, final BACnetArray<DeviceObjectPropertyReference> logDeviceObjectProperty,
-            final int logInterval, final boolean stopWhenFull, final int bufferSize) throws BACnetServiceException {
+            final int logInterval, final boolean stopWhenFull, final int bufferSize) {
         super(localDevice, ObjectType.trendLogMultiple, instanceNumber, name);
 
         Objects.requireNonNull(localDevice);
@@ -138,8 +137,6 @@ public class TrendLogMultipleObject extends BACnetObject {
 
         this.buffer = buffer;
         logDisabled = !allowLogging(getNow());
-
-        localDevice.addObject(this);
     }
 
     public TrendLogMultipleObject withPolled(final int logInterval, final TimeUnit logIntervalUnit,
@@ -477,13 +474,13 @@ public class TrendLogMultipleObject extends BACnetObject {
                 }
 
                 offsetToUse = intervalOffset.intValue() * 10;
-                offsetToUse %= period;
+                offsetToUse %= (int) period;
             }
 
             initialDelay += offsetToUse;
             initialDelay %= period;
 
-            pollingFuture = getLocalDevice().scheduleAtFixedRate(() -> doPoll(), initialDelay, period,
+            pollingFuture = getLocalDevice().scheduleAtFixedRate(this::doPoll, initialDelay, period,
                     TimeUnit.MILLISECONDS);
 
         } else if (loggingType.equals(LoggingType.triggered)) {

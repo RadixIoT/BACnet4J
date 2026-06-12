@@ -86,8 +86,7 @@ public class EventEnrollmentObject extends BACnetObject {
     public EventEnrollmentObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final DeviceObjectPropertyReference objectPropertyReference, final NotifyType notifyType,
             final EventParameter eventParameter, final EventTransitionBits eventEnable, final int notificationClass,
-            final int pollDelayMillis, final UnsignedInteger timeDelayNormal, final FaultParameter faultParameter)
-            throws BACnetServiceException {
+            final int pollDelayMillis, final UnsignedInteger timeDelayNormal, final FaultParameter faultParameter) {
         super(localDevice, ObjectType.eventEnrollment, instanceNumber, name);
 
         // Validation
@@ -210,10 +209,8 @@ public class EventEnrollmentObject extends BACnetObject {
 
         //
         // Start polling
-        pollingFuture = localDevice.scheduleWithFixedDelay(() -> doPoll(), pollDelayMillis, pollDelayMillis,
+        pollingFuture = localDevice.scheduleWithFixedDelay(this::doPoll, pollDelayMillis, pollDelayMillis,
                 TimeUnit.MILLISECONDS);
-
-        localDevice.addObject(this);
     }
 
     @Override

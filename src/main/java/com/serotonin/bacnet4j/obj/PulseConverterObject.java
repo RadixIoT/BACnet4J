@@ -76,8 +76,7 @@ public class PulseConverterObject extends BACnetObject {
     private long lastPollingValue = Long.MAX_VALUE;
 
     public PulseConverterObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final long count, final float scaleFactor, final EngineeringUnits units, final boolean outOfService)
-            throws BACnetServiceException {
+            final long count, final float scaleFactor, final EngineeringUnits units, final boolean outOfService) {
         super(localDevice, ObjectType.pulseConverter, instanceNumber, name);
 
         Objects.requireNonNull(units);
@@ -99,8 +98,6 @@ public class PulseConverterObject extends BACnetObject {
                 PropertyIdentifier.reliability));
         addMixin(new ReadOnlyPropertyMixin(this, PropertyIdentifier.count, PropertyIdentifier.updateTime,
                 PropertyIdentifier.ackedTransitions, PropertyIdentifier.eventMessageTexts));
-
-        localDevice.addObject(this);
     }
 
     public PulseConverterObject supportIntrinsicReporting(final float highLimit, final float lowLimit,

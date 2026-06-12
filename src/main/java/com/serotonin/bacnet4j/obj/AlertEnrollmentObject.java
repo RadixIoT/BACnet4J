@@ -31,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.LocalDevice;
-import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.mixin.ReadOnlyPropertyMixin;
 import com.serotonin.bacnet4j.obj.mixin.event.AlertReportingMixin;
 import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
@@ -51,7 +50,7 @@ public class AlertEnrollmentObject extends BACnetObject {
     private final UnsignedInteger defaultVendorId;
 
     public AlertEnrollmentObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final int notificationClass, final NotifyType notifyType) throws BACnetServiceException {
+            final int notificationClass, final NotifyType notifyType) {
         super(localDevice, ObjectType.alertEnrollment, instanceNumber, name);
 
         defaultVendorId = localDevice.get(PropertyIdentifier.vendorIdentifier);
@@ -68,8 +67,6 @@ public class AlertEnrollmentObject extends BACnetObject {
 
         alertReporting = new AlertReportingMixin(this);
         addMixin(alertReporting);
-
-        localDevice.addObject(this);
     }
 
     public void issueAlert(final ObjectIdentifier alertSource, final int extendedEventType,

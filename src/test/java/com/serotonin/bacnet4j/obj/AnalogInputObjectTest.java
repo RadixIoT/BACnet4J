@@ -69,8 +69,9 @@ public class AnalogInputObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        ai = new AnalogInputObject(d1, 0, "ai0", 50, EngineeringUnits.amperes, false);
-        nc = new NotificationClassObject(d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false));
+        ai = d1.addObject(new AnalogInputObject(d1, 0, "ai0", 50, EngineeringUnits.amperes, false));
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false)));
     }
 
     @SuppressWarnings("unchecked")

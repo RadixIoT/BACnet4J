@@ -119,7 +119,7 @@ public class TrendLogObject extends BACnetObject {
     public TrendLogObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final LogBuffer<LogRecord> buffer, final boolean enable, final DateTime startTime, final DateTime stopTime,
             final DeviceObjectPropertyReference logDeviceObjectProperty, final int logInterval,
-            final boolean stopWhenFull, final int bufferSize) throws BACnetServiceException {
+            final boolean stopWhenFull, final int bufferSize) {
         super(localDevice, ObjectType.trendLog, instanceNumber, name);
 
         Objects.requireNonNull(startTime);
@@ -154,8 +154,6 @@ public class TrendLogObject extends BACnetObject {
 
         this.buffer = buffer;
         logDisabled = !allowLogging(getNow());
-
-        localDevice.addObject(this);
     }
 
     public TrendLogObject withPolled(final int logInterval, final TimeUnit logIntervalUnit,

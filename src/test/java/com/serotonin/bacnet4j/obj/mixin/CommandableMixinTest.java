@@ -73,7 +73,8 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class CommandableMixinTest extends AbstractTest {
     @Test
     public void avNotCommandableNotValueSource() throws BACnetServiceException {
-        final AnalogValueObject av = new AnalogValueObject(d1, 0, "av0", 0, EngineeringUnits.noUnits, false);
+        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+                d1, 0, "av0", 0, EngineeringUnits.noUnits, false));
         final ValueSource valueSource = createValueSource(12);
 
         assertEquals(new Real(0), av.get(PropertyIdentifier.presentValue));
@@ -118,8 +119,8 @@ public class CommandableMixinTest extends AbstractTest {
 
     @Test
     public void bvCommandableNotValueSource() throws Exception {
-        final BinaryValueObject bv =
-                new BinaryValueObject(d1, 0, "bv0", BinaryPV.inactive, false).supportCommandable(BinaryPV.inactive);
+        final BinaryValueObject bv = d1.addObject(new BinaryValueObject(
+                d1, 0, "bv0", BinaryPV.inactive, false).supportCommandable(BinaryPV.inactive));
 
         // Assert default values.
         assertEquals(BinaryPV.inactive, bv.get(PropertyIdentifier.presentValue));
@@ -188,7 +189,8 @@ public class CommandableMixinTest extends AbstractTest {
 
     @Test
     public void bvNotCommandableValueSource() throws Exception {
-        final BinaryValueObject bv = new BinaryValueObject(d1, 0, "bv0", BinaryPV.inactive, false).supportValueSource();
+        final BinaryValueObject bv = d1.addObject(new BinaryValueObject(
+                d1, 0, "bv0", BinaryPV.inactive, false).supportValueSource());
         bv.writeProperty(null, new PropertyValue(PropertyIdentifier.outOfService, Boolean.TRUE));
 
         // Assert default values.
@@ -229,9 +231,8 @@ public class CommandableMixinTest extends AbstractTest {
 
     @Test
     public void bvCommandableValueSource() throws Exception {
-        final BinaryValueObject bv =
-                new BinaryValueObject(d1, 0, "bv0", BinaryPV.inactive, false).supportCommandable(BinaryPV.inactive)
-                        .supportValueSource();
+        final BinaryValueObject bv = d1.addObject(new BinaryValueObject(
+                d1, 0, "bv0", BinaryPV.inactive, false).supportCommandable(BinaryPV.inactive).supportValueSource());
 
         // Assert default values.
         assertEquals(BinaryPV.inactive, bv.get(PropertyIdentifier.presentValue));
@@ -329,8 +330,8 @@ public class CommandableMixinTest extends AbstractTest {
 
     @Test
     public void boMinOnOffTime() throws Exception {
-        final BinaryOutputObject bo =
-                new BinaryOutputObject(d1, 0, "bo0", BinaryPV.inactive, false, Polarity.normal, BinaryPV.inactive);
+        final BinaryOutputObject bo = d1.addObject(new BinaryOutputObject(
+                d1, 0, "bo0", BinaryPV.inactive, false, Polarity.normal, BinaryPV.inactive));
 
         // Assert default values.
         assertEquals(BinaryPV.inactive, bo.get(PropertyIdentifier.presentValue));
@@ -426,7 +427,8 @@ public class CommandableMixinTest extends AbstractTest {
 
     @Test
     public void writable() throws BACnetServiceException {
-        final BinaryValueObject bv = new BinaryValueObject(d1, 0, "bv", BinaryPV.inactive, false).supportWritable();
+        final BinaryValueObject bv = d1.addObject(new BinaryValueObject(
+                d1, 0, "bv", BinaryPV.inactive, false).supportWritable());
 
         // Write with priority not allowed.
         assertBACnetServiceException(() -> bv.writeProperty(null,
@@ -441,7 +443,7 @@ public class CommandableMixinTest extends AbstractTest {
 
     @Test
     public void notWritable() throws BACnetServiceException {
-        final BinaryValueObject bv = new BinaryValueObject(d1, 0, "bv", BinaryPV.inactive, false);
+        final BinaryValueObject bv = d1.addObject(new BinaryValueObject(d1, 0, "bv", BinaryPV.inactive, false));
 
         // Write with priority not allowed.
         assertBACnetServiceException(() -> bv.writeProperty(null,

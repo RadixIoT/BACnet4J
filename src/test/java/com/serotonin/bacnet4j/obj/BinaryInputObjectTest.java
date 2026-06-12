@@ -64,13 +64,14 @@ public class BinaryInputObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        bi = new BinaryInputObject(d1, 0, "bi", BinaryPV.inactive, false, Polarity.normal);
-        nc = new NotificationClassObject(d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false));
+        bi = d1.addObject(new BinaryInputObject(d1, 0, "bi", BinaryPV.inactive, false, Polarity.normal));
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false)));
     }
 
     @Test
     public void initialization() throws Exception {
-        new BinaryInputObject(d1, 1, "bi1", BinaryPV.inactive, true, Polarity.normal);
+        d1.addObject(new BinaryInputObject(d1, 1, "bi1", BinaryPV.inactive, true, Polarity.normal));
     }
 
     @SuppressWarnings("unchecked")
@@ -157,10 +158,11 @@ public class BinaryInputObjectTest extends AbstractTest {
     public void algorithmicReporting() throws Exception {
         final DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(1, bi.getId(), PropertyIdentifier.presentValue);
-        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
+        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(new ChangeOfState(new UnsignedInteger(30),
                         new SequenceOf<>(new PropertyStates(BinaryPV.active)))),
-                new EventTransitionBits(true, true, true), 17, 1000, null, null);
+                new EventTransitionBits(true, true, true), 17, 1000, null, null));
 
         // Set up the notification destination
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
