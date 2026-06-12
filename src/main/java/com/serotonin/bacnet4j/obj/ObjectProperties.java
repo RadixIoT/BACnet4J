@@ -36,18 +36,25 @@ import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.AccessRule;
 import com.serotonin.bacnet4j.type.constructed.AccessThreatLevel;
+import com.serotonin.bacnet4j.type.constructed.AccessToken;
 import com.serotonin.bacnet4j.type.constructed.AccumulatorRecord;
 import com.serotonin.bacnet4j.type.constructed.ActionList;
 import com.serotonin.bacnet4j.type.constructed.AddressBinding;
 import com.serotonin.bacnet4j.type.constructed.AssignedAccessRights;
 import com.serotonin.bacnet4j.type.constructed.AssignedLandingCalls;
+import com.serotonin.bacnet4j.type.constructed.AuditLogRecord;
+import com.serotonin.bacnet4j.type.constructed.AuditOperationFlags;
 import com.serotonin.bacnet4j.type.constructed.AuthenticationFactor;
 import com.serotonin.bacnet4j.type.constructed.AuthenticationFactorFormat;
 import com.serotonin.bacnet4j.type.constructed.AuthenticationPolicy;
+import com.serotonin.bacnet4j.type.constructed.AuthorizationScope;
+import com.serotonin.bacnet4j.type.constructed.AuthorizationServer;
+import com.serotonin.bacnet4j.type.constructed.AuthorizationStatus;
 import com.serotonin.bacnet4j.type.constructed.BDTEntry;
 import com.serotonin.bacnet4j.type.constructed.CalendarEntry;
 import com.serotonin.bacnet4j.type.constructed.ChannelValue;
 import com.serotonin.bacnet4j.type.constructed.ClientCov;
+import com.serotonin.bacnet4j.type.constructed.ColorCommand;
 import com.serotonin.bacnet4j.type.constructed.CovMultipleSubscription;
 import com.serotonin.bacnet4j.type.constructed.CovSubscription;
 import com.serotonin.bacnet4j.type.constructed.CredentialAuthenticationFactor;
@@ -55,6 +62,7 @@ import com.serotonin.bacnet4j.type.constructed.DailySchedule;
 import com.serotonin.bacnet4j.type.constructed.DateRange;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.Destination;
+import com.serotonin.bacnet4j.type.constructed.DeviceAddressProxyTableEntry;
 import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
 import com.serotonin.bacnet4j.type.constructed.DeviceObjectReference;
 import com.serotonin.bacnet4j.type.constructed.EventLogRecord;
@@ -62,6 +70,7 @@ import com.serotonin.bacnet4j.type.constructed.EventNotificationSubscription;
 import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
 import com.serotonin.bacnet4j.type.constructed.FDTEntry;
 import com.serotonin.bacnet4j.type.constructed.FaultParameter;
+import com.serotonin.bacnet4j.type.constructed.Health;
 import com.serotonin.bacnet4j.type.constructed.HostNPort;
 import com.serotonin.bacnet4j.type.constructed.LandingCallStatus;
 import com.serotonin.bacnet4j.type.constructed.LandingDoorStatus;
@@ -72,34 +81,41 @@ import com.serotonin.bacnet4j.type.constructed.LogMultipleRecord;
 import com.serotonin.bacnet4j.type.constructed.LogRecord;
 import com.serotonin.bacnet4j.type.constructed.NameValue;
 import com.serotonin.bacnet4j.type.constructed.NameValueCollection;
-import com.serotonin.bacnet4j.type.constructed.NetworkSecurityPolicy;
 import com.serotonin.bacnet4j.type.constructed.ObjectPropertyReference;
+import com.serotonin.bacnet4j.type.constructed.ObjectSelector;
 import com.serotonin.bacnet4j.type.constructed.ObjectTypesSupported;
 import com.serotonin.bacnet4j.type.constructed.OptionalBinaryPV;
 import com.serotonin.bacnet4j.type.constructed.OptionalCharacterString;
+import com.serotonin.bacnet4j.type.constructed.OptionalPriorityFilter;
 import com.serotonin.bacnet4j.type.constructed.OptionalReal;
 import com.serotonin.bacnet4j.type.constructed.OptionalUnsigned;
 import com.serotonin.bacnet4j.type.constructed.PortPermission;
 import com.serotonin.bacnet4j.type.constructed.Prescale;
 import com.serotonin.bacnet4j.type.constructed.PriorityArray;
+import com.serotonin.bacnet4j.type.constructed.PriorityFilter;
 import com.serotonin.bacnet4j.type.constructed.ProcessIdSelection;
 import com.serotonin.bacnet4j.type.constructed.PropertyAccessResult;
 import com.serotonin.bacnet4j.type.constructed.ReadAccessResult;
 import com.serotonin.bacnet4j.type.constructed.ReadAccessSpecification;
 import com.serotonin.bacnet4j.type.constructed.Recipient;
 import com.serotonin.bacnet4j.type.constructed.RouterEntry;
+import com.serotonin.bacnet4j.type.constructed.SCDirectConnection;
+import com.serotonin.bacnet4j.type.constructed.SCFailedConnectionRequest;
+import com.serotonin.bacnet4j.type.constructed.SCHubConnection;
+import com.serotonin.bacnet4j.type.constructed.SCHubFunctionConnection;
 import com.serotonin.bacnet4j.type.constructed.Scale;
-import com.serotonin.bacnet4j.type.constructed.SecurityKeySet;
 import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
 import com.serotonin.bacnet4j.type.constructed.SetpointReference;
 import com.serotonin.bacnet4j.type.constructed.ShedLevel;
 import com.serotonin.bacnet4j.type.constructed.SpecialEvent;
+import com.serotonin.bacnet4j.type.constructed.StageLimitValue;
 import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.TimeStamp;
 import com.serotonin.bacnet4j.type.constructed.TimerStateChangeValue;
 import com.serotonin.bacnet4j.type.constructed.ValueSource;
 import com.serotonin.bacnet4j.type.constructed.VmacEntry;
 import com.serotonin.bacnet4j.type.constructed.VtSession;
+import com.serotonin.bacnet4j.type.constructed.XyColor;
 import com.serotonin.bacnet4j.type.enumerated.AccessCredentialDisable;
 import com.serotonin.bacnet4j.type.enumerated.AccessCredentialDisableReason;
 import com.serotonin.bacnet4j.type.enumerated.AccessEvent;
@@ -107,12 +123,15 @@ import com.serotonin.bacnet4j.type.enumerated.AccessPassbackMode;
 import com.serotonin.bacnet4j.type.enumerated.AccessUserType;
 import com.serotonin.bacnet4j.type.enumerated.AccessZoneOccupancyState;
 import com.serotonin.bacnet4j.type.enumerated.Action;
+import com.serotonin.bacnet4j.type.enumerated.AuditLevel;
 import com.serotonin.bacnet4j.type.enumerated.AuthenticationStatus;
 import com.serotonin.bacnet4j.type.enumerated.AuthorizationExemption;
 import com.serotonin.bacnet4j.type.enumerated.AuthorizationMode;
 import com.serotonin.bacnet4j.type.enumerated.BackupState;
 import com.serotonin.bacnet4j.type.enumerated.BinaryLightingPV;
 import com.serotonin.bacnet4j.type.enumerated.BinaryPV;
+import com.serotonin.bacnet4j.type.enumerated.ColorOperationInProgress;
+import com.serotonin.bacnet4j.type.enumerated.ColorTransition;
 import com.serotonin.bacnet4j.type.enumerated.DeviceStatus;
 import com.serotonin.bacnet4j.type.enumerated.DoorAlarmState;
 import com.serotonin.bacnet4j.type.enumerated.DoorSecuredStatus;
@@ -158,7 +177,7 @@ import com.serotonin.bacnet4j.type.enumerated.ProtocolLevel;
 import com.serotonin.bacnet4j.type.enumerated.Relationship;
 import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.enumerated.RestartReason;
-import com.serotonin.bacnet4j.type.enumerated.SecurityLevel;
+import com.serotonin.bacnet4j.type.enumerated.SCHubConnectorState;
 import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 import com.serotonin.bacnet4j.type.enumerated.ShedState;
 import com.serotonin.bacnet4j.type.enumerated.SilencedState;
@@ -180,10 +199,14 @@ import com.serotonin.bacnet4j.type.primitive.SignedInteger;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.Unsigned32;
+import com.serotonin.bacnet4j.type.primitive.Unsigned64;
 import com.serotonin.bacnet4j.type.primitive.Unsigned8;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class ObjectProperties {
+    private ObjectProperties() {
+    }
+
     private static final Map<PropertyIdentifier, PropertyTypeDefinition> propertyTypes = new HashMap<>();
     private static final Map<ObjectType, Map<PropertyIdentifier, ObjectPropertyTypeDefinition>> objectPropertyTypes =
             new HashMap<>();
@@ -251,9 +274,9 @@ public class ObjectProperties {
     }
 
     /**
-     * @param objectType
+     * @param objectType the object type
      * @param include    0 = all, 1 = required, 2 = optional
-     * @return
+     * @return the list of object property type definitions
      */
     private static List<ObjectPropertyTypeDefinition> getObjectPropertyTypeDefinitions(final ObjectType objectType,
             final int include) {
@@ -294,11 +317,8 @@ public class ObjectProperties {
 
     private static void add(final ObjectType type, final boolean required, final PropertyTypeDefinition ptd) {
         // Add to the object property types
-        Map<PropertyIdentifier, ObjectPropertyTypeDefinition> props = objectPropertyTypes.get(type);
-        if (props == null) {
-            props = new HashMap<>();
-            objectPropertyTypes.put(type, props);
-        }
+        Map<PropertyIdentifier, ObjectPropertyTypeDefinition> props = objectPropertyTypes
+                .computeIfAbsent(type, key -> new HashMap<>());
 
         // Check for existing entries.
         final PropertyIdentifier pid = ptd.getPropertyIdentifier();
@@ -311,10 +331,8 @@ public class ObjectProperties {
         // properties that have a single type will remain.
         if (propertyTypes.containsKey(pid)) {
             final PropertyTypeDefinition existing = propertyTypes.get(pid);
-            if (existing != null) {
-                if (!existing.equals(ptd)) {
-                    propertyTypes.put(pid, null);
-                }
+            if (existing != null && !existing.equals(ptd)) {
+                propertyTypes.put(pid, null);
             }
         } else {
             propertyTypes.put(pid, ptd);
@@ -353,6 +371,8 @@ public class ObjectProperties {
                 false, true);
         add(ObjectType.accessCredential, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.accessCredential, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.accessCredential, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.accessCredential, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.accessCredential, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.accessCredential, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.accessCredential, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -401,6 +421,9 @@ public class ObjectProperties {
         add(ObjectType.accessDoor, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.accessDoor, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.accessDoor, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.accessDoor, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.accessDoor, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.accessDoor, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.accessDoor, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.accessDoor, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.accessDoor, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -458,6 +481,8 @@ public class ObjectProperties {
         add(ObjectType.accessPoint, PropertyIdentifier.eventAlgorithmInhibit, Boolean.class, false);
         add(ObjectType.accessPoint, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.accessPoint, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.accessPoint, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.accessPoint, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.accessPoint, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.accessPoint, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.accessPoint, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -476,6 +501,8 @@ public class ObjectProperties {
         add(ObjectType.accessRights, PropertyIdentifier.accompaniment, DeviceObjectReference.class, false);
         add(ObjectType.accessRights, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.accessRights, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.accessRights, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.accessRights, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.accessRights, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.accessRights, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.accessRights, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -497,6 +524,8 @@ public class ObjectProperties {
         add(ObjectType.accessUser, PropertyIdentifier.credentials, DeviceObjectReference.class, true, true);
         add(ObjectType.accessUser, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.accessUser, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.accessUser, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.accessUser, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.accessUser, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.accessUser, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.accessUser, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -541,6 +570,8 @@ public class ObjectProperties {
         add(ObjectType.accessZone, PropertyIdentifier.timeDelayNormal, UnsignedInteger.class, false);
         add(ObjectType.accessZone, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.accessZone, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.accessZone, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.accessZone, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.accessZone, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.accessZone, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.accessZone, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -586,6 +617,8 @@ public class ObjectProperties {
         add(ObjectType.accumulator, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.accumulator, PropertyIdentifier.faultHighLimit, Real.class, false);
         add(ObjectType.accumulator, PropertyIdentifier.faultLowLimit, Real.class, false);
+        add(ObjectType.accumulator, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.accumulator, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.accumulator, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.accumulator, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.accumulator, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -609,6 +642,8 @@ public class ObjectProperties {
                 false);
         add(ObjectType.alertEnrollment, PropertyIdentifier.eventAlgorithmInhibit, Boolean.class, false);
         add(ObjectType.alertEnrollment, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.alertEnrollment, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.alertEnrollment, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.alertEnrollment, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.alertEnrollment, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.alertEnrollment, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -651,6 +686,8 @@ public class ObjectProperties {
         add(ObjectType.analogInput, PropertyIdentifier.interfaceValue, OptionalReal.class, false);
         add(ObjectType.analogInput, PropertyIdentifier.faultHighLimit, Real.class, false);
         add(ObjectType.analogInput, PropertyIdentifier.faultLowLimit, Real.class, false);
+        add(ObjectType.analogInput, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.analogInput, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.analogInput, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.analogInput, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.analogInput, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -697,6 +734,9 @@ public class ObjectProperties {
         add(ObjectType.analogOutput, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.analogOutput, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.analogOutput, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.analogOutput, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.analogOutput, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.analogOutput, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.analogOutput, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.analogOutput, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.analogOutput, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -743,9 +783,74 @@ public class ObjectProperties {
         add(ObjectType.analogValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.analogValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.analogValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.analogValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.analogValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.analogValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.analogValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.analogValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.analogValue, PropertyIdentifier.profileName, CharacterString.class, false);
+
+        // Audit Log - 12.64
+        add(ObjectType.auditLog, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
+        add(ObjectType.auditLog, PropertyIdentifier.objectName, CharacterString.class, true);
+        add(ObjectType.auditLog, PropertyIdentifier.objectType, ObjectType.class, true);
+        add(ObjectType.auditLog, PropertyIdentifier.description, CharacterString.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.statusFlags, StatusFlags.class, true);
+        add(ObjectType.auditLog, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.auditLog, PropertyIdentifier.reliability, Reliability.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.enable, Boolean.class, true);
+        add(ObjectType.auditLog, PropertyIdentifier.bufferSize, Unsigned32.class, true);
+        add(ObjectType.auditLog, PropertyIdentifier.logBuffer, AuditLogRecord.class, true, true);
+        add(ObjectType.auditLog, PropertyIdentifier.recordCount, Unsigned64.class, true);
+        add(ObjectType.auditLog, PropertyIdentifier.totalRecordCount, Unsigned64.class, true);
+        add(ObjectType.auditLog, PropertyIdentifier.memberOf, DeviceObjectReference.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.deleteOnForward, Boolean.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.issueConfirmedNotifications, Boolean.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.notifyType, NotifyType.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
+        add(ObjectType.auditLog, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
+        add(ObjectType.auditLog, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
+        add(ObjectType.auditLog, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.auditLog, PropertyIdentifier.tags, NameValue.class, false, 0);
+        add(ObjectType.auditLog, PropertyIdentifier.profileLocation, CharacterString.class, false);
+        add(ObjectType.auditLog, PropertyIdentifier.profileName, CharacterString.class, false);
+
+        // Audit Reporter - 12.63
+        add(ObjectType.auditReporter, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
+        add(ObjectType.auditReporter, PropertyIdentifier.objectName, CharacterString.class, true);
+        add(ObjectType.auditReporter, PropertyIdentifier.objectType, ObjectType.class, true);
+        add(ObjectType.auditReporter, PropertyIdentifier.description, CharacterString.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.statusFlags, StatusFlags.class, true);
+        add(ObjectType.auditReporter, PropertyIdentifier.reliability, Reliability.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.auditReporter, PropertyIdentifier.auditLevel, AuditLevel.class, true);
+        add(ObjectType.auditReporter, PropertyIdentifier.auditSourceReporter, Boolean.class, true);
+        add(ObjectType.auditReporter, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, true);
+        add(ObjectType.auditReporter, PropertyIdentifier.auditPriorityFilter, PriorityFilter.class, true);
+        add(ObjectType.auditReporter, PropertyIdentifier.issueConfirmedNotifications, Boolean.class, true);
+        add(ObjectType.auditReporter, PropertyIdentifier.monitoredObjects, ObjectSelector.class, false, 0);
+        add(ObjectType.auditReporter, PropertyIdentifier.maximumSendDelay, UnsignedInteger.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.sendNow, Boolean.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.notifyType, NotifyType.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
+        add(ObjectType.auditReporter, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
+        add(ObjectType.auditReporter, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
+        add(ObjectType.auditReporter, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.auditReporter, PropertyIdentifier.tags, NameValue.class, false, 0);
+        add(ObjectType.auditReporter, PropertyIdentifier.profileLocation, CharacterString.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.profileName, CharacterString.class, false);
 
         // Averaging - 12.5
         add(ObjectType.averaging, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
@@ -765,6 +870,8 @@ public class ObjectProperties {
         add(ObjectType.averaging, PropertyIdentifier.windowInterval, UnsignedInteger.class, true);
         add(ObjectType.averaging, PropertyIdentifier.windowSamples, UnsignedInteger.class, true);
         add(ObjectType.averaging, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.averaging, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.averaging, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.averaging, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.averaging, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.averaging, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -804,6 +911,8 @@ public class ObjectProperties {
         add(ObjectType.binaryInput, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.binaryInput, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.binaryInput, PropertyIdentifier.interfaceValue, OptionalBinaryPV.class, false);
+        add(ObjectType.binaryInput, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.binaryInput, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.binaryInput, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.binaryInput, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.binaryInput, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -815,6 +924,7 @@ public class ObjectProperties {
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.presentValue, BinaryLightingPV.class, true);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.statusFlags, StatusFlags.class, true);
+        add(ObjectType.binaryLightingOutput, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.outOfService, Boolean.class, true);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.blinkWarnEnable, Boolean.class, true);
@@ -845,6 +955,13 @@ public class ObjectProperties {
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.binaryLightingOutput, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.binaryLightingOutput, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.binaryLightingOutput, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class,
+                false);
+        add(ObjectType.binaryLightingOutput, PropertyIdentifier.colorReference, ObjectIdentifier.class, false);
+        add(ObjectType.binaryLightingOutput, PropertyIdentifier.colorOverride, Boolean.class, false);
+        add(ObjectType.binaryLightingOutput, PropertyIdentifier.overrideColorReference, ObjectIdentifier.class, false);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -893,6 +1010,9 @@ public class ObjectProperties {
         add(ObjectType.binaryOutput, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.binaryOutput, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.binaryOutput, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.binaryOutput, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.binaryOutput, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.binaryOutput, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.binaryOutput, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.binaryOutput, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.binaryOutput, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -938,6 +1058,9 @@ public class ObjectProperties {
         add(ObjectType.binaryValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.binaryValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.binaryValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.binaryValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.binaryValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.binaryValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -977,6 +1100,9 @@ public class ObjectProperties {
         add(ObjectType.bitstringValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.bitstringValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.bitstringValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.bitstringValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.bitstringValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.bitstringValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.bitstringValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.bitstringValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.bitstringValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -989,6 +1115,8 @@ public class ObjectProperties {
         add(ObjectType.calendar, PropertyIdentifier.presentValue, Boolean.class, true);
         add(ObjectType.calendar, PropertyIdentifier.dateList, CalendarEntry.class, true, true);
         add(ObjectType.calendar, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.calendar, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.calendar, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.calendar, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.calendar, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.calendar, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1022,6 +1150,9 @@ public class ObjectProperties {
         add(ObjectType.channel, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.channel, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.channel, PropertyIdentifier.valueSource, ValueSource.class, false);
+        add(ObjectType.channel, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.channel, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.channel, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.channel, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.channel, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.channel, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1061,11 +1192,59 @@ public class ObjectProperties {
         add(ObjectType.characterstringValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.characterstringValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.characterstringValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.characterstringValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.characterstringValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.characterstringValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class,
+                false);
         add(ObjectType.characterstringValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.characterstringValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.characterstringValue, PropertyIdentifier.profileName, CharacterString.class, false);
 
-        // Command - 12.10
+        // Color - 12.65
+        add(ObjectType.color, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
+        add(ObjectType.color, PropertyIdentifier.objectName, CharacterString.class, true);
+        add(ObjectType.color, PropertyIdentifier.objectType, ObjectType.class, true);
+        add(ObjectType.color, PropertyIdentifier.presentValue, XyColor.class, true);
+        add(ObjectType.color, PropertyIdentifier.trackingValue, XyColor.class, true);
+        add(ObjectType.color, PropertyIdentifier.colorCommand, ColorCommand.class, true);
+        add(ObjectType.color, PropertyIdentifier.inProgress, ColorOperationInProgress.class, true);
+        add(ObjectType.color, PropertyIdentifier.defaultColor, XyColor.class, true);
+        add(ObjectType.color, PropertyIdentifier.description, CharacterString.class, false);
+        add(ObjectType.color, PropertyIdentifier.defaultFadeTime, UnsignedInteger.class, true);
+        add(ObjectType.color, PropertyIdentifier.transition, ColorTransition.class, false);
+        add(ObjectType.color, PropertyIdentifier.valueSource, ValueSource.class, false);
+        add(ObjectType.color, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.color, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.color, PropertyIdentifier.tags, NameValue.class, false, 0);
+        add(ObjectType.color, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.color, PropertyIdentifier.profileLocation, CharacterString.class, false);
+        add(ObjectType.color, PropertyIdentifier.profileName, CharacterString.class, false);
+
+        // Color Temperature - 12.66
+        add(ObjectType.colorTemperature, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
+        add(ObjectType.colorTemperature, PropertyIdentifier.objectName, CharacterString.class, true);
+        add(ObjectType.colorTemperature, PropertyIdentifier.objectType, ObjectType.class, true);
+        add(ObjectType.colorTemperature, PropertyIdentifier.presentValue, UnsignedInteger.class, true);
+        add(ObjectType.colorTemperature, PropertyIdentifier.trackingValue, UnsignedInteger.class, true);
+        add(ObjectType.colorTemperature, PropertyIdentifier.colorCommand, ColorCommand.class, true);
+        add(ObjectType.colorTemperature, PropertyIdentifier.inProgress, ColorOperationInProgress.class, true);
+        add(ObjectType.colorTemperature, PropertyIdentifier.defaultColorTemperature, UnsignedInteger.class, true);
+        add(ObjectType.colorTemperature, PropertyIdentifier.description, CharacterString.class, false);
+        add(ObjectType.colorTemperature, PropertyIdentifier.defaultFadeTime, UnsignedInteger.class, true);
+        add(ObjectType.colorTemperature, PropertyIdentifier.defaultRampRate, UnsignedInteger.class, true);
+        add(ObjectType.colorTemperature, PropertyIdentifier.defaultStepIncrement, UnsignedInteger.class, true);
+        add(ObjectType.colorTemperature, PropertyIdentifier.minPresValue, UnsignedInteger.class, false);
+        add(ObjectType.colorTemperature, PropertyIdentifier.maxPresValue, UnsignedInteger.class, false);
+        add(ObjectType.colorTemperature, PropertyIdentifier.transition, ColorTransition.class, false);
+        add(ObjectType.colorTemperature, PropertyIdentifier.valueSource, ValueSource.class, false);
+        add(ObjectType.colorTemperature, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.colorTemperature, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.colorTemperature, PropertyIdentifier.tags, NameValue.class, false, 0);
+        add(ObjectType.colorTemperature, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.colorTemperature, PropertyIdentifier.profileLocation, CharacterString.class, false);
+        add(ObjectType.colorTemperature, PropertyIdentifier.profileName, CharacterString.class, false);
+
+        // Command  12.10
         add(ObjectType.command, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
         add(ObjectType.command, PropertyIdentifier.objectName, CharacterString.class, true);
         add(ObjectType.command, PropertyIdentifier.objectType, ObjectType.class, true);
@@ -1089,6 +1268,8 @@ public class ObjectProperties {
         add(ObjectType.command, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
         add(ObjectType.command, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.command, PropertyIdentifier.valueSource, ValueSource.class, false);
+        add(ObjectType.command, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.command, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.command, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.command, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.command, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1118,6 +1299,8 @@ public class ObjectProperties {
                 3);
         add(ObjectType.credentialDataInput, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.credentialDataInput, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.credentialDataInput, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.credentialDataInput, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.credentialDataInput, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.credentialDataInput, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.credentialDataInput, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1149,6 +1332,9 @@ public class ObjectProperties {
         add(ObjectType.dateValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.dateValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.dateValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.dateValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.dateValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.dateValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.dateValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.dateValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.dateValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1180,6 +1366,10 @@ public class ObjectProperties {
         add(ObjectType.datePatternValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.datePatternValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.datePatternValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.datePatternValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.datePatternValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.datePatternValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class,
+                false);
         add(ObjectType.datePatternValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.datePatternValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.datePatternValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1212,6 +1402,9 @@ public class ObjectProperties {
         add(ObjectType.datetimeValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.datetimeValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.datetimeValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.datetimeValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.datetimeValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.datetimeValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.datetimeValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.datetimeValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.datetimeValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1245,6 +1438,10 @@ public class ObjectProperties {
         add(ObjectType.datetimePatternValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.datetimePatternValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.datetimePatternValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.datetimePatternValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class,
+                false);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1280,7 +1477,7 @@ public class ObjectProperties {
         add(ObjectType.device, PropertyIdentifier.apduTimeout, UnsignedInteger.class, true);
         add(ObjectType.device, PropertyIdentifier.numberOfApduRetries, UnsignedInteger.class, true);
         add(ObjectType.device, PropertyIdentifier.timeSynchronizationRecipients, Recipient.class, false, true);
-        add(ObjectType.device, PropertyIdentifier.maxMaster, UnsignedInteger.class, false);
+        add(ObjectType.device, PropertyIdentifier.maxManager, UnsignedInteger.class, false);
         add(ObjectType.device, PropertyIdentifier.maxInfoFrames, UnsignedInteger.class, false);
         add(ObjectType.device, PropertyIdentifier.deviceAddressBinding, AddressBinding.class, true, true);
         add(ObjectType.device, PropertyIdentifier.databaseRevision, UnsignedInteger.class, true);
@@ -1315,12 +1512,23 @@ public class ObjectProperties {
         add(ObjectType.device, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.device, PropertyIdentifier.activeCovMultipleSubscriptions, CovMultipleSubscription.class, false,
                 true);
+        add(ObjectType.device, PropertyIdentifier.auditNotificationRecipient, Recipient.class, false);
+        add(ObjectType.device, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.device, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.device, PropertyIdentifier.deviceUuid, OctetString.class, false);
+        add(ObjectType.device, PropertyIdentifier.authorizationServer, AuthorizationServer.class, false);
+        add(ObjectType.device, PropertyIdentifier.authorizationStatus, AuthorizationStatus.class, false);
+        add(ObjectType.device, PropertyIdentifier.authorizationPolicy, AuthorizationStatus.class, false, 0);
+        add(ObjectType.device, PropertyIdentifier.authorizationScope, AuthorizationScope.class, false, 0);
+        add(ObjectType.device, PropertyIdentifier.authorizationCache, AccessToken.class, false, true);
+        add(ObjectType.device, PropertyIdentifier.authorizationGroups, UnsignedInteger.class, false, 0);
+        add(ObjectType.device, PropertyIdentifier.maxProxiedIAmsPerSecond, UnsignedInteger.class, false);
+        add(ObjectType.device, PropertyIdentifier.deviceAddressProxyTable, DeviceAddressProxyTableEntry.class, false,
+                true);
         add(ObjectType.device, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.device, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.device, PropertyIdentifier.deployedProfileLocation, CharacterString.class, false);
         add(ObjectType.device, PropertyIdentifier.profileName, CharacterString.class, false);
-        add(ObjectType.device, PropertyIdentifier.autoSlaveDiscovery, Boolean.class, false, 0);
-        add(ObjectType.device, PropertyIdentifier.slaveProxyEnable, Boolean.class, false, 0);
 
         // Elevator group - 12.58
         add(ObjectType.elevatorGroup, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
@@ -1334,6 +1542,8 @@ public class ObjectProperties {
         add(ObjectType.elevatorGroup, PropertyIdentifier.landingCalls, LandingCallStatus.class, false, true);
         add(ObjectType.elevatorGroup, PropertyIdentifier.landingCallControl, LandingCallStatus.class, false);
         add(ObjectType.elevatorGroup, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.elevatorGroup, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.elevatorGroup, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.elevatorGroup, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.elevatorGroup, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.elevatorGroup, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1371,6 +1581,8 @@ public class ObjectProperties {
         add(ObjectType.escalator, PropertyIdentifier.eventAlgorithmInhibitRef, ObjectPropertyReference.class, false);
         add(ObjectType.escalator, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.escalator, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.escalator, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.escalator, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.escalator, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.escalator, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.escalator, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1403,6 +1615,8 @@ public class ObjectProperties {
         add(ObjectType.eventEnrollment, PropertyIdentifier.faultParameters, FaultParameter.class, false);
         add(ObjectType.eventEnrollment, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.eventEnrollment, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.eventEnrollment, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.eventEnrollment, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.eventEnrollment, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.eventEnrollment, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.eventEnrollment, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1438,6 +1652,8 @@ public class ObjectProperties {
         add(ObjectType.eventLog, PropertyIdentifier.eventAlgorithmInhibitRef, ObjectPropertyReference.class, false);
         add(ObjectType.eventLog, PropertyIdentifier.eventAlgorithmInhibit, Boolean.class, false);
         add(ObjectType.eventLog, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
+        add(ObjectType.eventLog, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.eventLog, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.eventLog, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.eventLog, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.eventLog, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1455,6 +1671,8 @@ public class ObjectProperties {
         add(ObjectType.file, PropertyIdentifier.fileAccessMethod, FileAccessMethod.class, true);
         add(ObjectType.file, PropertyIdentifier.recordCount, UnsignedInteger.class, false);
         add(ObjectType.file, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.file, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.file, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.file, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.file, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.file, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1467,6 +1685,8 @@ public class ObjectProperties {
         add(ObjectType.group, PropertyIdentifier.listOfGroupMembers, ReadAccessSpecification.class, true, true);
         add(ObjectType.group, PropertyIdentifier.presentValue, ReadAccessResult.class, true, true);
         add(ObjectType.group, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.group, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.group, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.group, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.group, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.group, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1504,6 +1724,8 @@ public class ObjectProperties {
         add(ObjectType.globalGroup, PropertyIdentifier.covuRecipients, Recipient.class, false, true);
         add(ObjectType.globalGroup, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.globalGroup, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.globalGroup, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.globalGroup, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.globalGroup, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.globalGroup, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.globalGroup, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1550,6 +1772,9 @@ public class ObjectProperties {
         add(ObjectType.integerValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.integerValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.integerValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.integerValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.integerValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.integerValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.integerValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.integerValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.integerValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1590,7 +1815,6 @@ public class ObjectProperties {
         add(ObjectType.largeAnalogValue, PropertyIdentifier.maxPresValue, Double.class, false);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.resolution, Double.class, false);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
-
         add(ObjectType.largeAnalogValue, PropertyIdentifier.faultHighLimit, Double.class, false);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.faultLowLimit, Double.class, false);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
@@ -1598,6 +1822,9 @@ public class ObjectProperties {
         add(ObjectType.largeAnalogValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.largeAnalogValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.largeAnalogValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.largeAnalogValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1640,8 +1867,11 @@ public class ObjectProperties {
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.directReading, Real.class, false);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.units, EngineeringUnits.class, true);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.memberOf, DeviceObjectReference.class, false, true);
+        add(ObjectType.lifeSafetyPoint, PropertyIdentifier.floorNumber, Unsigned8.class, false);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.valueSource, ValueSource.class, false);
+        add(ObjectType.lifeSafetyPoint, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.lifeSafetyPoint, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1682,8 +1912,11 @@ public class ObjectProperties {
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.maintenanceRequired, Maintenance.class, false);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.zoneMembers, DeviceObjectReference.class, true, true);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.memberOf, DeviceObjectReference.class, false, true);
+        add(ObjectType.lifeSafetyZone, PropertyIdentifier.floorNumber, Unsigned8.class, false);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.valueSource, ValueSource.class, false);
+        add(ObjectType.lifeSafetyZone, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.lifeSafetyZone, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1737,6 +1970,8 @@ public class ObjectProperties {
         add(ObjectType.lift, PropertyIdentifier.eventAlgorithmInhibit, Boolean.class, false);
         add(ObjectType.lift, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.lift, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.lift, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.lift, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.lift, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.lift, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.lift, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1751,6 +1986,7 @@ public class ObjectProperties {
         add(ObjectType.lightingOutput, PropertyIdentifier.inProgress, LightingInProgress.class, true);
         add(ObjectType.lightingOutput, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.lightingOutput, PropertyIdentifier.statusFlags, StatusFlags.class, true);
+        add(ObjectType.lightingOutput, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.lightingOutput, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.lightingOutput, PropertyIdentifier.outOfService, Boolean.class, true);
         add(ObjectType.lightingOutput, PropertyIdentifier.blinkWarnEnable, Boolean.class, true);
@@ -1769,6 +2005,14 @@ public class ObjectProperties {
         add(ObjectType.lightingOutput, PropertyIdentifier.maxActualValue, Real.class, false);
         add(ObjectType.lightingOutput, PropertyIdentifier.lightingCommandDefaultPriority, UnsignedInteger.class, true);
         add(ObjectType.lightingOutput, PropertyIdentifier.covIncrement, Real.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.notifyType, Boolean.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
+        add(ObjectType.lightingOutput, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
+        add(ObjectType.lightingOutput, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
         add(ObjectType.lightingOutput, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.lightingOutput, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.lightingOutput, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
@@ -1776,6 +2020,17 @@ public class ObjectProperties {
         add(ObjectType.lightingOutput, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.lightingOutput, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.lightingOutput, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.lightingOutput, PropertyIdentifier.lastOnValue, Real.class, true);
+        add(ObjectType.lightingOutput, PropertyIdentifier.defaultOnValue, Real.class, true);
+        add(ObjectType.lightingOutput, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.colorReference, ObjectIdentifier.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.colorOverride, Boolean.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.overrideColorReference, ObjectIdentifier.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.highEndTrim, Real.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.lowEndTrim, Real.class, false);
+        add(ObjectType.lightingOutput, PropertyIdentifier.trimFadeTime, UnsignedInteger.class, false);
         add(ObjectType.lightingOutput, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.lightingOutput, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.lightingOutput, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1815,6 +2070,9 @@ public class ObjectProperties {
         add(ObjectType.loadControl, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.loadControl, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.loadControl, PropertyIdentifier.valueSource, ValueSource.class, false);
+        add(ObjectType.loadControl, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.loadControl, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.loadControl, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.loadControl, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.loadControl, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.loadControl, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1866,6 +2124,8 @@ public class ObjectProperties {
         add(ObjectType.loop, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.loop, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.loop, PropertyIdentifier.lowDiffLimit, OptionalReal.class, false);
+        add(ObjectType.loop, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.loop, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.loop, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.loop, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.loop, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1901,6 +2161,8 @@ public class ObjectProperties {
         add(ObjectType.multiStateInput, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.multiStateInput, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.multiStateInput, PropertyIdentifier.interfaceValue, OptionalUnsigned.class, false);
+        add(ObjectType.multiStateInput, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.multiStateInput, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.multiStateInput, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.multiStateInput, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.multiStateInput, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1942,6 +2204,9 @@ public class ObjectProperties {
         add(ObjectType.multiStateOutput, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.multiStateOutput, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.multiStateOutput, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.multiStateOutput, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.multiStateOutput, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.multiStateOutput, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.multiStateOutput, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.multiStateOutput, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.multiStateOutput, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1982,6 +2247,9 @@ public class ObjectProperties {
         add(ObjectType.multiStateValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.multiStateValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.multiStateValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.multiStateValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.multiStateValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.multiStateValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.multiStateValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.multiStateValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.multiStateValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -1997,54 +2265,11 @@ public class ObjectProperties {
         add(ObjectType.networkPort, PropertyIdentifier.networkType, NetworkType.class, true);
         add(ObjectType.networkPort, PropertyIdentifier.protocolLevel, ProtocolLevel.class, true);
         add(ObjectType.networkPort, PropertyIdentifier.referencePort, UnsignedInteger.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.networkNumber, Unsigned16.class, true);
-        add(ObjectType.networkPort, PropertyIdentifier.networkNumberQuality, NetworkNumberQuality.class, true);
+        add(ObjectType.networkPort, PropertyIdentifier.additionalReferencePorts, UnsignedInteger.class, false, true);
         add(ObjectType.networkPort, PropertyIdentifier.changesPending, Boolean.class, true);
         add(ObjectType.networkPort, PropertyIdentifier.command, NetworkPortCommand.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.macAddress, OctetString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.apduLength, UnsignedInteger.class, true);
-        add(ObjectType.networkPort, PropertyIdentifier.linkSpeed, Real.class, true);
-        add(ObjectType.networkPort, PropertyIdentifier.linkSpeeds, Real.class, false, 0);
-        add(ObjectType.networkPort, PropertyIdentifier.linkSpeedAutonegotiate, Boolean.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.networkInterfaceName, CharacterString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpMode, IPMode.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipAddress, OctetString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpUdpPort, Unsigned16.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipSubnetMask, OctetString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipDefaultGateway, OctetString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpMulticastAddress, OctetString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipDnsServer, OctetString.class, false, 0);
-        add(ObjectType.networkPort, PropertyIdentifier.ipDhcpEnable, Boolean.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipDhcpLeaseTime, UnsignedInteger.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipDhcpLeaseTimeRemaining, UnsignedInteger.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipDhcpServer, OctetString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpNatTraversal, Boolean.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpGlobalAddress, HostNPort.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.bbmdBroadcastDistributionTable, BDTEntry.class, false, true);
-        add(ObjectType.networkPort, PropertyIdentifier.bbmdAcceptFdRegistrations, Boolean.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.bbmdForeignDeviceTable, FDTEntry.class, false, true);
-        add(ObjectType.networkPort, PropertyIdentifier.fdBbmdAddress, HostNPort.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.fdSubscriptionLifetime, Unsigned16.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpv6Mode, IPMode.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipv6Address, OctetString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipv6PrefixLength, Unsigned8.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpv6UdpPort, Unsigned16.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipv6DefaultGateway, OctetString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpv6MulticastAddress, OctetString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipv6DnsServer, OctetString.class, false, 0);
-        add(ObjectType.networkPort, PropertyIdentifier.ipv6AutoAddressingEnable, Boolean.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipv6DhcpLeaseTime, UnsignedInteger.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipv6DhcpLeaseTimeRemaining, UnsignedInteger.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipv6DhcpServer, OctetString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.ipv6ZoneIndex, CharacterString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.maxMaster, Unsigned8.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.maxInfoFrames, Unsigned8.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.slaveProxyEnable, Boolean.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.manualSlaveAddressBinding, AddressBinding.class, false, true);
-        add(ObjectType.networkPort, PropertyIdentifier.autoSlaveDiscovery, Boolean.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.slaveAddressBinding, AddressBinding.class, false, true);
-        add(ObjectType.networkPort, PropertyIdentifier.virtualMacAddressTable, VmacEntry.class, false, true);
-        add(ObjectType.networkPort, PropertyIdentifier.routingTable, RouterEntry.class, false, true);
+        add(ObjectType.networkPort, PropertyIdentifier.currentHealth, Health.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.commandValidationResult, Health.class, false);
         add(ObjectType.networkPort, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
         add(ObjectType.networkPort, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
         add(ObjectType.networkPort, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
@@ -2056,31 +2281,89 @@ public class ObjectProperties {
         add(ObjectType.networkPort, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.networkPort, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.networkPort, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.networkPort, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.networkPort, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.networkPort, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.networkPort, PropertyIdentifier.profileName, CharacterString.class, false);
-
-        // Network security - 12.49
-        add(ObjectType.networkSecurity, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.objectName, CharacterString.class, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.objectType, ObjectType.class, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.description, CharacterString.class, false);
-        add(ObjectType.networkSecurity, PropertyIdentifier.baseDeviceSecurityPolicy, SecurityLevel.class, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.networkAccessSecurityPolicies, NetworkSecurityPolicy.class,
-                true, 0);
-        add(ObjectType.networkSecurity, PropertyIdentifier.securityTimeWindow, UnsignedInteger.class, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.packetReorderTime, UnsignedInteger.class, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.distributionKeyRevision, Unsigned8.class, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.keySets, SecurityKeySet.class, true, 2);
-        add(ObjectType.networkSecurity, PropertyIdentifier.lastKeyServer, AddressBinding.class, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.securityPduTimeout, Unsigned16.class, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.updateKeySetTimeout, Unsigned16.class, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.supportedSecurityAlgorithms, Unsigned8.class, true, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.doNotHide, Boolean.class, true);
-        add(ObjectType.networkSecurity, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
-        add(ObjectType.networkSecurity, PropertyIdentifier.tags, NameValue.class, false, 0);
-        add(ObjectType.networkSecurity, PropertyIdentifier.profileLocation, CharacterString.class, false);
-        add(ObjectType.networkSecurity, PropertyIdentifier.profileName, CharacterString.class, false);
+        // Network type -specific
+        add(ObjectType.networkPort, PropertyIdentifier.networkNumber, Unsigned16.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.networkNumberQuality, NetworkNumberQuality.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.apduLength, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.routingTable, RouterEntry.class, false, true);
+        add(ObjectType.networkPort, PropertyIdentifier.macAddress, OctetString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.linkSpeed, Real.class, true);
+        add(ObjectType.networkPort, PropertyIdentifier.linkSpeeds, Real.class, false, 0);
+        add(ObjectType.networkPort, PropertyIdentifier.linkSpeedAutonegotiate, Boolean.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.networkInterfaceName, CharacterString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.deviceAddressProxyEnable, Boolean.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.deviceAddressProxyTimeout, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpMode, IPMode.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpUdpPort, Unsigned16.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpMulticastAddress, OctetString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpNatTraversal, Boolean.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpGlobalAddress, HostNPort.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.bbmdBroadcastDistributionTable, BDTEntry.class, false, true);
+        add(ObjectType.networkPort, PropertyIdentifier.bbmdAcceptFdRegistrations, Boolean.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.bbmdForeignDeviceTable, FDTEntry.class, false, true);
+        add(ObjectType.networkPort, PropertyIdentifier.fdBbmdAddress, HostNPort.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.fdSubscriptionLifetime, Unsigned16.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipAddress, OctetString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipSubnetMask, OctetString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipDefaultGateway, OctetString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipDnsServer, OctetString.class, false, 0);
+        add(ObjectType.networkPort, PropertyIdentifier.ipDhcpEnable, Boolean.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipDhcpLeaseTime, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipDhcpLeaseTimeRemaining, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipDhcpServer, OctetString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.virtualMacAddressTable, VmacEntry.class, false, true);
+        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpv6Mode, IPMode.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpv6UdpPort, Unsigned16.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.bacnetIpv6MulticastAddress, OctetString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipv6Address, OctetString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipv6PrefixLength, Unsigned8.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipv6DefaultGateway, OctetString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipv6DnsServer, OctetString.class, false, 0);
+        add(ObjectType.networkPort, PropertyIdentifier.ipv6AutoAddressingEnable, Boolean.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipv6DhcpLeaseTime, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipv6DhcpLeaseTimeRemaining, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipv6DhcpServer, OctetString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.ipv6ZoneIndex, CharacterString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.subordinateProxyEnable, Boolean.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.manualSubordinateAddressBinding, AddressBinding.class, false,
+                true);
+        add(ObjectType.networkPort, PropertyIdentifier.autoSubordinateDiscovery, Boolean.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.subordinateAddressBinding, AddressBinding.class, false, true);
+        add(ObjectType.networkPort, PropertyIdentifier.maxManager, Unsigned8.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.maxInfoFrames, Unsigned8.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.maxBvlcLengthAccepted, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.maxNpduLengthAccepted, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scPrimaryHubUri, CharacterString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scFailoverHubUri, CharacterString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scMinimumReconnectTime, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scMaximumReconnectTime, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scConnectWaitTimeout, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scDisconnectWaitTimeout, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scHeartbeatTimeout, UnsignedInteger.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scHubConnectorState, SCHubConnectorState.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.operationalCertificateFile, ObjectIdentifier.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.issuerCertificateFiles, ObjectIdentifier.class, false, 2);
+        add(ObjectType.networkPort, PropertyIdentifier.certificateSigningRequestFile, ObjectIdentifier.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scPrimaryHubConnectionStatus, SCHubConnection.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scFailoverHubConnectionStatus, SCHubConnection.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scHubFunctionEnable, Boolean.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scHubFunctionAcceptUris, CharacterString.class, false, 0);
+        add(ObjectType.networkPort, PropertyIdentifier.scHubFunctionBinding, CharacterString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scHubFunctionConnectionStatus, SCHubFunctionConnection.class,
+                false, true);
+        add(ObjectType.networkPort, PropertyIdentifier.scDirectConnectInitiateEnable, Boolean.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scDirectConnectAcceptEnable, Boolean.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scDirectConnectAcceptUris, CharacterString.class, false, 0);
+        add(ObjectType.networkPort, PropertyIdentifier.scDirectConnectBinding, CharacterString.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.scDirectConnectConnectionStatus, SCDirectConnection.class, false,
+                true);
+        add(ObjectType.networkPort, PropertyIdentifier.scFailedConnectionRequests, SCFailedConnectionRequest.class,
+                false, true);
 
         // Notification class - 12.21
         add(ObjectType.notificationClass, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
@@ -2103,6 +2386,8 @@ public class ObjectProperties {
         add(ObjectType.notificationClass, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
         add(ObjectType.notificationClass, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
         add(ObjectType.notificationClass, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
+        add(ObjectType.notificationClass, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.notificationClass, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.notificationClass, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.notificationClass, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.notificationClass, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -2124,6 +2409,8 @@ public class ObjectProperties {
         add(ObjectType.notificationForwarder, PropertyIdentifier.localForwardingOnly, Boolean.class, true);
         add(ObjectType.notificationForwarder, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.notificationForwarder, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.notificationForwarder, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.notificationForwarder, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.notificationForwarder, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.notificationForwarder, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.notificationForwarder, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -2147,6 +2434,9 @@ public class ObjectProperties {
         add(ObjectType.octetstringValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.octetstringValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.octetstringValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.octetstringValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.octetstringValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.octetstringValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -2195,6 +2485,10 @@ public class ObjectProperties {
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.positiveIntegerValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.positiveIntegerValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.positiveIntegerValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class,
+                false);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -2224,6 +2518,8 @@ public class ObjectProperties {
         add(ObjectType.program, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
         add(ObjectType.program, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.program, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.program, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.program, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.program, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.program, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.program, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -2267,6 +2563,8 @@ public class ObjectProperties {
         add(ObjectType.pulseConverter, PropertyIdentifier.timeDelayNormal, UnsignedInteger.class, false);
         add(ObjectType.pulseConverter, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.pulseConverter, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.pulseConverter, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.pulseConverter, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.pulseConverter, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.pulseConverter, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.pulseConverter, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -2297,10 +2595,50 @@ public class ObjectProperties {
         add(ObjectType.schedule, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
         add(ObjectType.schedule, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
         add(ObjectType.schedule, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
+        add(ObjectType.schedule, PropertyIdentifier.writeEveryScheduledAction, Boolean.class, false);
         add(ObjectType.schedule, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.schedule, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.schedule, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.schedule, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.schedule, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.schedule, PropertyIdentifier.profileName, CharacterString.class, false);
+
+        // Staging - 12.62
+        add(ObjectType.staging, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
+        add(ObjectType.staging, PropertyIdentifier.objectName, CharacterString.class, true);
+        add(ObjectType.staging, PropertyIdentifier.objectType, ObjectType.class, true);
+        add(ObjectType.staging, PropertyIdentifier.presentValue, Primitive.class, true);
+        add(ObjectType.staging, PropertyIdentifier.presentStage, UnsignedInteger.class, true);
+        add(ObjectType.staging, PropertyIdentifier.stages, StageLimitValue.class, true, 0);
+        add(ObjectType.staging, PropertyIdentifier.stageNames, CharacterString.class, false, 0);
+        add(ObjectType.staging, PropertyIdentifier.statusFlags, StatusFlags.class, true);
+        add(ObjectType.staging, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.staging, PropertyIdentifier.reliability, Reliability.class, true);
+        add(ObjectType.staging, PropertyIdentifier.outOfService, Boolean.class, true);
+        add(ObjectType.staging, PropertyIdentifier.description, CharacterString.class, false);
+        add(ObjectType.staging, PropertyIdentifier.units, EngineeringUnits.class, true);
+        add(ObjectType.staging, PropertyIdentifier.targetReferences, DeviceObjectReference.class, true, 0);
+        add(ObjectType.staging, PropertyIdentifier.priorityForWriting, UnsignedInteger.class, true);
+        add(ObjectType.staging, PropertyIdentifier.defaultPresentValue, Real.class, false);
+        add(ObjectType.staging, PropertyIdentifier.minPresValue, Real.class, true);
+        add(ObjectType.staging, PropertyIdentifier.maxPresValue, Real.class, true);
+        add(ObjectType.staging, PropertyIdentifier.covIncrement, Real.class, false);
+        add(ObjectType.staging, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
+        add(ObjectType.staging, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
+        add(ObjectType.staging, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, false);
+        add(ObjectType.staging, PropertyIdentifier.notifyType, NotifyType.class, false);
+        add(ObjectType.staging, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
+        add(ObjectType.staging, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
+        add(ObjectType.staging, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
+        add(ObjectType.staging, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
+        add(ObjectType.staging, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
+        add(ObjectType.staging, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.staging, PropertyIdentifier.valueSource, ValueSource.class, false);
+        add(ObjectType.staging, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.staging, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.staging, PropertyIdentifier.tags, NameValue.class, false, 0);
+        add(ObjectType.staging, PropertyIdentifier.profileLocation, CharacterString.class, false);
+        add(ObjectType.staging, PropertyIdentifier.profileName, CharacterString.class, false);
 
         // Structured View - 12.29
         add(ObjectType.structuredView, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
@@ -2317,6 +2655,8 @@ public class ObjectProperties {
         add(ObjectType.structuredView, PropertyIdentifier.subordinateRelationships, Relationship.class, false, 0);
         add(ObjectType.structuredView, PropertyIdentifier.defaultSubordinateRelationship, Relationship.class, false);
         add(ObjectType.structuredView, PropertyIdentifier.represents, DeviceObjectReference.class, false);
+        add(ObjectType.structuredView, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.structuredView, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.structuredView, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.structuredView, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.structuredView, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -2348,6 +2688,9 @@ public class ObjectProperties {
         add(ObjectType.timeValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.timeValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.timeValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.timeValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.timeValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.timeValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.timeValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.timeValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.timeValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -2379,6 +2722,9 @@ public class ObjectProperties {
         add(ObjectType.timePatternValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.timePatternValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
         add(ObjectType.timePatternValue, PropertyIdentifier.commandTimeArray, TimeStamp.class, false, 16);
+        add(ObjectType.timePatternValue, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.timePatternValue, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
+        add(ObjectType.timePatternValue, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.timePatternValue, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.timePatternValue, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.timePatternValue, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -2422,6 +2768,8 @@ public class ObjectProperties {
         add(ObjectType.timer, PropertyIdentifier.eventAlgorithmInhibit, Boolean.class, false);
         add(ObjectType.timer, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.timer, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.timer, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.timer, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.timer, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.timer, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.timer, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -2465,6 +2813,8 @@ public class ObjectProperties {
         add(ObjectType.trendLog, PropertyIdentifier.eventAlgorithmInhibitRef, ObjectPropertyReference.class, false);
         add(ObjectType.trendLog, PropertyIdentifier.eventAlgorithmInhibit, Boolean.class, false);
         add(ObjectType.trendLog, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
+        add(ObjectType.trendLog, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.trendLog, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.trendLog, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.trendLog, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.trendLog, PropertyIdentifier.profileLocation, CharacterString.class, false);
@@ -2509,6 +2859,8 @@ public class ObjectProperties {
         add(ObjectType.trendLogMultiple, PropertyIdentifier.eventAlgorithmInhibit, Boolean.class, false);
         add(ObjectType.trendLogMultiple, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.trendLogMultiple, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
+        add(ObjectType.trendLogMultiple, PropertyIdentifier.auditLevel, AuditLevel.class, false);
+        add(ObjectType.trendLogMultiple, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.trendLogMultiple, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.trendLogMultiple, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.trendLogMultiple, PropertyIdentifier.profileName, CharacterString.class, false);

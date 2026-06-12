@@ -347,9 +347,9 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
     /**
      * Override as required.
      *
-     * @param localDevice
-     * @param from
-     * @throws BACnetErrorException
+     * @param localDevice the local device
+     * @param from        the address from which the request came
+     * @throws BACnetErrorException if a configuration is in progress
      */
     protected void endRestore(final LocalDevice localDevice, final Address from) throws BACnetErrorException {
         LOG.info("Ending restore");
@@ -386,9 +386,9 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
     /**
      * Override as required.
      *
-     * @param localDevice
-     * @param from
-     * @throws BACnetErrorException
+     * @param localDevice the local device
+     * @param from        the address from which the request came
+     * @throws BACnetErrorException if a configuration is in progress
      */
     protected void abortRestore(final LocalDevice localDevice, final Address from) throws BACnetErrorException {
         LOG.info("Aborting restore");
@@ -403,9 +403,9 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
     /**
      * Override as required.
      *
-     * @param localDevice
-     * @param from
-     * @throws BACnetErrorException
+     * @param localDevice the local device
+     * @param from        the address from which the request came
+     * @throws BACnetErrorException if a configuration is in progress
      */
     protected void activateChanges(final LocalDevice localDevice, final Address from) throws BACnetErrorException {
         throw new BACnetErrorException(ErrorClass.device, ErrorCode.notConfigured);

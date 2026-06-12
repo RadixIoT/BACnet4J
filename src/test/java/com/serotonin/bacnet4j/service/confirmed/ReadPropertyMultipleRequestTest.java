@@ -29,8 +29,10 @@ package com.serotonin.bacnet4j.service.confirmed;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import org.junit.After;
 import org.junit.Before;
@@ -86,24 +88,28 @@ public class ReadPropertyMultipleRequestTest {
     public void allProperties() throws BACnetException {
         g0.writePropertyInternal(PropertyIdentifier.forId(888), new TestProprietary(999, true));
 
-        final SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(
+        SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(
                 new ReadAccessSpecification(g0.getId(), PropertyIdentifier.all));
-        final ReadPropertyMultipleAck ack = (ReadPropertyMultipleAck) new ReadPropertyMultipleRequest(
+        ReadPropertyMultipleAck ack = (ReadPropertyMultipleAck) new ReadPropertyMultipleRequest(
                 listOfReadAccessSpecs).handle(localDevice, addr);
 
-        final List<ReadAccessResult> readAccessResults = ack.getListOfReadAccessResults().getValues();
+        List<ReadAccessResult> readAccessResults = ack.getListOfReadAccessResults().getValues();
         assertEquals(1, readAccessResults.size());
         assertEquals(g0.getId(), readAccessResults.get(0).getObjectIdentifier());
-        final List<Result> results = readAccessResults.get(0).getListOfResults().getValues();
-        assertEquals(7, results.size());
-        assertEquals(new Result(PropertyIdentifier.objectType, null, ObjectType.group), results.get(0));
-        assertEquals(new Result(PropertyIdentifier.listOfGroupMembers, null, new SequenceOf<>()), results.get(1));
-        assertEquals(new Result(PropertyIdentifier.presentValue, null, new SequenceOf<>()), results.get(2));
-        assertEquals(new Result(PropertyIdentifier.forId(888), null, new TestProprietary(999, true)), results.get(3));
-        assertEquals(new Result(PropertyIdentifier.objectIdentifier, null, g0.getId()), results.get(4));
-        assertEquals(new Result(PropertyIdentifier.description, null, new CharacterString("my description")),
-                results.get(5));
-        assertEquals(new Result(PropertyIdentifier.objectName, null, new CharacterString("g0")), results.get(6));
+        List<Result> results = readAccessResults.get(0).getListOfResults().getValues();
+        // Compare ignoring order.
+        assertEquals(
+                Set.of(
+                        new Result(PropertyIdentifier.objectType, null, ObjectType.group),
+                        new Result(PropertyIdentifier.listOfGroupMembers, null, new SequenceOf<>()),
+                        new Result(PropertyIdentifier.presentValue, null, new SequenceOf<>()),
+                        new Result(PropertyIdentifier.forId(888), null, new TestProprietary(999, true)),
+                        new Result(PropertyIdentifier.objectIdentifier, null, g0.getId()),
+                        new Result(PropertyIdentifier.description, null, new CharacterString("my description")),
+                        new Result(PropertyIdentifier.objectName, null, new CharacterString("g0"))
+                ),
+                new HashSet<>(results)
+        );
     }
 
     @Test

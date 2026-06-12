@@ -30,6 +30,8 @@ package com.serotonin.bacnet4j.npdu.ip;
 import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -263,36 +265,42 @@ public class IpNetworkTest extends AbstractTest {
                 ttl, retryDelayProvider);
         assertEquals(0, totalSuccesses.get());
         assertEquals(0, totalFailures.get());
+        assertFalse(network.isFdRegistered());
         verify(localDevice, times(1)).schedule(any(), eq(0L), eq(TimeUnit.SECONDS));
         clearInvocations(localDevice);
 
         task.get().run();
         assertEquals(0, totalSuccesses.get());
         assertEquals(1, totalFailures.get());
+        assertFalse(network.isFdRegistered());
         verify(localDevice, times(1)).schedule(any(), eq(10L), eq(TimeUnit.SECONDS));
         clearInvocations(localDevice);
 
         task.get().run();
         assertEquals(1, totalSuccesses.get());
         assertEquals(1, totalFailures.get());
+        assertTrue(network.isFdRegistered());
         verify(localDevice, times(1)).schedule(any(), eq(renewal.getSeconds()), eq(TimeUnit.SECONDS));
         clearInvocations(localDevice);
 
         task.get().run();
         assertEquals(1, totalSuccesses.get());
         assertEquals(2, totalFailures.get());
+        assertFalse(network.isFdRegistered());
         verify(localDevice, times(1)).schedule(any(), eq(10L), eq(TimeUnit.SECONDS));
         clearInvocations(localDevice);
 
         task.get().run();
         assertEquals(1, totalSuccesses.get());
         assertEquals(3, totalFailures.get());
+        assertFalse(network.isFdRegistered());
         verify(localDevice, times(1)).schedule(any(), eq(30L), eq(TimeUnit.SECONDS));
         clearInvocations(localDevice);
 
         task.get().run();
         assertEquals(2, totalSuccesses.get());
         assertEquals(3, totalFailures.get());
+        assertTrue(network.isFdRegistered());
         verify(localDevice, times(1)).schedule(any(), eq(renewal.getSeconds()), eq(TimeUnit.SECONDS));
         clearInvocations(localDevice);
 
@@ -301,6 +309,7 @@ public class IpNetworkTest extends AbstractTest {
         task.get().run();
         assertEquals(2, totalSuccesses.get());
         assertEquals(3, totalFailures.get());
+        assertFalse(network.isFdRegistered());
         verify(localDevice, never()).schedule(any(), anyLong(), any());
         verify(network, times(5)).sendForeignDeviceRegistration();
 

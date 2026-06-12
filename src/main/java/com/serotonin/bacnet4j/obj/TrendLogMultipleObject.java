@@ -201,14 +201,6 @@ public class TrendLogMultipleObject extends BACnetObject {
     }
 
     /**
-     * @deprecated This method return a buffer that may not be thread-safe. Use {@link #doWithBuffer} instead.
-     */
-    @Deprecated
-    public LogBuffer<LogMultipleRecord> getBuffer() {
-        return buffer;
-    }
-
-    /**
      * Allows the consumer to work with the buffer in a thread-safe manner.
      *
      * @param consumer the work to do while synchronized.

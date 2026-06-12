@@ -43,6 +43,9 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.IpAddressUtils;
 
 public class IpNetworkUtils {
+    private IpNetworkUtils() {
+    }
+
     public static OctetString toOctetString(final String dottedString) {
         final String s = dottedString.trim();
         final int colon = s.indexOf(":");
@@ -70,6 +73,10 @@ public class IpNetworkUtils {
 
     public static OctetString toOctetString(final InetSocketAddress addr) {
         return toOctetString(addr.getAddress().getAddress(), addr.getPort());
+    }
+
+    public static OctetString toOctetString(final InetAddress addr) {
+        return new OctetString(addr.getAddress());
     }
 
     private static byte[] toBytes(final byte[] ipAddress, final int port) {

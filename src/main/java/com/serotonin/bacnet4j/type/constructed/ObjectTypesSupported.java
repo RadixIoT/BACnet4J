@@ -34,7 +34,7 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class ObjectTypesSupported extends BitString {
     public ObjectTypesSupported() {
-        super(new boolean[60]);
+        super(new boolean[65]);
     }
 
     public ObjectTypesSupported(final ByteQueue queue) throws BACnetErrorException {

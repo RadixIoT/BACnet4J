@@ -62,14 +62,6 @@ public class CharacterString extends Primitive {
     }
 
     /**
-     * @deprecated use CharacterEncoding constructor instead.
-     */
-    @Deprecated(since = "6.1.0")
-    public CharacterString(final byte encoding, final String value) {
-        this(new CharacterEncoding(encoding, defaultCodingPage(encoding)), value);
-    }
-
-    /**
      * According to Oracle java documentation about Charset, the behavior of optional charsets may vary between java
      * platform implementations. This concerns ISO_10646_UCS_4 (UTF-32), IBM_MS_DBCS and JIS_C_6226.
      */

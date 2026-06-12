@@ -41,7 +41,21 @@ public class ServicesSupportedTest {
         ss.setUnconfirmedTextMessage(true);
 
         assertEquals(
-                "ServicesSupported[IAm=false, IHave=false, acknowledgeAlarm=true, addListElement=false, atomicReadFile=false, atomicWriteFile=false, confirmedCovNotification=false, confirmedCovNotificationMultiple=false, confirmedEventNotification=false, confirmedPrivateTransfer=false, confirmedTextMessage=false, createObject=true, deleteObject=false, deviceCommunicationControl=false, getAlarmSummary=false, getEnrollmentSummary=false, getEventInformation=false, lifeSafetyOperation=false, readProperty=false, readPropertyMultiple=false, readRange=false, reinitializeDevice=false, removeListElement=false, subscribeCov=false, subscribeCovProperty=false, subscribeCovPropertyMultiple=false, timeSynchronization=true, unconfirmedCovNotification=false, unconfirmedCovNotificationMultiple=false, unconfirmedEventNotification=false, unconfirmedPrivateTransfer=false, unconfirmedTextMessage=true, utcTimeSynchronization=false, vtClose=false, vtData=false, vtOpen=false, whoHas=false, whoIs=false, writeGroup=false, writeProperty=false, writePropertyMultiple=false]",
+                "ServicesSupported[IAm=false, IHave=false, acknowledgeAlarm=true, addListElement=false, "
+                        + "atomicReadFile=false, atomicWriteFile=false, auditLogQuery=false, authRequest=false, "
+                        + "confirmedAuditNotification=false, confirmedCovNotification=false, "
+                        + "confirmedCovNotificationMultiple=false, confirmedEventNotification=false, "
+                        + "confirmedPrivateTransfer=false, confirmedTextMessage=false, createObject=true, "
+                        + "deleteObject=false, deviceCommunicationControl=false, getAlarmSummary=false, "
+                        + "getEnrollmentSummary=false, getEventInformation=false, lifeSafetyOperation=false, "
+                        + "readProperty=false, readPropertyMultiple=false, readRange=false, reinitializeDevice=false, "
+                        + "removeListElement=false, subscribeCov=false, subscribeCovProperty=false, "
+                        + "subscribeCovPropertyMultiple=false, timeSynchronization=true, "
+                        + "unconfirmedAuditNotification=false, unconfirmedCovNotification=false, "
+                        + "unconfirmedCovNotificationMultiple=false, unconfirmedEventNotification=false, "
+                        + "unconfirmedPrivateTransfer=false, unconfirmedTextMessage=true, utcTimeSynchronization=false, "
+                        + "vtClose=false, vtData=false, vtOpen=false, whoAmI=false, whoHas=false, whoIs=false, "
+                        + "writeGroup=false, writeProperty=false, writePropertyMultiple=false, youAre=false]",
                 ss.toString());
     }
 }

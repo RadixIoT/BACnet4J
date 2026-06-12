@@ -57,12 +57,12 @@ import com.serotonin.bacnet4j.type.primitive.Primitive;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
-abstract public class Encodable {
+public abstract class Encodable {
     static final Logger LOG = LoggerFactory.getLogger(Encodable.class);
 
-    abstract public void write(ByteQueue queue);
+    public abstract void write(ByteQueue queue);
 
-    abstract public void write(ByteQueue queue, int contextId);
+    public abstract void write(ByteQueue queue, int contextId);
 
     /**
      * Optionally validate the value before it is written into our device
@@ -93,7 +93,7 @@ abstract public class Encodable {
         if (tagData.length == 5) {
             tagData.length = toInt(queue.peek(peekIndex++));
             if (tagData.length == 254)
-                tagData.length = toInt(queue.peek(peekIndex++)) << 8 | toInt(queue.peek(peekIndex++));
+                tagData.length = toLong(queue.peek(peekIndex++)) << 8 | toLong(queue.peek(peekIndex++));
             else if (tagData.length == 255)
                 tagData.length = toLong(queue.peek(peekIndex++)) << 24 | toLong(queue.peek(peekIndex++)) << 16
                         | toLong(queue.peek(peekIndex++)) << 8 | toLong(queue.peek(peekIndex++));
@@ -352,17 +352,8 @@ abstract public class Encodable {
         return result;
     }
 
-    /**
-     * Create encodable if the property type definition is unknown
-     *
-     * @param queue
-     * @param contextId
-     * @return
-     * @throws BACnetException
-     */
     private static Encodable readUnknown(final ByteQueue queue, final int contextId)
             throws BACnetException {
-
         final TagData tagData = new TagData();
         peekTagData(queue, tagData);
 
@@ -383,7 +374,7 @@ abstract public class Encodable {
             queue.push(originalQueue);
             return new AmbiguousValue(queue, contextId);
         } else {
-            // Primtive type
+            // Primitive type
             Primitive primitive = Primitive.createPrimitive(queue);
 
             // Peek again to see what the next tagData is.
@@ -462,6 +453,14 @@ abstract public class Encodable {
         if (readStart(queue) != contextId)
             return null;
         return readANY(queue, objectType, propertyIdentifier, null, contextId);
+    }
+
+    protected static Encodable readOptionalANY(final ByteQueue queue, final ObjectType objectType,
+            final PropertyIdentifier propertyIdentifier, UnsignedInteger propertyArrayIndex, final int contextId)
+            throws BACnetException {
+        if (readStart(queue) != contextId)
+            return null;
+        return readANY(queue, objectType, propertyIdentifier, propertyArrayIndex, contextId);
     }
 
     protected static SequenceOf<? extends Encodable> readSequenceOfANY(final ByteQueue queue,

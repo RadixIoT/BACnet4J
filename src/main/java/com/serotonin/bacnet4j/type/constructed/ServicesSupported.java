@@ -41,10 +41,10 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class ServicesSupported extends BitString {
     public ServicesSupported() {
-        super(new boolean[44]);
+        super(new boolean[50]);
     }
 
-    public ServicesSupported(final ByteQueue queue) throws BACnetErrorException {
+    public ServicesSupported(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
 
@@ -52,7 +52,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(0);
     }
 
-    public void setAcknowledgeAlarm(final boolean acknowledgeAlarm) {
+    public void setAcknowledgeAlarm(boolean acknowledgeAlarm) {
         getValue()[0] = acknowledgeAlarm;
     }
 
@@ -60,7 +60,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(1);
     }
 
-    public void setConfirmedCovNotification(final boolean confirmedCovNotification) {
+    public void setConfirmedCovNotification(boolean confirmedCovNotification) {
         getValue()[1] = confirmedCovNotification;
     }
 
@@ -68,7 +68,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(2);
     }
 
-    public void setConfirmedEventNotification(final boolean confirmedEventNotification) {
+    public void setConfirmedEventNotification(boolean confirmedEventNotification) {
         getValue()[2] = confirmedEventNotification;
     }
 
@@ -76,7 +76,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(3);
     }
 
-    public void setGetAlarmSummary(final boolean getAlarmSummary) {
+    public void setGetAlarmSummary(boolean getAlarmSummary) {
         getValue()[3] = getAlarmSummary;
     }
 
@@ -84,7 +84,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(4);
     }
 
-    public void setGetEnrollmentSummary(final boolean getEnrollmentSummary) {
+    public void setGetEnrollmentSummary(boolean getEnrollmentSummary) {
         getValue()[4] = getEnrollmentSummary;
     }
 
@@ -92,7 +92,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(5);
     }
 
-    public void setSubscribeCov(final boolean subscribeCov) {
+    public void setSubscribeCov(boolean subscribeCov) {
         getValue()[5] = subscribeCov;
     }
 
@@ -100,7 +100,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(6);
     }
 
-    public void setAtomicReadFile(final boolean atomicReadFile) {
+    public void setAtomicReadFile(boolean atomicReadFile) {
         getValue()[6] = atomicReadFile;
     }
 
@@ -108,7 +108,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(7);
     }
 
-    public void setAtomicWriteFile(final boolean atomicWriteFile) {
+    public void setAtomicWriteFile(boolean atomicWriteFile) {
         getValue()[7] = atomicWriteFile;
     }
 
@@ -116,7 +116,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(8);
     }
 
-    public void setAddListElement(final boolean addListElement) {
+    public void setAddListElement(boolean addListElement) {
         getValue()[8] = addListElement;
     }
 
@@ -124,7 +124,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(9);
     }
 
-    public void setRemoveListElement(final boolean removeListElement) {
+    public void setRemoveListElement(boolean removeListElement) {
         getValue()[9] = removeListElement;
     }
 
@@ -132,7 +132,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(10);
     }
 
-    public void setCreateObject(final boolean createObject) {
+    public void setCreateObject(boolean createObject) {
         getValue()[10] = createObject;
     }
 
@@ -140,7 +140,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(11);
     }
 
-    public void setDeleteObject(final boolean deleteObject) {
+    public void setDeleteObject(boolean deleteObject) {
         getValue()[11] = deleteObject;
     }
 
@@ -148,7 +148,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(12);
     }
 
-    public void setReadProperty(final boolean readProperty) {
+    public void setReadProperty(boolean readProperty) {
         getValue()[12] = readProperty;
     }
 
@@ -156,7 +156,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(14);
     }
 
-    public void setReadPropertyMultiple(final boolean readPropertyMultiple) {
+    public void setReadPropertyMultiple(boolean readPropertyMultiple) {
         getValue()[14] = readPropertyMultiple;
     }
 
@@ -164,7 +164,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(15);
     }
 
-    public void setWriteProperty(final boolean writeProperty) {
+    public void setWriteProperty(boolean writeProperty) {
         getValue()[15] = writeProperty;
     }
 
@@ -172,7 +172,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(16);
     }
 
-    public void setWritePropertyMultiple(final boolean writePropertyMultiple) {
+    public void setWritePropertyMultiple(boolean writePropertyMultiple) {
         getValue()[16] = writePropertyMultiple;
     }
 
@@ -180,7 +180,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(17);
     }
 
-    public void setDeviceCommunicationControl(final boolean deviceCommunicationControl) {
+    public void setDeviceCommunicationControl(boolean deviceCommunicationControl) {
         getValue()[17] = deviceCommunicationControl;
     }
 
@@ -188,7 +188,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(18);
     }
 
-    public void setConfirmedPrivateTransfer(final boolean confirmedPrivateTransfer) {
+    public void setConfirmedPrivateTransfer(boolean confirmedPrivateTransfer) {
         getValue()[18] = confirmedPrivateTransfer;
     }
 
@@ -196,7 +196,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(19);
     }
 
-    public void setConfirmedTextMessage(final boolean confirmedTextMessage) {
+    public void setConfirmedTextMessage(boolean confirmedTextMessage) {
         getValue()[19] = confirmedTextMessage;
     }
 
@@ -204,7 +204,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(20);
     }
 
-    public void setReinitializeDevice(final boolean reinitializeDevice) {
+    public void setReinitializeDevice(boolean reinitializeDevice) {
         getValue()[20] = reinitializeDevice;
     }
 
@@ -212,7 +212,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(21);
     }
 
-    public void setVtOpen(final boolean vtOpen) {
+    public void setVtOpen(boolean vtOpen) {
         getValue()[21] = vtOpen;
     }
 
@@ -220,7 +220,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(22);
     }
 
-    public void setVtClose(final boolean vtClose) {
+    public void setVtClose(boolean vtClose) {
         getValue()[22] = vtClose;
     }
 
@@ -228,7 +228,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(23);
     }
 
-    public void setVtData(final boolean vtData) {
+    public void setVtData(boolean vtData) {
         getValue()[23] = vtData;
     }
 
@@ -236,7 +236,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(26);
     }
 
-    public void setIAm(final boolean iAm) {
+    public void setIAm(boolean iAm) {
         getValue()[26] = iAm;
     }
 
@@ -244,7 +244,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(27);
     }
 
-    public void setIHave(final boolean iHave) {
+    public void setIHave(boolean iHave) {
         getValue()[27] = iHave;
     }
 
@@ -252,7 +252,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(28);
     }
 
-    public void setUnconfirmedCovNotification(final boolean unconfirmedCovNotification) {
+    public void setUnconfirmedCovNotification(boolean unconfirmedCovNotification) {
         getValue()[28] = unconfirmedCovNotification;
     }
 
@@ -260,7 +260,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(29);
     }
 
-    public void setUnconfirmedEventNotification(final boolean unconfirmedEventNotification) {
+    public void setUnconfirmedEventNotification(boolean unconfirmedEventNotification) {
         getValue()[29] = unconfirmedEventNotification;
     }
 
@@ -268,7 +268,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(30);
     }
 
-    public void setUnconfirmedPrivateTransfer(final boolean unconfirmedPrivateTransfer) {
+    public void setUnconfirmedPrivateTransfer(boolean unconfirmedPrivateTransfer) {
         getValue()[30] = unconfirmedPrivateTransfer;
     }
 
@@ -276,7 +276,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(31);
     }
 
-    public void setUnconfirmedTextMessage(final boolean unconfirmedTextMessage) {
+    public void setUnconfirmedTextMessage(boolean unconfirmedTextMessage) {
         getValue()[31] = unconfirmedTextMessage;
     }
 
@@ -284,7 +284,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(32);
     }
 
-    public void setTimeSynchronization(final boolean timeSynchronization) {
+    public void setTimeSynchronization(boolean timeSynchronization) {
         getValue()[32] = timeSynchronization;
     }
 
@@ -292,7 +292,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(33);
     }
 
-    public void setWhoHas(final boolean whoHas) {
+    public void setWhoHas(boolean whoHas) {
         getValue()[33] = whoHas;
     }
 
@@ -300,7 +300,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(34);
     }
 
-    public void setWhoIs(final boolean whoIs) {
+    public void setWhoIs(boolean whoIs) {
         getValue()[34] = whoIs;
     }
 
@@ -308,7 +308,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(35);
     }
 
-    public void setReadRange(final boolean readRange) {
+    public void setReadRange(boolean readRange) {
         getValue()[35] = readRange;
     }
 
@@ -316,7 +316,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(36);
     }
 
-    public void setUtcTimeSynchronization(final boolean utcTimeSynchronization) {
+    public void setUtcTimeSynchronization(boolean utcTimeSynchronization) {
         getValue()[36] = utcTimeSynchronization;
     }
 
@@ -324,7 +324,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(37);
     }
 
-    public void setLifeSafetyOperation(final boolean lifeSafetyOperation) {
+    public void setLifeSafetyOperation(boolean lifeSafetyOperation) {
         getValue()[37] = lifeSafetyOperation;
     }
 
@@ -332,7 +332,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(38);
     }
 
-    public void setSubscribeCovProperty(final boolean subscribeCovProperty) {
+    public void setSubscribeCovProperty(boolean subscribeCovProperty) {
         getValue()[38] = subscribeCovProperty;
     }
 
@@ -340,7 +340,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(39);
     }
 
-    public void setGetEventInformation(final boolean getEventInformation) {
+    public void setGetEventInformation(boolean getEventInformation) {
         getValue()[39] = getEventInformation;
     }
 
@@ -348,7 +348,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(40);
     }
 
-    public void setWriteGroup(final boolean writeGroup) {
+    public void setWriteGroup(boolean writeGroup) {
         getValue()[40] = writeGroup;
     }
 
@@ -356,7 +356,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(41);
     }
 
-    public void setSubscribeCovPropertyMultiple(final boolean subscribeCovPropertyMultiple) {
+    public void setSubscribeCovPropertyMultiple(boolean subscribeCovPropertyMultiple) {
         getValue()[41] = subscribeCovPropertyMultiple;
     }
 
@@ -364,7 +364,7 @@ public class ServicesSupported extends BitString {
         return getArrayValue(42);
     }
 
-    public void setConfirmedCovNotificationMultiple(final boolean confirmedCovNotificationMultiple) {
+    public void setConfirmedCovNotificationMultiple(boolean confirmedCovNotificationMultiple) {
         getValue()[42] = confirmedCovNotificationMultiple;
     }
 
@@ -372,8 +372,56 @@ public class ServicesSupported extends BitString {
         return getArrayValue(43);
     }
 
-    public void setUnconfirmedCovNotificationMultiple(final boolean confirmedCovNotificationMultiple) {
-        getValue()[43] = confirmedCovNotificationMultiple;
+    public void setUnconfirmedCovNotificationMultiple(boolean unconfirmedCovNotificationMultiple) {
+        getValue()[43] = unconfirmedCovNotificationMultiple;
+    }
+
+    public boolean isConfirmedAuditNotification() {
+        return getArrayValue(44);
+    }
+
+    public void setConfirmedAuditNotification(boolean confirmedAuditNotification) {
+        getValue()[44] = confirmedAuditNotification;
+    }
+
+    public boolean isAuditLogQuery() {
+        return getArrayValue(45);
+    }
+
+    public void setAuditLogQuery(boolean auditLogQuery) {
+        getValue()[45] = auditLogQuery;
+    }
+
+    public boolean isUnconfirmedAuditNotification() {
+        return getArrayValue(46);
+    }
+
+    public void setUnconfirmedAuditNotification(boolean unconfirmedAuditNotification) {
+        getValue()[46] = unconfirmedAuditNotification;
+    }
+
+    public boolean isWhoAmI() {
+        return getArrayValue(47);
+    }
+
+    public void setWhoAmI(boolean whoAmI) {
+        getValue()[47] = whoAmI;
+    }
+
+    public boolean isYouAre() {
+        return getArrayValue(48);
+    }
+
+    public void setYouAre(boolean youAre) {
+        getValue()[48] = youAre;
+    }
+
+    public boolean isAuthRequest() {
+        return getArrayValue(49);
+    }
+
+    public void setAuthRequest(boolean authRequest) {
+        getValue()[49] = authRequest;
     }
 
     @FunctionalInterface

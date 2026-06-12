@@ -58,7 +58,11 @@ import com.serotonin.bacnet4j.npdu.Network;
 import com.serotonin.bacnet4j.npdu.NetworkIdentifier;
 import com.serotonin.bacnet4j.transport.Transport;
 import com.serotonin.bacnet4j.type.constructed.Address;
+import com.serotonin.bacnet4j.type.constructed.HostAddress;
+import com.serotonin.bacnet4j.type.constructed.HostNPort;
+import com.serotonin.bacnet4j.type.enumerated.IPMode;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.util.BACnetUtils;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.IpAddressUtils;
@@ -95,6 +99,8 @@ public class IpNetwork extends Network {
     private int foreignTTL;
     private int bbmdResponse;
     private ScheduledFuture<?> foreignRegistrationMaintenance;
+    private ForeignDeviceRegistrant fDRegistrant;
+    private boolean fdRegistered = false;
 
     // Runtime
     private DatagramSocket unicastSocket;
@@ -140,14 +146,6 @@ public class IpNetwork extends Network {
         return broadcastAddressStr;
     }
 
-    /**
-     * @deprecated Incorrectly spelled method. Use getBroadcastAddress() instead.
-     */
-    @Deprecated(since = "6.1.0")
-    public String getBroadcastAddresss() {
-        return getBroadcastAddress();
-    }
-
     @Override
     public long getBytesOut() {
         return bytesOut;
@@ -163,6 +161,67 @@ public class IpNetwork extends Network {
      */
     public DatagramSocket getSocket() {
         return unicastSocket;
+    }
+
+    public IPMode getIpMode() {
+        if (bbmdEnabled.get()) {
+            return IPMode.bbmd;
+        } else if (fDRegistrant != null) {
+            return IPMode.foreign;
+        }
+        return IPMode.normal;
+    }
+
+    public boolean isInitialized() {
+        return localAddress != null;
+    }
+
+    public List<com.serotonin.bacnet4j.type.constructed.BDTEntry> getBroadcastDistributionTable() {
+        return broadcastDistributionTable.stream().map(e ->
+                new com.serotonin.bacnet4j.type.constructed.BDTEntry(
+                        new HostNPort(new HostAddress(new OctetString(e.address)), new Unsigned16(e.port)),
+                        new OctetString(e.distributionMask))
+        ).toList();
+    }
+
+    public List<com.serotonin.bacnet4j.type.constructed.FDTEntry> getForeignDeviceTable() {
+        return foreignDeviceTable.stream().map(e ->
+                new com.serotonin.bacnet4j.type.constructed.FDTEntry(
+                        IpNetworkUtils.toOctetString(e.address),
+                        new Unsigned16(e.timeToLive),
+                        new Unsigned16(e.getRemainingTimeToLive()))
+        ).toList();
+    }
+
+    public HostNPort getForeignBBMDAddress() {
+        if (fDRegistrant != null) {
+            return new HostNPort(
+                    new HostAddress(new OctetString(IpAddressUtils.toIpAddress(foreignBBMD.getHostString()))),
+                    new Unsigned16(foreignBBMD.getPort()));
+        }
+        return null;
+    }
+
+    public Unsigned16 getForeignTTL() {
+        if (fDRegistrant != null) {
+            return new Unsigned16(foreignTTL);
+        }
+        return null;
+    }
+
+    public OctetString getSubnetMask() {
+        return new OctetString(subnetMask);
+    }
+
+    public boolean isFdRegistered() {
+        return fdRegistered;
+    }
+
+    public void tryFdRegister() {
+        var localRegistrant = fDRegistrant;
+        if (localRegistrant != null) {
+            localRegistrant.run();
+        }
     }
 
     @Override
@@ -242,69 +301,6 @@ public class IpNetwork extends Network {
     }
 
     /**
-     * Attempts an initial registration of this device as a foreign device in a BBMD. This method blocks until the
-     * response (ACK or NAK) is received, or a timeout occurs (no response).
-     * <p>
-     * If the device is successfully registered (ACK), regular re-registration requests will be sent to maintain the
-     * registration. If any of these requests fail, the local device's exception dispatcher will be notified.
-     * <p>
-     * If the device is to be un-registered, the {@link #unregisterAsForeignDevice} method should be called. This will
-     * be done automatically if the local device is terminated.
-     *
-     * @param addr       The address of the BBMD where our device wants to be registered
-     * @param timeToLive The time until we are automatically removed out of the FDT
-     * @throws BACnetException if a timeout occurs, a NAK is received, the device is already registered as a foreign
-     *                         device, or the request could not be sent.
-     * @deprecated This method has two different mechanisms for handling registration failures: one when first called,
-     * and a second for re-registrations. Plus, the handling for the second case is . The new method below that
-     * consolidates error handling should be used instead.
-     */
-    @Deprecated(since = "6.1.0")
-    public void registerAsForeignDevice(final InetSocketAddress addr, final int timeToLive) throws BACnetException {
-        if (timeToLive < 1)
-            throw new IllegalArgumentException("timeToLive cannot be less than 1");
-        if (getTransport() == null || getTransport().getLocalDevice() == null)
-            throw new IllegalArgumentException(
-                    "Network must be used within a local device before foreign device registration can be performed.");
-
-        synchronized (foreignBBMDLock) {
-            if (foreignBBMD != null)
-                throw new BACnetException("Already registered as a foreign device");
-
-            foreignBBMD = addr;
-            foreignTTL = timeToLive;
-
-            try {
-                sendForeignDeviceRegistration();
-            } catch (final BACnetException e) {
-                foreignBBMD = null;
-                throw e;
-            }
-
-            // No exception occurred, so create a task that will re-register this device at appropriate intervals.
-            // Including the grace period, this should result in rereg 1 minute before expiration.
-            int interval = timeToLive - 30;
-            // ... but since the ttl can be less than 30, we need to correct.
-            if (interval < 15)
-                // Minimum of 15s.
-                interval = 15;
-            foreignRegistrationMaintenance = getTransport().getLocalDevice().scheduleAtFixedRate(() -> {
-                synchronized (foreignBBMDLock) {
-                    // Check just in case...
-                    if (foreignBBMD == null)
-                        return;
-
-                    try {
-                        sendForeignDeviceRegistration();
-                    } catch (final BACnetException e) {
-                        getTransport().getLocalDevice().getExceptionDispatcher().fireReceivedException(e);
-                    }
-                }
-            }, interval, interval, TimeUnit.SECONDS);
-        }
-    }
-
-    /**
      * The policy that tells the foreign device registration process how long to wait before a retry is attempted
      * after a registration failure. It also allows the specification of the renewal margin, or the amount of time
      * before a lease ends to attempt a re-registration.
@@ -365,17 +361,17 @@ public class IpNetwork extends Network {
                     "Network must be used within a local device before foreign device registration can be performed.");
 
         synchronized (foreignBBMDLock) {
-            if (foreignBBMD != null)
+            if (fDRegistrant != null)
                 throw new IllegalStateException("Already registered as a foreign device");
 
             foreignBBMD = addr;
             foreignTTL = ttlSeconds;
 
-            ForeignDeviceRegistrant registrant = new ForeignDeviceRegistrant(retryDelayPolicy);
+            fDRegistrant = new ForeignDeviceRegistrant(retryDelayPolicy);
 
             // Initially schedule to run immediately.
             foreignRegistrationMaintenance =
-                    getTransport().getLocalDevice().schedule(registrant, 0, TimeUnit.SECONDS);
+                    getTransport().getLocalDevice().schedule(fDRegistrant, 0, TimeUnit.SECONDS);
         }
     }
 
@@ -398,6 +394,7 @@ public class IpNetwork extends Network {
                 try {
                     sendForeignDeviceRegistration();
                     LOG.info("Successfully registered as foreign device");
+                    fdRegistered = true;
                     retryDelayPolicy.registrationSucceeded();
 
                     // Successful registration. Schedule the next re-registration.
@@ -410,6 +407,7 @@ public class IpNetwork extends Network {
                     delay = interval;
                 } catch (final BACnetException e) {
                     LOG.warn("Failed to register foreign device", e);
+                    fdRegistered = false;
                     // Failure. Ask the retry provider what to do.
                     delay = (int) retryDelayPolicy.registrationFailed(e).toSeconds();
                     if (delay < 0) {
@@ -429,7 +427,7 @@ public class IpNetwork extends Network {
      */
     public void unregisterAsForeignDevice() {
         synchronized (foreignBBMDLock) {
-            if (foreignBBMD != null) {
+            if (fDRegistrant != null) {
                 try {
                     deleteForeignDeviceTableEntry(foreignBBMD, localAddress);
                 } catch (final BACnetException e) {
@@ -440,6 +438,8 @@ public class IpNetwork extends Network {
                 foreignRegistrationMaintenance.cancel(false);
             foreignBBMD = null;
             foreignRegistrationMaintenance = null;
+            fDRegistrant = null;
+            fdRegistered = false;
         }
     }
 
@@ -663,7 +663,7 @@ public class IpNetwork extends Network {
         }
     }
 
-    protected InetSocketAddress getLocalAddress() {
+    public InetSocketAddress getLocalAddress() {
         var wildcard = IpAddressUtils.toIpAddress(DEFAULT_BIND_IP);
         // If the local bind address is not the wildcard address, use it.
         if (!Arrays.equals(localBindAddress.getAddress().getAddress(), wildcard)) {
@@ -781,6 +781,10 @@ public class IpNetwork extends Network {
             this.timeToLive = timeToLive;
             // Adds a 30-second grace period, as per J.5.2.3
             endTime = getTransport().getLocalDevice().getClock().millis() + (timeToLive + 30) * 1000L;
+        }
+
+        int getRemainingTimeToLive() {
+            return (int) ((endTime - getTransport().getLocalDevice().getClock().millis()) / 1000);
         }
     }
 

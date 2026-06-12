@@ -36,6 +36,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -208,9 +209,11 @@ public class BBMDTest {
 
         // PART 1
         // Write FD registrations
-        fd151.network.registerAsForeignDevice(target, 3);
-        fd152.network.registerAsForeignDevice(target, 30);
-        fd153.network.registerAsForeignDevice(target, 300);
+        var policy = new IpNetwork.ForeignDeviceRegistrationRetryDelayPolicy() {
+        };
+        fd151.network.registerAsForeignDevice(target, Duration.ofSeconds(3), policy);
+        fd152.network.registerAsForeignDevice(target, Duration.ofSeconds(30), policy);
+        fd153.network.registerAsForeignDevice(target, Duration.ofSeconds(300), policy);
 
         // Advance the clock one second.
         clock.plusSeconds(1);
@@ -301,9 +304,11 @@ public class BBMDTest {
         assertPacketEquals("810000060000", response);
 
         // ***** Foreign device registrations *****
-        fd151.network.registerAsForeignDevice(ld11.network.getLocalBindAddress(), 5000);
-        fd152.network.registerAsForeignDevice(ld11.network.getLocalBindAddress(), 5000);
-        fd153.network.registerAsForeignDevice(ld22.network.getLocalBindAddress(), 5000);
+        var policy = new IpNetwork.ForeignDeviceRegistrationRetryDelayPolicy() {
+        };
+        fd151.network.registerAsForeignDevice(ld11.network.getLocalBindAddress(), Duration.ofSeconds(5000), policy);
+        fd152.network.registerAsForeignDevice(ld11.network.getLocalBindAddress(), Duration.ofSeconds(5000), policy);
+        fd153.network.registerAsForeignDevice(ld22.network.getLocalBindAddress(), Duration.ofSeconds(5000), policy);
         clock.plusMillis(100);
         quiesce();
 

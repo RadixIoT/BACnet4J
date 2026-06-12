@@ -40,11 +40,14 @@ public class NetworkPortCommand extends Enumerated {
     public static final NetworkPortCommand idle = new NetworkPortCommand(0);
     public static final NetworkPortCommand discardChanges = new NetworkPortCommand(1);
     public static final NetworkPortCommand renewFdRegistration = new NetworkPortCommand(2);
-    public static final NetworkPortCommand restartSlaveDiscovery = new NetworkPortCommand(3);
+    public static final NetworkPortCommand restartSubordinateDiscovery = new NetworkPortCommand(3);
     public static final NetworkPortCommand renewDhcp = new NetworkPortCommand(4);
-    public static final NetworkPortCommand restartAutorenegotiation = new NetworkPortCommand(5);
+    public static final NetworkPortCommand restartAutonegotiation = new NetworkPortCommand(5);
     public static final NetworkPortCommand disconnect = new NetworkPortCommand(6);
     public static final NetworkPortCommand restartPort = new NetworkPortCommand(7);
+    public static final NetworkPortCommand restartDeviceDiscovery = new NetworkPortCommand(8);
+    public static final NetworkPortCommand generateCsrFile = new NetworkPortCommand(9);
+    public static final NetworkPortCommand validateChanges = new NetworkPortCommand(10);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();
