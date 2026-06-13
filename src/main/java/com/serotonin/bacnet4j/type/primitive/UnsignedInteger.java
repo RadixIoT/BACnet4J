@@ -148,7 +148,7 @@ public class UnsignedInteger extends Primitive {
             return length;
         }
 
-        if (bigValue.intValue() == 0)
+        if (bigValue.compareTo(BigInteger.ZERO) == 0)
             return 1;
         return (bigValue.bitLength() + 7) / 8;
     }
