@@ -22,7 +22,7 @@ A public Maven Repository is now available with the latest builds add this to yo
             <enabled>true</enabled>
         </snapshots>
         <id>ias-snapshots</id>
-        <name>Infinite Automation Snapshot Repository</name>
+        <name>RadixIoT Snapshot Repository</name>
         <url>https://maven.mangoautomation.net/repository/ias-snapshot/</url>
     </repository>
     <repository>
@@ -33,7 +33,7 @@ A public Maven Repository is now available with the latest builds add this to yo
             <enabled>false</enabled>
         </snapshots>
         <id>ias-releases</id>
-        <name>Infinite Automation Release Repository</name>
+        <name>RadixIoT Release Repository</name>
         <url>https://maven.mangoautomation.net/repository/ias-release/</url>
     </repository>
 </repositories>
@@ -75,6 +75,10 @@ var av = new AnalogValueObject(localDevice, ...);
 // New code
 var av = localDevice.addObject(new AnalogValueObject(localDevice, ...));
 ```
+
+- Introduction of NetworkPortObject and subclasses.
+- Serialization bug fixes
+- Removal of deprecated code
 
 *Version 6.2.0*
 

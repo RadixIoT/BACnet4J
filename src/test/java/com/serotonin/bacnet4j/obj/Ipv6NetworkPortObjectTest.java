@@ -50,7 +50,6 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.type.primitive.Unsigned16;
-import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class Ipv6NetworkPortObjectTest {
     private static final String MULTICAST_ADDRESS = "FF05::BAC0";
@@ -83,7 +82,7 @@ public class Ipv6NetworkPortObjectTest {
             assertEquals(new ObjectIdentifier(ObjectType.networkPort, 12),
                     npo.readProperty(PropertyIdentifier.objectIdentifier));
             assertEquals(new CharacterString("Ipv6Network"), npo.readProperty(PropertyIdentifier.objectName));
-            assertEquals(new UnsignedInteger(123), npo.readProperty(PropertyIdentifier.networkNumber));
+            assertEquals(new Unsigned16(123), npo.readProperty(PropertyIdentifier.networkNumber));
             assertEquals(NetworkNumberQuality.unknown, npo.readProperty(PropertyIdentifier.networkNumberQuality));
             assertEquals(MaxApduLength.UP_TO_1476.getMaxLength(), npo.readProperty(PropertyIdentifier.apduLength));
             assertEquals(new OctetString(new byte[] {0, 0, 1}), npo.readProperty(PropertyIdentifier.macAddress));

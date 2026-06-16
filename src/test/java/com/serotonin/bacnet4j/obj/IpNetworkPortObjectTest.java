@@ -45,7 +45,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.SystemUtils;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -72,7 +71,6 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.type.primitive.Unsigned16;
-import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 import lohbihler.warp.WarpClock;
 
@@ -97,7 +95,7 @@ public class IpNetworkPortObjectTest {
                 canRun = false;
             }
         }
-        Assume.assumeTrue(canRun);
+        //        Assume.assumeTrue(canRun);
     }
 
     @Test
@@ -116,7 +114,7 @@ public class IpNetworkPortObjectTest {
             assertEquals(new ObjectIdentifier(ObjectType.networkPort, 12),
                     npo.readProperty(PropertyIdentifier.objectIdentifier));
             assertEquals(new CharacterString("IpNetwork"), npo.readProperty(PropertyIdentifier.objectName));
-            assertEquals(new UnsignedInteger(123), npo.readProperty(PropertyIdentifier.networkNumber));
+            assertEquals(new Unsigned16(123), npo.readProperty(PropertyIdentifier.networkNumber));
             assertEquals(NetworkNumberQuality.unknown, npo.readProperty(PropertyIdentifier.networkNumberQuality));
             assertEquals(MaxApduLength.UP_TO_1476.getMaxLength(), npo.readProperty(PropertyIdentifier.apduLength));
             assertEquals(IpNetworkUtils.toOctetString("127.0.0.10", 12345),
