@@ -49,6 +49,16 @@ public class SCHubFunctionConnection extends BaseType {
     public SCHubFunctionConnection(SCConnectionState connectionState, DateTime connectTimestamp,
             DateTime disconnectTimestamp, HostNPort peerAddress, OctetString peerVmac, OctetString peerUuid,
             ErrorClassAndCode error, CharacterString errorDetails) {
+        // Per spec, peer-vmac is OctetString(SIZE(6)) and peer-uuid is OctetString(SIZE(16)). Both are required
+        // in this structure, so they may be null only if the surrounding code is constructing an incomplete value;
+        // null-tolerant for that case.
+        if (peerVmac != null && peerVmac.getLength() != 6L) {
+            throw new IllegalArgumentException("invalid peerVmac length");
+        }
+        if (peerUuid != null && peerUuid.getLength() != 16L) {
+            throw new IllegalArgumentException("invalid peerUuid length");
+        }
+
         this.connectionState = connectionState;
         this.connectTimestamp = connectTimestamp;
         this.disconnectTimestamp = disconnectTimestamp;

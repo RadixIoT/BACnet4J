@@ -38,6 +38,11 @@ public class XyColor extends BaseType {
     private final Real yCoordinate;
 
     public XyColor(Real xCoordinate, Real yCoordinate) {
+        // BACnetxyColor production: x-coordinate and y-coordinate are Real values constrained to the range 0.0..1.0
+        // (CIE xy chromaticity).
+        if (outOfRange(xCoordinate) || outOfRange(yCoordinate)) {
+            throw new IllegalArgumentException("invalid coordinate value");
+        }
         this.xCoordinate = xCoordinate;
         this.yCoordinate = yCoordinate;
     }
@@ -46,6 +51,11 @@ public class XyColor extends BaseType {
     public void write(final ByteQueue queue) {
         write(queue, xCoordinate);
         write(queue, yCoordinate);
+    }
+
+    private static boolean outOfRange(Real r) {
+        float v = r.floatValue();
+        return Float.isNaN(v) || v < 0.0f || v > 1.0f;
     }
 
     @Override

@@ -77,6 +77,14 @@ public class AuditNotification extends BaseType {
             Encodable targetValue,
             Encodable currentValue,
             ErrorClassAndCode result) {
+        // target-priority [13] is constrained to 1..16 per the BACnetAuditNotification production.
+        if (targetPriority != null) {
+            long v = targetPriority.longValue();
+            if (v < 1L || v > 16L) {
+                throw new IllegalArgumentException("invalid target priority");
+            }
+        }
+
         this.sourceTimestamp = sourceTimestamp;
         this.targetTimestamp = targetTimestamp;
         this.sourceDevice = sourceDevice;

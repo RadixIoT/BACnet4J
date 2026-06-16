@@ -45,6 +45,14 @@ public class SCFailedConnectionRequest extends BaseType {
 
     public SCFailedConnectionRequest(DateTime timestamp, HostNPort peerAddress, OctetString peerVmac,
             OctetString peerUuid, ErrorClassAndCode error, CharacterString errorDetails) {
+        // Per spec, peer-vmac is OctetString(SIZE(6)) and peer-uuid is OctetString(SIZE(16)).
+        if (peerVmac != null && peerVmac.getLength() != 6L) {
+            throw new IllegalArgumentException("invalid peerVmac length");
+        }
+        if (peerUuid != null && peerUuid.getLength() != 16L) {
+            throw new IllegalArgumentException("invalid peerUuid length");
+        }
+
         this.timestamp = timestamp;
         this.peerAddress = peerAddress;
         this.peerVmac = peerVmac;

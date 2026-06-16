@@ -50,6 +50,14 @@ public class SCDirectConnection extends BaseType {
     public SCDirectConnection(CharacterString uri, SCConnectionState connectionState, DateTime connectTimestamp,
             DateTime disconnectTimestamp, HostNPort peerAddress, OctetString peerVmac, OctetString peerUuid,
             ErrorClassAndCode error, CharacterString errorDetails) {
+        // Per spec, peer-vmac is OctetString(SIZE(6)) and peer-uuid is OctetString(SIZE(16)).
+        if (peerVmac != null && peerVmac.getLength() != 6L) {
+            throw new IllegalArgumentException("invalid peerVmac length");
+        }
+        if (peerUuid != null && peerUuid.getLength() != 16L) {
+            throw new IllegalArgumentException("invalid peerUuid length");
+        }
+
         this.uri = uri;
         this.connectionState = connectionState;
         this.connectTimestamp = connectTimestamp;

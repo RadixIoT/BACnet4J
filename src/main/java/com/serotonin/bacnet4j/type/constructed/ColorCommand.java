@@ -49,6 +49,27 @@ public class ColorCommand extends BaseType {
             UnsignedInteger fadeTime,
             UnsignedInteger rampRate,
             UnsignedInteger stepIncrement) {
+        // Spec ranges from BACnetColorCommand production: fade-time (100..86400000), ramp-rate (1..30000),
+        // step-increment (1..30000).
+        if (fadeTime != null) {
+            long v = fadeTime.longValue();
+            if (v < 100L || v > 86400000L) {
+                throw new IllegalArgumentException("invalid fade time");
+            }
+        }
+        if (rampRate != null) {
+            long v = rampRate.longValue();
+            if (v < 1L || v > 30000L) {
+                throw new IllegalArgumentException("invalid ramp rate");
+            }
+        }
+        if (stepIncrement != null) {
+            long v = stepIncrement.longValue();
+            if (v < 1L || v > 30000L) {
+                throw new IllegalArgumentException("invalid step increment");
+            }
+        }
+
         this.operation = operation;
         this.targetColor = targetColor;
         this.targetColorTemperature = targetColorTemperature;
