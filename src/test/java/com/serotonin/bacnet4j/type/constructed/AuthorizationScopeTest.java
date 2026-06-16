@@ -44,7 +44,8 @@ public class AuthorizationScopeTest {
                         true, true, true, false, true, false, true, false, false,
                         false, false, false, false, false, false, false,
                         false, false, false, false, false, false, false, false),
-                new SequenceOf<>(new CharacterString("vendor:42-customScopeA"), new CharacterString("vendor:42-customScopeB")));
+                new SequenceOf<>(new CharacterString("vendor:42-customScopeA"),
+                        new CharacterString("vendor:42-customScopeB")));
 
         final ByteQueue queue = new ByteQueue();
         scope.write(queue);
