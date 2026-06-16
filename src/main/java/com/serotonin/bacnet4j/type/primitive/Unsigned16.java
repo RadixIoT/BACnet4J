@@ -36,6 +36,8 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class Unsigned16 extends UnsignedInteger {
+    public static final Unsigned16 ZERO = new Unsigned16(0);
+
     private static final int MAX = 0xffff;
     private static final BigInteger BIGMAX = BigInteger.valueOf(MAX);
 

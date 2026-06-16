@@ -240,9 +240,9 @@ public class DeviceObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.configurationFiles, new BACnetArray<>(0, null));
         writePropertyInternal(PropertyIdentifier.lastRestoreTime, new TimeStamp(DateTime.UNSPECIFIED));
         writePropertyInternal(PropertyIdentifier.backupFailureTimeout, new Unsigned16(60));
-        writePropertyInternal(PropertyIdentifier.backupPreparationTime, new Unsigned16(0));
-        writePropertyInternal(PropertyIdentifier.restorePreparationTime, new Unsigned16(0));
-        writePropertyInternal(PropertyIdentifier.restoreCompletionTime, new Unsigned16(0));
+        writePropertyInternal(PropertyIdentifier.backupPreparationTime, Unsigned16.ZERO);
+        writePropertyInternal(PropertyIdentifier.restorePreparationTime, Unsigned16.ZERO);
+        writePropertyInternal(PropertyIdentifier.restoreCompletionTime, Unsigned16.ZERO);
         writePropertyInternal(PropertyIdentifier.backupAndRestoreState, BackupState.idle);
 
         //These properties are automatically overwritten when reading. They are defined here to be present when reading the PropertyList.     

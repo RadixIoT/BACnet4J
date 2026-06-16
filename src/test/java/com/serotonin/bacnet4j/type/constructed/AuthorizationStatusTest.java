@@ -35,6 +35,7 @@ import com.serotonin.bacnet4j.enums.DayOfWeek;
 import com.serotonin.bacnet4j.enums.Month;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.type.enumerated.AuthenticationDecision;
+import com.serotonin.bacnet4j.type.enumerated.AuthorizationDecision;
 import com.serotonin.bacnet4j.type.enumerated.AuthorizationPosture;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
@@ -69,7 +70,7 @@ public class AuthorizationStatusTest {
                 null);
     }
 
-    private static AuthorizationEvent authzEvent(AuthenticationDecision decision) {
+    private static AuthorizationEvent authzEvent(AuthorizationDecision decision) {
         return new AuthorizationEvent(
                 ts(),
                 new Address(123, new OctetString(new byte[] {0, 0, 1})),
@@ -88,8 +89,8 @@ public class AuthorizationStatusTest {
                 new CharacterString("signing key not found"),
                 new SequenceOf<>(authEvent(AuthenticationDecision.allowMatch)),
                 new SequenceOf<>(authEvent(AuthenticationDecision.denyMismatch)),
-                new SequenceOf<>(authzEvent(AuthenticationDecision.allowMatch)),
-                new SequenceOf<>(authzEvent(AuthenticationDecision.denyMismatch)));
+                new SequenceOf<>(authzEvent(AuthorizationDecision.allowByLocalPolicy)),
+                new SequenceOf<>(authzEvent(AuthorizationDecision.denyIssuer)));
 
         final ByteQueue queue = new ByteQueue();
         s.write(queue);

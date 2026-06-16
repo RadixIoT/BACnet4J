@@ -68,8 +68,7 @@ public class SCHubConnectionTest {
         final SCHubConnection c = new SCHubConnection(
                 SCConnectionState.connected,
                 ts(8),
-                ts(10),
-                null, null);
+                ts(10));
 
         final ByteQueue queue = new ByteQueue();
         c.write(queue);

@@ -27,6 +27,7 @@
 
 package com.serotonin.bacnet4j.obj;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -45,6 +46,7 @@ import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.ValueSource;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
+import com.serotonin.bacnet4j.type.enumerated.NetworkNumberQuality;
 import com.serotonin.bacnet4j.type.enumerated.NetworkPortCommand;
 import com.serotonin.bacnet4j.type.enumerated.NetworkType;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
@@ -53,6 +55,7 @@ import com.serotonin.bacnet4j.type.enumerated.ProtocolLevel;
 import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
@@ -72,7 +75,7 @@ public class NetworkPortObject extends BACnetObject {
     private volatile boolean initialized = false;
 
     public NetworkPortObject(LocalDevice localDevice, int instanceNumber, String name, boolean outOfService,
-            NetworkType networkType, ProtocolLevel protocolLevel) {
+            NetworkType networkType, ProtocolLevel protocolLevel, Set<PropertyIdentifier> readOnlyProperties) {
         super(localDevice, ObjectType.networkPort, instanceNumber, name);
 
         writePropertyInternal(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, outOfService));
@@ -88,11 +91,15 @@ public class NetworkPortObject extends BACnetObject {
                 new DateTime(localDevice), new ErrorClassAndCode(ErrorClass.object, ErrorCode.success), null, null));
         writePropertyInternal(PropertyIdentifier.commandValidationResult, new Health(
                 new DateTime(localDevice), new ErrorClassAndCode(ErrorClass.object, ErrorCode.success), null, null));
+        writePropertyInternal(PropertyIdentifier.networkNumber, Unsigned16.ZERO);
+        writePropertyInternal(PropertyIdentifier.networkNumberQuality, NetworkNumberQuality.unknown);
 
         // Mixins
         addMixin(new HasStatusFlagsMixin(this));
         addMixin(new WritablePropertyOutOfServiceMixin(this, PropertyIdentifier.reliability));
-        addMixin(new ReadOnlyPropertyMixin(this,
+
+        var readOnly = new HashSet<>(readOnlyProperties);
+        readOnly.addAll(Set.of(
                 PropertyIdentifier.statusFlags,
                 PropertyIdentifier.networkNumberQuality,
                 PropertyIdentifier.changesPending,
@@ -122,6 +129,7 @@ public class NetworkPortObject extends BACnetObject {
                 PropertyIdentifier.issuerCertificateFiles,
                 PropertyIdentifier.certificateSigningRequestFile
         ));
+        addMixin(new ReadOnlyPropertyMixin(this, readOnly.toArray(new PropertyIdentifier[0])));
     }
 
     @Override
@@ -226,6 +234,7 @@ public class NetworkPortObject extends BACnetObject {
             PropertyIdentifier.referencePort,
             PropertyIdentifier.additionalReferencePorts,
             PropertyIdentifier.networkNumber,
+            PropertyIdentifier.networkNumberQuality, // A readonly property, but the value is controlled by setting the networkNumber (12.56.13).
             PropertyIdentifier.macAddress,
             PropertyIdentifier.linkSpeed,
             PropertyIdentifier.linkSpeedAutonegotiate,
@@ -304,6 +313,21 @@ public class NetworkPortObject extends BACnetObject {
                     writePropertyInternal(PropertyIdentifier.commandValidationResult, health);
                 });
             }
+        } else if (pid.equals(PropertyIdentifier.networkNumber)) {
+            NetworkNumberQuality quality;
+            if (pendingChanges.containsKey(PropertyIdentifier.networkNumber)) {
+                // If there is a networkNumber value in the pending changes, then also set a quality
+                quality = newValue.equals(Unsigned16.ZERO)
+                        ? NetworkNumberQuality.unknown
+                        : NetworkNumberQuality.configured;
+            } else {
+                // Otherwise, unset the pending quality value by setting the current config value if it exists.
+                quality = (NetworkNumberQuality) properties.get(PropertyIdentifier.networkNumberQuality);
+                if (quality == null) {
+                    quality = NetworkNumberQuality.unknown;
+                }
+            }
+            writePropertyInternal(PropertyIdentifier.networkNumberQuality, quality);
         }
     }
 

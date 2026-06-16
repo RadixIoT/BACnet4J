@@ -39,9 +39,12 @@ import com.serotonin.bacnet4j.type.ThreadLocalObjectTypePropertyReferenceStack;
 import com.serotonin.bacnet4j.type.constructed.ChoiceOptions.ContextualType;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
+import com.serotonin.bacnet4j.type.primitive.BitString;
+import com.serotonin.bacnet4j.type.primitive.Enumerated;
 import com.serotonin.bacnet4j.type.primitive.Primitive;
 import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.Unsigned32;
+import com.serotonin.bacnet4j.type.primitive.Unsigned64;
 import com.serotonin.bacnet4j.type.primitive.Unsigned8;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -113,32 +116,60 @@ public class Choice extends BaseType {
             Primitive primitive = read(queue, Primitive.class);
             // Validate that this primitive is allowed.
             if (!choiceOptions.containsPrimitive(primitive.getClass())) {
-                if (primitive.getClass() == UnsignedInteger.class) {
-                    // Since there is only one application tag for all unsigned types, 
-                    // try to convert in the allowed unsigned.  
-                    UnsignedInteger unsigned = (UnsignedInteger) primitive;
-                    try {
-                        if (choiceOptions.containsPrimitive(Unsigned32.class)) {
-                            primitive = new Unsigned32(unsigned.bigIntegerValue());
-                        } else if (choiceOptions.containsPrimitive(Unsigned16.class)) {
-                            primitive = new Unsigned16(unsigned.bigIntegerValue().intValueExact());
-                        } else if (choiceOptions.containsPrimitive(Unsigned8.class)) {
-                            primitive = new Unsigned8(unsigned.bigIntegerValue().intValueExact());
-                        } else {
-                            LOG.warn("Decoded a primitive that is not allowed in this context: {}",
-                                    primitive.getClass());
-                            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType);
-                        }
-                    } catch (IllegalArgumentException | ArithmeticException ex) {
-                        LOG.warn("Decoded a unsigned that is not allowed in this context: {}", ex.getMessage());
-                        throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType);
-                    }
+                if (primitive instanceof UnsignedInteger ui) {
+                    primitive = convertUnsignedInteger(ui);
+                } else if (primitive instanceof Enumerated en) {
+                    primitive = convertEnumerated(en);
+                } else if (primitive instanceof BitString bs) {
+                    primitive = convertBitString(bs);
                 } else {
                     LOG.warn("Decoded a primitive that is not allowed in this context: {}", primitive.getClass());
                     throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType);
                 }
             }
             datum = primitive;
+        }
+    }
+
+    private UnsignedInteger convertUnsignedInteger(final UnsignedInteger base) throws BACnetException {
+        // Since there is only one application tag for all unsigned types,
+        // try to convert in the allowed unsigned.
+        try {
+            if (choiceOptions.containsPrimitive(Unsigned32.class)) {
+                return new Unsigned32(base.bigIntegerValue());
+            } else if (choiceOptions.containsPrimitive(Unsigned16.class)) {
+                return new Unsigned16(base.bigIntegerValue().intValueExact());
+            } else if (choiceOptions.containsPrimitive(Unsigned8.class)) {
+                return new Unsigned8(base.bigIntegerValue().intValueExact());
+            } else if (choiceOptions.containsPrimitive(Unsigned64.class)) {
+                return new Unsigned64(base.bigIntegerValue());
+            } else {
+                LOG.warn("Decoded a primitive that is not allowed in this context: {}", base.getClass());
+                throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType);
+            }
+        } catch (IllegalArgumentException | ArithmeticException ex) {
+            LOG.warn("Decoded a unsigned that is not allowed in this context: {}", ex.getMessage());
+            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType);
+        }
+    }
+
+    private Enumerated convertEnumerated(final Enumerated base) throws BACnetException {
+        Class<? extends Enumerated> subclass = choiceOptions.findAssignableFromPrimitive(Enumerated.class);
+        try {
+            return (Enumerated) subclass.getMethod("forId", Integer.TYPE).invoke(null, base.intValue());
+        } catch (ReflectiveOperationException e) {
+            LOG.warn("Unable to create enumeration type {} with value {}", subclass, base.intValue());
+            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType);
+        }
+    }
+
+    private BitString convertBitString(final BitString base) throws BACnetException {
+        Class<? extends BitString> subclass = choiceOptions.findAssignableFromPrimitive(BitString.class);
+        try {
+            return subclass.getDeclaredConstructor(boolean[].class).newInstance((Object) base.getValue());
+        } catch (ReflectiveOperationException e) {
+            LOG.warn("Unable to create bitstring type {}", subclass);
+            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType);
         }
     }
 

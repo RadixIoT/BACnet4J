@@ -96,9 +96,9 @@ public class AuthenticationEvent extends BaseType {
 
     public AuthenticationEvent(final ByteQueue queue) throws BACnetException {
         timestamp = read(queue, DateTime.class, 0);
-        peer = readOptional(queue, AuthenticationPeer.class, 1);
-        client = readOptional(queue, AuthenticationClient.class, 2);
-        decision = readOptional(queue, AuthenticationDecision.class, 3);
+        peer = read(queue, AuthenticationPeer.class, 1);
+        client = read(queue, AuthenticationClient.class, 2);
+        decision = read(queue, AuthenticationDecision.class, 3);
         decisionDetails = readOptional(queue, CharacterString.class, 4);
     }
 

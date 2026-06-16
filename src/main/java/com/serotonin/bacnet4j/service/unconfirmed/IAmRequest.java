@@ -120,7 +120,7 @@ public class IAmRequest extends UnconfirmedRequestService {
         write(queue, vendorId);
     }
 
-    IAmRequest(final ByteQueue queue) throws BACnetException {
+    public IAmRequest(final ByteQueue queue) throws BACnetException {
         iAmDeviceIdentifier = read(queue, ObjectIdentifier.class);
         maxAPDULengthAccepted = read(queue, UnsignedInteger.class);
         segmentationSupported = read(queue, Segmentation.class);

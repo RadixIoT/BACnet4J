@@ -27,6 +27,8 @@
 
 package com.serotonin.bacnet4j.obj;
 
+import java.util.Set;
+
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.npdu.ip.IpNetwork;
@@ -50,7 +52,7 @@ public class IpNetworkPortObject extends NetworkPortObject {
 
     public IpNetworkPortObject(IpNetwork network, int instanceNumber, String name, boolean outOfService) {
         super(network.getTransport().getLocalDevice(), instanceNumber, name, outOfService, NetworkType.ipv4,
-                ProtocolLevel.bacnetApplication);
+                ProtocolLevel.bacnetApplication, Set.of());
 
         if (!network.isInitialized()) {
             throw new IllegalStateException("Network is not initialized");
@@ -62,6 +64,8 @@ public class IpNetworkPortObject extends NetworkPortObject {
         writePropertyInternal(PropertyIdentifier.networkNumber, new UnsignedInteger(network.getLocalNetworkNumber()));
         writePropertyInternal(PropertyIdentifier.networkNumberQuality, NetworkNumberQuality.unknown);
         writePropertyInternal(PropertyIdentifier.apduLength, MaxApduLength.UP_TO_1476.getMaxLength());
+        writePropertyInternal(PropertyIdentifier.maxBvlcLengthAccepted, new UnsignedInteger(1497));
+        writePropertyInternal(PropertyIdentifier.maxNpduLengthAccepted, new UnsignedInteger(1497));
         writePropertyInternal(PropertyIdentifier.macAddress, IpNetworkUtils.toOctetString(network.getLocalAddress()));
         writePropertyInternal(PropertyIdentifier.bacnetIpMode, mode);
         writePropertyInternal(PropertyIdentifier.bacnetIpUdpPort, new Unsigned16(network.getPort()));

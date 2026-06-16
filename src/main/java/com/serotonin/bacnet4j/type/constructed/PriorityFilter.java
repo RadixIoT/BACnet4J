@@ -33,7 +33,15 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class PriorityFilter extends BitString {
     public PriorityFilter() {
-        super(new boolean[16]);
+        this(new boolean[16]);
+    }
+
+    // For creation from a choice
+    PriorityFilter(final boolean[] value) {
+        super(value);
+        if (value.length != 16) {
+            throw new IllegalArgumentException();
+        }
     }
 
     public PriorityFilter(
@@ -54,7 +62,7 @@ public class PriorityFilter extends BitString {
             boolean priority15,
             boolean priority16
     ) {
-        super(new boolean[] {
+        this(new boolean[] {
                 manualLifeSafety,
                 automaticLifeSafety,
                 priority3,
@@ -73,8 +81,6 @@ public class PriorityFilter extends BitString {
                 priority16,
         });
     }
-
-
 
     public PriorityFilter(final ByteQueue queue) throws BACnetErrorException {
         super(queue);

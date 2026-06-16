@@ -102,9 +102,9 @@ public class SCFailedConnectionRequest extends BaseType {
     public SCFailedConnectionRequest(final ByteQueue queue) throws BACnetException {
         timestamp = read(queue, DateTime.class, 0);
         peerAddress = read(queue, HostNPort.class, 1);
-        peerVmac = read(queue, OctetString.class, 2);
-        peerUuid = read(queue, OctetString.class, 3);
-        error = readOptional(queue, ErrorClassAndCode.class, 4);
+        peerVmac = readOptional(queue, OctetString.class, 2);
+        peerUuid = readOptional(queue, OctetString.class, 3);
+        error = read(queue, ErrorClassAndCode.class, 4);
         errorDetails = readOptional(queue, CharacterString.class, 5);
     }
 

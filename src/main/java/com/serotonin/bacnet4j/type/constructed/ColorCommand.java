@@ -39,21 +39,21 @@ public class ColorCommand extends BaseType {
     private final XyColor targetColor;
     private final UnsignedInteger targetColorTemperature;
     private final UnsignedInteger fadeTime;
-    private final UnsignedInteger rampTime;
+    private final UnsignedInteger rampRate;
     private final UnsignedInteger stepIncrement;
 
     public ColorCommand(
             ColorOperation operation,
             XyColor targetColor,
             UnsignedInteger targetColorTemperature,
-            UnsignedInteger fadeTim,
-            UnsignedInteger rampTim,
+            UnsignedInteger fadeTime,
+            UnsignedInteger rampRate,
             UnsignedInteger stepIncrement) {
         this.operation = operation;
         this.targetColor = targetColor;
         this.targetColorTemperature = targetColorTemperature;
-        this.fadeTime = fadeTim;
-        this.rampTime = rampTim;
+        this.fadeTime = fadeTime;
+        this.rampRate = rampRate;
         this.stepIncrement = stepIncrement;
     }
 
@@ -63,7 +63,7 @@ public class ColorCommand extends BaseType {
         writeOptional(queue, targetColor, 1);
         writeOptional(queue, targetColorTemperature, 2);
         writeOptional(queue, fadeTime, 3);
-        writeOptional(queue, rampTime, 4);
+        writeOptional(queue, rampRate, 4);
         writeOptional(queue, stepIncrement, 5);
     }
 
@@ -74,7 +74,7 @@ public class ColorCommand extends BaseType {
                 ", targetColor=" + targetColor +
                 ", targetColorTemperature=" + targetColorTemperature +
                 ", fadeTime=" + fadeTime +
-                ", rampTime=" + rampTime +
+                ", rampRate=" + rampRate +
                 ", stepIncrement=" + stepIncrement +
                 ']';
     }
@@ -95,8 +95,8 @@ public class ColorCommand extends BaseType {
         return fadeTime;
     }
 
-    public UnsignedInteger getRampTime() {
-        return rampTime;
+    public UnsignedInteger getRampRate() {
+        return rampRate;
     }
 
     public UnsignedInteger getStepIncrement() {
@@ -108,7 +108,7 @@ public class ColorCommand extends BaseType {
         targetColor = readOptional(queue, XyColor.class, 1);
         targetColorTemperature = readOptional(queue, UnsignedInteger.class, 2);
         fadeTime = readOptional(queue, UnsignedInteger.class, 3);
-        rampTime = readOptional(queue, UnsignedInteger.class, 4);
+        rampRate = readOptional(queue, UnsignedInteger.class, 4);
         stepIncrement = readOptional(queue, UnsignedInteger.class, 5);
     }
 
@@ -120,12 +120,12 @@ public class ColorCommand extends BaseType {
         return Objects.equals(operation, that.operation) && Objects.equals(targetColor,
                 that.targetColor) && Objects.equals(targetColorTemperature,
                 that.targetColorTemperature) && Objects.equals(fadeTime,
-                that.fadeTime) && Objects.equals(rampTime, that.rampTime) && Objects.equals(
+                that.fadeTime) && Objects.equals(rampRate, that.rampRate) && Objects.equals(
                 stepIncrement, that.stepIncrement);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(operation, targetColor, targetColorTemperature, fadeTime, rampTime, stepIncrement);
+        return Objects.hash(operation, targetColor, targetColorTemperature, fadeTime, rampRate, stepIncrement);
     }
 }

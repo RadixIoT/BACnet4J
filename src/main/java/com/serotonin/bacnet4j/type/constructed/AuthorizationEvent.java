@@ -30,7 +30,7 @@ package com.serotonin.bacnet4j.type.constructed;
 import java.util.Objects;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
-import com.serotonin.bacnet4j.type.enumerated.AuthenticationDecision;
+import com.serotonin.bacnet4j.type.enumerated.AuthorizationDecision;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
@@ -39,7 +39,7 @@ public class AuthorizationEvent extends BaseType {
     private final Address address;
     private final AuthenticationClient client;
     private final AccessToken token;
-    private final AuthenticationDecision decision;
+    private final AuthorizationDecision decision;
     private final CharacterString decisionDetails;
 
     public AuthorizationEvent(
@@ -47,7 +47,7 @@ public class AuthorizationEvent extends BaseType {
             Address address,
             AuthenticationClient client,
             AccessToken token,
-            AuthenticationDecision decision,
+            AuthorizationDecision decision,
             CharacterString decisionDetails) {
         this.timestamp = timestamp;
         this.address = address;
@@ -95,7 +95,7 @@ public class AuthorizationEvent extends BaseType {
         return token;
     }
 
-    public AuthenticationDecision getDecision() {
+    public AuthorizationDecision getDecision() {
         return decision;
     }
 
@@ -108,7 +108,7 @@ public class AuthorizationEvent extends BaseType {
         address = read(queue, Address.class, 1);
         client = readOptional(queue, AuthenticationClient.class, 2);
         token = readOptional(queue, AccessToken.class, 3);
-        decision = read(queue, AuthenticationDecision.class, 4);
+        decision = read(queue, AuthorizationDecision.class, 4);
         decisionDetails = readOptional(queue, CharacterString.class, 5);
     }
 

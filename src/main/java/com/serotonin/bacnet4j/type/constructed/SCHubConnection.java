@@ -44,11 +44,27 @@ public class SCHubConnection extends BaseType {
 
     public SCHubConnection(SCConnectionState connectionState, DateTime connectTimestamp, DateTime disconnectTimestamp,
             ErrorClassAndCode error, CharacterString errorDetails) {
+        Objects.requireNonNull(connectionState);
+        Objects.requireNonNull(connectTimestamp);
+        Objects.requireNonNull(disconnectTimestamp);
+        if (connectionState == SCConnectionState.notConnected || connectionState == SCConnectionState.connected) {
+            if (error != null) {
+                throw new IllegalArgumentException("Error must be absent for this connection state");
+            }
+            if (errorDetails != null) {
+                throw new IllegalArgumentException("Error details must be absent for this connection state");
+            }
+        }
+
         this.connectionState = connectionState;
         this.connectTimestamp = connectTimestamp;
         this.disconnectTimestamp = disconnectTimestamp;
         this.error = error;
         this.errorDetails = errorDetails;
+    }
+
+    public SCHubConnection(SCConnectionState connectionState, DateTime connectTimestamp, DateTime disconnectTimestamp) {
+        this(connectionState, connectTimestamp, disconnectTimestamp, null, null);
     }
 
     @Override

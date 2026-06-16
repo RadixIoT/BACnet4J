@@ -32,40 +32,27 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
-import com.serotonin.bacnet4j.type.enumerated.ObjectType;
-import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
-// Note: ObjectSelector also accepts an ObjectType choice; that path is not round-trippable today because
-// the Choice cannot disambiguate ObjectIdentifier from ObjectType (both encode as Enumerated tags).
+import com.serotonin.bacnet4j.type.enumerated.BinaryPV;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
-public class ObjectSelectorTest {
+public class OptionalBinaryPVTest {
     @Test
-    public void all() throws BACnetException {
-        final ObjectSelector os = new ObjectSelector();
+    public void byNull() throws BACnetException {
+        final OptionalBinaryPV bpv = new OptionalBinaryPV();
 
         final ByteQueue queue = new ByteQueue();
-        os.write(queue);
+        bpv.write(queue);
 
-        assertEquals(os, new ObjectSelector(queue));
+        assertEquals(bpv, new OptionalBinaryPV(queue));
     }
 
     @Test
-    public void byObjectId() throws BACnetException {
-        final ObjectSelector os = new ObjectSelector(new ObjectIdentifier(ObjectType.analogInput, 7));
+    public void byBinaryPv() throws BACnetException {
+        final OptionalBinaryPV bpv = new OptionalBinaryPV(BinaryPV.active);
 
         final ByteQueue queue = new ByteQueue();
-        os.write(queue);
+        bpv.write(queue);
 
-        assertEquals(os, new ObjectSelector(queue));
-    }
-
-    @Test
-    public void byObjectType() throws BACnetException {
-        final ObjectSelector os = new ObjectSelector(ObjectType.networkPort);
-
-        final ByteQueue queue = new ByteQueue();
-        os.write(queue);
-
-        assertEquals(os, new ObjectSelector(queue));
+        assertEquals(bpv, new OptionalBinaryPV(queue));
     }
 }

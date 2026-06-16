@@ -29,7 +29,6 @@ package com.serotonin.bacnet4j.type.constructed;
 
 import static org.junit.Assert.assertEquals;
 
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.enums.DayOfWeek;
@@ -52,8 +51,6 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
  * {@code @Ignore} to document the gap.
  */
 public class DeviceAddressProxyTableEntryTest {
-    @Ignore("IAmRequest is not Encodable.read-compatible (no ByteQueue constructor) "
-            + "— DeviceAddressProxyTableEntry round-trip is broken in the current impl.")
     @Test
     public void roundTrip() throws BACnetException {
         final DeviceAddressProxyTableEntry entry = new DeviceAddressProxyTableEntry(

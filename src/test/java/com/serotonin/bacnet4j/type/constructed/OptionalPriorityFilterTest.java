@@ -45,6 +45,18 @@ public class OptionalPriorityFilterTest {
         assertEquals(opf, new OptionalPriorityFilter(queue));
     }
 
-    // Note: the PriorityFilter (BitString) choice does not round-trip today because Choice cannot
-    // disambiguate PriorityFilter from BitString when both encode under the same application tag.
+    @Test
+    public void filterChoice() throws BACnetException {
+        PriorityFilter priorityFilter = new PriorityFilter();
+        priorityFilter.setManualLifeSafety(true);
+        priorityFilter.setCriticalEquipmentControls(true);
+        priorityFilter.setPriority16(true);
+
+        final OptionalPriorityFilter opf = new OptionalPriorityFilter(priorityFilter);
+
+        final ByteQueue queue = new ByteQueue();
+        opf.write(queue);
+
+        assertEquals(opf, new OptionalPriorityFilter(queue));
+    }
 }

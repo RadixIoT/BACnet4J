@@ -130,9 +130,9 @@ public class SCDirectConnection extends BaseType {
         connectionState = read(queue, SCConnectionState.class, 1);
         connectTimestamp = read(queue, DateTime.class, 2);
         disconnectTimestamp = read(queue, DateTime.class, 3);
-        peerAddress = read(queue, HostNPort.class, 4);
-        peerVmac = read(queue, OctetString.class, 5);
-        peerUuid = read(queue, OctetString.class, 6);
+        peerAddress = readOptional(queue, HostNPort.class, 4);
+        peerVmac = readOptional(queue, OctetString.class, 5);
+        peerUuid = readOptional(queue, OctetString.class, 6);
         error = readOptional(queue, ErrorClassAndCode.class, 7);
         errorDetails = readOptional(queue, CharacterString.class, 8);
     }

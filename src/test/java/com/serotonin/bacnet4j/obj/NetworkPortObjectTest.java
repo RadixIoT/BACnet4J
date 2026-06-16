@@ -48,12 +48,14 @@ import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.constructed.ValueSource;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
+import com.serotonin.bacnet4j.type.enumerated.NetworkNumberQuality;
 import com.serotonin.bacnet4j.type.enumerated.NetworkPortCommand;
 import com.serotonin.bacnet4j.type.enumerated.NetworkType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.ProtocolLevel;
 import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class NetworkPortObjectTest {
@@ -64,7 +66,7 @@ public class NetworkPortObjectTest {
     public void propertyInitialization() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = new NetworkPortObject(localDevice, 12, "NetworkPort", false, NetworkType.virtual,
-                    ProtocolLevel.bacnetApplication);
+                    ProtocolLevel.bacnetApplication, Set.of());
             BACnetArray<PropertyIdentifier> props = npo.readProperty(PropertyIdentifier.propertyList);
             assertEquals(Set.of(
                     PropertyIdentifier.changesPending,
@@ -77,7 +79,9 @@ public class NetworkPortObjectTest {
                     PropertyIdentifier.networkType,
                     PropertyIdentifier.statusFlags,
                     PropertyIdentifier.commandValidationResult,
-                    PropertyIdentifier.outOfService
+                    PropertyIdentifier.outOfService,
+                    PropertyIdentifier.networkNumber,
+                    PropertyIdentifier.networkNumberQuality
             ), new HashSet<>(props.getValues()));
 
             assertEquals(Boolean.FALSE, npo.readProperty(PropertyIdentifier.changesPending));
@@ -88,7 +92,7 @@ public class NetworkPortObjectTest {
     public void pendingChanges() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
-                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication));
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
 
             var thrown = assertThrows(BACnetServiceException.class,
                     () -> npo.writeProperty(new ValueSource(), PropertyIdentifier.changesPending, Boolean.TRUE));
@@ -121,7 +125,7 @@ public class NetworkPortObjectTest {
     public void outOfService() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
-                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication) {
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()) {
                 @Override
                 protected Reliability evaluateReliability() {
                     // Change the evaluated reliabilty to be different from the reliabilityEvaluationInhibit value.
@@ -155,10 +159,46 @@ public class NetworkPortObjectTest {
     }
 
     @Test
+    public void networkNumberQuality() throws Exception {
+        withLocalDevice(localDevice -> {
+            var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()) {
+                {
+                    writePropertyInternal(PropertyIdentifier.networkNumber, new Unsigned16(10));
+                    writePropertyInternal(PropertyIdentifier.networkNumberQuality, NetworkNumberQuality.learned);
+                }
+            });
+
+            // Ensure the default value
+            assertEquals(Boolean.FALSE, npo.readProperty(PropertyIdentifier.changesPending));
+            assertEquals(new Unsigned16(10), npo.readProperty(PropertyIdentifier.networkNumber));
+            assertEquals(NetworkNumberQuality.learned, npo.readProperty(PropertyIdentifier.networkNumberQuality));
+
+            // Change to unknown
+            npo.writeProperty(new ValueSource(), PropertyIdentifier.networkNumber, Unsigned16.ZERO);
+            assertEquals(Boolean.TRUE, npo.readProperty(PropertyIdentifier.changesPending));
+            assertEquals(Unsigned16.ZERO, npo.readProperty(PropertyIdentifier.networkNumber));
+            assertEquals(NetworkNumberQuality.unknown, npo.readProperty(PropertyIdentifier.networkNumberQuality));
+
+            // Change to known value different from the original
+            npo.writeProperty(new ValueSource(), PropertyIdentifier.networkNumber, new Unsigned16(11));
+            assertEquals(Boolean.TRUE, npo.readProperty(PropertyIdentifier.changesPending));
+            assertEquals(new Unsigned16(11), npo.readProperty(PropertyIdentifier.networkNumber));
+            assertEquals(NetworkNumberQuality.configured, npo.readProperty(PropertyIdentifier.networkNumberQuality));
+
+            // Change back to the original
+            npo.writeProperty(new ValueSource(), PropertyIdentifier.networkNumber, new Unsigned16(10));
+            assertEquals(Boolean.FALSE, npo.readProperty(PropertyIdentifier.changesPending));
+            assertEquals(new Unsigned16(10), npo.readProperty(PropertyIdentifier.networkNumber));
+            assertEquals(NetworkNumberQuality.learned, npo.readProperty(PropertyIdentifier.networkNumberQuality));
+        });
+    }
+
+    @Test
     public void commands_cantWriteIdle() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
-                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication));
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
 
             // Can't write idle
             var thrown = assertThrows(BACnetServiceException.class,
@@ -172,7 +212,7 @@ public class NetworkPortObjectTest {
     public void commands_notIdle() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
-                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication));
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
 
             // Can't write a command while not idle
             npo.properties.put(PropertyIdentifier.command, NetworkPortCommand.disconnect);
@@ -188,7 +228,7 @@ public class NetworkPortObjectTest {
     public void commands_outOfService() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
-                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication));
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
 
             // Can't write certain commands while out of service.
             npo.writeProperty(new ValueSource(), PropertyIdentifier.outOfService, Boolean.TRUE);
@@ -203,7 +243,7 @@ public class NetworkPortObjectTest {
     public void commands_pendingChanges() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
-                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication));
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
 
             // Can't write certain commands while changes are pending.
             npo.writeProperty(new ValueSource(), PropertyIdentifier.referencePort, updatedValue);
@@ -218,7 +258,7 @@ public class NetworkPortObjectTest {
     public void commands_renewDhcp() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
-                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication));
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
 
             // Can't renew DHCP when the network type is not ip4/ip6
             var thrown = assertThrows(BACnetServiceException.class, () -> npo.writeProperty(
@@ -239,7 +279,7 @@ public class NetworkPortObjectTest {
     public void commands() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
-                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication));
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
 
             npo.writeProperty(new ValueSource(), PropertyIdentifier.referencePort, updatedValue);
             assertTrue(npo.isChanged());

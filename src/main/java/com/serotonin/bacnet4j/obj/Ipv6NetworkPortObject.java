@@ -27,6 +27,8 @@
 
 package com.serotonin.bacnet4j.obj;
 
+import java.util.Set;
+
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.npdu.ipv6.Ipv6Network;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
@@ -43,7 +45,7 @@ public class Ipv6NetworkPortObject extends NetworkPortObject {
 
     public Ipv6NetworkPortObject(Ipv6Network network, int instanceNumber, String name, boolean outOfService) {
         super(network.getTransport().getLocalDevice(), instanceNumber, name, outOfService, NetworkType.ipv6,
-                ProtocolLevel.bacnetApplication);
+                ProtocolLevel.bacnetApplication, Set.of());
 
         if (!network.isInitialized()) {
             throw new IllegalStateException("Network is not initialized");
@@ -54,6 +56,8 @@ public class Ipv6NetworkPortObject extends NetworkPortObject {
         writePropertyInternal(PropertyIdentifier.networkNumber, new UnsignedInteger(network.getLocalNetworkNumber()));
         writePropertyInternal(PropertyIdentifier.networkNumberQuality, NetworkNumberQuality.unknown);
         writePropertyInternal(PropertyIdentifier.apduLength, MaxApduLength.UP_TO_1476.getMaxLength());
+        writePropertyInternal(PropertyIdentifier.maxBvlcLengthAccepted, new UnsignedInteger(1497));
+        writePropertyInternal(PropertyIdentifier.maxNpduLengthAccepted, new UnsignedInteger(1497));
         writePropertyInternal(PropertyIdentifier.macAddress, network.getLocalVMAC());
         writePropertyInternal(PropertyIdentifier.virtualMacAddressTable, new SequenceOf<>());
         writePropertyInternal(PropertyIdentifier.bacnetIpv6Mode, IPMode.normal);

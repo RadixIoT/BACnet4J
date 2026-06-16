@@ -37,7 +37,7 @@ import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.type.constructed.AuthorizationConstraint.Authentication;
 import com.serotonin.bacnet4j.type.constructed.AuthorizationConstraint.Origin;
 import com.serotonin.bacnet4j.type.constructed.AuthorizationScope.Standard;
-import com.serotonin.bacnet4j.type.enumerated.AuthenticationDecision;
+import com.serotonin.bacnet4j.type.enumerated.AuthorizationDecision;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.Date;
@@ -73,7 +73,7 @@ public class AuthorizationEventTest {
                 new Address(123, new OctetString(new byte[] {0, 0, 1})),
                 new AuthenticationClient(Boolean.TRUE, new Unsigned32(202)),
                 token(),
-                AuthenticationDecision.allowMatch,
+                AuthorizationDecision.allowByToken,
                 new CharacterString("authorized"));
 
         final ByteQueue queue = new ByteQueue();
@@ -88,7 +88,7 @@ public class AuthorizationEventTest {
                 ts(),
                 new Address(123, new OctetString(new byte[] {0, 0, 1})),
                 null, null,
-                AuthenticationDecision.denyMismatch,
+                AuthorizationDecision.denyClientDevice,
                 null);
 
         final ByteQueue queue = new ByteQueue();
