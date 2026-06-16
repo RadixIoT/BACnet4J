@@ -32,6 +32,7 @@ import static org.junit.Assert.assertEquals;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
+import java.net.NetworkInterface;
 
 import org.junit.Assume;
 import org.junit.Before;
@@ -60,7 +61,11 @@ public class Ipv6NetworkPortObjectTest {
     public void before() throws Exception {
         boolean canRun = true;
         try (MulticastSocket socket = new MulticastSocket(new InetSocketAddress(LOCAL_BIND_ADDRESS, 0))) {
-            socket.joinGroup(InetAddress.getByName(MULTICAST_ADDRESS));
+            InetAddress group = InetAddress.getByName(MULTICAST_ADDRESS);
+            NetworkInterface netIf = NetworkInterface.getByInetAddress(group);   // the interface to join on
+
+            InetSocketAddress groupSockAddr = new InetSocketAddress(group, PORT);
+            socket.joinGroup(groupSockAddr, netIf);
         } catch (Exception e) {
             canRun = false;
         }

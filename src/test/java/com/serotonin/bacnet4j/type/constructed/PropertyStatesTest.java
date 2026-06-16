@@ -36,26 +36,6 @@ import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class PropertyStatesTest {
-    //    @Test
-    //    public void all() throws BACnetException {
-    //        final ObjectSelector os = new ObjectSelector();
-    //
-    //        final ByteQueue queue = new ByteQueue();
-    //        os.write(queue);
-    //
-    //        assertEquals(os, new ObjectSelector(queue));
-    //    }
-    //
-    //    @Test
-    //    public void byObjectId() throws BACnetException {
-    //        final ObjectSelector os = new ObjectSelector(new ObjectIdentifier(ObjectType.analogInput, 7));
-    //
-    //        final ByteQueue queue = new ByteQueue();
-    //        os.write(queue);
-    //
-    //        assertEquals(os, new ObjectSelector(queue));
-    //    }
-
     @Test
     public void byReliability() throws BACnetException {
         final PropertyStates ps = new PropertyStates(Reliability.underRange);

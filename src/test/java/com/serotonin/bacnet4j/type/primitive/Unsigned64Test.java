@@ -81,7 +81,8 @@ public class Unsigned64Test {
 
     @Test
     public void constructorRejectsAboveMax() {
-        assertThrows(IllegalArgumentException.class, () -> new Unsigned64(MAX.add(BigInteger.ONE)));
+        var bigger = MAX.add(BigInteger.ONE);
+        assertThrows(IllegalArgumentException.class, () -> new Unsigned64(bigger));
     }
 
     @Test
