@@ -64,14 +64,13 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
             LocalDevice localDevice,
             int instanceNumber,
             String name,
-            boolean outOfService,
             OctetString vmac,
             CharacterString primaryHubUri,
             CharacterString failoverHubUri,
             ObjectIdentifier operationalCertificateFile,
             BACnetArray<ObjectIdentifier> issuerCertificateFiles,
             ObjectIdentifier certificateSigningRequestFile) {
-        super(localDevice, instanceNumber, name, outOfService, NetworkType.secureConnect,
+        super(localDevice, instanceNumber, name, false, NetworkType.secureConnect,
                 ProtocolLevel.bacnetApplication, Set.of(
                         PropertyIdentifier.scHubFunctionEnable,
                         PropertyIdentifier.scHubFunctionAcceptUris,

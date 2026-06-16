@@ -77,7 +77,7 @@ public class Ipv6NetworkPortObjectTest {
                 .build();
         try (var localDevice = new LocalDevice(1, new DefaultTransport(network))) {
             localDevice.initialize();
-            var npo = localDevice.addObject(new Ipv6NetworkPortObject(network, 12, "Ipv6Network", false));
+            var npo = localDevice.addObject(new Ipv6NetworkPortObject(network, 12, "Ipv6Network"));
 
             assertEquals(ObjectType.networkPort, npo.readProperty(PropertyIdentifier.objectType));
             assertEquals(new ObjectIdentifier(ObjectType.networkPort, 12),

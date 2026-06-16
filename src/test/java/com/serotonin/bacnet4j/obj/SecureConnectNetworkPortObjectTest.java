@@ -72,7 +72,7 @@ public class SecureConnectNetworkPortObjectTest {
     public void ensureProperties() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new SecureConnectNetworkPortObject(
-                    localDevice, 12, "ScNetwork", false, VMAC, PRIMARY_HUB,
+                    localDevice, 12, "ScNetwork", VMAC, PRIMARY_HUB,
                     FAILOVER_HUB, OPERATIONAL_CERT, ISSUER_CERTS, CSR_FILE));
 
             // Common Network Port properties (Table 12-71)
@@ -122,7 +122,7 @@ public class SecureConnectNetworkPortObjectTest {
     public void uriValidation() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new SecureConnectNetworkPortObject(
-                    localDevice, 12, "ScNetwork", false, VMAC, PRIMARY_HUB,
+                    localDevice, 12, "ScNetwork", VMAC, PRIMARY_HUB,
                     FAILOVER_HUB, OPERATIONAL_CERT, ISSUER_CERTS, CSR_FILE));
 
             // Can't set a bad uri
@@ -148,7 +148,7 @@ public class SecureConnectNetworkPortObjectTest {
     public void rangeValidation() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new SecureConnectNetworkPortObject(
-                    localDevice, 12, "ScNetwork", false, VMAC, PRIMARY_HUB,
+                    localDevice, 12, "ScNetwork", VMAC, PRIMARY_HUB,
                     FAILOVER_HUB, OPERATIONAL_CERT, ISSUER_CERTS, CSR_FILE));
 
             var thrown = assertThrows(BACnetServiceException.class, () -> {

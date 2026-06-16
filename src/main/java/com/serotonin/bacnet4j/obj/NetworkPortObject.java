@@ -167,7 +167,7 @@ public class NetworkPortObject extends BACnetObject {
         return Reliability.noFaultDetected;
     }
 
-    protected boolean isChanged() {
+    public boolean isChanged() {
         return !pendingChanges.isEmpty();
     }
 
@@ -298,6 +298,13 @@ public class NetworkPortObject extends BACnetObject {
     @SuppressWarnings("unchecked")
     public <T extends Encodable> T get(final PropertyIdentifier pid) {
         return pendingChanges.containsKey(pid) ? (T) pendingChanges.get(pid) : super.get(pid);
+    }
+
+    /**
+     * Return the current value of the object for this property, ignoring pending changes.
+     */
+    public <T extends Encodable> T getActive(final PropertyIdentifier pid) {
+        return super.get(pid);
     }
 
     @Override

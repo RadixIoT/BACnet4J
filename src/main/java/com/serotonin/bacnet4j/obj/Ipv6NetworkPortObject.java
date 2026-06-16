@@ -43,8 +43,8 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class Ipv6NetworkPortObject extends NetworkPortObject {
     private final Ipv6Network network;
 
-    public Ipv6NetworkPortObject(Ipv6Network network, int instanceNumber, String name, boolean outOfService) {
-        super(network.getTransport().getLocalDevice(), instanceNumber, name, outOfService, NetworkType.ipv6,
+    public Ipv6NetworkPortObject(Ipv6Network network, int instanceNumber, String name) {
+        super(network.getTransport().getLocalDevice(), instanceNumber, name, false, NetworkType.ipv6,
                 ProtocolLevel.bacnetApplication, Set.of());
 
         if (!network.isInitialized()) {
@@ -53,7 +53,7 @@ public class Ipv6NetworkPortObject extends NetworkPortObject {
 
         this.network = network;
 
-        writePropertyInternal(PropertyIdentifier.networkNumber, new UnsignedInteger(network.getLocalNetworkNumber()));
+        writePropertyInternal(PropertyIdentifier.networkNumber, new Unsigned16(network.getLocalNetworkNumber()));
         writePropertyInternal(PropertyIdentifier.networkNumberQuality, NetworkNumberQuality.unknown);
         writePropertyInternal(PropertyIdentifier.apduLength, MaxApduLength.UP_TO_1476.getMaxLength());
         writePropertyInternal(PropertyIdentifier.maxBvlcLengthAccepted, new UnsignedInteger(1497));

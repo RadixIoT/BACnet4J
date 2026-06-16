@@ -110,7 +110,7 @@ public class IpNetworkPortObjectTest {
                 .build();
         try (var localDevice = new LocalDevice(1, new DefaultTransport(network)).withClock(clock)) {
             localDevice.initialize();
-            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork", false));
+            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork"));
 
             assertEquals(ObjectType.networkPort, npo.readProperty(PropertyIdentifier.objectType));
             assertEquals(new ObjectIdentifier(ObjectType.networkPort, 12),
@@ -143,7 +143,7 @@ public class IpNetworkPortObjectTest {
             network.enableBBMD();
 
             localDevice.initialize();
-            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork", false));
+            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork"));
 
             network.writeBDT(List.of(
                     new IpNetwork.BDTEntry("1.2.4.4", 47800, "255.255.255.255"),
@@ -216,7 +216,7 @@ public class IpNetworkPortObjectTest {
                 .build();
         try (var localDevice = new LocalDevice(1, new DefaultTransport(network)).withClock(clock)) {
             localDevice.initialize();
-            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork", false));
+            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork"));
 
             // Ensure the properties start as unset.
             assertNull(npo.readProperty(PropertyIdentifier.fdBbmdAddress));
@@ -270,7 +270,7 @@ public class IpNetworkPortObjectTest {
                 .build());
         try (var localDevice = new LocalDevice(1, new DefaultTransport(network)).withClock(clock)) {
             localDevice.initialize();
-            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork", false));
+            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork"));
 
             // Tell the network to act as a foreign device.
             CompletableFuture<Void> future = new CompletableFuture<>();

@@ -57,6 +57,10 @@ public class ReinitializeDeviceRequest extends ConfirmedRequestService {
         this.password = password;
     }
 
+    public ReinitializeDeviceRequest(final ReinitializedStateOfDevice reinitializedStateOfDevice) {
+        this(reinitializedStateOfDevice, null);
+    }
+
     @Override
     public byte getChoiceId() {
         return TYPE_ID;

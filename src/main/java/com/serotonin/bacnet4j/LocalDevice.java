@@ -112,7 +112,7 @@ public class LocalDevice implements AutoCloseable {
     public static final String VERSION =
             Objects.requireNonNullElse(LocalDevice.class.getPackage().getImplementationVersion(), "unknown");
 
-    private final Transport transport;
+    private Transport transport;
 
     /**
      * The other objects contained by this device.
@@ -389,6 +389,17 @@ public class LocalDevice implements AutoCloseable {
         }
 
         return this;
+    }
+
+    /**
+     * Allows updating the device's network while preserving local objects and other state. Note that network port
+     * objects may also need to be recreated with the new network too.w
+     */
+    public void replaceTransport(Transport newTransport) throws Exception {
+        transport.terminate();
+        transport = newTransport;
+        transport.setLocalDevice(this);
+        transport.initialize();
     }
 
     /**
