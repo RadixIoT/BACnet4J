@@ -55,11 +55,6 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 /**
  * Network Port object for a BACnet/SC port (Clauses 12.56 and Annex AB).
  *
- * <p>Unlike the IPv4 and IPv6 variants, there is no underlying BACnet4J BACnet/SC network class to read live state
- * from. Required configuration (hub URIs, certificate File-object references, the local VMAC) is supplied directly to
- * the constructor; spec-mandated default timeouts are initialized to the recommended values from clauses 12.56.84,
- * 12.56.85, and 12.56.86, and may be overridden after construction with normal property writes.
- *
  * <p>The properties in Table 12-71.8 not initialized here are either optional (and left to product builders) or
  * dynamic state owned by the BACnet/SC stack (e.g., {@code SC_Hub_Connector_State}, hub connection status lists,
  * failed connection requests).
@@ -135,6 +130,8 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         } else if (pid.equals(PropertyIdentifier.scMaximumReconnectTime)) {
             validateUnsignedRange(value.getValue(), 2, 600);
         } else if (pid.equals(PropertyIdentifier.scConnectWaitTimeout)) {
+            validateUnsignedRange(value.getValue(), 5, 300);
+        } else if (pid.equals(PropertyIdentifier.scDisconnectWaitTimeout)) {
             validateUnsignedRange(value.getValue(), 5, 300);
         } else if (pid.equals(PropertyIdentifier.scHeartbeatTimeout)) {
             validateUnsignedRange(value.getValue(), 3, 300);

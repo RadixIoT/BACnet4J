@@ -45,6 +45,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.SystemUtils;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -96,8 +97,7 @@ public class IpNetworkPortObjectTest {
                 canRun = false;
             }
         }
-        // TODO MATT: uncomment this
-        //        Assume.assumeTrue(canRun);
+        Assume.assumeTrue(canRun);
     }
 
     @Test

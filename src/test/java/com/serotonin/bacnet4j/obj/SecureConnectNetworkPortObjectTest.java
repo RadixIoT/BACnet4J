@@ -127,19 +127,20 @@ public class SecureConnectNetworkPortObjectTest {
 
             // Can't set a bad uri
             var thrown = assertThrows(BACnetServiceException.class, () -> {
-                npo.writeProperty(new ValueSource(), PropertyIdentifier.scPrimaryHubUri, new CharacterString(""));
-            });
-            assertEquals(ErrorClass.property, thrown.getErrorClass());
-            assertEquals(ErrorCode.valueOutOfRange, thrown.getErrorCode());
-
-            thrown = assertThrows(BACnetServiceException.class, () -> {
-                npo.writeProperty(new ValueSource(), PropertyIdentifier.scPrimaryHubUri, new CharacterString("test"));
+                npo.writeProperty(new ValueSource(), PropertyIdentifier.scPrimaryHubUri,
+                        new CharacterString("bad$://test"));
             });
             assertEquals(ErrorClass.property, thrown.getErrorClass());
             assertEquals(ErrorCode.valueOutOfRange, thrown.getErrorCode());
 
             npo.writeProperty(new ValueSource(), PropertyIdentifier.scPrimaryHubUri, new CharacterString("wss://test"));
             assertEquals(new CharacterString("wss://test"), npo.readProperty(PropertyIdentifier.scPrimaryHubUri));
+
+            npo.writeProperty(new ValueSource(), PropertyIdentifier.scPrimaryHubUri, new CharacterString("test"));
+            assertEquals(new CharacterString("test"), npo.readProperty(PropertyIdentifier.scPrimaryHubUri));
+
+            npo.writeProperty(new ValueSource(), PropertyIdentifier.scPrimaryHubUri, new CharacterString(""));
+            assertEquals(new CharacterString(""), npo.readProperty(PropertyIdentifier.scPrimaryHubUri));
         });
     }
 
