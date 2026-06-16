@@ -34,8 +34,6 @@ import org.junit.Test;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
-// Note: ObjectSelector also accepts an ObjectType choice; that path is not round-trippable today because
-// the Choice cannot disambiguate ObjectIdentifier from ObjectType (both encode as Enumerated tags).
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class ObjectSelectorTest {

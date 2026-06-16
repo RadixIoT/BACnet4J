@@ -43,7 +43,6 @@ import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.Date;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
-import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.Unsigned8;
