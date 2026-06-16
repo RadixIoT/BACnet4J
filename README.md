@@ -77,6 +77,7 @@ var av = localDevice.addObject(new AnalogValueObject(localDevice, ...));
 ```
 
 - Introduction of NetworkPortObject and subclasses.
+- Addition of many structures, enumeration, and properties defined in the 2024 specification
 - Serialization bug fixes
 - Removal of deprecated code
 
