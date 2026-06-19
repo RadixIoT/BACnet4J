@@ -552,4 +552,9 @@ public class TestUtils {
     public static boolean isDockerEnv() {
         return new File("/.dockerenv").exists();
     }
+
+    @FunctionalInterface
+    public interface LocalDeviceConsumer {
+        void accept(LocalDevice localDevice) throws Exception;
+    }
 }

@@ -50,6 +50,7 @@ import com.serotonin.bacnet4j.npdu.Network;
 import com.serotonin.bacnet4j.npdu.NetworkIdentifier;
 import com.serotonin.bacnet4j.transport.Transport;
 import com.serotonin.bacnet4j.type.constructed.Address;
+import com.serotonin.bacnet4j.type.constructed.VmacEntry;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.util.BACnetUtils;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -72,7 +73,6 @@ public class Ipv6Network extends Network implements Runnable {
     private final String localBindAddress;
 
     // Runtime
-    private Thread thread;
     private MulticastSocket socket;
     private OctetString broadcastMAC;
     private OctetString thisVMAC;
@@ -99,13 +99,6 @@ public class Ipv6Network extends Network implements Runnable {
         this.multicastAddress = multicastAddress;
         this.port = port;
         this.localBindAddress = localBindAddress;
-
-        try {
-            vmacTable.put(thisVMAC, Ipv6NetworkUtils.toOctetString(InetAddress.getByName("::1").getAddress(), port));
-        } catch (final UnknownHostException e) {
-            // Should never happen
-            throw new RuntimeException(e);
-        }
     }
 
     @Override
@@ -140,6 +133,22 @@ public class Ipv6Network extends Network implements Runnable {
         return bytesIn;
     }
 
+    public boolean isInitialized() {
+        return thisVMAC != null;
+    }
+
+    public OctetString getLocalVMAC() {
+        return thisVMAC;
+    }
+
+    public List<VmacEntry> getVirtualMacAddressTable() {
+        return vmacTable.entrySet().stream().map(e -> new VmacEntry(e.getKey(), e.getValue())).toList();
+    }
+
+    public OctetString getMulticastMAC() {
+        return broadcastMAC;
+    }
+
     @Override
     public void initialize(final Transport transport) throws Exception {
         super.initialize(transport);
@@ -155,8 +164,14 @@ public class Ipv6Network extends Network implements Runnable {
 
         thisVMAC = BACnetUtils.toVirtualAddressBytes(transport.getLocalDevice().getInstanceNumber());
 
-        thread = new Thread(this, "BACnet4J IPv6 socket listener");
-        thread.start();
+        try {
+            vmacTable.put(thisVMAC, Ipv6NetworkUtils.toOctetString(InetAddress.getByName("::1").getAddress(), port));
+        } catch (final UnknownHostException e) {
+            // Should never happen
+            throw new RuntimeException(e);
+        }
+
+        new Thread(this, "BACnet4J IPv6 socket listener").start();
     }
 
     @Override

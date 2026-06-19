@@ -75,7 +75,6 @@ public class ObjectType extends Enumerated {
     public static final ObjectType accessUser = new ObjectType(35);
     public static final ObjectType accessZone = new ObjectType(36);
     public static final ObjectType credentialDataInput = new ObjectType(37);
-    public static final ObjectType networkSecurity = new ObjectType(38);
     public static final ObjectType bitstringValue = new ObjectType(39);
     public static final ObjectType characterstringValue = new ObjectType(40);
     public static final ObjectType datePatternValue = new ObjectType(41);
@@ -97,6 +96,11 @@ public class ObjectType extends Enumerated {
     public static final ObjectType elevatorGroup = new ObjectType(57);
     public static final ObjectType escalator = new ObjectType(58);
     public static final ObjectType lift = new ObjectType(59);
+    public static final ObjectType staging = new ObjectType(60);
+    public static final ObjectType auditLog = new ObjectType(61);
+    public static final ObjectType auditReporter = new ObjectType(62);
+    public static final ObjectType color = new ObjectType(63);
+    public static final ObjectType colorTemperature = new ObjectType(64);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();

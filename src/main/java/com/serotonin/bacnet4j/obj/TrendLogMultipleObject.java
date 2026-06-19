@@ -108,15 +108,8 @@ public class TrendLogMultipleObject extends TrendLogBase {
     public TrendLogMultipleObject supportIntrinsicReporting(int notificationThreshold, int notificationClass,
             EventTransitionBits eventEnable, NotifyType notifyType) {
         baseSupportIntrinsicReporting(notificationThreshold, notificationClass, eventEnable, notifyType);
-        return this;
-    }
 
-    /**
-     * @deprecated This method return a buffer that may not be thread-safe. Use {@link #doWithBuffer} instead.
-     */
-    @Deprecated
-    public LogBuffer<LogMultipleRecord> getBuffer() {
-        return buffer;
+        return this;
     }
 
     /**

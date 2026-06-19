@@ -140,6 +140,12 @@ public class DeviceObject extends BACnetObject {
         servicesSupported.setSubscribeCovPropertyMultiple(true);
         servicesSupported.setConfirmedCovNotificationMultiple(true);
         servicesSupported.setUnconfirmedCovNotificationMultiple(true);
+        //        servicesSupported.setConfirmedAuditNotification(true);
+        //        servicesSupported.setAuditLogQuery(true);
+        //        servicesSupported.setUnconfirmedAuditNotification(true);
+        //        servicesSupported.setWhoAmI(true);
+        //        servicesSupported.setYouAre(true);
+        //        servicesSupported.setAuthRequest(true);
 
         writePropertyInternal(PropertyIdentifier.protocolServicesSupported, servicesSupported);
 
@@ -201,10 +207,15 @@ public class DeviceObject extends BACnetObject {
         //        objectTypesSupported.set(ObjectType.channel, true);
         //        objectTypesSupported.set(ObjectType.lightingOutput, true);
         //        objectTypesSupported.set(ObjectType.binaryLightingOutput, true);
-        //        objectTypesSupported.set(ObjectType.networkPort, true);
+        objectTypesSupported.set(ObjectType.networkPort, true);
         //        objectTypesSupported.set(ObjectType.elevatorGroup, true);
         //        objectTypesSupported.set(ObjectType.escalator, true);
         //        objectTypesSupported.set(ObjectType.lift, true);
+        //        objectTypesSupported.set(ObjectType.staging, true);
+        //        objectTypesSupported.set(ObjectType.auditLog, true);
+        //        objectTypesSupported.set(ObjectType.auditReporter, true);
+        //        objectTypesSupported.set(ObjectType.color, true);
+        //        objectTypesSupported.set(ObjectType.colorTemperature, true);
 
         writePropertyInternal(PropertyIdentifier.protocolObjectTypesSupported, objectTypesSupported);
 
@@ -229,9 +240,9 @@ public class DeviceObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.configurationFiles, new BACnetArray<>(0, null));
         writePropertyInternal(PropertyIdentifier.lastRestoreTime, new TimeStamp(DateTime.UNSPECIFIED));
         writePropertyInternal(PropertyIdentifier.backupFailureTimeout, new Unsigned16(60));
-        writePropertyInternal(PropertyIdentifier.backupPreparationTime, new Unsigned16(0));
-        writePropertyInternal(PropertyIdentifier.restorePreparationTime, new Unsigned16(0));
-        writePropertyInternal(PropertyIdentifier.restoreCompletionTime, new Unsigned16(0));
+        writePropertyInternal(PropertyIdentifier.backupPreparationTime, Unsigned16.ZERO);
+        writePropertyInternal(PropertyIdentifier.restorePreparationTime, Unsigned16.ZERO);
+        writePropertyInternal(PropertyIdentifier.restoreCompletionTime, Unsigned16.ZERO);
         writePropertyInternal(PropertyIdentifier.backupAndRestoreState, BackupState.idle);
 
         //These properties are automatically overwritten when reading. They are defined here to be present when reading the PropertyList.     
@@ -300,7 +311,7 @@ public class DeviceObject extends BACnetObject {
     @Override
     protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
             throws BACnetServiceException {
-        if (value.getPropertyIdentifier().equals(PropertyIdentifier.maxMaster)) {
+        if (value.getPropertyIdentifier().equals(PropertyIdentifier.maxManager)) {
             final MasterNode masterNode = getMasterNode();
             if (masterNode != null) {
                 final UnsignedInteger maxMaster = value.getValue();
@@ -320,7 +331,7 @@ public class DeviceObject extends BACnetObject {
             // Persist the new list.
             getLocalDevice().getPersistence()
                     .saveEncodable(getPersistenceKey(PropertyIdentifier.restartNotificationRecipients), newValue);
-        } else if (pid.equals(PropertyIdentifier.maxMaster)) {
+        } else if (pid.equals(PropertyIdentifier.maxManager)) {
             final MasterNode masterNode = getMasterNode();
             if (masterNode != null) {
                 final UnsignedInteger maxMaster = (UnsignedInteger) newValue;

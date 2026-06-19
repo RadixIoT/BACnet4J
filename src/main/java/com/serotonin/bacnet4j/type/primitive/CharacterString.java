@@ -28,7 +28,6 @@
 package com.serotonin.bacnet4j.type.primitive;
 
 import static com.serotonin.bacnet4j.type.primitive.encoding.StandardCharacterEncodings.ANSI_X3_4;
-import static com.serotonin.bacnet4j.type.primitive.encoding.StandardCharacterEncodings.CODE_PAGE_LATIN_1;
 import static com.serotonin.bacnet4j.type.primitive.encoding.StandardCharacterEncodings.IBM_MS_DBCS;
 import static com.serotonin.bacnet4j.type.primitive.encoding.StandardCharacterEncodings.NO_CODE_PAGE;
 
@@ -59,14 +58,6 @@ public class CharacterString extends Primitive {
 
     public CharacterString(final String value) {
         this(new CharacterEncoding(ANSI_X3_4), value);
-    }
-
-    /**
-     * @deprecated use CharacterEncoding constructor instead.
-     */
-    @Deprecated(since = "6.1.0")
-    public CharacterString(final byte encoding, final String value) {
-        this(new CharacterEncoding(encoding, defaultCodingPage(encoding)), value);
     }
 
     /**
@@ -117,7 +108,7 @@ public class CharacterString extends Primitive {
 
     @Override
     protected long getLength() {
-        return encoder.encode(value).length + 1;
+        return encoder.encode(value).length + 1L;
     }
 
     @Override
@@ -152,13 +143,6 @@ public class CharacterString extends Primitive {
                         ErrorCode.characterSetNotSupported,
                         encoding.toString())
                 );
-    }
-
-    private static int defaultCodingPage(byte encoding) {
-        if (encoding == IBM_MS_DBCS) {
-            return CODE_PAGE_LATIN_1;
-        }
-        return NO_CODE_PAGE;
     }
 
     private static List<CharacterEncoder> loadEncoders() {

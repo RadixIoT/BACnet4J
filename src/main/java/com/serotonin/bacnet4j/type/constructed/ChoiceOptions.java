@@ -77,6 +77,14 @@ public class ChoiceOptions {
         return primitives.contains(clazz);
     }
 
+    @SuppressWarnings("unchecked")
+    public <T extends Primitive, S extends T> Class<S> findAssignableFromPrimitive(Class<T> clazz) {
+        return (Class<S>) primitives.stream()
+                .filter(clazz::isAssignableFrom)
+                .findFirst()
+                .orElse(null);
+    }
+
     public int getContextId(final Class<? extends Encodable> clazz, final boolean sequence) {
         for (final Map.Entry<Integer, ContextualType> e : contextual.entrySet()) {
             if (e.getValue().clazz.equals(clazz) && e.getValue().sequence == sequence)

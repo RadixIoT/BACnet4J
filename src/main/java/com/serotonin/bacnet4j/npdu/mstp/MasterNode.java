@@ -157,7 +157,7 @@ public class MasterNode extends MstpNode {
     public void initialize(final Transport transport) throws Exception {
         super.initialize(transport);
 
-        transport.getLocalDevice().getDeviceObject().writePropertyInternal(PropertyIdentifier.maxMaster,
+        transport.getLocalDevice().getDeviceObject().writePropertyInternal(PropertyIdentifier.maxManager,
                 new UnsignedInteger(maxMaster));
         transport.getLocalDevice().getDeviceObject().writePropertyInternal(PropertyIdentifier.maxInfoFrames,
                 new UnsignedInteger(maxInfoFrames));

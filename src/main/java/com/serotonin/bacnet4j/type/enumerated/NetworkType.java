@@ -47,6 +47,7 @@ public class NetworkType extends Enumerated {
     public static final NetworkType virtual = new NetworkType(7);
     public static final NetworkType ipv6 = new NetworkType(9);
     public static final NetworkType serial = new NetworkType(10);
+    public static final NetworkType secureConnect = new NetworkType(11);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();

@@ -55,7 +55,7 @@ public class Reliability extends Enumerated {
     public static final Reliability lampFailure = new Reliability(16);
     public static final Reliability activationFailure = new Reliability(17);
     public static final Reliability renewDhcpFailure = new Reliability(18);
-    public static final Reliability renewFdRgistrationFailure = new Reliability(19);
+    public static final Reliability renewFdRegistrationFailure = new Reliability(19);
     public static final Reliability restartAutoNegotiationFailure = new Reliability(20);
     public static final Reliability restartFailure = new Reliability(21);
     public static final Reliability proprietaryCommandFailure = new Reliability(22);
