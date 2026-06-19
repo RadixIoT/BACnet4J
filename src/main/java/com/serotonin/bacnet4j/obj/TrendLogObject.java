@@ -144,15 +144,6 @@ public class TrendLogObject extends TrendLogBase {
         return this;
     }
 
-    /**
-     * @deprecated This method return a buffer that may not be thread-safe. Use {@link #doWithBuffer} instead.
-     * This method will be removed in a future major version.
-     */
-    @Deprecated
-    public LogBuffer<LogRecord> getBuffer() {
-        return buffer;
-    }
-
     public void doWithBuffer(Consumer<LogBuffer<LogRecord>> consumer) {
         synchronized (buffer) {
             consumer.accept(buffer);
