@@ -42,11 +42,7 @@ import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
 import com.serotonin.bacnet4j.obj.logBuffer.LogBuffer;
-import com.serotonin.bacnet4j.obj.mixin.HasStatusFlagsMixin;
 import com.serotonin.bacnet4j.obj.mixin.PollingDelegate;
-import com.serotonin.bacnet4j.obj.mixin.ReadOnlyPropertyMixin;
-import com.serotonin.bacnet4j.obj.mixin.event.IntrinsicReportingMixin;
-import com.serotonin.bacnet4j.obj.mixin.event.eventAlgo.BufferReadyAlgo;
 import com.serotonin.bacnet4j.service.confirmed.SubscribeCOVPropertyRequest;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.ClientCov;
@@ -62,14 +58,12 @@ import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.ValueSource;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
-import com.serotonin.bacnet4j.type.enumerated.EventState;
 import com.serotonin.bacnet4j.type.enumerated.LoggingType;
 import com.serotonin.bacnet4j.type.enumerated.NotifyType;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
-import com.serotonin.bacnet4j.type.notificationParameters.BufferReadyNotif;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -84,7 +78,7 @@ import com.serotonin.bacnet4j.util.PropertyValues;
  * - Align intervals considering daylight savings time.
  * - What if a device doesn't support SubscribeCOVPropertyRequest?
  */
-public class TrendLogObject extends BACnetObject {
+public class TrendLogObject extends TrendLogBase {
     static final Logger LOG = LoggerFactory.getLogger(TrendLogObject.class);
 
     // CreateObject constructor
@@ -100,12 +94,6 @@ public class TrendLogObject extends BACnetObject {
 
     private final LogBuffer<LogRecord> buffer;
 
-    private boolean logDisabled;
-    private ScheduledFuture<?> startTimeFuture;
-    private ScheduledFuture<?> stopTimeFuture;
-
-    private PollingDelegate pollingDelegate;
-    private ScheduledFuture<?> pollingFuture;
     private SubscribeCOVPropertyRequest covSubscription;
     private DeviceEventAdapter covListener;
     private ScheduledFuture<?> resubscriptionFuture;
@@ -119,50 +107,29 @@ public class TrendLogObject extends BACnetObject {
             final LogBuffer<LogRecord> buffer, final boolean enable, final DateTime startTime, final DateTime stopTime,
             final DeviceObjectPropertyReference logDeviceObjectProperty, final int logInterval,
             final boolean stopWhenFull, final int bufferSize) {
-        super(localDevice, ObjectType.trendLog, instanceNumber, name);
+        super(localDevice, ObjectType.trendLog, instanceNumber, name, enable, startTime, stopTime, logInterval,
+                stopWhenFull, bufferSize);
 
-        Objects.requireNonNull(startTime);
-        Objects.requireNonNull(stopTime);
         Objects.requireNonNull(logDeviceObjectProperty);
 
-        set(PropertyIdentifier.enable, Boolean.valueOf(enable));
-        set(PropertyIdentifier.startTime, startTime);
-        set(PropertyIdentifier.stopTime, stopTime);
         set(PropertyIdentifier.logDeviceObjectProperty, logDeviceObjectProperty);
-        set(PropertyIdentifier.logInterval, new UnsignedInteger(logInterval));
-        set(PropertyIdentifier.stopWhenFull, Boolean.valueOf(stopWhenFull));
-        set(PropertyIdentifier.bufferSize, new UnsignedInteger(bufferSize));
         set(PropertyIdentifier.logBuffer, buffer);
-        set(PropertyIdentifier.recordCount, UnsignedInteger.ZERO);
-        set(PropertyIdentifier.totalRecordCount, UnsignedInteger.ZERO);
-        set(PropertyIdentifier.alignIntervals, Boolean.TRUE);
-        set(PropertyIdentifier.intervalOffset, UnsignedInteger.ZERO);
-        set(PropertyIdentifier.trigger, Boolean.FALSE);
-        set(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false));
-        set(PropertyIdentifier.reliability, Reliability.noFaultDetected);
 
-        updateMonitoredProperty();
-        updateStartTime(startTime);
-        updateStopTime(stopTime);
-        withTriggered();
-
-        // Mixins
-        addMixin(new HasStatusFlagsMixin(this));
-        addMixin(new ReadOnlyPropertyMixin(this, PropertyIdentifier.logBuffer, PropertyIdentifier.reliability,
-                PropertyIdentifier.totalRecordCount));
+        postInitialize();
 
         this.buffer = buffer;
         logDisabled = !allowLogging(getNow());
     }
 
-    public TrendLogObject withPolled(final int logInterval, final TimeUnit logIntervalUnit,
-            final boolean alignIntervals, final int intervalOffset, final TimeUnit offsetUnit) {
-        set(PropertyIdentifier.logInterval, new UnsignedInteger(logIntervalUnit.toMillis(logInterval) / 10));
-        set(PropertyIdentifier.alignIntervals, Boolean.valueOf(alignIntervals));
-        set(PropertyIdentifier.intervalOffset, new UnsignedInteger(offsetUnit.toMillis(intervalOffset) / 10));
-        set(PropertyIdentifier.loggingType, LoggingType.polled);
-        updateLoggingType();
+    public TrendLogObject withPolled(int logInterval, TimeUnit logIntervalUnit, boolean alignIntervals,
+            int intervalOffset, TimeUnit offsetUnit) {
+        baseWithPolled(logInterval, logIntervalUnit, alignIntervals, intervalOffset, offsetUnit);
+        return this;
+    }
 
+    public TrendLogObject supportIntrinsicReporting(int notificationThreshold, int notificationClass,
+            EventTransitionBits eventEnable, NotifyType notifyType) {
+        baseSupportIntrinsicReporting(notificationThreshold, notificationClass, eventEnable, notifyType);
         return this;
     }
 
@@ -175,57 +142,6 @@ public class TrendLogObject extends BACnetObject {
         updateLoggingType();
 
         return this;
-    }
-
-    public TrendLogObject withTriggered() {
-        set(PropertyIdentifier.loggingType, LoggingType.triggered);
-        updateLoggingType();
-
-        return this;
-    }
-
-    public TrendLogObject supportIntrinsicReporting(final int notificationThreshold, final int notificationClass,
-            final EventTransitionBits eventEnable, final NotifyType notifyType) {
-        Objects.requireNonNull(eventEnable);
-        Objects.requireNonNull(notifyType);
-
-        // Prepare the object with all the properties that intrinsic reporting will need.
-        // User-defined properties
-        writePropertyInternal(PropertyIdentifier.notificationThreshold, new UnsignedInteger(notificationThreshold));
-        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
-        writePropertyInternal(PropertyIdentifier.lastNotifyRecord, UnsignedInteger.ZERO);
-        writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);
-        writePropertyInternal(PropertyIdentifier.notificationClass, new UnsignedInteger(notificationClass));
-        writePropertyInternal(PropertyIdentifier.eventEnable, eventEnable);
-        writePropertyInternal(PropertyIdentifier.notifyType, notifyType);
-        writePropertyInternal(PropertyIdentifier.eventDetectionEnable, Boolean.TRUE);
-
-        final BufferReadyAlgo algo = new BufferReadyAlgo(PropertyIdentifier.totalRecordCount,
-                new DeviceObjectPropertyReference(getId(), PropertyIdentifier.logBuffer, null,
-                        getLocalDevice().getId()),
-                PropertyIdentifier.notificationThreshold, PropertyIdentifier.lastNotifyRecord);
-
-        final PropertyIdentifier[] triggerProps = new PropertyIdentifier[] { //
-                PropertyIdentifier.totalRecordCount, //
-                PropertyIdentifier.notificationThreshold};
-
-        // Now add the mixin.
-        addMixin(new IntrinsicReportingMixin(this, algo, null, PropertyIdentifier.totalRecordCount, triggerProps)
-                .withPostNotificationAction(notifParams -> {
-                    if (notifParams.getParameter() instanceof BufferReadyNotif brn) {
-                        // After a notification has been sent, a couple values need to be updated.
-                        writePropertyInternal(PropertyIdentifier.lastNotifyRecord, brn.getCurrentNotification());
-                        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
-                    }
-                }));
-
-        updateMonitoredProperty();
-
-        return this;
-    }
-
-    public boolean isLogDisabled() {
-        return logDisabled;
     }
 
     /**
@@ -257,56 +173,18 @@ public class TrendLogObject extends BACnetObject {
         }
     }
 
-    public void setEnabled(final boolean enabled) {
-        writePropertyInternal(PropertyIdentifier.enable, Boolean.valueOf(enabled));
-    }
-
-    /**
-     * Locally trigger a poll.
-     *
-     * @return true if the trigger was done, false if the trigger value was already true, indicating that a trigger
-     * was already in progress.
-     */
-    public synchronized boolean trigger() {
-        final Boolean trigger = get(PropertyIdentifier.trigger);
-        if (trigger.booleanValue()) {
-            return false;
-        }
-        set(PropertyIdentifier.trigger, Boolean.TRUE);
-        doTrigger();
-        return true;
-    }
-
     @Override
-    protected void beforeReadProperty(final PropertyIdentifier pid) throws BACnetServiceException {
-        if (PropertyIdentifier.logBuffer.equals(pid)) {
-            throw new BACnetServiceException(ErrorClass.property, ErrorCode.readAccessDenied);
+    protected int bufferSize() {
+        synchronized (buffer) {
+            return buffer.size();
         }
     }
 
     @Override
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value)
             throws BACnetServiceException {
-        if (PropertyIdentifier.enable.equals(value.getPropertyIdentifier())) {
-            final Boolean enable = value.getValue();
-            final Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
-            final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
-
-            if (enable.booleanValue() && stopWhenFull.booleanValue() && bufferSize.intValue() == buffer.size()) {
-                throw new BACnetServiceException(ErrorClass.object, ErrorCode.logBufferFull);
-            }
-
-        } else if (PropertyIdentifier.startTime.equals(value.getPropertyIdentifier()) //
-                || PropertyIdentifier.stopTime.equals(value.getPropertyIdentifier())) {
-            // Ensure that the date time is either entirely unspecified or entirely specified.
-            final DateTime dt = value.getValue();
-            if (dt.equals(DateTime.UNSPECIFIED))
-                return false;
-
-            if (!dt.isFullySpecified())
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.parameterOutOfRange);
-
-        } else if (PropertyIdentifier.logDeviceObjectProperty.equals(value.getPropertyIdentifier())) {
+        super.validateProperty(valueSource, value);
+        if (PropertyIdentifier.logDeviceObjectProperty.equals(value.getPropertyIdentifier())) {
             final DeviceObjectPropertyReference logDeviceObjectProperty = value.getValue();
             if (logDeviceObjectProperty.getPropertyIdentifier().isOneOf(PropertyIdentifier.all,
                     PropertyIdentifier.required, PropertyIdentifier.optional)) {
@@ -317,34 +195,14 @@ public class TrendLogObject extends BACnetObject {
             if (!loggingType.isOneOf(LoggingType.polled, LoggingType.cov)) {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
             }
-        } else if (PropertyIdentifier.bufferSize.equals(value.getPropertyIdentifier())) {
-            final Boolean enable = get(PropertyIdentifier.enable);
-            if (enable.booleanValue()) {
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
-            }
-        } else if (PropertyIdentifier.recordCount.equals(value.getPropertyIdentifier())) {
-            // Only allowed to write a zero to this record. What would any other value do?
-            final UnsignedInteger recordCount = value.getValue();
-            if (recordCount.intValue() != 0)
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
         }
         return false;
     }
 
     @Override
-    protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
-            final Encodable newValue) {
-        if (PropertyIdentifier.enable.equals(pid)) {
-            evaluateLogDisabled();
-        } else if (PropertyIdentifier.startTime.equals(pid)) {
-            updateStartTime((DateTime) newValue);
-        } else if (PropertyIdentifier.stopTime.equals(pid)) {
-            updateStopTime((DateTime) newValue);
-        } else if (PropertyIdentifier.logDeviceObjectProperty.equals(pid)) {
-            purge();
-            updateMonitoredProperty();
-
-        } else if (PropertyIdentifier.logInterval.equals(pid)) {
+    protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
+        super.afterWriteProperty(pid, oldValue, newValue);
+        if (PropertyIdentifier.logInterval.equals(pid)) {
             final int oldLogInterval = ((UnsignedInteger) oldValue).intValue();
             final int logInterval = ((UnsignedInteger) newValue).intValue();
             final LoggingType loggingType = get(PropertyIdentifier.loggingType);
@@ -356,13 +214,6 @@ public class TrendLogObject extends BACnetObject {
             }
 
             updateLoggingType();
-
-        } else if (pid.isOneOf(PropertyIdentifier.covResubscriptionInterval, PropertyIdentifier.clientCovIncrement)) {
-            final LoggingType loggingType = get(PropertyIdentifier.loggingType);
-            if (loggingType.equals(LoggingType.cov)) {
-                updateLoggingType();
-            }
-
         } else if (PropertyIdentifier.stopWhenFull.equals(pid)) {
             final Boolean oldStopWhenFull = (Boolean) oldValue;
             final Boolean stopWhenFull = (Boolean) newValue;
@@ -378,7 +229,6 @@ public class TrendLogObject extends BACnetObject {
                     writePropertyInternal(PropertyIdentifier.enable, Boolean.FALSE);
                 }
             }
-
         } else if (PropertyIdentifier.bufferSize.equals(pid)) {
             final UnsignedInteger bufferSize = (UnsignedInteger) newValue;
             // In case the buffer size was reduced, remove extra entries in the buffer.
@@ -387,30 +237,16 @@ public class TrendLogObject extends BACnetObject {
                     buffer.remove();
             }
             updateRecordCount();
-
-        } else if (PropertyIdentifier.recordCount.equals(pid)) {
-            final UnsignedInteger recordCount = (UnsignedInteger) newValue;
-            if (recordCount.intValue() == 0)
-                purge();
-
-        } else if (PropertyIdentifier.loggingType.equals(pid)) {
-            updateLoggingType();
-
-        } else if (pid.isOneOf(PropertyIdentifier.alignIntervals, PropertyIdentifier.intervalOffset)) {
+        } else if (pid.isOneOf(PropertyIdentifier.covResubscriptionInterval, PropertyIdentifier.clientCovIncrement)) {
             final LoggingType loggingType = get(PropertyIdentifier.loggingType);
-            if (loggingType.equals(LoggingType.polled)) {
+            if (loggingType.equals(LoggingType.cov)) {
                 updateLoggingType();
-            }
-
-        } else if (PropertyIdentifier.trigger.equals(pid)) {
-            // If the value has changed from false to true.
-            if (((Boolean) newValue).booleanValue() && !((Boolean) oldValue).booleanValue()) {
-                doTrigger();
             }
         }
     }
 
-    private void purge() {
+    @Override
+    protected void purge() {
         synchronized (buffer) {
             buffer.clear();
         }
@@ -418,42 +254,10 @@ public class TrendLogObject extends BACnetObject {
         addLogRecordImpl(new LogRecord(getNow(), new LogStatus(logDisabled, true, false), null));
     }
 
-    private void updateStartTime(final DateTime startTime) {
-        cancelFuture(startTimeFuture);
-        if (!startTime.equals(DateTime.UNSPECIFIED)) {
-            final DateTime now = getNow();
-            final long diff = startTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
-            if (diff > 0) {
-                startTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
-            }
-        }
-        evaluateLogDisabled();
-    }
-
-    private void updateStopTime(final DateTime stopTime) {
-        cancelFuture(stopTimeFuture);
-        if (!stopTime.equals(DateTime.UNSPECIFIED)) {
-            final DateTime now = getNow();
-            final long diff = stopTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
-            if (diff > 0) {
-                stopTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
-            }
-        }
-        evaluateLogDisabled();
-    }
-
     @Override
     protected void terminateImpl() {
         super.terminate();
-        cancelFuture(startTimeFuture);
-        cancelFuture(stopTimeFuture);
-        cancelFuture(pollingFuture);
         cancelCov();
-    }
-
-    private static void cancelFuture(final ScheduledFuture<?> future) {
-        if (future != null)
-            future.cancel(false);
     }
 
     private void cancelCov() {
@@ -491,7 +295,8 @@ public class TrendLogObject extends BACnetObject {
         cancelFuture(resubscriptionFuture);
     }
 
-    private void updateMonitoredProperty() {
+    @Override
+    protected void updateMonitoredProperty() {
         final DeviceObjectPropertyReference monitored = get(PropertyIdentifier.logDeviceObjectProperty);
 
         // Add the monitored property.
@@ -513,7 +318,8 @@ public class TrendLogObject extends BACnetObject {
     /**
      * This method reinitializes all data retrieval.
      */
-    private void updateLoggingType() {
+    @Override
+    protected void updateLoggingType() {
         final LoggingType loggingType = get(PropertyIdentifier.loggingType);
 
         cancelFuture(pollingFuture);
@@ -653,21 +459,8 @@ public class TrendLogObject extends BACnetObject {
         updateConfigurationError(false);
     }
 
-    private void doTrigger() {
-        // Perform the trigger asynchronously
-        getLocalDevice().execute(() -> {
-            try {
-                // Do the poll.
-                doPoll();
-                LOG.debug("Trigger complete");
-            } finally {
-                // Set the trigger value back to false.
-                writePropertyInternal(PropertyIdentifier.trigger, Boolean.FALSE);
-            }
-        });
-    }
-
-    private synchronized void doPoll() {
+    @Override
+    protected synchronized void doPoll() {
         // The spec says that no *logging* should occur if the log is disabled, but there doesn't seem to be much
         // point in polling at all if this is the case, so we check here and abort accordingly.
         if (logDisabled)
@@ -731,15 +524,6 @@ public class TrendLogObject extends BACnetObject {
         fullCheck();
     }
 
-    private void fullCheck() {
-        final Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
-        final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
-        if (stopWhenFull.booleanValue() && buffer.size() == bufferSize.intValue() - 1) {
-            // There is only one spot left in the buffer, and StopWhenFull is true. Set Enable to false.
-            writePropertyInternal(PropertyIdentifier.enable, Boolean.FALSE);
-        }
-    }
-
     private void addLogRecordImpl(final LogRecord rec) {
         final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
 
@@ -770,37 +554,8 @@ public class TrendLogObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.totalRecordCount, totalRecordCount);
     }
 
-    /**
-     * Determines whether logging should be performed based upon Enable, StartTime, and StopTime.
-     */
-    private boolean allowLogging(final DateTime now) {
-        final Boolean enabled = get(PropertyIdentifier.enable);
-        if (!enabled.booleanValue())
-            return false;
-
-        final DateTime start = get(PropertyIdentifier.startTime);
-        final DateTime stop = get(PropertyIdentifier.stopTime);
-
-        if (!start.equals(DateTime.UNSPECIFIED)) {
-            LOG.debug("Checking start time");
-            if (now.compareTo(start) < 0)
-                return false;
-        }
-
-        if (!stop.equals(DateTime.UNSPECIFIED)) {
-            LOG.debug("Checking stop time, now={}, stop={}", now, stop);
-            if (now.compareTo(stop) >= 0)
-                return false;
-        }
-
-        return true;
-    }
-
-    private void updateRecordCount() {
-        writePropertyInternal(PropertyIdentifier.recordCount, new UnsignedInteger(buffer.size()));
-    }
-
-    private void evaluateLogDisabled() {
+    @Override
+    protected void evaluateLogDisabled() {
         // Don't evaluate until instantiation is complete.
         if (buffer != null) {
             final DateTime now = getNow();
@@ -812,9 +567,5 @@ public class TrendLogObject extends BACnetObject {
                     addLogRecordImpl(new LogRecord(now, new LogStatus(logDisabled, false, false), null));
             }
         }
-    }
-
-    private DateTime getNow() {
-        return new DateTime(getLocalDevice().getClock().millis());
     }
 }
