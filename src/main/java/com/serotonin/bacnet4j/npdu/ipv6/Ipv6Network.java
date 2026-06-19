@@ -73,7 +73,6 @@ public class Ipv6Network extends Network implements Runnable {
     private final String localBindAddress;
 
     // Runtime
-    private Thread thread;
     private MulticastSocket socket;
     private OctetString broadcastMAC;
     private OctetString thisVMAC;
@@ -172,8 +171,7 @@ public class Ipv6Network extends Network implements Runnable {
             throw new RuntimeException(e);
         }
 
-        thread = new Thread(this, "BACnet4J IPv6 socket listener");
-        thread.start();
+        new Thread(this, "BACnet4J IPv6 socket listener").start();
     }
 
     @Override
