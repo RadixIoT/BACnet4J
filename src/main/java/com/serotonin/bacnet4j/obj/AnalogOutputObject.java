@@ -30,7 +30,6 @@ package com.serotonin.bacnet4j.obj;
 import java.util.Objects;
 
 import com.serotonin.bacnet4j.LocalDevice;
-import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.mixin.CommandableMixin;
 import com.serotonin.bacnet4j.obj.mixin.HasStatusFlagsMixin;
 import com.serotonin.bacnet4j.obj.mixin.ReadOnlyPropertyMixin;
@@ -54,7 +53,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class AnalogOutputObject extends BACnetObject {
     public AnalogOutputObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final float presentValue, final EngineeringUnits units, final boolean outOfService,
-            final float relinquishDefault) throws BACnetServiceException {
+            final float relinquishDefault) {
         super(localDevice, ObjectType.analogOutput, instanceNumber, name);
 
         Objects.requireNonNull(units);
@@ -77,8 +76,6 @@ public class AnalogOutputObject extends BACnetObject {
 
         _supportCommandable(new Real(relinquishDefault));
         _supportValueSource();
-
-        localDevice.addObject(this);
     }
 
     public AnalogOutputObject supportCovReporting(final float covIncrement) {

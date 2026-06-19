@@ -77,8 +77,7 @@ public class EventLogObject extends BACnetObject {
     static final Logger LOG = LoggerFactory.getLogger(EventLogObject.class);
 
     // CreateObject constructor
-    public static EventLogObject create(final LocalDevice localDevice, final int instanceNumber)
-            throws BACnetServiceException {
+    public static EventLogObject create(final LocalDevice localDevice, final int instanceNumber) {
         return new EventLogObject(localDevice, instanceNumber, ObjectType.eventLog.toString() + " " + instanceNumber,
                 new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, false, 100) //
                 .supportIntrinsicReporting(20, 0, new EventTransitionBits(false, false, false),
@@ -97,7 +96,7 @@ public class EventLogObject extends BACnetObject {
      */
     public EventLogObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final LogBuffer<EventLogRecord> buffer, final boolean enable, final DateTime startTime,
-            final DateTime stopTime, final boolean stopWhenFull, final int bufferSize) throws BACnetServiceException {
+            final DateTime stopTime, final boolean stopWhenFull, final int bufferSize) {
         super(localDevice, ObjectType.eventLog, instanceNumber, name);
 
         Objects.requireNonNull(localDevice);
@@ -142,8 +141,6 @@ public class EventLogObject extends BACnetObject {
             }
         };
         localDevice.getEventHandler().addListener(eventListener);
-
-        localDevice.addObject(this);
     }
 
     public EventLogObject supportIntrinsicReporting(final int notificationThreshold, final int notificationClass,
@@ -173,7 +170,7 @@ public class EventLogObject extends BACnetObject {
 
         // Now add the mixin.
         addMixin(new IntrinsicReportingMixin(this, algo, null, PropertyIdentifier.totalRecordCount, triggerProps)
-                .withPostNotificationAction((notifParams) -> {
+                .withPostNotificationAction(notifParams -> {
                     // After a notification has been sent, a couple values need to be updated.
                     final BufferReadyNotif brn = (BufferReadyNotif) notifParams.getParameter();
                     writePropertyInternal(PropertyIdentifier.lastNotifyRecord, brn.getCurrentNotification());
@@ -295,7 +292,7 @@ public class EventLogObject extends BACnetObject {
             final DateTime now = getNow();
             final long diff = startTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
             if (diff > 0) {
-                startTimeFuture = getLocalDevice().schedule(() -> evaluateLogDisabled(), diff, TimeUnit.MILLISECONDS);
+                startTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
             }
         }
         evaluateLogDisabled();
@@ -307,7 +304,7 @@ public class EventLogObject extends BACnetObject {
             final DateTime now = getNow();
             final long diff = stopTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
             if (diff > 0) {
-                stopTimeFuture = getLocalDevice().schedule(() -> evaluateLogDisabled(), diff, TimeUnit.MILLISECONDS);
+                stopTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
             }
         }
         evaluateLogDisabled();
@@ -325,13 +322,13 @@ public class EventLogObject extends BACnetObject {
             future.cancel(false);
     }
 
-    private synchronized void addLogRecord(final EventLogRecord record) {
+    private synchronized void addLogRecord(final EventLogRecord rec) {
         // Check if logging is allowed.
         if (logDisabled)
             return;
 
         // Add the new record.
-        addLogRecordImpl(record);
+        addLogRecordImpl(rec);
 
         fullCheck();
     }
@@ -345,7 +342,7 @@ public class EventLogObject extends BACnetObject {
         }
     }
 
-    private void addLogRecordImpl(final EventLogRecord record) {
+    private void addLogRecordImpl(final EventLogRecord rec) {
         final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
 
         synchronized (buffer) {
@@ -355,7 +352,7 @@ public class EventLogObject extends BACnetObject {
                 buffer.remove();
             }
 
-            buffer.add(record);
+            buffer.add(rec);
         }
 
         updateRecordCount();
@@ -371,7 +368,7 @@ public class EventLogObject extends BACnetObject {
         if (totalRecordCount.longValue() == 0)
             // Value overflowed. As per 12.27.15 set to 1.
             totalRecordCount = new UnsignedInteger(1);
-        record.setSequenceNumber(totalRecordCount.longValue());
+        rec.setSequenceNumber(totalRecordCount.longValue());
         writePropertyInternal(PropertyIdentifier.totalRecordCount, totalRecordCount);
     }
 

@@ -103,7 +103,7 @@ public class ScheduleObject extends BACnetObject {
      * failures, restarts, and the like.
      */
     private ScheduledFuture<?> periodicWriter;
-    private volatile DateTime lastUpdateTime;
+    private DateTime lastUpdateTime;
 
     public ScheduleObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final DateRange effectivePeriod, final BACnetArray<DailySchedule> weeklySchedule,
@@ -148,8 +148,6 @@ public class ScheduleObject extends BACnetObject {
         // initialization of the objects in the list, force a write.
         if (Objects.equals(oldValue, newValue))
             doWrites(newValue);
-
-        localDevice.addObject(this);
     }
 
     public void supportIntrinsicReporting(final int notificationClass, final EventTransitionBits eventEnable,

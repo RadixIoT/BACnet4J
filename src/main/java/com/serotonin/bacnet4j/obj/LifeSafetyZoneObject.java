@@ -89,8 +89,6 @@ public class LifeSafetyZoneObject extends BACnetObject implements LifeSafety {
         addMixin(new LifeSafetyMixin(this));
         addMixin(new ReadOnlyPropertyMixin(this, PropertyIdentifier.acceptedModes, PropertyIdentifier.ackedTransitions,
                 PropertyIdentifier.eventTimeStamps, PropertyIdentifier.eventMessageTexts));
-
-        localDevice.addObject(this);
     }
 
     public LifeSafetyZoneObject supportIntrinsicReporting(final int timeDelay, final int notificationClass,

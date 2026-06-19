@@ -73,7 +73,7 @@ public class ReadPropertyMultipleRequestTest {
         localDevice = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
         localDevice.initialize();
 
-        g0 = new GroupObject(localDevice, 0, "g0", new SequenceOf<>());
+        g0 = localDevice.addObject(new GroupObject(localDevice, 0, "g0", new SequenceOf<>()));
         g0.writePropertyInternal(PropertyIdentifier.description, new CharacterString("my description"));
     }
 

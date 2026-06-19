@@ -60,11 +60,11 @@ public class CreateObjectRequestTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        go0 = new GroupObject(d1, 0, "existing group", new SequenceOf<>());
+        go0 = d1.addObject(new GroupObject(d1, 0, "existing group", new SequenceOf<>()));
     }
 
     @Test
-    public void unsupportedObjectType() throws Exception {
+    public void unsupportedObjectType() {
         final CreateObjectError err = TestUtils.assertErrorAPDUException(() -> {
             d2.send(rd1, new CreateObjectRequest(new ObjectIdentifier(ObjectType.lift, 0), new SequenceOf<>())).get();
         }, ErrorClass.object, ErrorCode.unsupportedObjectType);
@@ -73,7 +73,7 @@ public class CreateObjectRequestTest extends AbstractTest {
     }
 
     @Test
-    public void noCreator() throws Exception {
+    public void noCreator() {
         final CreateObjectError err = TestUtils.assertErrorAPDUException(() -> {
             d2.send(rd1, new CreateObjectRequest(ObjectType.device, new SequenceOf<>())).get();
         }, ErrorClass.object, ErrorCode.dynamicCreationNotSupported);
@@ -82,7 +82,7 @@ public class CreateObjectRequestTest extends AbstractTest {
     }
 
     @Test
-    public void duplicateInstanceNumber() throws Exception {
+    public void duplicateInstanceNumber() {
         final CreateObjectError err = TestUtils.assertErrorAPDUException(() -> {
             d2.send(rd1, new CreateObjectRequest(go0.getId(), new SequenceOf<>())).get();
         }, ErrorClass.object, ErrorCode.objectIdentifierAlreadyExists);
@@ -91,7 +91,7 @@ public class CreateObjectRequestTest extends AbstractTest {
     }
 
     @Test
-    public void duplicateName() throws Exception {
+    public void duplicateName() {
         final CreateObjectError err = TestUtils.assertErrorAPDUException(() -> {
             d2.send(rd1,
                             new CreateObjectRequest(ObjectType.group, new SequenceOf<>(

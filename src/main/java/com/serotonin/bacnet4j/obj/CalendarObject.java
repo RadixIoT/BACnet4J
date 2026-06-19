@@ -54,8 +54,7 @@ public class CalendarObject extends BACnetObject {
     static final Logger LOG = LoggerFactory.getLogger(CalendarObject.class);
 
     // CreateObject constructor
-    public static CalendarObject create(final LocalDevice localDevice, final int instanceNumber)
-            throws BACnetServiceException {
+    public static CalendarObject create(final LocalDevice localDevice, final int instanceNumber) {
         return new CalendarObject(localDevice, instanceNumber, ObjectType.calendar.toString() + " " + instanceNumber,
                 new SequenceOf<>());
     }
@@ -67,7 +66,7 @@ public class CalendarObject extends BACnetObject {
     private ScheduledFuture<?> presentValueRefresher;
 
     public CalendarObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final SequenceOf<CalendarEntry> dateList) throws BACnetServiceException {
+            final SequenceOf<CalendarEntry> dateList) {
         super(localDevice, ObjectType.calendar, instanceNumber, name);
 
         writePropertyInternal(PropertyIdentifier.dateList, dateList);
@@ -87,10 +86,8 @@ public class CalendarObject extends BACnetObject {
         final long delay = hour - elapsed + 10; // Add a few milliseconds for fun.
 
         // Delay until the top of the next hour, and then run every hour.
-        presentValueRefresher = getLocalDevice().scheduleAtFixedRate(() -> updatePresentValue(), delay, hour,
+        presentValueRefresher = getLocalDevice().scheduleAtFixedRate(this::updatePresentValue, delay, hour,
                 TimeUnit.MILLISECONDS);
-
-        localDevice.addObject(this);
     }
 
     public int getTimeTolerance() {

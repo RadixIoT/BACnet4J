@@ -55,7 +55,7 @@ public class BACnetObjectListenerTest extends AbstractTest {
                 new CharacterString("Off"), //
                 new CharacterString("On"), //
                 new CharacterString("Auto"));
-        mv = new MultistateValueObject(d2, 0, "mv0", 3, stateText, 1, false);
+        mv = d2.addObject(new MultistateValueObject(d2, 0, "mv0", 3, stateText, 1, false));
         mv.supportCommandable(UnsignedInteger.ZERO);
     }
 

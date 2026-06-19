@@ -82,9 +82,11 @@ public class AccumulatorObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        a = new AccumulatorObject(d1, 0, "a0", 0, 0, EngineeringUnits.amperes, false, new Scale(new Real(1)),
-                new Prescale(new UnsignedInteger(2), new UnsignedInteger(15)), 200, 1);
-        nc = new NotificationClassObject(d1, 54, "nc54", 100, 5, 200, new EventTransitionBits(true, true, true));
+        a = d1.addObject(new AccumulatorObject(
+                d1, 0, "a0", 0, 0, EngineeringUnits.amperes, false, new Scale(new Real(1)),
+                new Prescale(new UnsignedInteger(2), new UnsignedInteger(15)), 200, 1));
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 54, "nc54", 100, 5, 200, new EventTransitionBits(true, true, true)));
     }
 
     @SuppressWarnings("unchecked")
@@ -336,12 +338,13 @@ public class AccumulatorObjectTest extends AbstractTest {
 
         final DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(1, a.getId(), PropertyIdentifier.pulseRate);
-        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.alarm,
+        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(
                         new UnsignedRange(new UnsignedInteger(3), new UnsignedInteger(30), new UnsignedInteger(50))),
                 new EventTransitionBits(true, true, true), 54, 100, null, new FaultParameter(
                 new FaultOutOfRange(new FaultNormalValue(new UnsignedInteger(20)),
-                        new FaultNormalValue(new UnsignedInteger(60)))));
+                        new FaultNormalValue(new UnsignedInteger(60))))));
 
         // Set up the notification destination
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
@@ -353,7 +356,7 @@ public class AccumulatorObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
-        Thread.sleep(500);
+        quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
         assertEquals(0, listener.getNotifCount());
 
@@ -414,9 +417,9 @@ public class AccumulatorObjectTest extends AbstractTest {
 
     @Test
     public void construction() throws Exception {
-        final AccumulatorObject a1 =
-                new AccumulatorObject(d1, 1, "a1", 456, 0, EngineeringUnits.amperes, false, new Scale(new Real(1)),
-                        new Prescale(new UnsignedInteger(2), new UnsignedInteger(15)), 200, 1);
+        final AccumulatorObject a1 = d1.addObject(new AccumulatorObject(
+                d1, 1, "a1", 456, 0, EngineeringUnits.amperes, false, new Scale(new Real(1)),
+                new Prescale(new UnsignedInteger(2), new UnsignedInteger(15)), 200, 1));
         assertEquals(new UnsignedInteger(456), a1.get(PropertyIdentifier.presentValue));
     }
 

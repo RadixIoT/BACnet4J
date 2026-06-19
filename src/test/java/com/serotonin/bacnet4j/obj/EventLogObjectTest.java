@@ -99,14 +99,14 @@ public class EventLogObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        nc = new NotificationClassObject(d1, 23, "nc", 1, 2, 3, new EventTransitionBits(true, true, true));
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 23, "nc", 1, 2, 3, new EventTransitionBits(true, true, true)));
     }
 
     @Test
     public void logging() throws Exception {
-        final EventLogObject el =
-                new EventLogObject(d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, false, 20);
+        final EventLogObject el = d1.addObject(new EventLogObject(
+                d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, false, 20));
 
         // The buffer should still be empty
         assertEquals(0, el.getBuffer().size());
@@ -142,10 +142,10 @@ public class EventLogObjectTest extends AbstractTest {
     @Test
     public void intrinsicReporting() throws Exception {
         // Create a triggered trend log with intrinsic reporting enabled.
-        final EventLogObject el =
-                new EventLogObject(d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, false, 20) //
-                        .supportIntrinsicReporting(5, 23, new EventTransitionBits(true, true, true), NotifyType.event);
+        final EventLogObject el = d1.addObject(new EventLogObject(
+                d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, false, 20)
+                .supportIntrinsicReporting(5, 23, new EventTransitionBits(true, true, true), NotifyType.event));
 
         // Add d2 as an event recipient.
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
@@ -271,16 +271,17 @@ public class EventLogObjectTest extends AbstractTest {
     @Test
     public void eventReporting() throws Exception {
         // Create a triggered trend log
-        final EventLogObject el =
-                new EventLogObject(d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, false, 20);
+        final EventLogObject el = d1.addObject(new EventLogObject(
+                d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, false, 20));
 
         // Create the event enrollment.
         final DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(el.getId(), PropertyIdentifier.totalRecordCount, null, d1.getId());
-        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.event,
+        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee", ref, NotifyType.event,
                 new EventParameter(new BufferReady(new UnsignedInteger(3), UnsignedInteger.ZERO)),
-                new EventTransitionBits(true, true, true), 23, 1000, null, null);
+                new EventTransitionBits(true, true, true), 23, 1000, null, null));
 
         // Set d2 as an event recipient.
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
@@ -356,9 +357,9 @@ public class EventLogObjectTest extends AbstractTest {
     @Test
     public void stopWhenFull() throws Exception {
         // Create a triggered trend log
-        final EventLogObject el =
-                new EventLogObject(d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, true, 4);
+        final EventLogObject el = d1.addObject(new EventLogObject(
+                d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, true, 4));
 
         // Add a couple records and validate the buffer content
         d2.send(rd1, n1).get();
@@ -422,9 +423,9 @@ public class EventLogObjectTest extends AbstractTest {
     @Test
     public void enableDisable() throws Exception {
         // Create a disabled triggered trend log
-        final EventLogObject el =
-                new EventLogObject(d1, 0, "el", new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, true, 4);
+        final EventLogObject el = d1.addObject(new EventLogObject(
+                d1, 0, "el", new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, true, 4));
         assertEquals(0, el.getBuffer().size());
 
         // Add a couple records and validate the buffer content
@@ -454,8 +455,8 @@ public class EventLogObjectTest extends AbstractTest {
         DateTime stopTime = new DateTime(nowgg);
 
         // Create a triggered trend log
-        final EventLogObject el =
-                new EventLogObject(d1, 0, "el", new LinkedListLogBuffer<>(), true, startTime, stopTime, true, 7);
+        final EventLogObject el = d1.addObject(new EventLogObject(
+                d1, 0, "el", new LinkedListLogBuffer<>(), true, startTime, stopTime, true, 7));
         assertTrue(el.isLogDisabled());
         assertEquals(0, el.getBuffer().size());
 
@@ -522,9 +523,9 @@ public class EventLogObjectTest extends AbstractTest {
     @Test
     public void readLogBuffer() throws Exception {
         // Create a triggered trend log
-        final EventLogObject el =
-                new EventLogObject(d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, true, 7);
+        final EventLogObject el = d1.addObject(new EventLogObject(
+                d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, true, 7));
 
         // Try to do a network read of the buffer. It should not be readable.
         assertBACnetServiceException(() -> el.readProperty(PropertyIdentifier.logBuffer, null), ErrorClass.property,
@@ -534,9 +535,9 @@ public class EventLogObjectTest extends AbstractTest {
     @Test
     public void purge() throws Exception {
         // Create a triggered trend log
-        final EventLogObject el =
-                new EventLogObject(d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, true, 7);
+        final EventLogObject el = d1.addObject(new EventLogObject(
+                d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, true, 7));
 
         // Trigger a few updates.
         d2.send(rd1, n2).get();

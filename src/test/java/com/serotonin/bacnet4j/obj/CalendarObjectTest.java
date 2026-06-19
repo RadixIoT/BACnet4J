@@ -60,7 +60,7 @@ public class CalendarObjectTest extends AbstractTest {
                 // November to February
                 ce);
 
-        final CalendarObject co = new CalendarObject(d1, 0, "cal0", dateList);
+        final CalendarObject co = d1.addObject(new CalendarObject(d1, 0, "cal0", dateList));
 
         co.updatePresentValue(); // November to February
         assertEquals(Boolean.TRUE, co.get(PropertyIdentifier.presentValue));

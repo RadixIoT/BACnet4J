@@ -62,14 +62,16 @@ public class AlertEnrollmentObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        av0 = new AnalogValueObject(d1, 0, "av0", 0, EngineeringUnits.noUnits, false);
-        nc = new NotificationClassObject(d1, 55, "nc55", 101, 4, 201, new EventTransitionBits(false, false, false));
+        av0 = d1.addObject(new AnalogValueObject(
+                d1, 0, "av0", 0, EngineeringUnits.noUnits, false));
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 55, "nc55", 101, 4, 201, new EventTransitionBits(false, false, false)));
     }
 
     @SuppressWarnings("unchecked")
     @Test
     public void alertReporting() throws Exception {
-        final AlertEnrollmentObject ae = new AlertEnrollmentObject(d1, 0, "ae0", 55, NotifyType.alarm);
+        final AlertEnrollmentObject ae = d1.addObject(new AlertEnrollmentObject(d1, 0, "ae0", 55, NotifyType.alarm));
 
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,

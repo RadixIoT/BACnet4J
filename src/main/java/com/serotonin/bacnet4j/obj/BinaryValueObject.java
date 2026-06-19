@@ -30,7 +30,6 @@ package com.serotonin.bacnet4j.obj;
 import java.util.Objects;
 
 import com.serotonin.bacnet4j.LocalDevice;
-import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.mixin.ActiveTimeMixin;
 import com.serotonin.bacnet4j.obj.mixin.CommandableMixin;
 import com.serotonin.bacnet4j.obj.mixin.HasStatusFlagsMixin;
@@ -53,7 +52,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class BinaryValueObject extends BACnetObject {
     public BinaryValueObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final BinaryPV presentValue, final boolean outOfService) throws BACnetServiceException {
+            final BinaryPV presentValue, final boolean outOfService) {
         super(localDevice, ObjectType.binaryValue, instanceNumber, name);
 
         Objects.requireNonNull(presentValue);
@@ -73,8 +72,6 @@ public class BinaryValueObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.presentValue, presentValue);
 
         addMixin(new StateChangeMixin(this));
-
-        localDevice.addObject(this);
     }
 
     public BinaryValueObject supportStateText(final String inactive, final String active) {

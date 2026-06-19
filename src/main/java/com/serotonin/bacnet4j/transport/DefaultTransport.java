@@ -27,6 +27,7 @@
 
 package com.serotonin.bacnet4j.transport;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
@@ -1006,6 +1007,7 @@ public class DefaultTransport implements Transport, Runnable {
                 .entrySet().iterator();
 
         // Check for expired unacked messages
+        var toSendForResponse = new HashMap<UnackedMessageKey, UnackedMessageContext>();
         while (umIter.hasNext()) {
             final Map.Entry<UnackedMessageKey, UnackedMessageContext> e = umIter.next();
             final UnackedMessageKey key = e.getKey();
@@ -1014,7 +1016,7 @@ public class DefaultTransport implements Transport, Runnable {
                 if (ctx.hasMoreAttempts()) {
                     // Resend
                     ctx.retry(timeout);
-                    sendForResponse(key, ctx);
+                    toSendForResponse.put(key, ctx);
                 } else {
                     LOG.debug("Timeout on key {}", key);
 
@@ -1040,6 +1042,7 @@ public class DefaultTransport implements Transport, Runnable {
                 didSomething = true;
             }
         }
+        toSendForResponse.forEach(this::sendForResponse);
 
         return !didSomething;
     }

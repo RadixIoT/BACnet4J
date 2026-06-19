@@ -66,10 +66,10 @@ public class WritePropertyMultipleRequestTest {
         remoteDevice = new LocalDevice(remoteDeviceId, new DefaultTransport(new TestNetwork(map, remoteDeviceId, 0)))
                 .initialize();
 
-        msv0 = new MultistateValueObject(remoteDevice, 0, "msv0", 4,
+        msv0 = remoteDevice.addObject(new MultistateValueObject(remoteDevice, 0, "msv0", 4,
                 new BACnetArray<>(new CharacterString("a"), new CharacterString("b"), new CharacterString("c"),
                         new CharacterString("d")),
-                1, false);
+                1, false));
         msv0.writePropertyInternal(PropertyIdentifier.description, new CharacterString("my description"));
 
         // Get the local reference to the remove device

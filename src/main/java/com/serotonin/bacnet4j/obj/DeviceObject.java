@@ -81,7 +81,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class DeviceObject extends BACnetObject {
     private static final int VENDOR_ID = 865; //Infinite Automation Systems, Inc.
 
-    public DeviceObject(final LocalDevice localDevice, final int instanceNumber) throws BACnetServiceException {
+    public DeviceObject(final LocalDevice localDevice, final int instanceNumber) {
         super(localDevice, ObjectType.device, instanceNumber, "BACnet4J device " + instanceNumber);
 
         writePropertyInternal(PropertyIdentifier.maxApduLengthAccepted,
@@ -246,8 +246,6 @@ public class DeviceObject extends BACnetObject {
         addMixin(new ReadOnlyPropertyMixin(this, PropertyIdentifier.activeCovSubscriptions,
                 PropertyIdentifier.localTime, PropertyIdentifier.localDate, PropertyIdentifier.deviceAddressBinding));
         addMixin(new ObjectListMixin(this));
-
-        localDevice.addObject(this);
     }
 
     public DeviceObject supportTimeSynchronization(final SequenceOf<Recipient> timeSynchronizationRecipients,
@@ -339,10 +337,10 @@ public class DeviceObject extends BACnetObject {
 
     private MasterNode getMasterNode() {
         final Network network = getLocalDevice().getNetwork();
-        if (network instanceof MstpNetwork) {
-            final MstpNode node = ((MstpNetwork) network).getNode();
-            if (node instanceof MasterNode) {
-                return (MasterNode) node;
+        if (network instanceof MstpNetwork mstp) {
+            final MstpNode node = mstp.getNode();
+            if (node instanceof MasterNode manager) {
+                return manager;
             }
         }
         return null;

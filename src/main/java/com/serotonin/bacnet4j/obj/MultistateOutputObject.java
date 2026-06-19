@@ -95,8 +95,6 @@ public class MultistateOutputObject extends BACnetObject {
 
         _supportCommandable(new UnsignedInteger(relinquishDefaultBase1));
         _supportValueSource();
-
-        localDevice.addObject(this);
     }
 
     public MultistateOutputObject supportCovReporting() {

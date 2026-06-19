@@ -69,13 +69,14 @@ public class BinaryValueObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        bv = new BinaryValueObject(d1, 0, "bv", BinaryPV.inactive, true);
-        new NotificationClassObject(d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false));
+        bv = d1.addObject(new BinaryValueObject(d1, 0, "bv", BinaryPV.inactive, true));
+        d1.addObject(new NotificationClassObject(
+                d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false)));
     }
 
     @Test
     public void initialization() throws Exception {
-        new BinaryValueObject(d1, 1, "bvName2", BinaryPV.inactive, false);
+        d1.addObject(new BinaryValueObject(d1, 1, "bvName2", BinaryPV.inactive, false));
     }
 
     @Test

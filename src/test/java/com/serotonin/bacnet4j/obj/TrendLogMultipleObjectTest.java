@@ -96,9 +96,11 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        nc = new NotificationClassObject(d1, 23, "nc", 1, 2, 3, new EventTransitionBits(true, true, true));
-        ao = new AnalogValueObject(d1, 0, "ao", 0, EngineeringUnits.noUnits, false).supportCovReporting(0.5F);
-        ai = new AnalogInputObject(d2, 0, "ai", 0, EngineeringUnits.noUnits, false);
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 23, "nc", 1, 2, 3, new EventTransitionBits(true, true, true)));
+        ao = d1.addObject(new AnalogValueObject(
+                d1, 0, "ao", 0, EngineeringUnits.noUnits, false).supportCovReporting(0.5F));
+        ai = d2.addObject(new AnalogInputObject(d2, 0, "ai", 0, EngineeringUnits.noUnits, false));
 
         props = new BACnetArray<>( //
                 // Remote
@@ -121,10 +123,10 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
     @Test
     public void pollingAlignedWithOffset() throws Exception {
         // Construct the log to poll each minute, aligned, and with a 2s offset.
-        final TrendLogMultipleObject tl =
-                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, props, 0, false, 20) //
-                        .withPolled(1, MINUTES, true, 2, SECONDS);
+        final TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, props, 0, false, 20)
+                .withPolled(1, MINUTES, true, 2, SECONDS));
 
         assertEquals(0, tl.getRecordCount());
 
@@ -174,14 +176,14 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(3));
 
         // Advance the clock to the new polling time.
-        final int minutes = (62 - clock.get(ChronoField.MINUTE_OF_HOUR)) % 60;
+        final int minutes = (60 - clock.get(ChronoField.MINUTE_OF_HOUR)) % 60;
         clock.plusMinutes(minutes);
         LOG.debug("poll: {}", clock.instant());
 
         awaitEquals(3, tl::getRecordCount);
         assertEquals(3, tl.getRecordCount());
         final LogMultipleRecord record2 = tl.getRecord(2);
-        assertEquals(2, record2.getTimestamp().getTime().getMinute());
+        assertEquals(0, record2.getTimestamp().getTime().getMinute());
         assertEquals(3, record2.getSequenceNumber());
         assertEquals(5, record2.getLogData().getData().size());
         assertEquals(new Real(3), record2.getLogData().getData().get(0).getDatum());
@@ -209,9 +211,9 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
 
     @Test
     public void trigger() throws Exception {
-        final TrendLogMultipleObject tl =
-                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, props, 0, false, 20);
+        final TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, props, 0, false, 20));
 
         final DateTime now = new DateTime(clock.millis());
 
@@ -252,10 +254,10 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
     @Test
     public void intrinsicReporting() throws Exception {
         // Create a triggered trend log with intrinsic reporting enabled.
-        final TrendLogMultipleObject tl =
-                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, props, 0, false, 20) //
-                        .supportIntrinsicReporting(5, 23, new EventTransitionBits(true, true, true), NotifyType.event);
+        final TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, props, 0, false, 20) //
+                .supportIntrinsicReporting(5, 23, new EventTransitionBits(true, true, true), NotifyType.event));
 
         final RemoteDevice rd2 = d1.getRemoteDeviceBlocking(2);
 
@@ -381,16 +383,17 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
     @Test
     public void eventReporting() throws Exception {
         // Create a triggered trend log
-        final TrendLogMultipleObject tl =
-                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, props, 0, false, 20);
+        final TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, props, 0, false, 20));
 
         // Create the event enrollment.
         final DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(tl.getId(), PropertyIdentifier.totalRecordCount, null, d1.getId());
-        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.event,
+        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee", ref, NotifyType.event,
                 new EventParameter(new BufferReady(new UnsignedInteger(3), UnsignedInteger.ZERO)),
-                new EventTransitionBits(true, true, true), 23, 1000, null, null);
+                new EventTransitionBits(true, true, true), 23, 1000, null, null));
 
         // Set d2 as an event recipient.
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
@@ -459,9 +462,9 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
     @Test
     public void stopWhenFull() throws Exception {
         // Create a triggered trend log
-        final TrendLogMultipleObject tl =
-                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, props, 0, true, 4);
+        final TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, props, 0, true, 4));
 
         final SequenceOf<LogDataElement> logData = new SequenceOf<>( //
                 new LogDataElement(new Real(0)), //
@@ -529,9 +532,9 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
     @Test
     public void enableDisable() throws Exception {
         // Create a disabled triggered trend log
-        final TrendLogMultipleObject tl =
-                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, props, 0, true, 4);
+        final TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, props, 0, true, 4));
 
         assertEquals(0, tl.getRecordCount());
 
@@ -567,9 +570,9 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
                 new LogDataElement(noPropSpecified));
 
         // Create a triggered trend log
-        final TrendLogMultipleObject tl =
-                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, startTime, stopTime, props,
-                        0, true, 7);
+        final TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", new LinkedListLogBuffer<>(), true, startTime, stopTime, props,
+                0, true, 7));
 
         assertTrue(tl.isLogDisabled());
         assertEquals(0, tl.getRecordCount());
@@ -631,9 +634,9 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
     @Test
     public void readLogBuffer() throws Exception {
         // Create a triggered trend log
-        final TrendLogMultipleObject tl =
-                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, props, 0, true, 7);
+        final TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, props, 0, true, 7));
 
         // Try to do a network read of the buffer. It should not be readable.
         assertBACnetServiceException(() -> tl.readProperty(PropertyIdentifier.logBuffer, null), ErrorClass.property,
@@ -643,9 +646,9 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
     @Test
     public void purge() throws Exception {
         // Create a triggered trend log
-        final TrendLogMultipleObject tl =
-                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, props, 0, true, 7);
+        final TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, props, 0, true, 7));
 
         // Trigger a few updates.
         doTriggers(tl, 2);
@@ -675,9 +678,9 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
                 new LogDataElement(noPropSpecified));
 
         // Create a triggered trend log
-        final TrendLogMultipleObject tl =
-                new TrendLogMultipleObject(d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, props, 0, true, 100);
+        final TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, props, 0, true, 100));
 
         doTriggers(tl, 2);
         assertEquals(2, tl.getRecordCount());

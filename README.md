@@ -63,6 +63,19 @@ The dependency information is BACnet4J pre 5.0 is:
 
 Releases
 ========
+*Version 7.0.0*
+
+- Breaking change: BACnet objects are no longer added to the local device in their constructors because of
+  initialization problems. Instead, objects need to be explicitly added to the local device after instantiation. Many
+  examples can be found in the unit tests, but e.g.:
+
+```
+// Old code
+var av = new AnalogValueObject(localDevice, ...);
+// New code
+var av = localDevice.addObject(new AnalogValueObject(localDevice, ...));
+```
+
 *Version 6.2.0*
 
 - Methods `LocalDevice.addRemoteDevice(RemoteDevice)` and `LocalDevice.removeRemoteDevice(int)` have been added to allow

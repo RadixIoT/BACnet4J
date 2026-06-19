@@ -92,28 +92,31 @@ public class TrendLogObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        nc = new NotificationClassObject(d1, 23, "nc", 1, 2, 3, new EventTransitionBits(true, true, true));
-        ao = new AnalogValueObject(d1, 0, "ao", 0, EngineeringUnits.noUnits, false).supportCovReporting(0.5F);
-        ai = new AnalogInputObject(d2, 0, "ai", 0, EngineeringUnits.noUnits, false).supportCovReporting(0.5F);
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 23, "nc", 1, 2, 3, new EventTransitionBits(true, true, true)));
+        ao = d1.addObject(new AnalogValueObject(
+                d1, 0, "ao", 0, EngineeringUnits.noUnits, false).supportCovReporting(0.5F));
+        ai = d2.addObject(new AnalogInputObject(
+                d2, 0, "ai", 0, EngineeringUnits.noUnits, false).supportCovReporting(0.5F));
     }
 
     @Test
     public void remotePollingAlignedWithOffset() throws Exception {
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
-                        20).withPolled(1, TimeUnit.MINUTES, true, 2, TimeUnit.SECONDS);
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
+                20).withPolled(1, TimeUnit.MINUTES, true, 2, TimeUnit.SECONDS));
         polling(tl, ai);
     }
 
     @Test
     public void localPolling() throws Exception {
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(1, ao.getId(), PropertyIdentifier.presentValue), 0, false,
-                        20).withPolled(1, TimeUnit.MINUTES, true, 2, TimeUnit.SECONDS);
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(1, ao.getId(), PropertyIdentifier.presentValue), 0, false,
+                20).withPolled(1, TimeUnit.MINUTES, true, 2, TimeUnit.SECONDS));
         polling(tl, ao);
     }
 
@@ -195,21 +198,21 @@ public class TrendLogObjectTest extends AbstractTest {
 
     @Test
     public void remoteCov() throws Exception {
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
-                        20).withCov(100, new ClientCov(Null.instance));
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
+                20).withCov(100, new ClientCov(Null.instance)));
         cov(tl, d2, ai);
     }
 
     @Test
     public void localCov() throws Exception {
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(1, ao.getId(), PropertyIdentifier.presentValue), 0, false,
-                        20).withCov(100, new ClientCov(new Real(0.3F)));
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(1, ao.getId(), PropertyIdentifier.presentValue), 0, false,
+                20).withCov(100, new ClientCov(new Real(0.3F))));
         cov(tl, d1, ao);
     }
 
@@ -317,11 +320,11 @@ public class TrendLogObjectTest extends AbstractTest {
 
     @Test
     public void trigger() throws Exception {
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
-                        20).withTriggered();
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
+                20));
 
         final DateTime now = new DateTime(clock.millis());
 
@@ -357,12 +360,12 @@ public class TrendLogObjectTest extends AbstractTest {
     @Test
     public void intrinsicReporting() throws Exception {
         // Create a triggered trend log with intrinsic reporting enabled.
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
-                        20).withTriggered()
-                        .supportIntrinsicReporting(5, 23, new EventTransitionBits(true, true, true), NotifyType.event);
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
+                20)
+                .supportIntrinsicReporting(5, 23, new EventTransitionBits(true, true, true), NotifyType.event));
 
         final RemoteDevice rd2 = d1.getRemoteDeviceBlocking(2);
 
@@ -489,18 +492,19 @@ public class TrendLogObjectTest extends AbstractTest {
     @Test
     public void eventReporting() throws Exception {
         // Create a triggered trend log
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
-                        20).withTriggered();
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
+                20));
 
         // Create the event enrollment.
         final DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(tl.getId(), PropertyIdentifier.totalRecordCount, null, d1.getId());
-        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", ref, NotifyType.event,
+        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee", ref, NotifyType.event,
                 new EventParameter(new BufferReady(new UnsignedInteger(3), UnsignedInteger.ZERO)),
-                new EventTransitionBits(true, true, true), 23, 1000, null, null);
+                new EventTransitionBits(true, true, true), 23, 1000, null, null));
 
         // Set d2 as an event recipient.
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
@@ -570,11 +574,11 @@ public class TrendLogObjectTest extends AbstractTest {
     @Test
     public void stopWhenFull() throws Exception {
         // Create a triggered trend log
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true,
-                        4).withTriggered();
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true,
+                4));
 
         final DateTime now = new DateTime(clock.millis());
         final StatusFlags sf = new StatusFlags(false, false, false, false);
@@ -640,10 +644,10 @@ public class TrendLogObjectTest extends AbstractTest {
     @Test
     public void enableDisable() throws Exception {
         // Create a disabled triggered trend log
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl", new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true, 4);
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true, 4));
         assertEquals(0, tl.getRecordCount());
 
         // Add a couple records and validate the buffer content
@@ -671,9 +675,9 @@ public class TrendLogObjectTest extends AbstractTest {
         DateTime stopTime = new DateTime(nowgg);
 
         // Create a triggered trend log
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl", new LinkedListLogBuffer<>(), true, startTime, stopTime,
-                        new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true, 7);
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", new LinkedListLogBuffer<>(), true, startTime, stopTime,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true, 7));
         assertTrue(tl.isLogDisabled());
         assertEquals(0, tl.getRecordCount());
 
@@ -738,10 +742,10 @@ public class TrendLogObjectTest extends AbstractTest {
     @Test
     public void readLogBuffer() throws Exception {
         // Create a triggered trend log
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true, 7);
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true, 7));
 
         // Try to do a network read of the buffer. It should not be readable.
         assertBACnetServiceException(() -> tl.readProperty(PropertyIdentifier.logBuffer, null), ErrorClass.property,
@@ -753,10 +757,10 @@ public class TrendLogObjectTest extends AbstractTest {
         final DateTime now = new DateTime(clock.millis());
 
         // Create a triggered trend log
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true, 7);
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true, 7));
 
         // Trigger a few updates.
         doTriggers(tl, 2);
@@ -779,11 +783,11 @@ public class TrendLogObjectTest extends AbstractTest {
         final StatusFlags sf = new StatusFlags(false, false, false, false);
 
         // Create a triggered trend log
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true,
-                        100);
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true,
+                100));
 
         ao.writePropertyInternal(PropertyIdentifier.presentValue, new Real(13));
         ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(14));
@@ -820,12 +824,13 @@ public class TrendLogObjectTest extends AbstractTest {
 
         LOG.debug("start");
         // Create a COV trend log that references a device that doesn't exist.
-        final TrendLogObject tl =
-                new TrendLogObject(d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED,
-                        new DeviceObjectPropertyReference(3, ai.getId(), PropertyIdentifier.presentValue), 0, false,
-                        20).supportIntrinsicReporting(20, 23, new EventTransitionBits(true, true, true),
-                        NotifyType.event).withCov(100, new ClientCov(Null.instance));
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(3, ai.getId(), PropertyIdentifier.presentValue), 0, false,
+                20)
+                .supportIntrinsicReporting(20, 23, new EventTransitionBits(true, true, true), NotifyType.event)
+                .withCov(100, new ClientCov(Null.instance)));
 
         // Wait for the notification.
         awaitEquals(1, listener::getNotifCount);

@@ -54,7 +54,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class GroupObjectTest extends AbstractTest {
     @Test
     public void preventGroupReferences() throws Exception {
-        final GroupObject g = new GroupObject(d1, 0, "g", new SequenceOf<>());
+        final GroupObject g = d1.addObject(new GroupObject(d1, 0, "g", new SequenceOf<>()));
 
         // Make sure groups cannot be added.
         TestUtils.assertBACnetServiceException(() -> {
@@ -85,15 +85,16 @@ public class GroupObjectTest extends AbstractTest {
     @Test
     public void readPresentValue() throws Exception {
         // Create some objects to read.
-        final AnalogInputObject ai = new AnalogInputObject(d1, 0, "ai", 0, EngineeringUnits.noUnits, false);
-        final BinaryValueObject bv = new BinaryValueObject(d1, 0, "bv", BinaryPV.inactive, false);
-        final MultistateValueObject mv = new MultistateValueObject(d1, 0, "mv", 4,
+        final AnalogInputObject ai = d1.addObject(new AnalogInputObject(
+                d1, 0, "ai", 0, EngineeringUnits.noUnits, false));
+        final BinaryValueObject bv = d1.addObject(new BinaryValueObject(d1, 0, "bv", BinaryPV.inactive, false));
+        final MultistateValueObject mv = d1.addObject(new MultistateValueObject(d1, 0, "mv", 4,
                 new BACnetArray<>(new CharacterString("Off"), new CharacterString("On"), new CharacterString("Auto"),
                         new CharacterString("Optional")),
-                1, false);
+                1, false));
 
         // Create the group
-        final GroupObject g = new GroupObject(d1, 0, "g",
+        final GroupObject g = d1.addObject(new GroupObject(d1, 0, "g",
                 new SequenceOf<>( //
                         new ReadAccessSpecification(ai.getId(),
                                 new SequenceOf<>( //
@@ -112,7 +113,7 @@ public class GroupObjectTest extends AbstractTest {
                                         new PropertyReference(PropertyIdentifier.stateText, new UnsignedInteger(10)))),
                         //
                         new ReadAccessSpecification(new ObjectIdentifier(ObjectType.accumulator, 0),
-                                PropertyIdentifier.presentValue)));
+                                PropertyIdentifier.presentValue))));
 
         SequenceOf<ReadAccessResult> presentValue = (SequenceOf<ReadAccessResult>) g
                 .readProperty(PropertyIdentifier.presentValue, null);

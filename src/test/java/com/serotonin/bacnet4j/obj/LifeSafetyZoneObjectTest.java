@@ -81,10 +81,12 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        lsz = new LifeSafetyZoneObject(d1, 0, "lsz", LifeSafetyState.quiet, LifeSafetyMode.on, false,
+        lsz = d1.addObject(new LifeSafetyZoneObject(
+                d1, 0, "lsz", LifeSafetyState.quiet, LifeSafetyMode.on, false,
                 new SequenceOf<>(LifeSafetyMode.on, LifeSafetyMode.off, LifeSafetyMode.enabled),
-                LifeSafetyOperation.none, SilencedState.unsilenced, new SequenceOf<>());
-        nc = new NotificationClassObject(d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false));
+                LifeSafetyOperation.none, SilencedState.unsilenced, new SequenceOf<>()));
+        nc = d1.addObject(new NotificationClassObject(
+                d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false)));
 
         final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
@@ -441,14 +443,15 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
                 new DeviceObjectPropertyReference(1, lsz.getId(), PropertyIdentifier.presentValue);
         final DeviceObjectPropertyReference modeRef =
                 new DeviceObjectPropertyReference(1, lsz.getId(), PropertyIdentifier.mode);
-        final EventEnrollmentObject ee = new EventEnrollmentObject(d1, 0, "ee", pvRef, NotifyType.alarm,
+        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee", pvRef, NotifyType.alarm,
                 new EventParameter(new ChangeOfLifeSafety(new UnsignedInteger(30),
                         new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory), //
                         new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm), //
                         modeRef)), new EventTransitionBits(true, true, true), 17, 1000, new UnsignedInteger(50), //
                 new FaultParameter(
                         new FaultLifeSafety(new BACnetArray<>(LifeSafetyState.fault, LifeSafetyState.faultAlarm),
-                                modeRef)));
+                                modeRef))));
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
         quiesce();

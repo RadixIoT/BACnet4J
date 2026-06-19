@@ -84,8 +84,7 @@ public class AccumulatorObject extends BACnetObject {
 
     public AccumulatorObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final long presentValue, final long accumulation, final EngineeringUnits units, final boolean outOfService,
-            final Scale scale, final Prescale prescale, final long maxPresValue, final int limitMonitoringInterval)
-            throws BACnetServiceException {
+            final Scale scale, final Prescale prescale, final long maxPresValue, final int limitMonitoringInterval) {
         super(localDevice, ObjectType.accumulator, instanceNumber, name);
 
         Objects.requireNonNull(units);
@@ -124,12 +123,6 @@ public class AccumulatorObject extends BACnetObject {
                 pulseCount = 0;
             }
         }, limitMonitoringInterval, limitMonitoringInterval, TimeUnit.SECONDS);
-
-        // TODO
-        // ?? Logging_Record
-        // ?? Logging_Object -> not currently possible to know what is making a request to read a property.
-
-        localDevice.addObject(this);
     }
 
     public AccumulatorObject supportIntrinsicReporting(final int highLimit, final int lowLimit,

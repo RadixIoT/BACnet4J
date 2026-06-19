@@ -70,11 +70,13 @@ public class LifeSafetyOperationRequestTest {
     public void before() throws Exception {
         localDevice.initialize();
 
-        ai = new AnalogInputObject(localDevice, 0, "ai", 5, EngineeringUnits.noUnits, false);
-        lsp = new LifeSafetyPointObject(localDevice, 0, "lsp", LifeSafetyState.alarm, LifeSafetyMode.on, false,
-                new SequenceOf<>(), LifeSafetyOperation.none, SilencedState.unsilenced);
-        lsz = new LifeSafetyZoneObject(localDevice, 0, "lzp", LifeSafetyState.alarm, LifeSafetyMode.on, false,
-                new SequenceOf<>(), LifeSafetyOperation.none, SilencedState.unsilenced, new SequenceOf<>());
+        ai = localDevice.addObject(new AnalogInputObject(localDevice, 0, "ai", 5, EngineeringUnits.noUnits, false));
+        lsp = localDevice.addObject(new LifeSafetyPointObject(
+                localDevice, 0, "lsp", LifeSafetyState.alarm, LifeSafetyMode.on, false,
+                new SequenceOf<>(), LifeSafetyOperation.none, SilencedState.unsilenced));
+        lsz = localDevice.addObject(new LifeSafetyZoneObject(
+                localDevice, 0, "lzp", LifeSafetyState.alarm, LifeSafetyMode.on, false,
+                new SequenceOf<>(), LifeSafetyOperation.none, SilencedState.unsilenced, new SequenceOf<>()));
     }
 
     @After

@@ -68,8 +68,8 @@ public class ReadPriorityArrayTest {
         //Add Objects and properties
         priorityArray = new PriorityArray().put(1, new UnsignedInteger(11111)).put(2, new UnsignedInteger(22222)).put(3,
                 new UnsignedInteger(33333));
-        final AnalogValueObject analogValueObject = new AnalogValueObject(remoteDevice, 1, "analogValueOne", 77.7f,
-                EngineeringUnits.degreesFahrenheit, false);
+        final AnalogValueObject analogValueObject = remoteDevice.addObject(new AnalogValueObject(
+                remoteDevice, 1, "analogValueOne", 77.7f, EngineeringUnits.degreesFahrenheit, false));
         analogValueObject.writePropertyInternal(PropertyIdentifier.priorityArray, priorityArray);
 
         //Search Remotedevice

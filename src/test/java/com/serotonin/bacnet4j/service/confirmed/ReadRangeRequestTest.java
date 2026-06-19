@@ -138,15 +138,16 @@ public class ReadRangeRequestTest {
 
         final LocalDevice d11 =
                 new LocalDevice(11, new DefaultTransport(new TestNetwork(map, 11, 0))).withClock(clock).initialize();
-        final AnalogInputObject ai = new AnalogInputObject(d11, 0, "ai", 12, EngineeringUnits.noUnits, false);
+        final AnalogInputObject ai = d11.addObject(new AnalogInputObject(
+                d11, 0, "ai", 12, EngineeringUnits.noUnits, false));
 
         final LocalDevice d12 =
                 new LocalDevice(12, new DefaultTransport(new TestNetwork(map, 12, 0))).withClock(clock).initialize();
         final TrendLogMultipleObject tl =
-                new TrendLogMultipleObject(d12, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
-                        DateTime.UNSPECIFIED, new BACnetArray<>(
+                d12.addObject(new TrendLogMultipleObject(d12, 0, "tlm", new LinkedListLogBuffer<>(), true,
+                        DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, new BACnetArray<>(
                         new DeviceObjectPropertyReference(11, ai.getId(), PropertyIdentifier.presentValue)), 0, false,
-                        100);
+                        100));
 
         final RemoteDevice rd12 = d11.getRemoteDeviceBlocking(12);
         final DateTime now = new DateTime(clock.millis());

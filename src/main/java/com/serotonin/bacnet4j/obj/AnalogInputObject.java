@@ -28,7 +28,6 @@
 package com.serotonin.bacnet4j.obj;
 
 import com.serotonin.bacnet4j.LocalDevice;
-import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.mixin.HasStatusFlagsMixin;
 import com.serotonin.bacnet4j.obj.mixin.ReadOnlyPropertyMixin;
 import com.serotonin.bacnet4j.obj.mixin.WritablePropertyOutOfServiceMixin;
@@ -50,8 +49,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class AnalogInputObject extends BACnetObject {
     public AnalogInputObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final float presentValue, final EngineeringUnits units, final boolean outOfService)
-            throws BACnetServiceException {
+            final float presentValue, final EngineeringUnits units, final boolean outOfService) {
         super(localDevice, ObjectType.analogInput, instanceNumber, name);
 
         writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);
@@ -68,8 +66,6 @@ public class AnalogInputObject extends BACnetObject {
         addMixin(new ReadOnlyPropertyMixin(this, PropertyIdentifier.eventMessageTexts, PropertyIdentifier.resolution,
                 PropertyIdentifier.ackedTransitions, PropertyIdentifier.eventTimeStamps,
                 PropertyIdentifier.interfaceValue));
-
-        localDevice.addObject(this);
     }
 
     public AnalogInputObject supportIntrinsicReporting(final int timeDelay, final int notificationClass,

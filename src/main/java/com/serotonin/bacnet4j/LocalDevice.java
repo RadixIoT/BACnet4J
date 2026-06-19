@@ -196,7 +196,7 @@ public class LocalDevice implements AutoCloseable {
     private void afterInstantiation(final int deviceNumber) {
         try {
             // Initialize the device object.
-            new DeviceObject(this, deviceNumber);
+            addObject(new DeviceObject(this, deviceNumber));
         } catch (final BACnetServiceException e) {
             // Should not happen
             throw new RuntimeException(e);
@@ -551,7 +551,7 @@ public class LocalDevice implements AutoCloseable {
         return null;
     }
 
-    public void addObject(final BACnetObject obj) throws BACnetServiceException {
+    public <T extends BACnetObject> T addObject(final T obj) throws BACnetServiceException {
         if (obj.getId().getObjectType().equals(ObjectType.device)) {
             if (deviceObject == null) {
                 deviceObject = (DeviceObject) obj;
@@ -565,12 +565,17 @@ public class LocalDevice implements AutoCloseable {
         if (getObject(obj.getObjectName()) != null)
             throw new BACnetServiceException(ErrorClass.object, ErrorCode.duplicateName);
 
+        if (obj.getLocalDevice() != this) {
+            throw new IllegalArgumentException("Cannot add an object not created with this local device");
+        }
         localObjects.add(obj);
 
         if (initialized) {
             // If the local device is already initialized, initialize the object.
             obj.initialize();
         }
+
+        return obj;
     }
 
     public ObjectIdentifier getNextInstanceObjectIdentifier(final ObjectType objectType) {

@@ -60,16 +60,17 @@ AveragingObjectTest extends AbstractTest {
     @Override
     public void afterInit() throws Exception {
         // Poll every 5s
-        a = new AveragingObject(d1, 0, "a0",
+        a = d1.addObject(new AveragingObject(d1, 0, "a0",
                 new DeviceObjectPropertyReference(1, new ObjectIdentifier(ObjectType.device, 1),
-                        PropertyIdentifier.systemStatus), 60, 12);
+                        PropertyIdentifier.systemStatus), 60, 12));
     }
 
     @Test
     public void real() throws Exception {
         ObjectTestUtils.ObjectWriteNotifier<AveragingObject> notif = ObjectTestUtils.createObjectWriteNotifier(a);
 
-        final AnalogInputObject ai = new AnalogInputObject(d1, 0, "ai0", 0, EngineeringUnits.noUnits, false);
+        final AnalogInputObject ai = d1.addObject(new AnalogInputObject(
+                d1, 0, "ai0", 0, EngineeringUnits.noUnits, false));
 
         // Reference the present value of the analog input.
         a.writeProperty(null, PropertyIdentifier.objectPropertyReference,
