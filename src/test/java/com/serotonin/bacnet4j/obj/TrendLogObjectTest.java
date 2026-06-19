@@ -324,7 +324,7 @@ public class TrendLogObjectTest extends AbstractTest {
                 d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
                 DateTime.UNSPECIFIED,
                 new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
-                20).withTriggered());
+                20));
 
         final DateTime now = new DateTime(clock.millis());
 
@@ -364,7 +364,7 @@ public class TrendLogObjectTest extends AbstractTest {
                 d1, 0, "tl0", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
                 DateTime.UNSPECIFIED,
                 new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
-                20).withTriggered()
+                20)
                 .supportIntrinsicReporting(5, 23, new EventTransitionBits(true, true, true), NotifyType.event));
 
         final RemoteDevice rd2 = d1.getRemoteDeviceBlocking(2);
@@ -496,7 +496,7 @@ public class TrendLogObjectTest extends AbstractTest {
                 d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
                 DateTime.UNSPECIFIED,
                 new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, false,
-                20).withTriggered());
+                20));
 
         // Create the event enrollment.
         final DeviceObjectPropertyReference ref =
@@ -578,7 +578,7 @@ public class TrendLogObjectTest extends AbstractTest {
                 d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
                 DateTime.UNSPECIFIED,
                 new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true,
-                4).withTriggered());
+                4));
 
         final DateTime now = new DateTime(clock.millis());
         final StatusFlags sf = new StatusFlags(false, false, false, false);
@@ -828,8 +828,9 @@ public class TrendLogObjectTest extends AbstractTest {
                 d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
                 DateTime.UNSPECIFIED,
                 new DeviceObjectPropertyReference(3, ai.getId(), PropertyIdentifier.presentValue), 0, false,
-                20).supportIntrinsicReporting(20, 23, new EventTransitionBits(true, true, true),
-                NotifyType.event).withCov(100, new ClientCov(Null.instance)));
+                20)
+                .supportIntrinsicReporting(20, 23, new EventTransitionBits(true, true, true), NotifyType.event)
+                .withCov(100, new ClientCov(Null.instance)));
 
         // Wait for the notification.
         awaitEquals(1, listener::getNotifCount);
