@@ -445,6 +445,23 @@ public abstract class Encodable {
             return readWrapped(queue, PriorityValue.class, contextId);
         }
 
+        // Some non-conformant devices (observed on LG Smart 5) encode "no value" for a
+        // scalar property as an opening context tag immediately followed by its matching
+        // closing tag, with nothing between them. ASHRAE 135 requires propertyAccessError
+        // [5] in this situation, but rather than abort the surrounding RPM response we
+        // consume the empty value and substitute Null so the caller can keep parsing the
+        // remaining results. This check runs last, after the branches above, so it never
+        // overrides their own correct handling of an empty `[n][/n]` -- an empty collection
+        // already decodes to an empty SequenceOf via readSequenceOf, and a commandable
+        // property's Null already flows through the AmbiguousValue branch above.
+        if (isEmptyConstructedValue(queue, contextId)) {
+            LOG.warn("Non-conformant empty property value for object={} property={}; decoding as Null",
+                    objectType, propertyIdentifier);
+            popStart(queue, contextId);
+            popEnd(queue, contextId);
+            return Null.instance;
+        }
+
         return readWrapped(queue, def.getClazz(), contextId);
     }
 
@@ -503,6 +520,36 @@ public abstract class Encodable {
         final T result = read(queue, clazz);
         popEnd(queue, contextId);
         return result;
+    }
+
+    /**
+     * Return true if the queue begins with an opening context tag for contextId that is
+     * immediately followed by its matching closing tag -- an empty constructed value,
+     * such as {[4] }[4]. This is a non-conformant encoding emitted by some devices to
+     * indicate "no value", and should be handled gracefully rather than failing the
+     * enclosing response.
+     */
+    private static boolean isEmptyConstructedValue(final ByteQueue queue, final int contextId) {
+        if (readStart(queue) != contextId)
+            return false;
+
+        final int startTagLength = contextId > 14 ? 2 : 1;
+        if (queue.size() <= startTagLength)
+            return false;
+
+        final int b = toInt(queue.peek(startTagLength));
+        if ((b & 0xf) != 0xf)
+            return false;
+
+        final int endTagNumber;
+        if ((b & 0xf0) == 0xf0) {
+            if (queue.size() <= startTagLength + 1)
+                return false;
+            endTagNumber = toInt(queue.peek(startTagLength + 1));
+        } else {
+            endTagNumber = (b & 0xff) >> 4;
+        }
+        return endTagNumber == contextId;
     }
 
     //

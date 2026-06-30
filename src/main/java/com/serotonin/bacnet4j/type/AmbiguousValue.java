@@ -173,7 +173,11 @@ public class AmbiguousValue extends Encodable {
     }
 
     public boolean isNull() {
-        return data.length == 1 && data[0] == 0;
+        // An empty constructed value (no bytes collected at all) is also treated as Null --
+        // some non-conformant devices encode "no value" for a commandable property as an
+        // opening context tag immediately followed by its closing tag, leaving `data` empty
+        // rather than the canonical single zero byte.
+        return data == null || data.length == 0 || (data.length == 1 && data[0] == 0);
     }
 
     public <T extends Encodable> T convertTo(final Class<T> clazz) throws BACnetException {
