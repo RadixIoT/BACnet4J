@@ -50,7 +50,6 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
  * closing context tag [4], with nothing between them. ASHRAE 135 requires propertyAccessError [5] in that
  * case, but we handle the empty value leniently rather than throwing character-set-not-supported '31' and
  * aborting the entire response.
- *
  * The bytes used here were captured in LG1124-NotConnect.pcapng, reassembled from the four segments of the
  * complex-ack for the readPropertyMultiple request with invoke id 54 (the second half of the analog-input
  * object-name/description scan). The failing ReadAccessResult is at offset 2786, for analog-input 197457 /
