@@ -64,7 +64,6 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.type.primitive.SignedInteger;
-import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ArrayUtils;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
@@ -264,7 +263,7 @@ public class RestoreClient {
             if (fileAccessMethod.equals(FileAccessMethod.recordAccess)) {
                 // Empty the existing file by writing a record count of 0.
                 RequestUtils.writeProperty(localDevice, rd, fileOid, PropertyIdentifier.recordCount,
-                        Unsigned32.ZERO);
+                        UnsignedInteger.ZERO);
 
                 // Record access files are expected to be CRLF-delimited hex representations, as written by the
                 // BackupClient.
