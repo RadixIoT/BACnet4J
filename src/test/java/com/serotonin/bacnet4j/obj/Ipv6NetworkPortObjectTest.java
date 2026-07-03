@@ -80,13 +80,14 @@ public class Ipv6NetworkPortObjectTest {
                 .localNetworkNumber(123)
                 .build();
         try (var localDevice = new LocalDevice(1, new DefaultTransport(network))) {
+            var npo = localDevice.addObject(new Ipv6NetworkPortObject(localDevice, network, 12));
             localDevice.initialize();
-            var npo = localDevice.addObject(new Ipv6NetworkPortObject(network, 12, "Ipv6Network"));
 
             assertEquals(ObjectType.networkPort, npo.readProperty(PropertyIdentifier.objectType));
             assertEquals(new ObjectIdentifier(ObjectType.networkPort, 12),
                     npo.readProperty(PropertyIdentifier.objectIdentifier));
-            assertEquals(new CharacterString("Ipv6Network"), npo.readProperty(PropertyIdentifier.objectName));
+            assertEquals(new CharacterString("[FF05::BAC0]:47811 @ ::1"),
+                    npo.readProperty(PropertyIdentifier.objectName));
             assertEquals(new Unsigned16(123), npo.readProperty(PropertyIdentifier.networkNumber));
             assertEquals(NetworkNumberQuality.unknown, npo.readProperty(PropertyIdentifier.networkNumberQuality));
             assertEquals(MaxApduLength.UP_TO_1476.getMaxLength(), npo.readProperty(PropertyIdentifier.apduLength));

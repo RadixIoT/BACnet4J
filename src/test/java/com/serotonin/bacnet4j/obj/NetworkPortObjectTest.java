@@ -33,10 +33,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.net.DatagramSocket;
+import java.net.InetSocketAddress;
+import java.net.SocketException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang3.SystemUtils;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.LocalDevice;
@@ -61,6 +67,26 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class NetworkPortObjectTest {
     UnsignedInteger originalValue = new UnsignedInteger(0x3FFFFF);
     UnsignedInteger updatedValue = new UnsignedInteger(234);
+
+    // On macOS, run the following:
+    // sudo ifconfig lo0 alias 127.0.0.10
+    // sudo ifconfig lo0 alias 127.0.0.255
+
+    @Before
+    public void before() throws Exception {
+        boolean canRun = true;
+        if (!SystemUtils.IS_OS_LINUX) {
+            try {
+                InetSocketAddress addr = new InetSocketAddress("127.0.1.1", 47808);
+                try (DatagramSocket ignored = new DatagramSocket(addr)) {
+                    // no op
+                }
+            } catch (SocketException e) {
+                canRun = false;
+            }
+        }
+        Assume.assumeTrue(canRun);
+    }
 
     @Test
     public void propertyInitialization() throws Exception {

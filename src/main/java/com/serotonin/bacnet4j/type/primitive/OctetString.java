@@ -33,9 +33,14 @@ import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.npdu.NetworkUtils;
 import com.serotonin.bacnet4j.util.sero.ArrayUtils;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
+import com.serotonin.bacnet4j.util.sero.StreamUtils;
 
 public class OctetString extends Primitive {
     public static final byte TYPE_ID = 6;
+
+    public static OctetString fromHex(String hexString) {
+        return new OctetString(StreamUtils.fromHex(hexString));
+    }
 
     private final byte[] value;
 

@@ -126,11 +126,9 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
         try {
             // Find the file.
             final BACnetObject obj = localDevice.getObjectRequired(fileIdentifier);
-            if (!(obj instanceof FileObject)) {
+            if (!(obj instanceof FileObject file)) {
                 throw new BACnetServiceException(ErrorClass.services, ErrorCode.inconsistentObjectType);
             }
-
-            final FileObject file = (FileObject) obj;
 
             // Lock to ensure atomicity.
             try {

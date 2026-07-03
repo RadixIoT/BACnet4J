@@ -29,6 +29,7 @@ package com.serotonin.bacnet4j.obj;
 
 import java.util.Set;
 
+import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.npdu.ip.IpNetwork;
@@ -50,12 +51,12 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class IpNetworkPortObject extends NetworkPortObject {
     private final IpNetwork network;
 
-    public IpNetworkPortObject(IpNetwork network, int instanceNumber, String name) {
-        super(network.getTransport().getLocalDevice(), instanceNumber, name, false, NetworkType.ipv4,
-                ProtocolLevel.bacnetApplication, Set.of());
+    public IpNetworkPortObject(LocalDevice localDevice, IpNetwork network, int instanceNumber) {
+        super(localDevice, instanceNumber, network.getNetworkIdentifier().getIdString(),
+                false, NetworkType.ipv4, ProtocolLevel.bacnetApplication, Set.of());
 
-        if (!network.isInitialized()) {
-            throw new IllegalStateException("Network is not initialized");
+        if (network.isInitialized()) {
+            throw new IllegalStateException("Network is already initialized");
         }
 
         this.network = network;
@@ -64,9 +65,8 @@ public class IpNetworkPortObject extends NetworkPortObject {
         writePropertyInternal(PropertyIdentifier.networkNumber, new Unsigned16(network.getLocalNetworkNumber()));
         writePropertyInternal(PropertyIdentifier.networkNumberQuality, NetworkNumberQuality.unknown);
         writePropertyInternal(PropertyIdentifier.apduLength, MaxApduLength.UP_TO_1476.getMaxLength());
-        writePropertyInternal(PropertyIdentifier.maxBvlcLengthAccepted, new UnsignedInteger(1497));
+        writePropertyInternal(PropertyIdentifier.maxBvlcLengthAccepted, new UnsignedInteger(1500));
         writePropertyInternal(PropertyIdentifier.maxNpduLengthAccepted, new UnsignedInteger(1497));
-        writePropertyInternal(PropertyIdentifier.macAddress, IpNetworkUtils.toOctetString(network.getLocalAddress()));
         writePropertyInternal(PropertyIdentifier.bacnetIpMode, mode);
         writePropertyInternal(PropertyIdentifier.bacnetIpUdpPort, new Unsigned16(network.getPort()));
         if (mode == IPMode.bbmd) {
@@ -77,9 +77,18 @@ public class IpNetworkPortObject extends NetworkPortObject {
             updateFdBbmdAddress();
             updateFdSubscriptionLifetime();
         }
+    }
+
+    @Override
+    protected void initializeImpl() {
+        // The network has to be initialized before these values are correct.
+        writePropertyInternal(PropertyIdentifier.macAddress,
+                IpNetworkUtils.toOctetString(network.getLocalAddress()));
         writePropertyInternal(PropertyIdentifier.ipAddress,
                 IpNetworkUtils.toOctetString(network.getLocalAddress().getAddress()));
         writePropertyInternal(PropertyIdentifier.ipSubnetMask, network.getSubnetMask());
+
+        super.initializeImpl();
     }
 
     @Override

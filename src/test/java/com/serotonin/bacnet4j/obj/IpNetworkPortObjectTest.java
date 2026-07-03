@@ -108,13 +108,13 @@ public class IpNetworkPortObjectTest {
                 .withBroadcast("127.0.0.255", 24)
                 .build();
         try (var localDevice = new LocalDevice(1, new DefaultTransport(network)).withClock(clock)) {
+            var npo = localDevice.addObject(new IpNetworkPortObject(localDevice, network, 12));
             localDevice.initialize();
-            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork"));
 
             assertEquals(ObjectType.networkPort, npo.readProperty(PropertyIdentifier.objectType));
             assertEquals(new ObjectIdentifier(ObjectType.networkPort, 12),
                     npo.readProperty(PropertyIdentifier.objectIdentifier));
-            assertEquals(new CharacterString("IpNetwork"), npo.readProperty(PropertyIdentifier.objectName));
+            assertEquals(new CharacterString("12345/127.0.0.10"), npo.readProperty(PropertyIdentifier.objectName));
             assertEquals(new Unsigned16(123), npo.readProperty(PropertyIdentifier.networkNumber));
             assertEquals(NetworkNumberQuality.unknown, npo.readProperty(PropertyIdentifier.networkNumberQuality));
             assertEquals(MaxApduLength.UP_TO_1476.getMaxLength(), npo.readProperty(PropertyIdentifier.apduLength));
@@ -140,9 +140,9 @@ public class IpNetworkPortObjectTest {
                 .build();
         try (var localDevice = new LocalDevice(1, new DefaultTransport(network)).withClock(clock)) {
             network.enableBBMD();
+            var npo = localDevice.addObject(new IpNetworkPortObject(localDevice, network, 12));
 
             localDevice.initialize();
-            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork"));
 
             network.writeBDT(List.of(
                     new IpNetwork.BDTEntry("1.2.4.4", 47800, "255.255.255.255"),
@@ -214,8 +214,8 @@ public class IpNetworkPortObjectTest {
                 .withBroadcast("127.0.0.255", 24)
                 .build();
         try (var localDevice = new LocalDevice(1, new DefaultTransport(network)).withClock(clock)) {
+            var npo = localDevice.addObject(new IpNetworkPortObject(localDevice, network, 12));
             localDevice.initialize();
-            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork"));
 
             // Ensure the properties start as unset.
             assertNull(npo.readProperty(PropertyIdentifier.fdBbmdAddress));
@@ -268,8 +268,8 @@ public class IpNetworkPortObjectTest {
                 .withBroadcast("127.0.0.255", 24)
                 .build());
         try (var localDevice = new LocalDevice(1, new DefaultTransport(network)).withClock(clock)) {
+            var npo = localDevice.addObject(new IpNetworkPortObject(localDevice, network, 12));
             localDevice.initialize();
-            var npo = localDevice.addObject(new IpNetworkPortObject(network, 12, "IpNetwork"));
 
             // Tell the network to act as a foreign device.
             CompletableFuture<Void> future = new CompletableFuture<>();

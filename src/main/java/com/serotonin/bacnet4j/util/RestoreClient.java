@@ -64,6 +64,7 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.type.primitive.SignedInteger;
+import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ArrayUtils;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
@@ -94,9 +95,9 @@ public class RestoreClient {
     /**
      * Constructor with communication parameters
      *
-     * @param localDevice
-     * @param targetDeviceId
-     * @param password
+     * @param localDevice         the local device
+     * @param targetDeviceId      the target device
+     * @param password            the target device password
      * @param recordsPerRequest   only for record-access relevant. Record access files are written out as CRLF-delimited
      *                            hex representations. The choice of the number of records per request is arbitrary
      *                            because we don't know how big a record will be.
@@ -128,8 +129,8 @@ public class RestoreClient {
      *                                  the target device with the same object identifiers.
      * @param restoreStateChangeTimeout the maximum amount of milliseconds to wait for the backup state of the target
      *                                  to change to an actionable value.
-     * @throws BACnetException
-     * @throws IOException
+     * @throws BACnetException in case of state error
+     * @throws IOException     file read error
      */
     public void begin(final List<File> files, final long restoreStateChangeTimeout)
             throws BACnetException, IOException {
@@ -163,7 +164,7 @@ public class RestoreClient {
             if (restorePreparationTimeSeconds > 0) {
                 // Sleep for the given amount of seconds.
                 LOG.info("Waiting for target device to complete restore preparation...");
-                ThreadUtils.sleep(restorePreparationTimeSeconds * 1000);
+                ThreadUtils.sleep(restorePreparationTimeSeconds * 1000L);
             }
 
             // Poll the backup state of the target, waiting for it to change to something actionable.
@@ -263,7 +264,7 @@ public class RestoreClient {
             if (fileAccessMethod.equals(FileAccessMethod.recordAccess)) {
                 // Empty the existing file by writing a record count of 0.
                 RequestUtils.writeProperty(localDevice, rd, fileOid, PropertyIdentifier.recordCount,
-                        UnsignedInteger.ZERO);
+                        Unsigned32.ZERO);
 
                 // Record access files are expected to be CRLF-delimited hex representations, as written by the
                 // BackupClient.
@@ -329,10 +330,8 @@ public class RestoreClient {
     /**
      * Override this method to provide customized file name to object identifier mapping.
      *
-     * @param saveDir
-     * @param rd
-     * @param fileOid
-     * @return
+     * @param file the file name
+     * @return the instance number of the corresponding file object
      */
     protected int toFileInstanceNumber(final File file) {
         final Matcher matcher = FILE_NAME_PATTERN.matcher(file.getName());

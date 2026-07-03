@@ -79,8 +79,9 @@ public class ObjectPropertyValue extends BaseType {
         return propertyArrayIndex;
     }
 
-    public Encodable getValue() {
-        return value;
+    @SuppressWarnings("unchecked")
+    public <T extends Encodable> T getValue() {
+        return (T) value;
     }
 
     public UnsignedInteger getPriority() {

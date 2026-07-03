@@ -52,8 +52,6 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
  * be concerned with completing its processing in any timely manner. The "sync" version runs within the dispatching
  * thread, and so MUST return as quickly as possible. In particular, overrides of the sync methods MUST NOT send
  * requests.
- *
- * @author Matthew
  */
 public interface DeviceEventListener {
     /**
@@ -64,16 +62,16 @@ public interface DeviceEventListener {
     /**
      * Notification of receipt of an IAm message.
      *
-     * @param d
+     * @param d the remote device that sent the IAm
      */
     void iAmReceived(RemoteDevice d);
 
     /**
      * Allow a listener to veto an attempt by another device to write a property in a local object.
      *
-     * @param from
-     * @param obj
-     * @param pv
+     * @param from address of device that wasts to write
+     * @param obj  the object to which to write
+     * @param pv   the property to which to write
      * @return true if the write should be allowed.
      */
     boolean allowPropertyWrite(Address from, BACnetObject obj, PropertyValue pv);
@@ -81,17 +79,17 @@ public interface DeviceEventListener {
     /**
      * Notification that a property of a local object was written by another device.
      *
-     * @param from
-     * @param obj
-     * @param pv
+     * @param from address of device that did the write
+     * @param obj  the object that was written to
+     * @param pv   the property that was written to
      */
     void propertyWritten(Address from, BACnetObject obj, PropertyValue pv);
 
     /**
      * Notification of receipt of an IHave message.
      *
-     * @param d
-     * @param o
+     * @param d the remote device that sent the IHave
+     * @param o the remote object that the device has
      */
     void iHaveReceived(RemoteDevice d, RemoteObject o);
 
@@ -99,11 +97,11 @@ public interface DeviceEventListener {
      * Notification of either an UnconfirmedCovNotificationRequest or a ConfirmedCovNotificationRequest. The latter will
      * be automatically confirmed by the service handler.
      *
-     * @param subscriberProcessIdentifier
-     * @param initiatingDevice
-     * @param monitoredObjectIdentifier
-     * @param timeRemaining
-     * @param listOfValues
+     * @param subscriberProcessIdentifier cov subscriber id
+     * @param initiatingDeviceIdentifier  sending device
+     * @param monitoredObjectIdentifier   sending object
+     * @param timeRemaining               cov remaining
+     * @param listOfValues                values
      */
     void covNotificationReceived(UnsignedInteger subscriberProcessIdentifier,
             ObjectIdentifier initiatingDeviceIdentifier, ObjectIdentifier monitoredObjectIdentifier,
@@ -113,19 +111,19 @@ public interface DeviceEventListener {
      * Notification of either an UnconfirmedEventNotificationRequest or a ConfirmedEventNotificationRequest. The latter
      * will be automatically confirmed by the service handler.
      *
-     * @param processIdentifier
-     * @param initiatingDevice
-     * @param eventObjectIdentifier
-     * @param timeStamp
-     * @param notificationClass
-     * @param priority
-     * @param eventType
-     * @param messageText
-     * @param notifyType
-     * @param ackRequired
-     * @param fromState
-     * @param toState
-     * @param eventValues
+     * @param processIdentifier          sending process id
+     * @param initiatingDeviceIdentifier sending device
+     * @param eventObjectIdentifier      sending object
+     * @param timeStamp                  event time
+     * @param notificationClass          event notification class
+     * @param priority                   event priority
+     * @param eventType                  event type
+     * @param messageText                the message
+     * @param notifyType                 notify type
+     * @param ackRequired                is an ack required
+     * @param fromState                  state changed from
+     * @param toState                    state changed to
+     * @param eventValues                values
      */
     void eventNotificationReceived(UnsignedInteger processIdentifier, ObjectIdentifier initiatingDeviceIdentifier,
             ObjectIdentifier eventObjectIdentifier, TimeStamp timeStamp, UnsignedInteger notificationClass,
@@ -136,10 +134,10 @@ public interface DeviceEventListener {
      * Notification of either an UnconfirmedTextMessageRequest or a ConfirmedTextMessageRequest. The latter will be
      * automatically confirmed by the service handler.
      *
-     * @param textMessageSourceDevice
-     * @param messageClass
-     * @param messagePriority
-     * @param message
+     * @param textMessageSourceDevice sending device
+     * @param messageClass            message class
+     * @param messagePriority         message priority
+     * @param message                 the message
      */
     void textMessageReceived(ObjectIdentifier textMessageSourceDevice, Choice messageClass,
             MessagePriority messagePriority, CharacterString message);
@@ -148,8 +146,8 @@ public interface DeviceEventListener {
      * Notification that the device should synchronize its time to the given date/time value. The local device has
      * already been checked at this point to ensure that it supports time synchronization.
      *
-     * @param from
-     * @param dateTime
+     * @param from     address of synchronizer
+     * @param dateTime time to synchronize
      * @param utc      true if a UTCTimeSynchronizationRequest was sent, false if TimeSynchronizationRequest.
      */
     void synchronizeTime(Address from, DateTime dateTime, boolean utc);
@@ -157,9 +155,8 @@ public interface DeviceEventListener {
     /**
      * Notification that a service was received and from where.
      *
-     * @param from
-     * @param confirmed
-     * @param serviceId
+     * @param from    receiver of service
+     * @param service the service received
      */
     void requestReceived(Address from, Service service);
 }

@@ -54,7 +54,7 @@ import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 /**
  * Integration test that illustrates how to recreate a network to incorporate changes made to a network port object.
  */
-public class AlterNetworkTest {
+public class NetworkAlteringTest {
     private static final String MULTICAST_ADDRESS = "FF05::BAC0";
     private static final ObjectIdentifier NETWORK_PORT_ID = new ObjectIdentifier(ObjectType.networkPort, 2);
     LocalDevice localDevice;
@@ -76,9 +76,9 @@ public class AlterNetworkTest {
         // Initialize the original network and local device.
         var network = createNetwork();
         localDevice = new LocalDevice(1, new DefaultTransport(network));
+        var npo = localDevice.addObject(createNetworkPortObject(network));
+
         localDevice.initialize();
-        var npo = createNetworkPortObject(network);
-        localDevice.addObject(npo);
 
         // Set up the handler to recreate the network.
         localDevice.setReinitializeDeviceHandler(new DefaultReinitializeDeviceHandler() {
@@ -110,9 +110,10 @@ public class AlterNetworkTest {
                         // Recreate the network with the new network number, and replace it in the local device, and
                         // create a new network port object with the new network reference.
                         var network = createNetwork();
+                        var networkPort = createNetworkPortObject(network);
                         localDevice.replaceTransport(new DefaultTransport(network));
                         localDevice.removeObject(NETWORK_PORT_ID);
-                        localDevice.addObject(createNetworkPortObject(network));
+                        localDevice.addObject(networkPort);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
@@ -132,7 +133,7 @@ public class AlterNetworkTest {
                 .handle(localDevice, null);
 
         // Ensure that the current network port object reports the correct network number.
-        npo = (Ipv6NetworkPortObject) localDevice.getObject(NETWORK_PORT_ID);
+        npo = localDevice.getObject(NETWORK_PORT_ID);
         assertFalse(npo.isChanged());
         assertEquals(new Unsigned16(101), npo.readProperty(PropertyIdentifier.networkNumber));
     }
@@ -145,6 +146,6 @@ public class AlterNetworkTest {
     }
 
     Ipv6NetworkPortObject createNetworkPortObject(Ipv6Network network) {
-        return new Ipv6NetworkPortObject(network, NETWORK_PORT_ID.getInstanceNumber(), "IPv6");
+        return new Ipv6NetworkPortObject(localDevice, network, NETWORK_PORT_ID.getInstanceNumber());
     }
 }

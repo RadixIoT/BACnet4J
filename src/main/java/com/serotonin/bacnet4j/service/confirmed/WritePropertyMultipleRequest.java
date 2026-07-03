@@ -72,6 +72,10 @@ public class WritePropertyMultipleRequest extends ConfirmedRequestService {
         listOfWriteAccessSpecifications = readSequenceOf(queue, WriteAccessSpecification.class);
     }
 
+    public SequenceOf<WriteAccessSpecification> getListOfWriteAccessSpecifications() {
+        return listOfWriteAccessSpecifications;
+    }
+
     @Override
     public AcknowledgementService handle(final LocalDevice localDevice, final Address from) throws BACnetException {
         BACnetObject obj;

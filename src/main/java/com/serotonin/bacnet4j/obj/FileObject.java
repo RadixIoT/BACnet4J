@@ -46,9 +46,6 @@ import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
-/**
- * @author Matthew Lohbihler
- */
 public class FileObject extends BACnetObject {
     /**
      * The actual file that this object represents.
@@ -61,8 +58,7 @@ public class FileObject extends BACnetObject {
      */
     private final ReentrantLock lock = new ReentrantLock();
 
-    public FileObject(final LocalDevice localDevice, final int instanceNumber, final String fileType,
-            final FileAccess fileAccess) {
+    public FileObject(LocalDevice localDevice, int instanceNumber, String fileType, FileAccess fileAccess) {
         super(localDevice, ObjectType.file, instanceNumber, fileAccess.getName());
         this.fileAccess = fileAccess;
 
@@ -87,12 +83,12 @@ public class FileObject extends BACnetObject {
         return fileAccess;
     }
 
-    public void setFileAccess(final FileAccess fileAccess) {
+    public void setFileAccess(FileAccess fileAccess) {
         this.fileAccess = fileAccess;
     }
 
     @Override
-    protected void beforeReadProperty(final PropertyIdentifier pid) throws BACnetServiceException {
+    protected void beforeReadProperty(PropertyIdentifier pid) throws BACnetServiceException {
         if (PropertyIdentifier.fileSize.equals(pid)) {
             set(PropertyIdentifier.fileSize, new UnsignedInteger(fileAccess.length()));
         } else if (PropertyIdentifier.modificationDate.equals(pid)) {
@@ -109,21 +105,19 @@ public class FileObject extends BACnetObject {
     }
 
     @Override
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
-            throws BACnetServiceException {
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
         if (PropertyIdentifier.fileSize.equals(value.getPropertyIdentifier())) {
-            final UnsignedInteger fileSize = value.getValue();
+            UnsignedInteger fileSize = value.getValue();
             fileAccess.validateFileSizeWrite(fileSize.longValue());
         } else if (PropertyIdentifier.recordCount.equals(value.getPropertyIdentifier())) {
-            final UnsignedInteger recordCount = value.getValue();
+            UnsignedInteger recordCount = value.getValue();
             fileAccess.validateRecordCountWrite(recordCount.longValue());
         }
         return false;
     }
 
     @Override
-    protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
-            final Encodable newValue) {
+    protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         if (pid.equals(PropertyIdentifier.fileSize)) {
             fileAccess.writeFileSize(((UnsignedInteger) newValue).longValue());
         } else if (pid.equals(PropertyIdentifier.recordCount)) {

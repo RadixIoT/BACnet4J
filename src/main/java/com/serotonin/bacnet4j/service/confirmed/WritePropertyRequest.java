@@ -121,8 +121,9 @@ public class WritePropertyRequest extends ConfirmedRequestService {
         return propertyArrayIndex;
     }
 
-    public Encodable getPropertyValue() {
-        return propertyValue;
+    @SuppressWarnings("unchecked")
+    public <T extends Encodable> T getPropertyValue() {
+        return (T) propertyValue;
     }
 
     public UnsignedInteger getPriority() {

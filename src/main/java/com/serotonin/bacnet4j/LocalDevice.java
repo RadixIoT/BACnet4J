@@ -539,7 +539,8 @@ public class LocalDevice implements AutoCloseable {
         return localObjects;
     }
 
-    public BACnetObject getObject(final ObjectIdentifier id) {
+    @SuppressWarnings("unchecked")
+    public <T extends BACnetObject> T getObject(final ObjectIdentifier id) {
         ObjectIdentifier oidToFind = id;
         // Treat calls for device 0x3FFFFF as calls for the local device object. See 15.5.2.
         if (id.getObjectType().equals(ObjectType.device) && id.getInstanceNumber() == ObjectIdentifier.UNINITIALIZED) {
@@ -548,7 +549,7 @@ public class LocalDevice implements AutoCloseable {
 
         for (final BACnetObject obj : localObjects) {
             if (obj.getId().equals(oidToFind))
-                return obj;
+                return (T) obj;
         }
 
         return null;

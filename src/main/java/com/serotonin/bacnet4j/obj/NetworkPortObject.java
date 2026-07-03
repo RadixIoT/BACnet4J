@@ -141,6 +141,16 @@ public class NetworkPortObject extends BACnetObject {
         return Map.copyOf(pendingChanges);
     }
 
+    /**
+     * Returns the internal pending-changes map for subclass use. Subclasses that need to track
+     * pending changes at a finer granularity than the base class's set/get overrides (e.g.,
+     * SecureConnectNetworkPortObject tracking per-array-index cert file changes) mutate this
+     * directly. External callers should use {@link #getPendingChanges()}.
+     */
+    protected Map<PropertyIdentifier, Encodable> pendingChanges() {
+        return pendingChanges;
+    }
+
     @Override
     protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
             throws BACnetServiceException {
@@ -313,7 +323,10 @@ public class NetworkPortObject extends BACnetObject {
 
         if (pid.equals(PropertyIdentifier.command)) {
             if (newValue == NetworkPortCommand.discardChanges) {
-                executeCommand(pendingChanges::clear);
+                executeCommand(() -> {
+                    discardChanges();
+                    pendingChanges.clear();
+                });
             } else if (newValue == NetworkPortCommand.validateChanges) {
                 executeCommand(() -> {
                     var health = validateChanges();
@@ -336,6 +349,10 @@ public class NetworkPortObject extends BACnetObject {
             }
             writePropertyInternal(PropertyIdentifier.networkNumberQuality, quality);
         }
+    }
+
+    protected void discardChanges() {
+        // Override as needed.
     }
 
     /**

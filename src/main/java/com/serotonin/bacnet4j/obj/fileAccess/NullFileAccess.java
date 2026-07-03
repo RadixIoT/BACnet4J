@@ -42,9 +42,25 @@ import com.serotonin.bacnet4j.type.primitive.OctetString;
  * @author Matthew
  */
 public class NullFileAccess implements FileAccess {
+    private final String name;
+    private final FileAccessMethod fileAccessMethod;
+
+    public NullFileAccess() {
+        this("Null", FileAccessMethod.streamAccess);
+    }
+
+    public NullFileAccess(String name) {
+        this(name, FileAccessMethod.streamAccess);
+    }
+
+    public NullFileAccess(String name, FileAccessMethod fileAccessMethod) {
+        this.name = name;
+        this.fileAccessMethod = fileAccessMethod;
+    }
+
     @Override
     public String getName() {
-        return "Null";
+        return name;
     }
 
     @Override
@@ -64,7 +80,7 @@ public class NullFileAccess implements FileAccess {
 
     @Override
     public FileAccessMethod getAccessMethod() {
-        return FileAccessMethod.streamAccess;
+        return fileAccessMethod;
     }
 
     @Override

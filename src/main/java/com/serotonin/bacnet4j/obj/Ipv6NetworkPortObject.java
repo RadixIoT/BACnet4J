@@ -29,6 +29,7 @@ package com.serotonin.bacnet4j.obj;
 
 import java.util.Set;
 
+import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.npdu.ipv6.Ipv6Network;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
@@ -43,12 +44,12 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class Ipv6NetworkPortObject extends NetworkPortObject {
     private final Ipv6Network network;
 
-    public Ipv6NetworkPortObject(Ipv6Network network, int instanceNumber, String name) {
-        super(network.getTransport().getLocalDevice(), instanceNumber, name, false, NetworkType.ipv6,
-                ProtocolLevel.bacnetApplication, Set.of());
+    public Ipv6NetworkPortObject(LocalDevice localDevice, Ipv6Network network, int instanceNumber) {
+        super(localDevice, instanceNumber, network.getNetworkIdentifier().getIdString(),
+                false, NetworkType.ipv6, ProtocolLevel.bacnetApplication, Set.of());
 
-        if (!network.isInitialized()) {
-            throw new IllegalStateException("Network is not initialized");
+        if (network.isInitialized()) {
+            throw new IllegalStateException("Network is already initialized");
         }
 
         this.network = network;
@@ -58,11 +59,17 @@ public class Ipv6NetworkPortObject extends NetworkPortObject {
         writePropertyInternal(PropertyIdentifier.apduLength, MaxApduLength.UP_TO_1476.getMaxLength());
         writePropertyInternal(PropertyIdentifier.maxBvlcLengthAccepted, new UnsignedInteger(1497));
         writePropertyInternal(PropertyIdentifier.maxNpduLengthAccepted, new UnsignedInteger(1497));
-        writePropertyInternal(PropertyIdentifier.macAddress, network.getLocalVMAC());
         writePropertyInternal(PropertyIdentifier.virtualMacAddressTable, new SequenceOf<>());
         writePropertyInternal(PropertyIdentifier.bacnetIpv6Mode, IPMode.normal);
         writePropertyInternal(PropertyIdentifier.bacnetIpv6UdpPort, new Unsigned16(network.getPort()));
+    }
+
+    @Override
+    protected void initializeImpl() {
+        writePropertyInternal(PropertyIdentifier.macAddress, network.getLocalVMAC());
         writePropertyInternal(PropertyIdentifier.bacnetIpv6MulticastAddress, network.getMulticastMAC());
+
+        super.initializeImpl();
     }
 
     @Override

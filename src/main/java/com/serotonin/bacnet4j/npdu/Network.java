@@ -39,17 +39,17 @@ import com.serotonin.bacnet4j.type.constructed.NetworkSourceAddress;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
-abstract public class Network {
+public abstract class Network {
     static final Logger LOG = LoggerFactory.getLogger(Network.class);
 
     private final int localNetworkNumber;
     private Transport transport;
 
-    public Network() {
+    protected Network() {
         this(0);
     }
 
-    public Network(final int localNetworkNumber) {
+    protected Network(final int localNetworkNumber) {
         this.localNetworkNumber = localNetworkNumber;
     }
 
@@ -65,19 +65,19 @@ abstract public class Network {
         return transport;
     }
 
-    abstract public long getBytesOut();
+    public abstract long getBytesOut();
 
-    abstract public long getBytesIn();
+    public abstract long getBytesIn();
 
-    abstract public NetworkIdentifier getNetworkIdentifier();
+    public abstract NetworkIdentifier getNetworkIdentifier();
 
-    abstract public MaxApduLength getMaxApduLength();
+    public abstract MaxApduLength getMaxApduLength();
 
     /**
      * Override as desired if you want to set the Source Address in outgoing messages
      * in the NPDU
      *
-     * @return
+     * @param apdu the APDU from which to derive the source address.
      */
     public Address getSourceAddress(final APDU apdu) {
         return null;
@@ -87,17 +87,21 @@ abstract public class Network {
         this.transport = transport;
     }
 
-    abstract public void terminate();
+    public boolean isInitialized() {
+        return transport != null;
+    }
+
+    public abstract void terminate();
 
     public final Address getLocalBroadcastAddress() {
         return new Address(localNetworkNumber, getBroadcastMAC());
     }
 
-    abstract protected OctetString getBroadcastMAC();
+    protected abstract OctetString getBroadcastMAC();
 
-    abstract public Address[] getAllLocalAddresses();
+    public abstract Address[] getAllLocalAddresses();
 
-    abstract public Address getLoopbackAddress();
+    public abstract Address getLoopbackAddress();
 
     public final void sendAPDU(final Address recipient, final OctetString router, final APDU apdu,
             final boolean broadcast) throws BACnetException {
