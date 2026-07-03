@@ -43,6 +43,7 @@ import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.SecureRandom;
+import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
 import java.time.Instant;
@@ -51,7 +52,9 @@ import java.util.Date;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -112,6 +115,18 @@ public class SecureConnectNetworkPortObjectTest {
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     SecureConnectNetworkPortObject npo;
+
+    /**
+     * Register BouncyCastle as a JCA provider so it can supply a KeyFactory for the EC OID
+     * (1.2.840.10045.2.1) during cert generation and conversion. Some JVMs do not register
+     * an EC KeyFactory under that OID name in the default provider set.
+     */
+    @BeforeClass
+    public static void registerBouncyCastle() {
+        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+    }
 
     @Test
     public void ensureProperties() throws Exception {
@@ -796,7 +811,9 @@ public class SecureConnectNetworkPortObjectTest {
         var signer = new JcaContentSignerBuilder("SHA256withECDSA").build(issuer.getPrivate());
         var builder = new JcaX509v3CertificateBuilder(issuerName, serial, Date.from(notBefore), Date.from(notAfter),
                 subjectName, subject.getPublic());
-        return new JcaX509CertificateConverter().getCertificate(builder.build(signer));
+        return new JcaX509CertificateConverter()
+                .setProvider(BouncyCastleProvider.PROVIDER_NAME)
+                .getCertificate(builder.build(signer));
     }
 
     /** Convenience: DER-encoded bytes of a cert, which the port object's loader accepts. */

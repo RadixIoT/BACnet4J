@@ -40,10 +40,12 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.spec.ECGenParameterSpec;
 
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter;
 import org.bouncycastle.operator.ContentSigner;
@@ -53,6 +55,7 @@ import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -94,6 +97,19 @@ public class SCCsrGenerationTest {
 
     LocalDevice localDevice;
     CsrGeneratingSCNetworkPortObject npo;
+
+    /**
+     * Register BouncyCastle as a JCA provider so it can supply a KeyFactory for the EC OID
+     * (1.2.840.10045.2.1) when the CSR verifier reconstructs the public key from the encoded
+     * SubjectPublicKeyInfo. Some JVMs (minimal builds, certain corporate distributions) do
+     * not register an EC KeyFactory under that OID name in the default provider set.
+     */
+    @BeforeClass
+    public static void registerBouncyCastle() {
+        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+    }
 
     @After
     public void after() {
@@ -163,7 +179,9 @@ public class SCCsrGenerationTest {
         var csr = readPemCsr(csrPem);
         assertNotNull(csr);
         assertTrue("CSR signature must verify against its own public key",
-                csr.isSignatureValid(new JcaContentVerifierProviderBuilder().build(csr.getSubjectPublicKeyInfo())));
+                csr.isSignatureValid(new JcaContentVerifierProviderBuilder()
+                        .setProvider(BouncyCastleProvider.PROVIDER_NAME)
+                        .build(csr.getSubjectPublicKeyInfo())));
 
         // Product implementation retained the new key pair for later activation.
         assertNotNull("Product should retain the new private key", npo.pendingPrivateKey);
