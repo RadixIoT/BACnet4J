@@ -156,10 +156,10 @@ public class ReinitializeDeviceRequest extends ConfirmedRequestService {
 
     @Override
     public int hashCode() {
-        int PRIME = 31;
+        int prime = 31;
         int result = 1;
-        result = PRIME * result + (password == null ? 0 : password.hashCode());
-        result = PRIME * result + (reinitializedStateOfDevice == null ? 0 : reinitializedStateOfDevice.hashCode());
+        result = prime * result + (password == null ? 0 : password.hashCode());
+        result = prime * result + (reinitializedStateOfDevice == null ? 0 : reinitializedStateOfDevice.hashCode());
         return result;
     }
 

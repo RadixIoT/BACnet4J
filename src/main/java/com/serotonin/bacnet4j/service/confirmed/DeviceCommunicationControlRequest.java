@@ -155,11 +155,11 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
 
     @Override
     public int hashCode() {
-        int PRIME = 31;
+        int prime = 31;
         int result = 1;
-        result = PRIME * result + (enableDisable == null ? 0 : enableDisable.hashCode());
-        result = PRIME * result + (password == null ? 0 : password.hashCode());
-        result = PRIME * result + (timeDuration == null ? 0 : timeDuration.hashCode());
+        result = prime * result + (enableDisable == null ? 0 : enableDisable.hashCode());
+        result = prime * result + (password == null ? 0 : password.hashCode());
+        result = prime * result + (timeDuration == null ? 0 : timeDuration.hashCode());
         return result;
     }
 
