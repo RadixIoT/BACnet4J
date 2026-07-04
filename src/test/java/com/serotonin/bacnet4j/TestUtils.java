@@ -66,50 +66,50 @@ import lohbihler.warp.WarpClock;
 public class TestUtils {
     static final Logger LOG = LoggerFactory.getLogger(TestUtils.class);
 
-    public static <T, U> void assertListEqualsIgnoreOrder(final List<T> expectedList, final List<U> actualList,
-            final BiPredicate<T, U> predicate) {
+    public static <T, U> void assertListEqualsIgnoreOrder(List<T> expectedList, List<U> actualList,
+            BiPredicate<T, U> predicate) {
         Assert.assertEquals(expectedList.size(), actualList.size());
-        final List<U> actualListCopy = new ArrayList<>(actualList);
-        for (final T expected : expectedList) {
+        List<U> actualListCopy = new ArrayList<>(actualList);
+        for (T expected : expectedList) {
             // Find an element in the actual copy list where the predicate returns true.
-            final int index = indexOf(actualListCopy, expected, predicate);
+            int index = indexOf(actualListCopy, expected, predicate);
             if (index == -1)
                 Assert.fail("Did not find " + expected + " in actual list");
             actualListCopy.remove(index);
         }
     }
 
-    public static <T, U> int indexOf(final List<U> list, final T key, final BiPredicate<T, U> predicate) {
+    public static <T, U> int indexOf(List<U> list, T key, BiPredicate<T, U> predicate) {
         for (int i = 0; i < list.size(); i++) {
-            final U value = list.get(i);
+            U value = list.get(i);
             if (predicate.test(key, value))
                 return i;
         }
         return -1;
     }
 
-    public static <T> void assertListEqualsIgnoreOrder(final List<T> expectedList, final List<T> actualList) {
+    public static <T> void assertListEqualsIgnoreOrder(List<T> expectedList, List<T> actualList) {
         Assert.assertEquals(expectedList.size(), actualList.size());
-        final List<T> actualListCopy = new ArrayList<>(actualList);
-        for (final T expected : expectedList) {
+        List<T> actualListCopy = new ArrayList<>(actualList);
+        for (T expected : expectedList) {
             // Find an element in the actual copy list which equals the expected.
-            final int index = indexOf(actualListCopy, expected);
+            int index = indexOf(actualListCopy, expected);
             if (index == -1)
                 Assert.fail("Did not find " + expected + " in actual list");
             actualListCopy.remove(index);
         }
     }
 
-    public static <T> int indexOf(final List<T> list, final T key) {
+    public static <T> int indexOf(List<T> list, T key) {
         for (int i = 0; i < list.size(); i++) {
-            final T value = list.get(i);
+            T value = list.get(i);
             if (Objects.equals(value, key))
                 return i;
         }
         return -1;
     }
 
-    public static void assertEquals(final TimeStamp expected, final TimeStamp actual, final int deadbandHundredths) {
+    public static void assertEquals(TimeStamp expected, TimeStamp actual, int deadbandHundredths) {
         if (expected.isDateTime() && actual.isDateTime())
             assertEquals(expected.getDateTime(), actual.getDateTime(), deadbandHundredths);
         else if (expected.isTime() && actual.isTime())
@@ -118,9 +118,9 @@ public class TestUtils {
             Assert.assertEquals(expected, actual);
     }
 
-    public static void assertEquals(final DateTime expected, final DateTime actual, final int deadbandHundredths) {
-        final long expectedMillis = expected.getGC().getTimeInMillis();
-        final long actualMillis = actual.getGC().getTimeInMillis();
+    public static void assertEquals(DateTime expected, DateTime actual, int deadbandHundredths) {
+        long expectedMillis = expected.getGC().getTimeInMillis();
+        long actualMillis = actual.getGC().getTimeInMillis();
 
         long diff = expectedMillis - actualMillis;
         if (diff < 0)
@@ -132,10 +132,10 @@ public class TestUtils {
         }
     }
 
-    public static void assertEquals(final Time expected, final Time actual, final int deadbandHundredths) {
+    public static void assertEquals(Time expected, Time actual, int deadbandHundredths) {
         // Can only compare this way if the times are fully specified.
         if (expected.isFullySpecified() && actual.isFullySpecified()) {
-            final int diff = expected.getSmallestDiff(actual);
+            int diff = expected.getSmallestDiff(actual);
             if (diff > deadbandHundredths) {
                 // This will fail
                 Assert.assertEquals(expected, actual);
@@ -146,24 +146,24 @@ public class TestUtils {
     }
 
     @SafeVarargs
-    public static <T> List<T> toList(final T... elements) {
-        final List<T> result = new ArrayList<>(elements.length);
+    public static <T> List<T> toList(T... elements) {
+        List<T> result = new ArrayList<>(elements.length);
         result.addAll(Arrays.asList(elements));
         return result;
     }
 
-    public static void assertBACnetServiceException(final BACnetServiceException e, final ErrorClass errorClass,
-            final ErrorCode errorCode) {
+    public static void assertBACnetServiceException(BACnetServiceException e, ErrorClass errorClass,
+            ErrorCode errorCode) {
         Assert.assertEquals(errorClass, e.getErrorClass());
         Assert.assertEquals(errorCode, e.getErrorCode());
     }
 
-    public static void assertBACnetServiceException(final ServiceExceptionCommand command, final ErrorClass errorClass,
-            final ErrorCode errorCode) {
+    public static void assertBACnetServiceException(ServiceExceptionCommand command, ErrorClass errorClass,
+            ErrorCode errorCode) {
         try {
             command.call();
             fail("BACnetServiceException was expected");
-        } catch (final BACnetServiceException e) {
+        } catch (BACnetServiceException e) {
             assertBACnetServiceException(e, errorClass, errorCode);
         }
     }
@@ -173,14 +173,14 @@ public class TestUtils {
         void call() throws BACnetServiceException;
     }
 
-    public static void assertRequestHandleException(final RequestHandleExceptionCommand command,
-            final ErrorClass errorClass, final ErrorCode errorCode) {
+    public static void assertRequestHandleException(RequestHandleExceptionCommand command, ErrorClass errorClass,
+            ErrorCode errorCode) {
         try {
             command.call();
             fail("BACnetException was expected");
-        } catch (final BACnetErrorException e) {
+        } catch (BACnetErrorException e) {
             assertErrorClassAndCode(e.getBacnetError().getError().getErrorClassAndCode(), errorClass, errorCode);
-        } catch (final BACnetException e) {
+        } catch (BACnetException e) {
             fail("Not a BACnetErrorException: " + e);
         }
     }
@@ -191,19 +191,18 @@ public class TestUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends BaseError> T assertErrorAPDUException(final BACnetExceptionCommand command,
-            final ErrorClass errorClass, final ErrorCode errorCode) {
+    public static <T extends BaseError> T assertErrorAPDUException(BACnetExceptionCommand command,
+            ErrorClass errorClass, ErrorCode errorCode) {
         try {
             command.call();
-            fail("BACnetException was expected");
-        } catch (final BACnetException e) {
+        } catch (BACnetException e) {
             if (e instanceof ErrorAPDUException eae) {
                 assertErrorClassAndCode(eae.getError().getErrorClassAndCode(), errorClass, errorCode);
                 return (T) eae.getApdu().getError();
             }
-            fail("Embedded ErrorAPDUException was expected: " + e.getClass());
+            throw new AssertionError("Embedded ErrorAPDUException was expected: " + e.getClass());
         }
-        return null;
+        throw new AssertionError("BACnetException was expected");
     }
 
     @FunctionalInterface
@@ -211,17 +210,16 @@ public class TestUtils {
         void call() throws BACnetException;
     }
 
-    public static void assertErrorClassAndCode(final ErrorClassAndCode ecac, final ErrorClass errorClass,
-            final ErrorCode errorCode) {
+    public static void assertErrorClassAndCode(ErrorClassAndCode ecac, ErrorClass errorClass, ErrorCode errorCode) {
         Assert.assertEquals(errorClass, ecac.getErrorClass());
         Assert.assertEquals(errorCode, ecac.getErrorCode());
     }
 
-    public static void assertEncoding(final Encodable encodable, final String expectedHex) {
-        final ByteQueue expectedResult = new ByteQueue(expectedHex);
+    public static void assertEncoding(Encodable encodable, String expectedHex) {
+        ByteQueue expectedResult = new ByteQueue(expectedHex);
 
         // Serialize the Encodable and compare with the hex.
-        final ByteQueue queue = new ByteQueue();
+        ByteQueue queue = new ByteQueue();
         encodable.write(queue);
         Assert.assertEquals(expectedResult, queue);
 
@@ -229,7 +227,7 @@ public class TestUtils {
         Encodable parsed;
         try {
             parsed = Encodable.read(queue, encodable.getClass());
-        } catch (final BACnetException e) {
+        } catch (BACnetException e) {
             LOG.error("", e);
             fail(e.getMessage());
             return;
@@ -239,12 +237,12 @@ public class TestUtils {
         Assert.assertEquals(encodable, parsed);
     }
 
-    public static <T extends Encodable> void assertSequenceEncoding(final SequenceOf<T> encodable,
-            final Class<T> innerType, final String expectedHex) {
-        final ByteQueue expectedResult = new ByteQueue(expectedHex);
+    public static <T extends Encodable> void assertSequenceEncoding(SequenceOf<T> encodable, Class<T> innerType,
+            String expectedHex) {
+        ByteQueue expectedResult = new ByteQueue(expectedHex);
 
         // Serialize the Encodable and compare with the hex.
-        final ByteQueue queue = new ByteQueue();
+        ByteQueue queue = new ByteQueue();
         encodable.write(queue);
         Assert.assertEquals(expectedResult, queue);
 
@@ -252,7 +250,7 @@ public class TestUtils {
         Encodable parsed;
         try {
             parsed = Encodable.readSequenceOf(queue, innerType);
-        } catch (final BACnetException e) {
+        } catch (BACnetException e) {
             LOG.error("", e);
             fail(e.getMessage());
             return;
@@ -262,12 +260,12 @@ public class TestUtils {
         Assert.assertEquals(encodable, parsed);
     }
 
-    public static void assertFileContentEquals(final File expected, final File actual) throws IOException {
+    public static void assertFileContentEquals(File expected, File actual) throws IOException {
         Assert.assertEquals(expected.exists(), actual.exists());
         Assert.assertEquals(expected.length(), actual.length());
 
         // Slow, but easy
-        final long length = expected.length();
+        long length = expected.length();
         long position = 0;
         try (FileInputStream expectedFis = new FileInputStream(expected);
                 FileInputStream actualFis = new FileInputStream(actual)) {
@@ -365,7 +363,7 @@ public class TestUtils {
      * @param expected       the value to match
      * @param actualSupplier the supplier the value of which to check
      */
-    public static void awaitEquals(int expected, final IntSupplierWithException actualSupplier) throws Exception {
+    public static void awaitEquals(int expected, IntSupplierWithException actualSupplier) throws Exception {
         awaitEquals(expected, actualSupplier, 10000);
     }
 
@@ -377,7 +375,7 @@ public class TestUtils {
      * @param timeoutMs the maximum amount of time to wait
      * @throws Exception the exception if any thrown by the supplier
      */
-    public static void awaitEquals(int expected, final IntSupplierWithException supplier, long timeoutMs)
+    public static void awaitEquals(int expected, IntSupplierWithException supplier, long timeoutMs)
             throws Exception {
         if (await(true, () -> supplier.get() == expected, timeoutMs)) {
             return;
@@ -399,7 +397,7 @@ public class TestUtils {
      * @param expected       the value to match
      * @param actualSupplier the supplier the value of which to check
      */
-    public static void awaitEquals(Encodable expected, final EncodableSupplierWithException actualSupplier)
+    public static void awaitEquals(Encodable expected, EncodableSupplierWithException actualSupplier)
             throws Exception {
         awaitEquals(expected, actualSupplier, 5000);
     }
@@ -412,7 +410,7 @@ public class TestUtils {
      * @param timeoutMs the maximum amount of time to wait
      * @throws Exception the exception if any thrown by the supplier
      */
-    public static void awaitEquals(Encodable expected, final EncodableSupplierWithException supplier, long timeoutMs)
+    public static void awaitEquals(Encodable expected, EncodableSupplierWithException supplier, long timeoutMs)
             throws Exception {
         if (await(true, () -> equalsRegardingNull(expected, supplier.get()), timeoutMs)) {
             return;
@@ -454,7 +452,7 @@ public class TestUtils {
      */
     public static boolean await(boolean expected, BooleanSupplierWithException condition, long timeoutMs)
             throws Exception {
-        final long deadline = Clock.systemUTC().millis() + timeoutMs;
+        long deadline = Clock.systemUTC().millis() + timeoutMs;
         while (true) {
             if (condition.getAsBoolean() == expected) {
                 return true;
@@ -515,10 +513,7 @@ public class TestUtils {
                     postAdvance.run();
             } else {
                 while (remainder > 0L) {
-                    long nanos = each;
-                    if (each > remainder) {
-                        nanos = remainder;
-                    }
+                    long nanos = Math.min(each, remainder);
 
                     if (preAdvance != null)
                         preAdvance.run();

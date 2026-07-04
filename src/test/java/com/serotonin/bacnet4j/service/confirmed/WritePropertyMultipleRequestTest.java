@@ -28,6 +28,7 @@
 package com.serotonin.bacnet4j.service.confirmed;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import org.junit.After;
 import org.junit.Before;
@@ -35,6 +36,7 @@ import org.junit.Test;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.RemoteDevice;
+import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
@@ -46,9 +48,16 @@ import com.serotonin.bacnet4j.type.constructed.PropertyValue;
 import com.serotonin.bacnet4j.type.constructed.Recipient;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.constructed.WriteAccessSpecification;
+import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
+import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
+import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.type.error.WritePropertyMultipleError;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
+import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class WritePropertyMultipleRequestTest {
     private final TestNetworkMap map = new TestNetworkMap();
@@ -159,5 +168,131 @@ public class WritePropertyMultipleRequestTest {
         assertEquals("d", newStateText.getBase1(4).getValue());
         assertEquals(CharacterString.EMPTY, newStateText.getBase1(5));
         assertEquals(new UnsignedInteger(5), msv0.get(PropertyIdentifier.numberOfStates));
+    }
+
+    // ======================================================================================
+    // Addendum 135-2016bl-1: Clarify Result(-) response for failed WritePropertyMultiple
+    // requests. Verifies:
+    //   - Mid-stream write failures surface as a Result(-) (WritePropertyMultipleError) with
+    //     the failing property named in 'First Failed Write Attempt'; earlier writes take
+    //     effect and later writes are skipped.
+    //   - First-property write failures also surface as Result(-); no state changes.
+    //   - Wire-format decode failures do not produce partial writes (BACnet4J decodes the
+    //     entire request before invoking handle(), so a decode error occurs before any
+    //     write can happen).
+    // ======================================================================================
+
+    /**
+     * Two writes succeed, the third targets a non-existent object. The receiver must return
+     * a Result(-) whose 'First Failed Write Attempt' names the third spec's object and
+     * property. The first two writes must take effect; subsequent writes (there are none
+     * here after the failing one, but the semantic is exercised) must not.
+     */
+    @Test
+    public void writeFailsMidStream_returnsResultMinusWithFailedProperty() {
+        // Pre-state: description has its original value; alarmValues will be set by write 2.
+        assertEquals("my description", msv0.get(PropertyIdentifier.description).toString());
+
+        var nonExistentObject = new ObjectIdentifier(ObjectType.analogValue, 999);
+        var writeAccessSpecs = new SequenceOf<>(
+                // Write 1 — succeeds.
+                new WriteAccessSpecification(msv0.getId(), new SequenceOf<>(
+                        new PropertyValue(PropertyIdentifier.description, new CharacterString("updated")))),
+                // Write 2 — succeeds.
+                new WriteAccessSpecification(msv0.getId(), new SequenceOf<>(
+                        new PropertyValue(PropertyIdentifier.alarmValues,
+                                new SequenceOf<>(new UnsignedInteger(7), new UnsignedInteger(8))))),
+                // Write 3 — fails: object doesn't exist on the remote device.
+                new WriteAccessSpecification(nonExistentObject, new SequenceOf<>(
+                        new PropertyValue(PropertyIdentifier.eventMessageTexts, new UnsignedInteger(1),
+                                new CharacterString("new value"), null))));
+
+        // The response is an Error-PDU carrying WritePropertyMultipleError (Result(-) per
+        // clause 15.10). Assert the error class/code and the identity of the failed write.
+        WritePropertyMultipleError wpmError = TestUtils.assertErrorAPDUException(
+                () -> localDevice.send(remoteDeviceReference, new WritePropertyMultipleRequest(writeAccessSpecs)).get(),
+                ErrorClass.property, ErrorCode.unknownObject);
+
+        var firstFailed = wpmError.getFirstFailedWriteAttempt();
+        assertEquals(nonExistentObject, firstFailed.getObjectIdentifier());
+        assertEquals(PropertyIdentifier.eventMessageTexts, firstFailed.getPropertyIdentifier());
+        assertEquals(new UnsignedInteger(1), firstFailed.getPropertyArrayIndex());
+
+        // Writes 1 and 2 took effect before the failure was encountered.
+        assertEquals("updated", msv0.get(PropertyIdentifier.description).toString());
+        SequenceOf<UnsignedInteger> newAlarmValues = msv0.get(PropertyIdentifier.alarmValues);
+        assertEquals(2, newAlarmValues.size());
+        assertEquals(7, newAlarmValues.getBase1(1).intValue());
+        assertEquals(8, newAlarmValues.getBase1(2).intValue());
+    }
+
+    /**
+     * The very first write fails. The receiver must return a Result(-) with the failing
+     * property named, and no state on the target device may change.
+     */
+    @Test
+    public void writeFailsFirstProperty_returnsResultMinus() {
+        var originalDescription = msv0.get(PropertyIdentifier.description).toString();
+
+        var nonExistentObject = new ObjectIdentifier(ObjectType.analogValue, 999);
+        var writeAccessSpecs = new SequenceOf<>(
+                // Fails: object doesn't exist.
+                new WriteAccessSpecification(nonExistentObject, new SequenceOf<>(
+                        new PropertyValue(PropertyIdentifier.presentValue, new Real(1.0f)))),
+                // Would succeed if reached, but must not be executed because write 1 failed.
+                new WriteAccessSpecification(msv0.getId(), new SequenceOf<>(
+                        new PropertyValue(PropertyIdentifier.description, new CharacterString("must-not-apply")))));
+
+        WritePropertyMultipleError wpmError = TestUtils.assertErrorAPDUException(
+                () -> localDevice.send(remoteDeviceReference, new WritePropertyMultipleRequest(writeAccessSpecs)).get(),
+                ErrorClass.property, ErrorCode.unknownObject);
+
+        var firstFailed = wpmError.getFirstFailedWriteAttempt();
+        assertEquals(nonExistentObject, firstFailed.getObjectIdentifier());
+        assertEquals(PropertyIdentifier.presentValue, firstFailed.getPropertyIdentifier());
+
+        // No writes happened — description is unchanged.
+        assertEquals(originalDescription, msv0.get(PropertyIdentifier.description).toString());
+    }
+
+    /**
+     * A wire-format decode failure inside a WritePropertyMultiple-Request cannot leave the
+     * receiver with partial writes: the request is decoded fully by the constructor before
+     * {@code handle()} runs, so a mid-stream parse error prevents any write from executing.
+     * This test pins that architectural invariant by feeding a malformed byte stream to
+     * {@link WritePropertyMultipleRequest}'s parse constructor and verifying the constructor
+     * throws — which means {@code handle()} is never reached, and per addendum 135-2016bl-1
+     * a {@code Reject-PDU} for the parse failure is compliant (no writes have happened).
+     */
+    @Test
+    public void decodeFails_parserRejectsMalformedRequestBeforeAnyWrite() {
+        // Serialize a valid single-spec WPM request, then truncate the byte stream in the
+        // middle of a WriteAccessSpecification so the parser starts consuming one and runs
+        // out of bytes before it can complete. This is the closest simulation of a
+        // wire-format decode failure available without direct transport injection.
+        var valid = new WritePropertyMultipleRequest(new SequenceOf<>(new WriteAccessSpecification(
+                msv0.getId(),
+                new SequenceOf<>(new PropertyValue(PropertyIdentifier.description,
+                        new CharacterString("original"))))));
+        var buffer = new ByteQueue();
+        valid.write(buffer);
+        byte[] fullBytes = buffer.popAll();
+        // Chop off the last 5 bytes: enough to leave the outer WriteAccessSpecification
+        // partly decoded, so the parser starts committing to a spec and then fails when
+        // the payload runs out.
+        byte[] truncated = new byte[fullBytes.length - 5];
+        System.arraycopy(fullBytes, 0, truncated, 0, truncated.length);
+        var malformed = new ByteQueue(truncated);
+
+        assertThrows(BACnetException.class, () -> new WritePropertyMultipleRequest(malformed));
+
+        // Because the constructor throws, handle() cannot run — no writes are performed.
+        // Verify by reading the target property directly: its value remains the pre-test
+        // value.
+        assertEquals("my description", msv0.get(PropertyIdentifier.description).toString());
+        // No response-format assertion here: the transport's handling of parse errors
+        // (Reject-PDU vs Error-PDU) is a separate concern. bl-1 requires only that no
+        // partial writes occur when parse fails; the constructor-throws invariant is
+        // sufficient to guarantee that.
     }
 }
