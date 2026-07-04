@@ -34,6 +34,7 @@ import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.mixin.HasStatusFlagsMixin;
 import com.serotonin.bacnet4j.obj.mixin.LifeSafetyMixin;
 import com.serotonin.bacnet4j.obj.mixin.ReadOnlyPropertyMixin;
+import com.serotonin.bacnet4j.obj.mixin.WritablePropertyOutOfServiceMixin;
 import com.serotonin.bacnet4j.obj.mixin.event.IntrinsicReportingMixin;
 import com.serotonin.bacnet4j.obj.mixin.event.eventAlgo.ChangeOfLifeSafetyAlgo;
 import com.serotonin.bacnet4j.obj.mixin.event.faultAlgo.FaultLifeSafetyAlgo;
@@ -58,10 +59,9 @@ import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class LifeSafetyPointObject extends BACnetObject implements LifeSafety {
-    public LifeSafetyPointObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final LifeSafetyState presentValue, final LifeSafetyMode mode, final boolean outOfService,
-            final SequenceOf<LifeSafetyMode> acceptedModes, final LifeSafetyOperation operationExpected,
-            final SilencedState silenced) throws BACnetServiceException {
+    public LifeSafetyPointObject(LocalDevice localDevice, int instanceNumber, String name, LifeSafetyState presentValue,
+            LifeSafetyMode mode, boolean outOfService, SequenceOf<LifeSafetyMode> acceptedModes,
+            LifeSafetyOperation operationExpected, SilencedState silenced) throws BACnetServiceException {
         super(localDevice, ObjectType.lifeSafetyPoint, instanceNumber, name);
 
         Objects.requireNonNull(presentValue);
@@ -70,7 +70,7 @@ public class LifeSafetyPointObject extends BACnetObject implements LifeSafety {
         Objects.requireNonNull(operationExpected);
         Objects.requireNonNull(silenced);
 
-        final ValueSource valueSource = new ValueSource(new DeviceObjectReference(localDevice.getId(), getId()));
+        ValueSource valueSource = new ValueSource(new DeviceObjectReference(localDevice.getId(), getId()));
 
         writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);
         writePropertyInternal(PropertyIdentifier.presentValue, presentValue);
@@ -85,15 +85,20 @@ public class LifeSafetyPointObject extends BACnetObject implements LifeSafety {
 
         // Mixins
         addMixin(new HasStatusFlagsMixin(this));
+        // Per addendum 135-2016bl-3: Tracking_Value and Reliability are writable only when
+        // Out_Of_Service is TRUE. When in service, these properties are driven by the input
+        // or process and must not be written by network clients.
+        addMixin(new WritablePropertyOutOfServiceMixin(this,
+                PropertyIdentifier.trackingValue, PropertyIdentifier.reliability));
         addMixin(new LifeSafetyMixin(this));
         addMixin(new ReadOnlyPropertyMixin(this, PropertyIdentifier.acceptedModes, PropertyIdentifier.ackedTransitions,
                 PropertyIdentifier.eventTimeStamps, PropertyIdentifier.eventMessageTexts));
     }
 
-    public LifeSafetyPointObject supportIntrinsicReporting(final int timeDelay, final int notificationClass,
-            final BACnetArray<LifeSafetyState> lifeSafetyAlarmValues, final BACnetArray<LifeSafetyState> alarmValues,
-            final BACnetArray<LifeSafetyState> faultValues, final EventTransitionBits eventEnable,
-            final NotifyType notifyType, final UnsignedInteger timeDelayNormal) {
+    public LifeSafetyPointObject supportIntrinsicReporting(int timeDelay, int notificationClass,
+            BACnetArray<LifeSafetyState> lifeSafetyAlarmValues, BACnetArray<LifeSafetyState> alarmValues,
+            BACnetArray<LifeSafetyState> faultValues, EventTransitionBits eventEnable, NotifyType notifyType,
+            UnsignedInteger timeDelayNormal) {
         Objects.requireNonNull(lifeSafetyAlarmValues);
         Objects.requireNonNull(alarmValues);
         Objects.requireNonNull(eventEnable);
