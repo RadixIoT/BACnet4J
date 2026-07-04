@@ -51,8 +51,8 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
     private final EnableDisable enableDisable;
     private final CharacterString password;
 
-    public DeviceCommunicationControlRequest(final UnsignedInteger timeDuration, final EnableDisable enableDisable,
-            final CharacterString password) {
+    public DeviceCommunicationControlRequest(UnsignedInteger timeDuration, EnableDisable enableDisable,
+            CharacterString password) {
         super();
         this.timeDuration = timeDuration;
         this.enableDisable = enableDisable;
@@ -65,13 +65,20 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public AcknowledgementService handle(final LocalDevice localDevice, final Address from) throws BACnetException {
+    public AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException {
         String givenPassword = null;
         if (password != null)
             givenPassword = password.getValue();
 
         if (!Objects.equals(givenPassword, localDevice.getPassword())) {
             throw new BACnetErrorException(getChoiceId(), ErrorClass.security, ErrorCode.passwordFailure);
+        }
+
+        // Per addendum 135-2016bi-2: 'disable' was deprecated in Protocol Revision 20. A valid
+        // request carrying the deprecated value shall be ignored and an Error-PDU with
+        // ErrorClass=SERVICES / ErrorCode=SERVICE_REQUEST_DENIED shall be returned.
+        if (EnableDisable.disable.equals(enableDisable)) {
+            throw new BACnetErrorException(getChoiceId(), ErrorClass.services, ErrorCode.serviceRequestDenied);
         }
 
         int minutes = 0;
@@ -83,13 +90,13 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         writeOptional(queue, timeDuration, 0);
         write(queue, enableDisable, 1);
         writeOptional(queue, password, 2);
     }
 
-    DeviceCommunicationControlRequest(final ByteQueue queue) throws BACnetException {
+    DeviceCommunicationControlRequest(ByteQueue queue) throws BACnetException {
         timeDuration = readOptional(queue, UnsignedInteger.class, 0);
         enableDisable = read(queue, EnableDisable.class, 1);
         password = readOptional(queue, CharacterString.class, 2);
@@ -113,18 +120,18 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
             Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
         }
 
-        public static EnableDisable forId(final int id) {
+        public static EnableDisable forId(int id) {
             EnableDisable e = (EnableDisable) idMap.get(id);
             if (e == null)
                 e = new EnableDisable(id);
             return e;
         }
 
-        public static String nameForId(final int id) {
+        public static String nameForId(int id) {
             return prettyMap.get(id);
         }
 
-        public static EnableDisable forName(final String name) {
+        public static EnableDisable forName(String name) {
             return (EnableDisable) Enumerated.forName(nameMap, name);
         }
 
@@ -132,11 +139,11 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
             return idMap.size();
         }
 
-        private EnableDisable(final int value) {
+        private EnableDisable(int value) {
             super(value);
         }
 
-        public EnableDisable(final ByteQueue queue) throws BACnetErrorException {
+        public EnableDisable(ByteQueue queue) throws BACnetErrorException {
             super(queue);
         }
 
@@ -148,7 +155,7 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
 
     @Override
     public int hashCode() {
-        final int PRIME = 31;
+        int PRIME = 31;
         int result = 1;
         result = PRIME * result + (enableDisable == null ? 0 : enableDisable.hashCode());
         result = PRIME * result + (password == null ? 0 : password.hashCode());
@@ -157,14 +164,14 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public boolean equals(final Object obj) {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final DeviceCommunicationControlRequest other = (DeviceCommunicationControlRequest) obj;
+        DeviceCommunicationControlRequest other = (DeviceCommunicationControlRequest) obj;
         if (enableDisable == null) {
             if (other.enableDisable != null)
                 return false;

@@ -37,7 +37,6 @@ import com.serotonin.bacnet4j.event.ReinitializeDeviceHandler;
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.service.acknowledgement.AcknowledgementService;
-import com.serotonin.bacnet4j.service.confirmed.DeviceCommunicationControlRequest.EnableDisable;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
@@ -51,13 +50,13 @@ public class ReinitializeDeviceRequest extends ConfirmedRequestService {
     private final ReinitializedStateOfDevice reinitializedStateOfDevice;
     private final CharacterString password;
 
-    public ReinitializeDeviceRequest(final ReinitializedStateOfDevice reinitializedStateOfDevice,
-            final CharacterString password) {
+    public ReinitializeDeviceRequest(ReinitializedStateOfDevice reinitializedStateOfDevice,
+            CharacterString password) {
         this.reinitializedStateOfDevice = reinitializedStateOfDevice;
         this.password = password;
     }
 
-    public ReinitializeDeviceRequest(final ReinitializedStateOfDevice reinitializedStateOfDevice) {
+    public ReinitializeDeviceRequest(ReinitializedStateOfDevice reinitializedStateOfDevice) {
         this(reinitializedStateOfDevice, null);
     }
 
@@ -67,32 +66,21 @@ public class ReinitializeDeviceRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, reinitializedStateOfDevice, 0);
         writeOptional(queue, password, 1);
     }
 
-    ReinitializeDeviceRequest(final ByteQueue queue) throws BACnetException {
+    ReinitializeDeviceRequest(ByteQueue queue) throws BACnetException {
         reinitializedStateOfDevice = read(queue, ReinitializedStateOfDevice.class, 0);
         password = readOptional(queue, CharacterString.class, 1);
     }
 
     @Override
-    public AcknowledgementService handle(final LocalDevice localDevice, final Address from) throws BACnetException {
-        final ReinitializeDeviceHandler handler = localDevice.getReinitializeDeviceHandler();
+    public AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException {
+        ReinitializeDeviceHandler handler = localDevice.getReinitializeDeviceHandler();
         if (handler == null) {
             throw new BACnetErrorException(ErrorClass.device, ErrorCode.notConfigured);
-        }
-
-        if (reinitializedStateOfDevice.isOneOf( //
-                ReinitializedStateOfDevice.startBackup, //
-                ReinitializedStateOfDevice.endBackup, //
-                ReinitializedStateOfDevice.startRestore, //
-                ReinitializedStateOfDevice.endRestore, //
-                ReinitializedStateOfDevice.abortRestore)) {
-            if (EnableDisable.disable.equals(localDevice.getCommunicationControlState())) {
-                throw new BACnetErrorException(ErrorClass.services, ErrorCode.communicationDisabled);
-            }
         }
 
         // Performance of warmstart and coldstart are listed before the password check in 16.4.2, but we'll check
@@ -133,18 +121,18 @@ public class ReinitializeDeviceRequest extends ConfirmedRequestService {
             Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
         }
 
-        public static ReinitializedStateOfDevice forId(final int id) {
+        public static ReinitializedStateOfDevice forId(int id) {
             ReinitializedStateOfDevice e = (ReinitializedStateOfDevice) idMap.get(id);
             if (e == null)
                 e = new ReinitializedStateOfDevice(id);
             return e;
         }
 
-        public static String nameForId(final int id) {
+        public static String nameForId(int id) {
             return prettyMap.get(id);
         }
 
-        public static ReinitializedStateOfDevice forName(final String name) {
+        public static ReinitializedStateOfDevice forName(String name) {
             return (ReinitializedStateOfDevice) Enumerated.forName(nameMap, name);
         }
 
@@ -152,11 +140,11 @@ public class ReinitializeDeviceRequest extends ConfirmedRequestService {
             return idMap.size();
         }
 
-        private ReinitializedStateOfDevice(final int value) {
+        private ReinitializedStateOfDevice(int value) {
             super(value);
         }
 
-        public ReinitializedStateOfDevice(final ByteQueue queue) throws BACnetErrorException {
+        public ReinitializedStateOfDevice(ByteQueue queue) throws BACnetErrorException {
             super(queue);
         }
 
@@ -168,7 +156,7 @@ public class ReinitializeDeviceRequest extends ConfirmedRequestService {
 
     @Override
     public int hashCode() {
-        final int PRIME = 31;
+        int PRIME = 31;
         int result = 1;
         result = PRIME * result + (password == null ? 0 : password.hashCode());
         result = PRIME * result + (reinitializedStateOfDevice == null ? 0 : reinitializedStateOfDevice.hashCode());
@@ -176,14 +164,14 @@ public class ReinitializeDeviceRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public boolean equals(final Object obj) {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final ReinitializeDeviceRequest other = (ReinitializeDeviceRequest) obj;
+        ReinitializeDeviceRequest other = (ReinitializeDeviceRequest) obj;
         if (password == null) {
             if (other.password != null)
                 return false;
