@@ -37,7 +37,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Calendar;
-import java.util.GregorianCalendar;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
@@ -444,16 +443,16 @@ public class EventLogObjectTest extends AbstractTest {
 
     @Test
     public void startStopTimes() throws Exception {
-        DateTime now = new DateTime(clock.millis());
-        GregorianCalendar nowgg = now.getGC();
+        var localNow = new DateTime(clock.millis());
+        var nowgg = localNow.getGC();
 
         // Set the start time to 5 minutes from now.
         nowgg.add(Calendar.MINUTE, 5);
-        DateTime startTime = new DateTime(nowgg);
+        var startTime = new DateTime(nowgg);
 
         // Set the stop time to 10 minutes from now.
         nowgg.add(Calendar.MINUTE, 5);
-        DateTime stopTime = new DateTime(nowgg);
+        var stopTime = new DateTime(nowgg);
 
         // Create a triggered trend log
         EventLogObject el = d1.addObject(new EventLogObject(
