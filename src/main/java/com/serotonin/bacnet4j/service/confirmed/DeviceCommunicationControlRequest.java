@@ -41,17 +41,17 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.Enumerated;
-import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
     public static final byte TYPE_ID = 17;
 
-    private final UnsignedInteger timeDuration;
+    private final Unsigned16 timeDuration;
     private final EnableDisable enableDisable;
     private final CharacterString password;
 
-    public DeviceCommunicationControlRequest(UnsignedInteger timeDuration, EnableDisable enableDisable,
+    public DeviceCommunicationControlRequest(Unsigned16 timeDuration, EnableDisable enableDisable,
             CharacterString password) {
         super();
         this.timeDuration = timeDuration;
@@ -97,7 +97,7 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
     }
 
     DeviceCommunicationControlRequest(ByteQueue queue) throws BACnetException {
-        timeDuration = readOptional(queue, UnsignedInteger.class, 0);
+        timeDuration = readOptional(queue, Unsigned16.class, 0);
         enableDisable = read(queue, EnableDisable.class, 1);
         password = readOptional(queue, CharacterString.class, 2);
     }

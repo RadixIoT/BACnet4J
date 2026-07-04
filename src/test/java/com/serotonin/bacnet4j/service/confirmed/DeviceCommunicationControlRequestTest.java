@@ -58,7 +58,7 @@ import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
-import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 
 /**
  * All tests modify the communication control in device d1.
@@ -218,7 +218,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
     public void timer() throws Exception {
         // Disable-initiation on d1 for 5 minutes.
         d2.send(rd1, new DeviceCommunicationControlRequest(
-                new UnsignedInteger(5), EnableDisable.disableInitiation, null)).get();
+                new Unsigned16(5), EnableDisable.disableInitiation, null)).get();
         awaitEquals(EnableDisable.disableInitiation, d1::getCommunicationControlState);
 
         // d1 cannot initiate a request during the disable window.
@@ -259,7 +259,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
     public void timerCancel() throws Exception {
         // Disable-initiation on d1 for 5 minutes.
         d2.send(rd1, new DeviceCommunicationControlRequest(
-                new UnsignedInteger(5), EnableDisable.disableInitiation, null)).get();
+                new Unsigned16(5), EnableDisable.disableInitiation, null)).get();
         awaitEquals(EnableDisable.disableInitiation, d1::getCommunicationControlState);
 
         // Confirm d1 cannot initiate during the disable window.
@@ -278,7 +278,7 @@ public class DeviceCommunicationControlRequestTest extends AbstractTest {
         clock.plusMinutes(1);
 
         // Re-enable explicitly. The 5-minute timer should be cancelled so it can't fire later.
-        d2.send(rd1, new DeviceCommunicationControlRequest(new UnsignedInteger(5), EnableDisable.enable, null)).get();
+        d2.send(rd1, new DeviceCommunicationControlRequest(new Unsigned16(5), EnableDisable.enable, null)).get();
         awaitEquals(EnableDisable.enable, d1::getCommunicationControlState);
 
         // d1 can initiate now.
