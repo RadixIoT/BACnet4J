@@ -470,8 +470,8 @@ public class ManagerNode extends MstpNode {
     }
 
     /**
-     * In the POLL_FOR_MANAGER state, the node listens for a reply to a previously sent Poll For Manager frame in order to
-     * find a successor node.
+     * In the POLL_FOR_MANAGER state, the node listens for a reply to a previously sent Poll For Manager frame in order
+     * to find a successor node.
      */
     private void pollForManager() {
         if (receivedValidFrame) {
