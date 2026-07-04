@@ -91,6 +91,8 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
 ```
 
 - the device communicate control option DISABLE has been deprecated as per 135-2016bi-2
+- Default vendor renamed to Radix IoT LLC
+- Protocol revision increased to 20
 
 *Version 6.2.0*
 

@@ -28,6 +28,9 @@
 package com.serotonin.bacnet4j.npdu.mstp;
 
 public class Constants {
+    private Constants() {
+    }
+
     /**
      * This parameter represents the value of the Max_Info_Frames property of the node's Device object. The value
      * of Max_Info_Frames specifies the maximum number of information frames the node may send before it must
@@ -121,9 +124,9 @@ public class Constants {
     public static final int USAGE_DELAY = 15;
 
     /**
-     * The minimum time without a DataAvailable or ReceiveError event that a node must wait for a remote node to
+     * The time without a DataAvailable or ReceiveError event that a node must wait for a remote node to
      * begin using a token or replying to a Poll For Master frame: 20 milliseconds. (Implementations may use larger
-     * values for this timeout, not to exceed 100 milliseconds.)
+     * values for this timeout, not to exceed 35 milliseconds.)
      */
     public static final int USAGE_TIMEOUT = 20;
 
