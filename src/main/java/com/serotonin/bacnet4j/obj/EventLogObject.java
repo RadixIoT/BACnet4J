@@ -67,6 +67,7 @@ import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
@@ -77,7 +78,7 @@ public class EventLogObject extends BACnetObject {
     static final Logger LOG = LoggerFactory.getLogger(EventLogObject.class);
 
     // CreateObject constructor
-    public static EventLogObject create(final LocalDevice localDevice, final int instanceNumber) {
+    public static EventLogObject create(LocalDevice localDevice, int instanceNumber) {
         return new EventLogObject(localDevice, instanceNumber, ObjectType.eventLog.toString() + " " + instanceNumber,
                 new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, false, 100) //
                 .supportIntrinsicReporting(20, 0, new EventTransitionBits(false, false, false),
@@ -94,9 +95,9 @@ public class EventLogObject extends BACnetObject {
     /**
      * Log buffers are expected to have been initialized to their buffer size.
      */
-    public EventLogObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final LogBuffer<EventLogRecord> buffer, final boolean enable, final DateTime startTime,
-            final DateTime stopTime, final boolean stopWhenFull, final int bufferSize) {
+    public EventLogObject(LocalDevice localDevice, int instanceNumber, String name,
+            LogBuffer<EventLogRecord> buffer, boolean enable, DateTime startTime,
+            DateTime stopTime, boolean stopWhenFull, int bufferSize) {
         super(localDevice, ObjectType.eventLog, instanceNumber, name);
 
         Objects.requireNonNull(localDevice);
@@ -108,10 +109,10 @@ public class EventLogObject extends BACnetObject {
         set(PropertyIdentifier.startTime, startTime);
         set(PropertyIdentifier.stopTime, stopTime);
         set(PropertyIdentifier.stopWhenFull, Boolean.valueOf(stopWhenFull));
-        set(PropertyIdentifier.bufferSize, new UnsignedInteger(bufferSize));
+        set(PropertyIdentifier.bufferSize, new Unsigned32(bufferSize));
         set(PropertyIdentifier.logBuffer, buffer);
-        set(PropertyIdentifier.recordCount, UnsignedInteger.ZERO);
-        set(PropertyIdentifier.totalRecordCount, UnsignedInteger.ZERO);
+        set(PropertyIdentifier.recordCount, Unsigned32.ZERO);
+        set(PropertyIdentifier.totalRecordCount, Unsigned32.ZERO);
         set(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false));
         set(PropertyIdentifier.reliability, Reliability.noFaultDetected);
 
@@ -128,12 +129,12 @@ public class EventLogObject extends BACnetObject {
 
         eventListener = new DeviceEventAdapter() {
             @Override
-            public void eventNotificationReceived(final UnsignedInteger processIdentifier,
-                    final ObjectIdentifier initiatingDeviceIdentifier, final ObjectIdentifier eventObjectIdentifier,
-                    final TimeStamp timeStamp, final UnsignedInteger notificationClass, final UnsignedInteger priority,
-                    final EventType eventType, final CharacterString messageText, final NotifyType notifyType,
-                    final Boolean ackRequired, final EventState fromState, final EventState toState,
-                    final NotificationParameters eventValues) {
+            public void eventNotificationReceived(UnsignedInteger processIdentifier,
+                    ObjectIdentifier initiatingDeviceIdentifier, ObjectIdentifier eventObjectIdentifier,
+                    TimeStamp timeStamp, UnsignedInteger notificationClass, UnsignedInteger priority,
+                    EventType eventType, CharacterString messageText, NotifyType notifyType,
+                    Boolean ackRequired, EventState fromState, EventState toState,
+                    NotificationParameters eventValues) {
                 addLogRecord(new EventLogRecord(getNow(),
                         new ConfirmedEventNotificationRequest(processIdentifier, initiatingDeviceIdentifier,
                                 eventObjectIdentifier, timeStamp, notificationClass, priority, eventType, messageText,
@@ -143,28 +144,28 @@ public class EventLogObject extends BACnetObject {
         localDevice.getEventHandler().addListener(eventListener);
     }
 
-    public EventLogObject supportIntrinsicReporting(final int notificationThreshold, final int notificationClass,
-            final EventTransitionBits eventEnable, final NotifyType notifyType) {
+    public EventLogObject supportIntrinsicReporting(int notificationThreshold, int notificationClass,
+            EventTransitionBits eventEnable, NotifyType notifyType) {
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
 
         // Prepare the object with all of the properties that intrinsic reporting will need.
         // User-defined properties
-        writePropertyInternal(PropertyIdentifier.notificationThreshold, new UnsignedInteger(notificationThreshold));
-        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
-        writePropertyInternal(PropertyIdentifier.lastNotifyRecord, UnsignedInteger.ZERO);
+        writePropertyInternal(PropertyIdentifier.notificationThreshold, new Unsigned32(notificationThreshold));
+        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, Unsigned32.ZERO);
+        writePropertyInternal(PropertyIdentifier.lastNotifyRecord, Unsigned32.ZERO);
         writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);
         writePropertyInternal(PropertyIdentifier.notificationClass, new UnsignedInteger(notificationClass));
         writePropertyInternal(PropertyIdentifier.eventEnable, eventEnable);
         writePropertyInternal(PropertyIdentifier.notifyType, notifyType);
         writePropertyInternal(PropertyIdentifier.eventDetectionEnable, Boolean.TRUE);
 
-        final BufferReadyAlgo algo = new BufferReadyAlgo(PropertyIdentifier.totalRecordCount,
+        BufferReadyAlgo algo = new BufferReadyAlgo(PropertyIdentifier.totalRecordCount,
                 new DeviceObjectPropertyReference(getId(), PropertyIdentifier.logBuffer, null,
                         getLocalDevice().getId()),
                 PropertyIdentifier.notificationThreshold, PropertyIdentifier.lastNotifyRecord);
 
-        final PropertyIdentifier[] triggerProps = new PropertyIdentifier[] { //
+        PropertyIdentifier[] triggerProps = new PropertyIdentifier[] { //
                 PropertyIdentifier.totalRecordCount, //
                 PropertyIdentifier.notificationThreshold};
 
@@ -172,9 +173,10 @@ public class EventLogObject extends BACnetObject {
         addMixin(new IntrinsicReportingMixin(this, algo, null, PropertyIdentifier.totalRecordCount, triggerProps)
                 .withPostNotificationAction(notifParams -> {
                     // After a notification has been sent, a couple values need to be updated.
-                    final BufferReadyNotif brn = (BufferReadyNotif) notifParams.getParameter();
-                    writePropertyInternal(PropertyIdentifier.lastNotifyRecord, brn.getCurrentNotification());
-                    writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
+                    BufferReadyNotif brn = notifParams.getParameter();
+                    writePropertyInternal(PropertyIdentifier.lastNotifyRecord,
+                            new Unsigned32(brn.getCurrentNotification()));
+                    writePropertyInternal(PropertyIdentifier.recordsSinceNotification, Unsigned32.ZERO);
                 }));
 
         return this;
@@ -188,24 +190,23 @@ public class EventLogObject extends BACnetObject {
         return buffer;
     }
 
-    public void setEnabled(final boolean enabled) {
+    public void setEnabled(boolean enabled) {
         writePropertyInternal(PropertyIdentifier.enable, Boolean.valueOf(enabled));
     }
 
     @Override
-    protected void beforeReadProperty(final PropertyIdentifier pid) throws BACnetServiceException {
+    protected void beforeReadProperty(PropertyIdentifier pid) throws BACnetServiceException {
         if (PropertyIdentifier.logBuffer.equals(pid)) {
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.readAccessDenied);
         }
     }
 
     @Override
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
-            throws BACnetServiceException {
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
         if (PropertyIdentifier.enable.equals(value.getPropertyIdentifier())) {
-            final Boolean enable = value.getValue();
-            final Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
-            final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
+            Boolean enable = value.getValue();
+            Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
+            Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
 
             if (enable.booleanValue() && stopWhenFull.booleanValue() && bufferSize.intValue() == buffer.size()) {
                 throw new BACnetServiceException(ErrorClass.object, ErrorCode.logBufferFull);
@@ -214,7 +215,7 @@ public class EventLogObject extends BACnetObject {
         } else if (PropertyIdentifier.startTime.equals(value.getPropertyIdentifier()) //
                 || PropertyIdentifier.stopTime.equals(value.getPropertyIdentifier())) {
             // Ensure that the date time is either entirely unspecified or entirely specified.
-            final DateTime dt = value.getValue();
+            DateTime dt = value.getValue();
             if (dt.equals(DateTime.UNSPECIFIED))
                 return false;
 
@@ -222,13 +223,13 @@ public class EventLogObject extends BACnetObject {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.parameterOutOfRange);
 
         } else if (PropertyIdentifier.bufferSize.equals(value.getPropertyIdentifier())) {
-            final Boolean enable = get(PropertyIdentifier.enable);
+            Boolean enable = get(PropertyIdentifier.enable);
             if (enable.booleanValue()) {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
             }
         } else if (PropertyIdentifier.recordCount.equals(value.getPropertyIdentifier())) {
             // Only allowed to write a zero to this record. What would any other value do?
-            final UnsignedInteger recordCount = value.getValue();
+            Unsigned32 recordCount = value.getValue();
             if (recordCount.intValue() != 0)
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
         }
@@ -236,8 +237,7 @@ public class EventLogObject extends BACnetObject {
     }
 
     @Override
-    protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
-            final Encodable newValue) {
+    protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         if (PropertyIdentifier.enable.equals(pid)) {
             evaluateLogDisabled();
         } else if (PropertyIdentifier.startTime.equals(pid)) {
@@ -246,11 +246,11 @@ public class EventLogObject extends BACnetObject {
             updateStopTime((DateTime) newValue);
 
         } else if (PropertyIdentifier.stopWhenFull.equals(pid)) {
-            final Boolean oldStopWhenFull = (Boolean) oldValue;
-            final Boolean stopWhenFull = (Boolean) newValue;
+            Boolean oldStopWhenFull = (Boolean) oldValue;
+            Boolean stopWhenFull = (Boolean) newValue;
             if (!oldStopWhenFull.booleanValue() && stopWhenFull.booleanValue()) {
                 // Turning StopWhenFull on.
-                final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
+                Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
                 if (buffer.size() >= bufferSize.intValue()) {
                     synchronized (buffer) {
                         while (buffer.size() >= bufferSize.intValue())
@@ -262,7 +262,7 @@ public class EventLogObject extends BACnetObject {
             }
 
         } else if (PropertyIdentifier.bufferSize.equals(pid)) {
-            final UnsignedInteger bufferSize = (UnsignedInteger) newValue;
+            Unsigned32 bufferSize = (Unsigned32) newValue;
             // In case the buffer size was reduced, remove extra entries in the buffer.
             synchronized (buffer) {
                 while (buffer.size() >= bufferSize.intValue())
@@ -271,7 +271,7 @@ public class EventLogObject extends BACnetObject {
             updateRecordCount();
 
         } else if (PropertyIdentifier.recordCount.equals(pid)) {
-            final UnsignedInteger recordCount = (UnsignedInteger) newValue;
+            Unsigned32 recordCount = (Unsigned32) newValue;
             if (recordCount.intValue() == 0)
                 purge();
 
@@ -282,15 +282,15 @@ public class EventLogObject extends BACnetObject {
         synchronized (buffer) {
             buffer.clear();
         }
-        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
+        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, Unsigned32.ZERO);
         addLogRecordImpl(new EventLogRecord(getNow(), new LogStatus(logDisabled, true, false)));
     }
 
-    private void updateStartTime(final DateTime startTime) {
+    private void updateStartTime(DateTime startTime) {
         cancelFuture(startTimeFuture);
         if (!startTime.equals(DateTime.UNSPECIFIED)) {
-            final DateTime now = getNow();
-            final long diff = startTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
+            DateTime now = getNow();
+            long diff = startTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
             if (diff > 0) {
                 startTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
             }
@@ -298,11 +298,11 @@ public class EventLogObject extends BACnetObject {
         evaluateLogDisabled();
     }
 
-    private void updateStopTime(final DateTime stopTime) {
+    private void updateStopTime(DateTime stopTime) {
         cancelFuture(stopTimeFuture);
         if (!stopTime.equals(DateTime.UNSPECIFIED)) {
-            final DateTime now = getNow();
-            final long diff = stopTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
+            DateTime now = getNow();
+            long diff = stopTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
             if (diff > 0) {
                 stopTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
             }
@@ -317,12 +317,12 @@ public class EventLogObject extends BACnetObject {
         getLocalDevice().getEventHandler().removeListener(eventListener);
     }
 
-    private static void cancelFuture(final ScheduledFuture<?> future) {
+    private static void cancelFuture(ScheduledFuture<?> future) {
         if (future != null)
             future.cancel(false);
     }
 
-    private synchronized void addLogRecord(final EventLogRecord rec) {
+    private synchronized void addLogRecord(EventLogRecord rec) {
         // Check if logging is allowed.
         if (logDisabled)
             return;
@@ -334,16 +334,16 @@ public class EventLogObject extends BACnetObject {
     }
 
     private void fullCheck() {
-        final Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
-        final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
+        Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
+        Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
         if (stopWhenFull.booleanValue() && buffer.size() == bufferSize.intValue() - 1) {
             // There is only one spot left in the buffer, and StopWhenFull is true. Set Enable to false.
             writePropertyInternal(PropertyIdentifier.enable, Boolean.FALSE);
         }
     }
 
-    private void addLogRecordImpl(final EventLogRecord rec) {
-        final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
+    private void addLogRecordImpl(EventLogRecord rec) {
+        Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
 
         synchronized (buffer) {
             // Don't add more to the buffer than capacity.
@@ -357,17 +357,17 @@ public class EventLogObject extends BACnetObject {
 
         updateRecordCount();
 
-        final UnsignedInteger recordsSinceNotification = get(PropertyIdentifier.recordsSinceNotification);
+        Unsigned32 recordsSinceNotification = get(PropertyIdentifier.recordsSinceNotification);
         if (recordsSinceNotification != null) {
-            writePropertyInternal(PropertyIdentifier.recordsSinceNotification, recordsSinceNotification.increment32());
+            writePropertyInternal(PropertyIdentifier.recordsSinceNotification, recordsSinceNotification.increment());
         }
 
         // The total record count must be written last because it is the monitored property for intrinsic reporting.
-        UnsignedInteger totalRecordCount = get(PropertyIdentifier.totalRecordCount);
-        totalRecordCount = totalRecordCount.increment32();
+        Unsigned32 totalRecordCount = get(PropertyIdentifier.totalRecordCount);
+        totalRecordCount = totalRecordCount.increment();
         if (totalRecordCount.longValue() == 0)
             // Value overflowed. As per 12.27.15 set to 1.
-            totalRecordCount = new UnsignedInteger(1);
+            totalRecordCount = new Unsigned32(1);
         rec.setSequenceNumber(totalRecordCount.longValue());
         writePropertyInternal(PropertyIdentifier.totalRecordCount, totalRecordCount);
     }
@@ -375,13 +375,13 @@ public class EventLogObject extends BACnetObject {
     /**
      * Determines whether logging should be performed based upon Enable, StartTime, and StopTime.
      */
-    private boolean allowLogging(final DateTime now) {
-        final Boolean enabled = get(PropertyIdentifier.enable);
+    private boolean allowLogging(DateTime now) {
+        Boolean enabled = get(PropertyIdentifier.enable);
         if (!enabled.booleanValue())
             return false;
 
-        final DateTime start = get(PropertyIdentifier.startTime);
-        final DateTime stop = get(PropertyIdentifier.stopTime);
+        DateTime start = get(PropertyIdentifier.startTime);
+        DateTime stop = get(PropertyIdentifier.stopTime);
 
         if (!start.equals(DateTime.UNSPECIFIED)) {
             LOG.info("Checking start time");
@@ -399,14 +399,14 @@ public class EventLogObject extends BACnetObject {
     }
 
     private void updateRecordCount() {
-        writePropertyInternal(PropertyIdentifier.recordCount, new UnsignedInteger(buffer.size()));
+        writePropertyInternal(PropertyIdentifier.recordCount, new Unsigned32(buffer.size()));
     }
 
     private void evaluateLogDisabled() {
         // Don't evaluate until instantiation is complete.
         if (buffer != null) {
-            final DateTime now = getNow();
-            final boolean newValue = !allowLogging(now);
+            DateTime now = getNow();
+            boolean newValue = !allowLogging(now);
             if (logDisabled != newValue) {
                 logDisabled = newValue;
                 if (logDisabled)

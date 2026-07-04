@@ -56,6 +56,7 @@ import com.serotonin.bacnet4j.type.eventParameter.EventParameter;
 import com.serotonin.bacnet4j.type.notificationParameters.ChangeOfStateNotif;
 import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
+import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class BinaryInputObjectTest extends AbstractTest {
@@ -77,12 +78,12 @@ public class BinaryInputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void intrinsicReporting() throws Exception {
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         bi.supportIntrinsicReporting(5, 17, BinaryPV.active, new EventTransitionBits(true, true, true),
@@ -156,21 +157,21 @@ public class BinaryInputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReporting() throws Exception {
-        final DeviceObjectPropertyReference ref =
+        DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(1, bi.getId(), PropertyIdentifier.presentValue);
-        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
                 d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(new ChangeOfState(new UnsignedInteger(30),
                         new SequenceOf<>(new PropertyStates(BinaryPV.active)))),
                 new EventTransitionBits(true, true, true), 17, 1000, null, null));
 
         // Set up the notification destination
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
@@ -249,58 +250,58 @@ public class BinaryInputObjectTest extends AbstractTest {
 
     @Test
     public void activeTime() throws Exception {
-        final DateTime start = new DateTime(d1);
+        DateTime start = new DateTime(d1);
 
         bi.supportActiveTime();
 
         clock.plusMillis(3500);
-        assertEquals(UnsignedInteger.ZERO, bi.readProperty(PropertyIdentifier.elapsedActiveTime));
+        assertEquals(Unsigned32.ZERO, bi.readProperty(PropertyIdentifier.elapsedActiveTime));
         assertEquals(start, bi.readProperty(PropertyIdentifier.timeOfActiveTimeReset));
 
         bi.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
         clock.plusMillis(1600); // Total active time 1600ms
-        assertEquals(new UnsignedInteger(1), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
+        assertEquals(new Unsigned32(1), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
         assertEquals(start, bi.readProperty(PropertyIdentifier.timeOfActiveTimeReset));
 
         bi.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
         clock.plusMillis(1600); // Total active time 3200ms
-        assertEquals(new UnsignedInteger(3), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
+        assertEquals(new Unsigned32(3), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
         assertEquals(start, bi.readProperty(PropertyIdentifier.timeOfActiveTimeReset));
 
         bi.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.inactive);
         clock.plusMillis(7000);
-        assertEquals(new UnsignedInteger(3), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
+        assertEquals(new Unsigned32(3), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
         assertEquals(start, bi.readProperty(PropertyIdentifier.timeOfActiveTimeReset));
 
         bi.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.inactive);
         clock.plusMillis(500);
-        assertEquals(new UnsignedInteger(3), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
+        assertEquals(new Unsigned32(3), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
         assertEquals(start, bi.readProperty(PropertyIdentifier.timeOfActiveTimeReset));
 
         bi.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
         clock.plusMillis(4700); // Total active time 7900ms
-        assertEquals(new UnsignedInteger(7), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
+        assertEquals(new Unsigned32(7), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
         assertEquals(start, bi.readProperty(PropertyIdentifier.timeOfActiveTimeReset));
 
-        bi.writePropertyInternal(PropertyIdentifier.elapsedActiveTime, new UnsignedInteger(5));
-        assertEquals(new UnsignedInteger(5), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
+        bi.writePropertyInternal(PropertyIdentifier.elapsedActiveTime, new Unsigned32(5));
+        assertEquals(new Unsigned32(5), bi.readProperty(PropertyIdentifier.elapsedActiveTime));
         assertEquals(start, bi.readProperty(PropertyIdentifier.timeOfActiveTimeReset));
 
         clock.plusMillis(1234);
-        bi.writePropertyInternal(PropertyIdentifier.elapsedActiveTime, UnsignedInteger.ZERO);
-        assertEquals(UnsignedInteger.ZERO, bi.readProperty(PropertyIdentifier.elapsedActiveTime));
+        bi.writePropertyInternal(PropertyIdentifier.elapsedActiveTime, Unsigned32.ZERO);
+        assertEquals(Unsigned32.ZERO, bi.readProperty(PropertyIdentifier.elapsedActiveTime));
         assertEquals(new DateTime(d1), bi.readProperty(PropertyIdentifier.timeOfActiveTimeReset));
     }
 
     @Test
     public void stateChanges() throws Exception {
-        final DateTime start = new DateTime(d1);
+        DateTime start = new DateTime(d1);
         assertEquals(DateTime.UNSPECIFIED, bi.readProperty(PropertyIdentifier.changeOfStateTime));
         assertEquals(UnsignedInteger.ZERO, bi.readProperty(PropertyIdentifier.changeOfStateCount));
         assertEquals(start, bi.readProperty(PropertyIdentifier.timeOfStateCountReset));
 
         clock.plusMinutes(4);
-        final DateTime t1 = new DateTime(d1);
+        DateTime t1 = new DateTime(d1);
         bi.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
         assertEquals(t1, bi.readProperty(PropertyIdentifier.changeOfStateTime));
         assertEquals(new UnsignedInteger(1), bi.readProperty(PropertyIdentifier.changeOfStateCount));
@@ -313,7 +314,7 @@ public class BinaryInputObjectTest extends AbstractTest {
         assertEquals(start, bi.readProperty(PropertyIdentifier.timeOfStateCountReset));
 
         clock.plusMinutes(6);
-        final DateTime t2 = new DateTime(d1);
+        DateTime t2 = new DateTime(d1);
         bi.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.inactive);
         bi.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.active);
         bi.writePropertyInternal(PropertyIdentifier.presentValue, BinaryPV.inactive);
@@ -328,7 +329,7 @@ public class BinaryInputObjectTest extends AbstractTest {
         assertEquals(start, bi.readProperty(PropertyIdentifier.timeOfStateCountReset));
 
         clock.plusMinutes(8);
-        final DateTime t3 = new DateTime(d1);
+        DateTime t3 = new DateTime(d1);
         bi.writePropertyInternal(PropertyIdentifier.changeOfStateCount, UnsignedInteger.ZERO);
         assertEquals(t2, bi.readProperty(PropertyIdentifier.changeOfStateTime));
         assertEquals(UnsignedInteger.ZERO, bi.readProperty(PropertyIdentifier.changeOfStateCount));

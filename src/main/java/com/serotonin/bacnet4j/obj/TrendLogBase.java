@@ -55,9 +55,10 @@ import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.notificationParameters.BufferReadyNotif;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
+import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
-abstract class TrendLogBase extends BACnetObject {
+public abstract class TrendLogBase extends BACnetObject {
     protected boolean logDisabled;
     protected ScheduledFuture<?> startTimeFuture;
     protected ScheduledFuture<?> stopTimeFuture;
@@ -79,9 +80,9 @@ abstract class TrendLogBase extends BACnetObject {
         set(PropertyIdentifier.stopTime, stopTime);
         set(PropertyIdentifier.logInterval, new UnsignedInteger(logInterval));
         set(PropertyIdentifier.stopWhenFull, Boolean.valueOf(stopWhenFull));
-        set(PropertyIdentifier.bufferSize, new UnsignedInteger(bufferSize));
-        set(PropertyIdentifier.recordCount, UnsignedInteger.ZERO);
-        set(PropertyIdentifier.totalRecordCount, UnsignedInteger.ZERO);
+        set(PropertyIdentifier.bufferSize, new Unsigned32(bufferSize));
+        set(PropertyIdentifier.recordCount, Unsigned32.ZERO);
+        set(PropertyIdentifier.totalRecordCount, Unsigned32.ZERO);
         set(PropertyIdentifier.alignIntervals, Boolean.TRUE);
         set(PropertyIdentifier.intervalOffset, UnsignedInteger.ZERO);
         set(PropertyIdentifier.trigger, Boolean.FALSE);
@@ -117,9 +118,9 @@ abstract class TrendLogBase extends BACnetObject {
 
         // Prepare the object with all the properties that intrinsic reporting will need.
         // User-defined properties
-        writePropertyInternal(PropertyIdentifier.notificationThreshold, new UnsignedInteger(notificationThreshold));
-        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
-        writePropertyInternal(PropertyIdentifier.lastNotifyRecord, UnsignedInteger.ZERO);
+        writePropertyInternal(PropertyIdentifier.notificationThreshold, new Unsigned32(notificationThreshold));
+        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, Unsigned32.ZERO);
+        writePropertyInternal(PropertyIdentifier.lastNotifyRecord, Unsigned32.ZERO);
         writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);
         writePropertyInternal(PropertyIdentifier.notificationClass, new UnsignedInteger(notificationClass));
         writePropertyInternal(PropertyIdentifier.eventEnable, eventEnable);
@@ -140,8 +141,9 @@ abstract class TrendLogBase extends BACnetObject {
                 .withPostNotificationAction(notifParams -> {
                     if (notifParams.getParameter() instanceof BufferReadyNotif brn) {
                         // After a notification has been sent, a couple values need to be updated.
-                        writePropertyInternal(PropertyIdentifier.lastNotifyRecord, brn.getCurrentNotification());
-                        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
+                        writePropertyInternal(PropertyIdentifier.lastNotifyRecord,
+                                new Unsigned32(brn.getCurrentNotification()));
+                        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, Unsigned32.ZERO);
                     }
                 }));
 
@@ -232,7 +234,7 @@ abstract class TrendLogBase extends BACnetObject {
         if (PropertyIdentifier.enable.equals(value.getPropertyIdentifier())) {
             Boolean enable = value.getValue();
             Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
-            UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
+            Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
 
             if (enable.booleanValue() && stopWhenFull.booleanValue() && bufferSize.intValue() == bufferSize()) {
                 throw new BACnetServiceException(ErrorClass.object, ErrorCode.logBufferFull);
@@ -253,7 +255,7 @@ abstract class TrendLogBase extends BACnetObject {
             }
         } else if (PropertyIdentifier.recordCount.equals(value.getPropertyIdentifier())) {
             // Only allowed to write a zero to this record. What would any other value do?
-            UnsignedInteger recordCount = value.getValue();
+            Unsigned32 recordCount = value.getValue();
             if (recordCount.intValue() != 0)
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
         }
@@ -272,7 +274,7 @@ abstract class TrendLogBase extends BACnetObject {
             purge();
             updateMonitoredProperty();
         } else if (PropertyIdentifier.recordCount.equals(pid)) {
-            UnsignedInteger recordCount = (UnsignedInteger) newValue;
+            Unsigned32 recordCount = (Unsigned32) newValue;
             if (recordCount.intValue() == 0)
                 purge();
         } else if (PropertyIdentifier.loggingType.equals(pid)) {
@@ -318,7 +320,7 @@ abstract class TrendLogBase extends BACnetObject {
 
     protected void fullCheck() {
         Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
-        UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
+        Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
         if (stopWhenFull.booleanValue() && bufferSize() == bufferSize.intValue() - 1) {
             // There is only one spot left in the buffer, and StopWhenFull is true. Set Enable to false.
             writePropertyInternal(PropertyIdentifier.enable, Boolean.FALSE);
@@ -353,6 +355,6 @@ abstract class TrendLogBase extends BACnetObject {
     }
 
     protected void updateRecordCount() {
-        writePropertyInternal(PropertyIdentifier.recordCount, new UnsignedInteger(bufferSize()));
+        writePropertyInternal(PropertyIdentifier.recordCount, new Unsigned32(bufferSize()));
     }
 }

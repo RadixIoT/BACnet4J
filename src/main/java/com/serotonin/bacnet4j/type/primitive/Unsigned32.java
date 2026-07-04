@@ -36,21 +36,39 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class Unsigned32 extends UnsignedInteger {
-    private static final long MAX = 0xffffffffl;
+    public static final Unsigned32 ZERO = new Unsigned32(0);
+
+    private static final long MAX = 0xffffffffL;
     private static final BigInteger BIGMAX = BigInteger.valueOf(MAX);
 
-    public Unsigned32(final int value) {
+    public Unsigned32(int value) {
         super(value);
     }
 
-    public Unsigned32(final BigInteger value) {
+    public Unsigned32(long value) {
+        super(value);
+    }
+
+    public Unsigned32(UnsignedInteger value) {
+        super(value.bigIntegerValue());
+    }
+
+    public Unsigned32(BigInteger value) {
         super(value);
         if (value.longValue() > MAX)
             throw new IllegalArgumentException("Value cannot be greater than " + MAX);
     }
 
-    public Unsigned32(final ByteQueue queue) throws BACnetErrorException {
+    public Unsigned32(ByteQueue queue) throws BACnetErrorException {
         super(queue);
+    }
+
+    public Unsigned32 increment() {
+        return increment(1);
+    }
+
+    public Unsigned32 increment(long amount) {
+        return new Unsigned32((longValue() + amount) % 0x100000000L);
     }
 
     @Override

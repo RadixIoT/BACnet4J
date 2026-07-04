@@ -47,7 +47,8 @@ import com.serotonin.bacnet4j.type.constructed.AuditOperationFlags;
 import com.serotonin.bacnet4j.type.constructed.AuthenticationFactor;
 import com.serotonin.bacnet4j.type.constructed.AuthenticationFactorFormat;
 import com.serotonin.bacnet4j.type.constructed.AuthenticationPolicy;
-import com.serotonin.bacnet4j.type.constructed.AuthorizationScope;
+import com.serotonin.bacnet4j.type.constructed.AuthorizationPolicy;
+import com.serotonin.bacnet4j.type.constructed.AuthorizationScopeDescription;
 import com.serotonin.bacnet4j.type.constructed.AuthorizationServer;
 import com.serotonin.bacnet4j.type.constructed.AuthorizationStatus;
 import com.serotonin.bacnet4j.type.constructed.BDTEntry;
@@ -211,42 +212,42 @@ public class ObjectProperties {
     private static final Map<ObjectType, Map<PropertyIdentifier, ObjectPropertyTypeDefinition>> objectPropertyTypes =
             new HashMap<>();
 
-    public static ObjectPropertyTypeDefinition getObjectPropertyTypeDefinition(final ObjectType objectType,
-            final PropertyIdentifier propertyIdentifier) {
-        final Map<PropertyIdentifier, ObjectPropertyTypeDefinition> props = objectPropertyTypes.get(objectType);
+    public static ObjectPropertyTypeDefinition getObjectPropertyTypeDefinition(ObjectType objectType,
+            PropertyIdentifier propertyIdentifier) {
+        Map<PropertyIdentifier, ObjectPropertyTypeDefinition> props = objectPropertyTypes.get(objectType);
         if (props == null)
             return null;
         return props.get(propertyIdentifier);
     }
 
-    public static ObjectPropertyTypeDefinition getObjectPropertyTypeDefinitionRequired(final ObjectType objectType,
-            final PropertyIdentifier propertyIdentifier) throws BACnetServiceException {
-        final ObjectPropertyTypeDefinition def = getObjectPropertyTypeDefinition(objectType, propertyIdentifier);
+    public static ObjectPropertyTypeDefinition getObjectPropertyTypeDefinitionRequired(ObjectType objectType,
+            PropertyIdentifier propertyIdentifier) throws BACnetServiceException {
+        ObjectPropertyTypeDefinition def = getObjectPropertyTypeDefinition(objectType, propertyIdentifier);
         if (def == null)
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.unknownProperty,
                     objectType + "/" + propertyIdentifier);
         return def;
     }
 
-    public static List<ObjectPropertyTypeDefinition> getObjectPropertyTypeDefinitions(final ObjectType objectType) {
+    public static List<ObjectPropertyTypeDefinition> getObjectPropertyTypeDefinitions(ObjectType objectType) {
         return getObjectPropertyTypeDefinitions(objectType, 0);
     }
 
     public static List<ObjectPropertyTypeDefinition> getRequiredObjectPropertyTypeDefinitions(
-            final ObjectType objectType) {
+            ObjectType objectType) {
         return getObjectPropertyTypeDefinitions(objectType, 1);
     }
 
     public static List<ObjectPropertyTypeDefinition> getOptionalObjectPropertyTypeDefinitions(
-            final ObjectType objectType) {
+            ObjectType objectType) {
         return getObjectPropertyTypeDefinitions(objectType, 2);
     }
 
-    public static PropertyTypeDefinition getPropertyTypeDefinition(final PropertyIdentifier pid) {
+    public static PropertyTypeDefinition getPropertyTypeDefinition(PropertyIdentifier pid) {
         return propertyTypes.get(pid);
     }
 
-    public static boolean isCommandable(final ObjectType type, final PropertyIdentifier pid) {
+    public static boolean isCommandable(ObjectType type, PropertyIdentifier pid) {
         if (!pid.equals(PropertyIdentifier.presentValue))
             return false;
         return type.isOneOf( //
@@ -278,12 +279,12 @@ public class ObjectProperties {
      * @param include    0 = all, 1 = required, 2 = optional
      * @return the list of object property type definitions
      */
-    private static List<ObjectPropertyTypeDefinition> getObjectPropertyTypeDefinitions(final ObjectType objectType,
-            final int include) {
-        final List<ObjectPropertyTypeDefinition> result = new ArrayList<>();
-        final Map<PropertyIdentifier, ObjectPropertyTypeDefinition> props = objectPropertyTypes.get(objectType);
+    private static List<ObjectPropertyTypeDefinition> getObjectPropertyTypeDefinitions(ObjectType objectType,
+            int include) {
+        List<ObjectPropertyTypeDefinition> result = new ArrayList<>();
+        Map<PropertyIdentifier, ObjectPropertyTypeDefinition> props = objectPropertyTypes.get(objectType);
         if (props != null) {
-            for (final ObjectPropertyTypeDefinition def : props.values()) {
+            for (ObjectPropertyTypeDefinition def : props.values()) {
                 if (include == 0 || include == 1 && def.isRequired() || include == 2 && def.isOptional())
                     result.add(def);
             }
@@ -294,34 +295,34 @@ public class ObjectProperties {
     /**
      * Add a scalar property
      */
-    private static void add(final ObjectType type, final PropertyIdentifier pid, final Class<? extends Encodable> clazz,
-            final boolean required) {
+    private static void add(ObjectType type, PropertyIdentifier pid, Class<? extends Encodable> clazz,
+            boolean required) {
         add(type, required, new PropertyTypeDefinition(pid, clazz));
     }
 
     /**
      * Add a list property
      */
-    private static void add(final ObjectType type, final PropertyIdentifier pid, final Class<? extends Encodable> clazz,
-            final boolean required, final boolean isList) {
+    private static void add(ObjectType type, PropertyIdentifier pid, Class<? extends Encodable> clazz,
+            boolean required, boolean isList) {
         add(type, required, new PropertyTypeDefinition(pid, clazz, isList));
     }
 
     /**
      * Add an array property. If the array length is n, use 0.
      */
-    private static void add(final ObjectType type, final PropertyIdentifier pid, final Class<? extends Encodable> clazz,
-            final boolean required, final int arrayLength) {
+    private static void add(ObjectType type, PropertyIdentifier pid, Class<? extends Encodable> clazz,
+            boolean required, int arrayLength) {
         add(type, required, new PropertyTypeDefinition(pid, clazz, arrayLength));
     }
 
-    private static void add(final ObjectType type, final boolean required, final PropertyTypeDefinition ptd) {
+    private static void add(ObjectType type, boolean required, PropertyTypeDefinition ptd) {
         // Add to the object property types
         Map<PropertyIdentifier, ObjectPropertyTypeDefinition> props = objectPropertyTypes
                 .computeIfAbsent(type, key -> new HashMap<>());
 
         // Check for existing entries.
-        final PropertyIdentifier pid = ptd.getPropertyIdentifier();
+        PropertyIdentifier pid = ptd.getPropertyIdentifier();
         if (props.containsKey(pid))
             throw new RuntimeException("Found an existing entry for " + type + "/" + pid);
 
@@ -330,7 +331,7 @@ public class ObjectProperties {
         // Add to the property types. If an entry already exists, then replace it with null. In the end, only
         // properties that have a single type will remain.
         if (propertyTypes.containsKey(pid)) {
-            final PropertyTypeDefinition existing = propertyTypes.get(pid);
+            PropertyTypeDefinition existing = propertyTypes.get(pid);
             if (existing != null && !existing.equals(ptd)) {
                 propertyTypes.put(pid, null);
             }
@@ -345,7 +346,7 @@ public class ObjectProperties {
         add(ObjectType.accessCredential, PropertyIdentifier.objectName, CharacterString.class, true);
         add(ObjectType.accessCredential, PropertyIdentifier.objectType, ObjectType.class, true);
         add(ObjectType.accessCredential, PropertyIdentifier.description, CharacterString.class, false);
-        add(ObjectType.accessCredential, PropertyIdentifier.globalIdentifier, Unsigned32.class, false);
+        add(ObjectType.accessCredential, PropertyIdentifier.globalIdentifier, Unsigned32.class, true);
         add(ObjectType.accessCredential, PropertyIdentifier.statusFlags, StatusFlags.class, true);
         add(ObjectType.accessCredential, PropertyIdentifier.reliability, Reliability.class, true);
         add(ObjectType.accessCredential, PropertyIdentifier.credentialStatus, BinaryPV.class, true);
@@ -358,7 +359,7 @@ public class ObjectProperties {
         add(ObjectType.accessCredential, PropertyIdentifier.credentialDisable, AccessCredentialDisable.class, true);
         add(ObjectType.accessCredential, PropertyIdentifier.daysRemaining, SignedInteger.class, false);
         add(ObjectType.accessCredential, PropertyIdentifier.usesRemaining, SignedInteger.class, false);
-        add(ObjectType.accessCredential, PropertyIdentifier.absenteeLimit, UnsignedInteger.class, false);
+        add(ObjectType.accessCredential, PropertyIdentifier.absenteeLimit, Unsigned16.class, false);
         add(ObjectType.accessCredential, PropertyIdentifier.belongsTo, DeviceObjectReference.class, false);
         add(ObjectType.accessCredential, PropertyIdentifier.assignedAccessRights, AssignedAccessRights.class, true, 0);
         add(ObjectType.accessCredential, PropertyIdentifier.lastAccessPoint, DeviceObjectReference.class, false);
@@ -492,7 +493,7 @@ public class ObjectProperties {
         add(ObjectType.accessRights, PropertyIdentifier.objectName, CharacterString.class, true);
         add(ObjectType.accessRights, PropertyIdentifier.objectType, ObjectType.class, true);
         add(ObjectType.accessRights, PropertyIdentifier.description, CharacterString.class, false);
-        add(ObjectType.accessRights, PropertyIdentifier.globalIdentifier, Unsigned32.class, false);
+        add(ObjectType.accessRights, PropertyIdentifier.globalIdentifier, Unsigned32.class, true);
         add(ObjectType.accessRights, PropertyIdentifier.statusFlags, StatusFlags.class, true);
         add(ObjectType.accessRights, PropertyIdentifier.reliability, Reliability.class, true);
         add(ObjectType.accessRights, PropertyIdentifier.enable, Boolean.class, true);
@@ -512,7 +513,7 @@ public class ObjectProperties {
         add(ObjectType.accessUser, PropertyIdentifier.objectName, CharacterString.class, true);
         add(ObjectType.accessUser, PropertyIdentifier.objectType, ObjectType.class, true);
         add(ObjectType.accessUser, PropertyIdentifier.description, CharacterString.class, false);
-        add(ObjectType.accessUser, PropertyIdentifier.globalIdentifier, Unsigned32.class, false);
+        add(ObjectType.accessUser, PropertyIdentifier.globalIdentifier, Unsigned32.class, true);
         add(ObjectType.accessUser, PropertyIdentifier.statusFlags, StatusFlags.class, true);
         add(ObjectType.accessUser, PropertyIdentifier.reliability, Reliability.class, true);
         add(ObjectType.accessUser, PropertyIdentifier.userType, AccessUserType.class, true);
@@ -535,7 +536,7 @@ public class ObjectProperties {
         add(ObjectType.accessZone, PropertyIdentifier.objectName, CharacterString.class, true);
         add(ObjectType.accessZone, PropertyIdentifier.objectType, ObjectType.class, true);
         add(ObjectType.accessZone, PropertyIdentifier.description, CharacterString.class, false);
-        add(ObjectType.accessZone, PropertyIdentifier.globalIdentifier, Unsigned32.class, false);
+        add(ObjectType.accessZone, PropertyIdentifier.globalIdentifier, Unsigned32.class, true);
         add(ObjectType.accessZone, PropertyIdentifier.occupancyState, AccessZoneOccupancyState.class, true);
         add(ObjectType.accessZone, PropertyIdentifier.statusFlags, StatusFlags.class, true);
         add(ObjectType.accessZone, PropertyIdentifier.eventState, EventState.class, true);
@@ -615,8 +616,8 @@ public class ObjectProperties {
         add(ObjectType.accumulator, PropertyIdentifier.timeDelayNormal, UnsignedInteger.class, false);
         add(ObjectType.accumulator, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.accumulator, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
-        add(ObjectType.accumulator, PropertyIdentifier.faultHighLimit, Real.class, false);
-        add(ObjectType.accumulator, PropertyIdentifier.faultLowLimit, Real.class, false);
+        add(ObjectType.accumulator, PropertyIdentifier.faultHighLimit, UnsignedInteger.class, false);
+        add(ObjectType.accumulator, PropertyIdentifier.faultLowLimit, UnsignedInteger.class, false);
         add(ObjectType.accumulator, PropertyIdentifier.auditLevel, AuditLevel.class, false);
         add(ObjectType.accumulator, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
         add(ObjectType.accumulator, PropertyIdentifier.tags, NameValue.class, false, 0);
@@ -631,11 +632,11 @@ public class ObjectProperties {
         add(ObjectType.alertEnrollment, PropertyIdentifier.presentValue, ObjectIdentifier.class, true);
         add(ObjectType.alertEnrollment, PropertyIdentifier.eventState, EventState.class, true);
         add(ObjectType.alertEnrollment, PropertyIdentifier.eventDetectionEnable, Boolean.class, true);
-        add(ObjectType.alertEnrollment, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
+        add(ObjectType.alertEnrollment, PropertyIdentifier.notificationClass, UnsignedInteger.class, true);
         add(ObjectType.alertEnrollment, PropertyIdentifier.eventEnable, EventTransitionBits.class, true);
         add(ObjectType.alertEnrollment, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, true);
         add(ObjectType.alertEnrollment, PropertyIdentifier.notifyType, NotifyType.class, true);
-        add(ObjectType.alertEnrollment, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
+        add(ObjectType.alertEnrollment, PropertyIdentifier.eventTimeStamps, TimeStamp.class, true, 3);
         add(ObjectType.alertEnrollment, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
         add(ObjectType.alertEnrollment, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
         add(ObjectType.alertEnrollment, PropertyIdentifier.eventAlgorithmInhibitRef, ObjectPropertyReference.class,
@@ -778,7 +779,7 @@ public class ObjectProperties {
         add(ObjectType.analogValue, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.analogValue, PropertyIdentifier.faultHighLimit, Real.class, false);
         add(ObjectType.analogValue, PropertyIdentifier.faultLowLimit, Real.class, false);
-        add(ObjectType.analogValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.analogValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.analogValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.analogValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.analogValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -828,7 +829,7 @@ public class ObjectProperties {
         add(ObjectType.auditReporter, PropertyIdentifier.objectType, ObjectType.class, true);
         add(ObjectType.auditReporter, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.auditReporter, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.auditReporter, PropertyIdentifier.reliability, Reliability.class, false);
+        add(ObjectType.auditReporter, PropertyIdentifier.reliability, Reliability.class, true);
         add(ObjectType.auditReporter, PropertyIdentifier.eventState, EventState.class, true);
         add(ObjectType.auditReporter, PropertyIdentifier.auditLevel, AuditLevel.class, true);
         add(ObjectType.auditReporter, PropertyIdentifier.auditSourceReporter, Boolean.class, true);
@@ -893,7 +894,7 @@ public class ObjectProperties {
         add(ObjectType.binaryInput, PropertyIdentifier.changeOfStateTime, DateTime.class, false);
         add(ObjectType.binaryInput, PropertyIdentifier.changeOfStateCount, UnsignedInteger.class, false);
         add(ObjectType.binaryInput, PropertyIdentifier.timeOfStateCountReset, DateTime.class, false);
-        add(ObjectType.binaryInput, PropertyIdentifier.elapsedActiveTime, UnsignedInteger.class, false);
+        add(ObjectType.binaryInput, PropertyIdentifier.elapsedActiveTime, Unsigned32.class, false);
         add(ObjectType.binaryInput, PropertyIdentifier.timeOfActiveTimeReset, DateTime.class, false);
         add(ObjectType.binaryInput, PropertyIdentifier.timeDelay, UnsignedInteger.class, false);
         add(ObjectType.binaryInput, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
@@ -932,10 +933,10 @@ public class ObjectProperties {
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.egressActive, Boolean.class, true);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.feedbackValue, BinaryLightingPV.class, false);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.priorityArray, PriorityArray.class, true);
-        add(ObjectType.binaryLightingOutput, PropertyIdentifier.relinquishDefault, Real.class, true);
+        add(ObjectType.binaryLightingOutput, PropertyIdentifier.relinquishDefault, BinaryLightingPV.class, true);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.power, Real.class, false);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.polarity, Polarity.class, false);
-        add(ObjectType.binaryLightingOutput, PropertyIdentifier.elapsedActiveTime, UnsignedInteger.class, false);
+        add(ObjectType.binaryLightingOutput, PropertyIdentifier.elapsedActiveTime, Unsigned32.class, false);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.timeOfActiveTimeReset, DateTime.class, false);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.strikeCount, UnsignedInteger.class, false);
         add(ObjectType.binaryLightingOutput, PropertyIdentifier.timeOfStrikeCountReset, DateTime.class, false);
@@ -983,10 +984,10 @@ public class ObjectProperties {
         add(ObjectType.binaryOutput, PropertyIdentifier.changeOfStateTime, DateTime.class, false);
         add(ObjectType.binaryOutput, PropertyIdentifier.changeOfStateCount, UnsignedInteger.class, false);
         add(ObjectType.binaryOutput, PropertyIdentifier.timeOfStateCountReset, DateTime.class, false);
-        add(ObjectType.binaryOutput, PropertyIdentifier.elapsedActiveTime, UnsignedInteger.class, false);
+        add(ObjectType.binaryOutput, PropertyIdentifier.elapsedActiveTime, Unsigned32.class, false);
         add(ObjectType.binaryOutput, PropertyIdentifier.timeOfActiveTimeReset, DateTime.class, false);
-        add(ObjectType.binaryOutput, PropertyIdentifier.minimumOffTime, UnsignedInteger.class, false);
-        add(ObjectType.binaryOutput, PropertyIdentifier.minimumOnTime, UnsignedInteger.class, false);
+        add(ObjectType.binaryOutput, PropertyIdentifier.minimumOffTime, Unsigned32.class, false);
+        add(ObjectType.binaryOutput, PropertyIdentifier.minimumOnTime, Unsigned32.class, false);
         add(ObjectType.binaryOutput, PropertyIdentifier.priorityArray, PriorityArray.class, true);
         add(ObjectType.binaryOutput, PropertyIdentifier.relinquishDefault, BinaryPV.class, true);
         add(ObjectType.binaryOutput, PropertyIdentifier.timeDelay, UnsignedInteger.class, false);
@@ -1026,16 +1027,16 @@ public class ObjectProperties {
         add(ObjectType.binaryValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
         add(ObjectType.binaryValue, PropertyIdentifier.eventState, EventState.class, true);
         add(ObjectType.binaryValue, PropertyIdentifier.reliability, Reliability.class, false);
-        add(ObjectType.binaryValue, PropertyIdentifier.outOfService, Boolean.class, false);
+        add(ObjectType.binaryValue, PropertyIdentifier.outOfService, Boolean.class, true);
         add(ObjectType.binaryValue, PropertyIdentifier.inactiveText, CharacterString.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.activeText, CharacterString.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.changeOfStateTime, DateTime.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.changeOfStateCount, UnsignedInteger.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.timeOfStateCountReset, DateTime.class, false);
-        add(ObjectType.binaryValue, PropertyIdentifier.elapsedActiveTime, UnsignedInteger.class, false);
+        add(ObjectType.binaryValue, PropertyIdentifier.elapsedActiveTime, Unsigned32.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.timeOfActiveTimeReset, DateTime.class, false);
-        add(ObjectType.binaryValue, PropertyIdentifier.minimumOffTime, UnsignedInteger.class, false);
-        add(ObjectType.binaryValue, PropertyIdentifier.minimumOnTime, UnsignedInteger.class, false);
+        add(ObjectType.binaryValue, PropertyIdentifier.minimumOffTime, Unsigned32.class, false);
+        add(ObjectType.binaryValue, PropertyIdentifier.minimumOnTime, Unsigned32.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.priorityArray, PriorityArray.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.relinquishDefault, BinaryPV.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.timeDelay, UnsignedInteger.class, false);
@@ -1053,7 +1054,7 @@ public class ObjectProperties {
         add(ObjectType.binaryValue, PropertyIdentifier.timeDelayNormal, UnsignedInteger.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
-        add(ObjectType.binaryValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.binaryValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.binaryValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.binaryValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -1073,9 +1074,9 @@ public class ObjectProperties {
         add(ObjectType.bitstringValue, PropertyIdentifier.presentValue, BitString.class, true);
         add(ObjectType.bitstringValue, PropertyIdentifier.bitText, CharacterString.class, false, 0);
         add(ObjectType.bitstringValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.bitstringValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.bitstringValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.bitstringValue, PropertyIdentifier.reliability, Reliability.class, false);
-        add(ObjectType.bitstringValue, PropertyIdentifier.outOfService, Boolean.class, true);
+        add(ObjectType.bitstringValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.bitstringValue, PropertyIdentifier.priorityArray, PriorityArray.class, false);
         add(ObjectType.bitstringValue, PropertyIdentifier.relinquishDefault, BitString.class, false);
         add(ObjectType.bitstringValue, PropertyIdentifier.timeDelay, UnsignedInteger.class, false);
@@ -1095,7 +1096,7 @@ public class ObjectProperties {
         add(ObjectType.bitstringValue, PropertyIdentifier.timeDelayNormal, UnsignedInteger.class, false);
         add(ObjectType.bitstringValue, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.bitstringValue, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
-        add(ObjectType.bitstringValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.bitstringValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.bitstringValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.bitstringValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.bitstringValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -1141,7 +1142,7 @@ public class ObjectProperties {
         add(ObjectType.channel, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
         add(ObjectType.channel, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
         add(ObjectType.channel, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
-        add(ObjectType.channel, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.channel, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.channel, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, false);
         add(ObjectType.channel, PropertyIdentifier.notifyType, NotifyType.class, false);
         add(ObjectType.channel, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
@@ -1164,7 +1165,7 @@ public class ObjectProperties {
         add(ObjectType.characterstringValue, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.characterstringValue, PropertyIdentifier.presentValue, CharacterString.class, true);
         add(ObjectType.characterstringValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.characterstringValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.characterstringValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.characterstringValue, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.characterstringValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.characterstringValue, PropertyIdentifier.priorityArray, PriorityArray.class, false);
@@ -1187,7 +1188,7 @@ public class ObjectProperties {
         add(ObjectType.characterstringValue, PropertyIdentifier.timeDelayNormal, UnsignedInteger.class, false);
         add(ObjectType.characterstringValue, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.characterstringValue, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
-        add(ObjectType.characterstringValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.characterstringValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.characterstringValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.characterstringValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.characterstringValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -1255,8 +1256,8 @@ public class ObjectProperties {
         add(ObjectType.command, PropertyIdentifier.action, ActionList.class, true, 0);
         add(ObjectType.command, PropertyIdentifier.actionText, CharacterString.class, false, 0);
         add(ObjectType.command, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
-        add(ObjectType.command, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.command, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.command, PropertyIdentifier.statusFlags, StatusFlags.class, false);
+        add(ObjectType.command, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.command, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.command, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
         add(ObjectType.command, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
@@ -1281,7 +1282,7 @@ public class ObjectProperties {
         add(ObjectType.credentialDataInput, PropertyIdentifier.presentValue, AuthenticationFactor.class, true);
         add(ObjectType.credentialDataInput, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.credentialDataInput, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.credentialDataInput, PropertyIdentifier.reliability, Reliability.class, false);
+        add(ObjectType.credentialDataInput, PropertyIdentifier.reliability, Reliability.class, true);
         add(ObjectType.credentialDataInput, PropertyIdentifier.outOfService, Boolean.class, true);
         add(ObjectType.credentialDataInput, PropertyIdentifier.supportedFormats, AuthenticationFactorFormat.class, true,
                 0);
@@ -1312,7 +1313,7 @@ public class ObjectProperties {
         add(ObjectType.dateValue, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.dateValue, PropertyIdentifier.presentValue, Date.class, true);
         add(ObjectType.dateValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.dateValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.dateValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.dateValue, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.dateValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.dateValue, PropertyIdentifier.priorityArray, PriorityArray.class, false);
@@ -1327,7 +1328,7 @@ public class ObjectProperties {
         add(ObjectType.dateValue, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
         add(ObjectType.dateValue, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
         add(ObjectType.dateValue, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
-        add(ObjectType.dateValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.dateValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.dateValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.dateValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.dateValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -1346,7 +1347,7 @@ public class ObjectProperties {
         add(ObjectType.datePatternValue, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.datePatternValue, PropertyIdentifier.presentValue, Date.class, true);
         add(ObjectType.datePatternValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.datePatternValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.datePatternValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.datePatternValue, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.datePatternValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.datePatternValue, PropertyIdentifier.priorityArray, PriorityArray.class, false);
@@ -1361,7 +1362,7 @@ public class ObjectProperties {
         add(ObjectType.datePatternValue, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
         add(ObjectType.datePatternValue, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
         add(ObjectType.datePatternValue, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
-        add(ObjectType.datePatternValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.datePatternValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.datePatternValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.datePatternValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.datePatternValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -1381,7 +1382,7 @@ public class ObjectProperties {
         add(ObjectType.datetimeValue, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.datetimeValue, PropertyIdentifier.presentValue, DateTime.class, true);
         add(ObjectType.datetimeValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.datetimeValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.datetimeValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.datetimeValue, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.datetimeValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.datetimeValue, PropertyIdentifier.priorityArray, PriorityArray.class, false);
@@ -1397,7 +1398,7 @@ public class ObjectProperties {
         add(ObjectType.datetimeValue, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
         add(ObjectType.datetimeValue, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
         add(ObjectType.datetimeValue, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
-        add(ObjectType.datetimeValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.datetimeValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.datetimeValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.datetimeValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.datetimeValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -1416,7 +1417,7 @@ public class ObjectProperties {
         add(ObjectType.datetimePatternValue, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.presentValue, DateTime.class, true);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.datetimePatternValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.datetimePatternValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.isUtc, Boolean.class, false);
@@ -1433,7 +1434,7 @@ public class ObjectProperties {
         add(ObjectType.datetimePatternValue, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false,
                 3);
-        add(ObjectType.datetimePatternValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.datetimePatternValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.datetimePatternValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -1498,8 +1499,8 @@ public class ObjectProperties {
         add(ObjectType.device, PropertyIdentifier.intervalOffset, UnsignedInteger.class, false);
         add(ObjectType.device, PropertyIdentifier.serialNumber, CharacterString.class, false);
         add(ObjectType.device, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
-        add(ObjectType.device, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.device, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.device, PropertyIdentifier.statusFlags, StatusFlags.class, false);
+        add(ObjectType.device, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.device, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.device, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
         add(ObjectType.device, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
@@ -1518,8 +1519,8 @@ public class ObjectProperties {
         add(ObjectType.device, PropertyIdentifier.deviceUuid, OctetString.class, false);
         add(ObjectType.device, PropertyIdentifier.authorizationServer, AuthorizationServer.class, false);
         add(ObjectType.device, PropertyIdentifier.authorizationStatus, AuthorizationStatus.class, false);
-        add(ObjectType.device, PropertyIdentifier.authorizationPolicy, AuthorizationStatus.class, false, 0);
-        add(ObjectType.device, PropertyIdentifier.authorizationScope, AuthorizationScope.class, false, 0);
+        add(ObjectType.device, PropertyIdentifier.authorizationPolicy, AuthorizationPolicy.class, false, 0);
+        add(ObjectType.device, PropertyIdentifier.authorizationScope, AuthorizationScopeDescription.class, false, 0);
         add(ObjectType.device, PropertyIdentifier.authorizationCache, AccessToken.class, false, true);
         add(ObjectType.device, PropertyIdentifier.authorizationGroups, UnsignedInteger.class, false, 0);
         add(ObjectType.device, PropertyIdentifier.maxProxiedIAmsPerSecond, UnsignedInteger.class, false);
@@ -1571,7 +1572,7 @@ public class ObjectProperties {
         add(ObjectType.escalator, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
         add(ObjectType.escalator, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
         add(ObjectType.escalator, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
-        add(ObjectType.escalator, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.escalator, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.escalator, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, false);
         add(ObjectType.escalator, PropertyIdentifier.notifyType, NotifyType.class, false);
         add(ObjectType.escalator, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
@@ -1600,11 +1601,11 @@ public class ObjectProperties {
         add(ObjectType.eventEnrollment, PropertyIdentifier.eventState, EventState.class, true);
         add(ObjectType.eventEnrollment, PropertyIdentifier.eventEnable, EventTransitionBits.class, true);
         add(ObjectType.eventEnrollment, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, true);
-        add(ObjectType.eventEnrollment, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
-        add(ObjectType.eventEnrollment, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
+        add(ObjectType.eventEnrollment, PropertyIdentifier.notificationClass, UnsignedInteger.class, true);
+        add(ObjectType.eventEnrollment, PropertyIdentifier.eventTimeStamps, TimeStamp.class, true, 3);
         add(ObjectType.eventEnrollment, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
         add(ObjectType.eventEnrollment, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
-        add(ObjectType.eventEnrollment, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
+        add(ObjectType.eventEnrollment, PropertyIdentifier.eventDetectionEnable, Boolean.class, true);
         add(ObjectType.eventEnrollment, PropertyIdentifier.eventAlgorithmInhibitRef, ObjectPropertyReference.class,
                 false);
         add(ObjectType.eventEnrollment, PropertyIdentifier.eventAlgorithmInhibit, Boolean.class, false);
@@ -1634,13 +1635,13 @@ public class ObjectProperties {
         add(ObjectType.eventLog, PropertyIdentifier.startTime, DateTime.class, false);
         add(ObjectType.eventLog, PropertyIdentifier.stopTime, DateTime.class, false);
         add(ObjectType.eventLog, PropertyIdentifier.stopWhenFull, Boolean.class, true);
-        add(ObjectType.eventLog, PropertyIdentifier.bufferSize, UnsignedInteger.class, true);
+        add(ObjectType.eventLog, PropertyIdentifier.bufferSize, Unsigned32.class, true);
         add(ObjectType.eventLog, PropertyIdentifier.logBuffer, EventLogRecord.class, true, true);
-        add(ObjectType.eventLog, PropertyIdentifier.recordCount, UnsignedInteger.class, true);
-        add(ObjectType.eventLog, PropertyIdentifier.totalRecordCount, UnsignedInteger.class, true);
-        add(ObjectType.eventLog, PropertyIdentifier.notificationThreshold, UnsignedInteger.class, false);
-        add(ObjectType.eventLog, PropertyIdentifier.recordsSinceNotification, UnsignedInteger.class, false);
-        add(ObjectType.eventLog, PropertyIdentifier.lastNotifyRecord, UnsignedInteger.class, false);
+        add(ObjectType.eventLog, PropertyIdentifier.recordCount, Unsigned32.class, true);
+        add(ObjectType.eventLog, PropertyIdentifier.totalRecordCount, Unsigned32.class, true);
+        add(ObjectType.eventLog, PropertyIdentifier.notificationThreshold, Unsigned32.class, false);
+        add(ObjectType.eventLog, PropertyIdentifier.recordsSinceNotification, Unsigned32.class, false);
+        add(ObjectType.eventLog, PropertyIdentifier.lastNotifyRecord, Unsigned32.class, false);
         add(ObjectType.eventLog, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
         add(ObjectType.eventLog, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
         add(ObjectType.eventLog, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, false);
@@ -1737,7 +1738,7 @@ public class ObjectProperties {
         add(ObjectType.integerValue, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.integerValue, PropertyIdentifier.presentValue, SignedInteger.class, true);
         add(ObjectType.integerValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.integerValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.integerValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.integerValue, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.integerValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.integerValue, PropertyIdentifier.units, EngineeringUnits.class, true);
@@ -1786,7 +1787,7 @@ public class ObjectProperties {
         add(ObjectType.largeAnalogValue, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.presentValue, Double.class, true);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.largeAnalogValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.largeAnalogValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.largeAnalogValue, PropertyIdentifier.units, EngineeringUnits.class, true);
@@ -1863,9 +1864,9 @@ public class ObjectProperties {
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.silenced, SilencedState.class, true);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.operationExpected, LifeSafetyOperation.class, true);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.maintenanceRequired, Maintenance.class, false);
-        add(ObjectType.lifeSafetyPoint, PropertyIdentifier.setting, UnsignedInteger.class, false);
+        add(ObjectType.lifeSafetyPoint, PropertyIdentifier.setting, Unsigned8.class, false);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.directReading, Real.class, false);
-        add(ObjectType.lifeSafetyPoint, PropertyIdentifier.units, EngineeringUnits.class, true);
+        add(ObjectType.lifeSafetyPoint, PropertyIdentifier.units, EngineeringUnits.class, false);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.memberOf, DeviceObjectReference.class, false, true);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.floorNumber, Unsigned8.class, false);
         add(ObjectType.lifeSafetyPoint, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
@@ -1909,7 +1910,7 @@ public class ObjectProperties {
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.silenced, SilencedState.class, true);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.operationExpected, LifeSafetyOperation.class, true);
-        add(ObjectType.lifeSafetyZone, PropertyIdentifier.maintenanceRequired, Maintenance.class, false);
+        add(ObjectType.lifeSafetyZone, PropertyIdentifier.maintenanceRequired, Boolean.class, false);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.zoneMembers, DeviceObjectReference.class, true, true);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.memberOf, DeviceObjectReference.class, false, true);
         add(ObjectType.lifeSafetyZone, PropertyIdentifier.floorNumber, Unsigned8.class, false);
@@ -2044,7 +2045,7 @@ public class ObjectProperties {
         add(ObjectType.loadControl, PropertyIdentifier.stateDescription, CharacterString.class, false);
         add(ObjectType.loadControl, PropertyIdentifier.statusFlags, StatusFlags.class, true);
         add(ObjectType.loadControl, PropertyIdentifier.eventState, EventState.class, true);
-        add(ObjectType.loadControl, PropertyIdentifier.reliability, Reliability.class, true);
+        add(ObjectType.loadControl, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.loadControl, PropertyIdentifier.requestedShedLevel, ShedLevel.class, true);
         add(ObjectType.loadControl, PropertyIdentifier.startTime, DateTime.class, true);
         add(ObjectType.loadControl, PropertyIdentifier.shedDuration, UnsignedInteger.class, true);
@@ -2072,7 +2073,6 @@ public class ObjectProperties {
         add(ObjectType.loadControl, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.loadControl, PropertyIdentifier.auditLevel, AuditLevel.class, false);
         add(ObjectType.loadControl, PropertyIdentifier.auditableOperations, AuditOperationFlags.class, false);
-        add(ObjectType.loadControl, PropertyIdentifier.auditPriorityFilter, OptionalPriorityFilter.class, false);
         add(ObjectType.loadControl, PropertyIdentifier.tags, NameValue.class, false, 0);
         add(ObjectType.loadControl, PropertyIdentifier.profileLocation, CharacterString.class, false);
         add(ObjectType.loadControl, PropertyIdentifier.profileName, CharacterString.class, false);
@@ -2242,7 +2242,7 @@ public class ObjectProperties {
         add(ObjectType.multiStateValue, PropertyIdentifier.timeDelayNormal, UnsignedInteger.class, false);
         add(ObjectType.multiStateValue, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.multiStateValue, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
-        add(ObjectType.multiStateValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.multiStateValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.multiStateValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.multiStateValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.multiStateValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -2260,7 +2260,7 @@ public class ObjectProperties {
         add(ObjectType.networkPort, PropertyIdentifier.objectType, ObjectType.class, true);
         add(ObjectType.networkPort, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.networkPort, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.networkPort, PropertyIdentifier.reliability, Reliability.class, false);
+        add(ObjectType.networkPort, PropertyIdentifier.reliability, Reliability.class, true);
         add(ObjectType.networkPort, PropertyIdentifier.outOfService, Boolean.class, true);
         add(ObjectType.networkPort, PropertyIdentifier.networkType, NetworkType.class, true);
         add(ObjectType.networkPort, PropertyIdentifier.protocolLevel, ProtocolLevel.class, true);
@@ -2292,7 +2292,7 @@ public class ObjectProperties {
         add(ObjectType.networkPort, PropertyIdentifier.apduLength, UnsignedInteger.class, false);
         add(ObjectType.networkPort, PropertyIdentifier.routingTable, RouterEntry.class, false, true);
         add(ObjectType.networkPort, PropertyIdentifier.macAddress, OctetString.class, false);
-        add(ObjectType.networkPort, PropertyIdentifier.linkSpeed, Real.class, true);
+        add(ObjectType.networkPort, PropertyIdentifier.linkSpeed, Real.class, false);
         add(ObjectType.networkPort, PropertyIdentifier.linkSpeeds, Real.class, false, 0);
         add(ObjectType.networkPort, PropertyIdentifier.linkSpeedAutonegotiate, Boolean.class, false);
         add(ObjectType.networkPort, PropertyIdentifier.networkInterfaceName, CharacterString.class, false);
@@ -2370,13 +2370,13 @@ public class ObjectProperties {
         add(ObjectType.notificationClass, PropertyIdentifier.objectName, CharacterString.class, true);
         add(ObjectType.notificationClass, PropertyIdentifier.objectType, ObjectType.class, true);
         add(ObjectType.notificationClass, PropertyIdentifier.description, CharacterString.class, false);
-        add(ObjectType.notificationClass, PropertyIdentifier.notificationClass, UnsignedInteger.class, true);
+        add(ObjectType.notificationClass, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
         add(ObjectType.notificationClass, PropertyIdentifier.priority, UnsignedInteger.class, true, 3);
         add(ObjectType.notificationClass, PropertyIdentifier.ackRequired, EventTransitionBits.class, true);
         add(ObjectType.notificationClass, PropertyIdentifier.recipientList, Destination.class, true, true);
         add(ObjectType.notificationClass, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
-        add(ObjectType.notificationClass, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.notificationClass, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.notificationClass, PropertyIdentifier.statusFlags, StatusFlags.class, false);
+        add(ObjectType.notificationClass, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.notificationClass, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.notificationClass, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
         add(ObjectType.notificationClass, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
@@ -2422,14 +2422,14 @@ public class ObjectProperties {
         add(ObjectType.octetstringValue, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.presentValue, OctetString.class, true);
         add(ObjectType.octetstringValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.octetstringValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.octetstringValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.priorityArray, PriorityArray.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.relinquishDefault, OctetString.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
-        add(ObjectType.octetstringValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.octetstringValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.octetstringValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.octetstringValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -2448,7 +2448,7 @@ public class ObjectProperties {
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.presentValue, UnsignedInteger.class, true);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.positiveIntegerValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.positiveIntegerValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.units, EngineeringUnits.class, true);
@@ -2480,7 +2480,7 @@ public class ObjectProperties {
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.propertyList, PropertyIdentifier.class, true, 0);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.faultHighLimit, UnsignedInteger.class, false);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.faultLowLimit, UnsignedInteger.class, false);
-        add(ObjectType.positiveIntegerValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.positiveIntegerValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.positiveIntegerValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -2500,19 +2500,19 @@ public class ObjectProperties {
         add(ObjectType.program, PropertyIdentifier.programState, ProgramState.class, true);
         add(ObjectType.program, PropertyIdentifier.programChange, ProgramRequest.class, true);
         add(ObjectType.program, PropertyIdentifier.reasonForHalt, ProgramError.class, false);
-        add(ObjectType.program, PropertyIdentifier.descriptionOfHalt, CharacterString.class, true);
+        add(ObjectType.program, PropertyIdentifier.descriptionOfHalt, CharacterString.class, false);
         add(ObjectType.program, PropertyIdentifier.programLocation, CharacterString.class, false);
         add(ObjectType.program, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.program, PropertyIdentifier.instanceOf, CharacterString.class, false);
         add(ObjectType.program, PropertyIdentifier.statusFlags, StatusFlags.class, true);
         add(ObjectType.program, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.program, PropertyIdentifier.outOfService, Boolean.class, true);
-        add(ObjectType.program, PropertyIdentifier.eventDetectionEnable, Boolean.class, true);
-        add(ObjectType.program, PropertyIdentifier.notificationClass, UnsignedInteger.class, true);
-        add(ObjectType.program, PropertyIdentifier.eventEnable, EventTransitionBits.class, true);
-        add(ObjectType.program, PropertyIdentifier.eventState, EventState.class, true);
-        add(ObjectType.program, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, true);
-        add(ObjectType.program, PropertyIdentifier.notifyType, NotifyType.class, true);
+        add(ObjectType.program, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
+        add(ObjectType.program, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
+        add(ObjectType.program, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
+        add(ObjectType.program, PropertyIdentifier.eventState, EventState.class, false);
+        add(ObjectType.program, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, false);
+        add(ObjectType.program, PropertyIdentifier.notifyType, NotifyType.class, false);
         add(ObjectType.program, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
         add(ObjectType.program, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
         add(ObjectType.program, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
@@ -2607,7 +2607,7 @@ public class ObjectProperties {
         add(ObjectType.staging, PropertyIdentifier.objectIdentifier, ObjectIdentifier.class, true);
         add(ObjectType.staging, PropertyIdentifier.objectName, CharacterString.class, true);
         add(ObjectType.staging, PropertyIdentifier.objectType, ObjectType.class, true);
-        add(ObjectType.staging, PropertyIdentifier.presentValue, Primitive.class, true);
+        add(ObjectType.staging, PropertyIdentifier.presentValue, Real.class, true);
         add(ObjectType.staging, PropertyIdentifier.presentStage, UnsignedInteger.class, true);
         add(ObjectType.staging, PropertyIdentifier.stages, StageLimitValue.class, true, 0);
         add(ObjectType.staging, PropertyIdentifier.stageNames, CharacterString.class, false, 0);
@@ -2645,7 +2645,7 @@ public class ObjectProperties {
         add(ObjectType.structuredView, PropertyIdentifier.objectName, CharacterString.class, true);
         add(ObjectType.structuredView, PropertyIdentifier.objectType, ObjectType.class, true);
         add(ObjectType.structuredView, PropertyIdentifier.description, CharacterString.class, false);
-        add(ObjectType.structuredView, PropertyIdentifier.nodeType, NodeType.class, false);
+        add(ObjectType.structuredView, PropertyIdentifier.nodeType, NodeType.class, true);
         add(ObjectType.structuredView, PropertyIdentifier.nodeSubtype, CharacterString.class, false);
         add(ObjectType.structuredView, PropertyIdentifier.subordinateList, DeviceObjectReference.class, true, 0);
         add(ObjectType.structuredView, PropertyIdentifier.subordinateAnnotations, CharacterString.class, false, 0);
@@ -2668,7 +2668,7 @@ public class ObjectProperties {
         add(ObjectType.timeValue, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.timeValue, PropertyIdentifier.presentValue, Time.class, true);
         add(ObjectType.timeValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.timeValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.timeValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.timeValue, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.timeValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.timeValue, PropertyIdentifier.priorityArray, PriorityArray.class, false);
@@ -2683,7 +2683,7 @@ public class ObjectProperties {
         add(ObjectType.timeValue, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
         add(ObjectType.timeValue, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
         add(ObjectType.timeValue, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
-        add(ObjectType.timeValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.timeValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.timeValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.timeValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.timeValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -2702,7 +2702,7 @@ public class ObjectProperties {
         add(ObjectType.timePatternValue, PropertyIdentifier.description, CharacterString.class, false);
         add(ObjectType.timePatternValue, PropertyIdentifier.presentValue, Time.class, true);
         add(ObjectType.timePatternValue, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.timePatternValue, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.timePatternValue, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.timePatternValue, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.timePatternValue, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.timePatternValue, PropertyIdentifier.priorityArray, PriorityArray.class, false);
@@ -2717,7 +2717,7 @@ public class ObjectProperties {
         add(ObjectType.timePatternValue, PropertyIdentifier.eventTimeStamps, TimeStamp.class, false, 3);
         add(ObjectType.timePatternValue, PropertyIdentifier.eventMessageTexts, CharacterString.class, false, 3);
         add(ObjectType.timePatternValue, PropertyIdentifier.eventMessageTextsConfig, CharacterString.class, false, 3);
-        add(ObjectType.timePatternValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, true);
+        add(ObjectType.timePatternValue, PropertyIdentifier.currentCommandPriority, OptionalUnsigned.class, false);
         add(ObjectType.timePatternValue, PropertyIdentifier.valueSource, ValueSource.class, false);
         add(ObjectType.timePatternValue, PropertyIdentifier.valueSourceArray, ValueSource.class, false, 16);
         add(ObjectType.timePatternValue, PropertyIdentifier.lastCommandTime, TimeStamp.class, false);
@@ -2734,9 +2734,9 @@ public class ObjectProperties {
         add(ObjectType.timer, PropertyIdentifier.objectName, CharacterString.class, true);
         add(ObjectType.timer, PropertyIdentifier.objectType, ObjectType.class, true);
         add(ObjectType.timer, PropertyIdentifier.description, CharacterString.class, false);
-        add(ObjectType.timer, PropertyIdentifier.presentValue, Time.class, true);
+        add(ObjectType.timer, PropertyIdentifier.presentValue, UnsignedInteger.class, true);
         add(ObjectType.timer, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.timer, PropertyIdentifier.eventState, EventState.class, true);
+        add(ObjectType.timer, PropertyIdentifier.eventState, EventState.class, false);
         add(ObjectType.timer, PropertyIdentifier.reliability, Reliability.class, false);
         add(ObjectType.timer, PropertyIdentifier.outOfService, Boolean.class, false);
         add(ObjectType.timer, PropertyIdentifier.timerState, TimerState.class, true);
@@ -2752,7 +2752,7 @@ public class ObjectProperties {
         add(ObjectType.timer, PropertyIdentifier.stateChangeValues, TimerStateChangeValue.class, false, 7);
         add(ObjectType.timer, PropertyIdentifier.listOfObjectPropertyReferences, DeviceObjectPropertyReference.class,
                 false, true);
-        add(ObjectType.timer, PropertyIdentifier.priorityForWriting, UnsignedInteger.class, true);
+        add(ObjectType.timer, PropertyIdentifier.priorityForWriting, UnsignedInteger.class, false);
         add(ObjectType.timer, PropertyIdentifier.eventDetectionEnable, Boolean.class, false);
         add(ObjectType.timer, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
         add(ObjectType.timer, PropertyIdentifier.timeDelay, UnsignedInteger.class, false);
@@ -2788,19 +2788,19 @@ public class ObjectProperties {
         add(ObjectType.trendLog, PropertyIdentifier.covResubscriptionInterval, UnsignedInteger.class, false);
         add(ObjectType.trendLog, PropertyIdentifier.clientCovIncrement, ClientCov.class, false);
         add(ObjectType.trendLog, PropertyIdentifier.stopWhenFull, Boolean.class, true);
-        add(ObjectType.trendLog, PropertyIdentifier.bufferSize, UnsignedInteger.class, true);
+        add(ObjectType.trendLog, PropertyIdentifier.bufferSize, Unsigned32.class, true);
         add(ObjectType.trendLog, PropertyIdentifier.logBuffer, LogRecord.class, true, true);
-        add(ObjectType.trendLog, PropertyIdentifier.recordCount, UnsignedInteger.class, true);
-        add(ObjectType.trendLog, PropertyIdentifier.totalRecordCount, UnsignedInteger.class, true);
+        add(ObjectType.trendLog, PropertyIdentifier.recordCount, Unsigned32.class, true);
+        add(ObjectType.trendLog, PropertyIdentifier.totalRecordCount, Unsigned32.class, true);
         add(ObjectType.trendLog, PropertyIdentifier.loggingType, LoggingType.class, true);
-        add(ObjectType.trendLog, PropertyIdentifier.alignIntervals, Boolean.class, true);
-        add(ObjectType.trendLog, PropertyIdentifier.intervalOffset, UnsignedInteger.class, true);
-        add(ObjectType.trendLog, PropertyIdentifier.trigger, Boolean.class, true);
+        add(ObjectType.trendLog, PropertyIdentifier.alignIntervals, Boolean.class, false);
+        add(ObjectType.trendLog, PropertyIdentifier.intervalOffset, UnsignedInteger.class, false);
+        add(ObjectType.trendLog, PropertyIdentifier.trigger, Boolean.class, false);
         add(ObjectType.trendLog, PropertyIdentifier.statusFlags, StatusFlags.class, true);
-        add(ObjectType.trendLog, PropertyIdentifier.reliability, Reliability.class, true);
-        add(ObjectType.trendLog, PropertyIdentifier.notificationThreshold, UnsignedInteger.class, false);
-        add(ObjectType.trendLog, PropertyIdentifier.recordsSinceNotification, UnsignedInteger.class, false);
-        add(ObjectType.trendLog, PropertyIdentifier.lastNotifyRecord, UnsignedInteger.class, false);
+        add(ObjectType.trendLog, PropertyIdentifier.reliability, Reliability.class, false);
+        add(ObjectType.trendLog, PropertyIdentifier.notificationThreshold, Unsigned32.class, false);
+        add(ObjectType.trendLog, PropertyIdentifier.recordsSinceNotification, Unsigned32.class, false);
+        add(ObjectType.trendLog, PropertyIdentifier.lastNotifyRecord, Unsigned32.class, false);
         add(ObjectType.trendLog, PropertyIdentifier.eventState, EventState.class, true);
         add(ObjectType.trendLog, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
         add(ObjectType.trendLog, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
@@ -2839,13 +2839,13 @@ public class ObjectProperties {
         add(ObjectType.trendLogMultiple, PropertyIdentifier.intervalOffset, UnsignedInteger.class, false);
         add(ObjectType.trendLogMultiple, PropertyIdentifier.trigger, Boolean.class, false);
         add(ObjectType.trendLogMultiple, PropertyIdentifier.stopWhenFull, Boolean.class, true);
-        add(ObjectType.trendLogMultiple, PropertyIdentifier.bufferSize, UnsignedInteger.class, true);
+        add(ObjectType.trendLogMultiple, PropertyIdentifier.bufferSize, Unsigned32.class, true);
         add(ObjectType.trendLogMultiple, PropertyIdentifier.logBuffer, LogMultipleRecord.class, true, true);
-        add(ObjectType.trendLogMultiple, PropertyIdentifier.recordCount, UnsignedInteger.class, true);
-        add(ObjectType.trendLogMultiple, PropertyIdentifier.totalRecordCount, UnsignedInteger.class, true);
-        add(ObjectType.trendLogMultiple, PropertyIdentifier.notificationThreshold, UnsignedInteger.class, false);
-        add(ObjectType.trendLogMultiple, PropertyIdentifier.recordsSinceNotification, UnsignedInteger.class, false);
-        add(ObjectType.trendLogMultiple, PropertyIdentifier.lastNotifyRecord, UnsignedInteger.class, false);
+        add(ObjectType.trendLogMultiple, PropertyIdentifier.recordCount, Unsigned32.class, true);
+        add(ObjectType.trendLogMultiple, PropertyIdentifier.totalRecordCount, Unsigned32.class, true);
+        add(ObjectType.trendLogMultiple, PropertyIdentifier.notificationThreshold, Unsigned32.class, false);
+        add(ObjectType.trendLogMultiple, PropertyIdentifier.recordsSinceNotification, Unsigned32.class, false);
+        add(ObjectType.trendLogMultiple, PropertyIdentifier.lastNotifyRecord, Unsigned32.class, false);
         add(ObjectType.trendLogMultiple, PropertyIdentifier.notificationClass, UnsignedInteger.class, false);
         add(ObjectType.trendLogMultiple, PropertyIdentifier.eventEnable, EventTransitionBits.class, false);
         add(ObjectType.trendLogMultiple, PropertyIdentifier.ackedTransitions, EventTransitionBits.class, false);

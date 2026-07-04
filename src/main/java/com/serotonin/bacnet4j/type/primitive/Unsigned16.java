@@ -41,15 +41,24 @@ public class Unsigned16 extends UnsignedInteger {
     private static final int MAX = 0xffff;
     private static final BigInteger BIGMAX = BigInteger.valueOf(MAX);
 
-    public Unsigned16(final int value) {
+    public Unsigned16(int value) {
         super(value);
         if (value > MAX)
             throw new IllegalArgumentException("Value cannot be greater than " + MAX);
     }
 
-    public Unsigned16(final ByteQueue queue) throws BACnetErrorException {
+    public Unsigned16(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
+
+    public Unsigned16 increment() {
+        return increment(1);
+    }
+
+    public Unsigned16 increment(int amount) {
+        return new Unsigned16((intValue() + amount) % 0x10000);
+    }
+
 
     @Override
     public void validate() throws BACnetServiceException {

@@ -62,6 +62,7 @@ import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
+import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.DeviceObjectPropertyReferences;
 import com.serotonin.bacnet4j.util.DeviceObjectPropertyValues;
@@ -71,7 +72,7 @@ public class TrendLogMultipleObject extends TrendLogBase {
     static final Logger LOG = LoggerFactory.getLogger(TrendLogMultipleObject.class);
 
     // CreateObject constructor
-    public static TrendLogMultipleObject create(final LocalDevice localDevice, final int instanceNumber) {
+    public static TrendLogMultipleObject create(LocalDevice localDevice, int instanceNumber) {
         return new TrendLogMultipleObject(localDevice, instanceNumber,
                 ObjectType.trendLogMultiple + " " + instanceNumber, new LinkedListLogBuffer<>(), false,
                 DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, new BACnetArray<>(), 60, false, 100) //
@@ -79,12 +80,12 @@ public class TrendLogMultipleObject extends TrendLogBase {
                         NotifyType.event);
     }
 
-    private final LogBuffer<LogMultipleRecord> buffer;
+    private LogBuffer<LogMultipleRecord> buffer;
 
-    public TrendLogMultipleObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final LogBuffer<LogMultipleRecord> buffer, final boolean enable, final DateTime startTime,
-            final DateTime stopTime, final BACnetArray<DeviceObjectPropertyReference> logDeviceObjectProperty,
-            final int logInterval, final boolean stopWhenFull, final int bufferSize) {
+    public TrendLogMultipleObject(LocalDevice localDevice, int instanceNumber, String name,
+            LogBuffer<LogMultipleRecord> buffer, boolean enable, DateTime startTime,
+            DateTime stopTime, BACnetArray<DeviceObjectPropertyReference> logDeviceObjectProperty,
+            int logInterval, boolean stopWhenFull, int bufferSize) {
         super(localDevice, ObjectType.trendLogMultiple, instanceNumber, name, enable, startTime, stopTime, logInterval,
                 stopWhenFull, bufferSize);
 
@@ -145,23 +146,23 @@ public class TrendLogMultipleObject extends TrendLogBase {
     }
 
     @Override
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value)
             throws BACnetServiceException {
         super.validateProperty(valueSource, value);
         if (PropertyIdentifier.loggingType.equals(value.getPropertyIdentifier())) {
-            final LoggingType loggingType = value.getValue();
+            LoggingType loggingType = value.getValue();
             if (loggingType.equals(LoggingType.cov))
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
         } else if (PropertyIdentifier.logDeviceObjectProperty.equals(value.getPropertyIdentifier())) {
-            final BACnetArray<DeviceObjectPropertyReference> refs = value.getValue();
-            for (final DeviceObjectPropertyReference ref : refs) {
+            BACnetArray<DeviceObjectPropertyReference> refs = value.getValue();
+            for (DeviceObjectPropertyReference ref : refs) {
                 if (ref.getPropertyIdentifier().isOneOf(PropertyIdentifier.all, PropertyIdentifier.required,
                         PropertyIdentifier.optional)) {
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.parameterOutOfRange);
                 }
             }
         } else if (PropertyIdentifier.logInterval.equals(value.getPropertyIdentifier())) {
-            final LoggingType loggingType = get(PropertyIdentifier.loggingType);
+            LoggingType loggingType = get(PropertyIdentifier.loggingType);
             if (!loggingType.equals(LoggingType.polled)) {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
             }
@@ -176,11 +177,11 @@ public class TrendLogMultipleObject extends TrendLogBase {
         if (PropertyIdentifier.logInterval.equals(pid)) {
             updateLoggingType();
         } else if (PropertyIdentifier.stopWhenFull.equals(pid)) {
-            final Boolean oldStopWhenFull = (Boolean) oldValue;
-            final Boolean stopWhenFull = (Boolean) newValue;
+            Boolean oldStopWhenFull = (Boolean) oldValue;
+            Boolean stopWhenFull = (Boolean) newValue;
             if (!oldStopWhenFull.booleanValue() && stopWhenFull.booleanValue()) {
                 // Turning StopWhenFull on.
-                final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
+                Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
                 if (buffer.size() >= bufferSize.intValue()) {
                     synchronized (buffer) {
                         while (buffer.size() >= bufferSize.intValue())
@@ -191,7 +192,7 @@ public class TrendLogMultipleObject extends TrendLogBase {
                 }
             }
         } else if (PropertyIdentifier.bufferSize.equals(pid)) {
-            final UnsignedInteger bufferSize = (UnsignedInteger) newValue;
+            Unsigned32 bufferSize = (Unsigned32) newValue;
             // In case the buffer size was reduced, remove extra entries in the buffer.
             synchronized (buffer) {
                 while (buffer.size() >= bufferSize.intValue())
@@ -206,17 +207,17 @@ public class TrendLogMultipleObject extends TrendLogBase {
         synchronized (buffer) {
             buffer.clear();
         }
-        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
+        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, Unsigned32.ZERO);
         addLogRecordImpl(new LogMultipleRecord(getNow(), new LogData(new LogStatus(logDisabled, true, false))));
     }
 
     @Override
     protected void updateMonitoredProperty() {
-        final BACnetArray<DeviceObjectPropertyReference> props = get(PropertyIdentifier.logDeviceObjectProperty);
+        BACnetArray<DeviceObjectPropertyReference> props = get(PropertyIdentifier.logDeviceObjectProperty);
 
         // Add the monitored property.
-        final DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences();
-        for (final DeviceObjectPropertyReference prop : props) {
+        DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences();
+        for (DeviceObjectPropertyReference prop : props) {
             if (prop.getDeviceIdentifier().isUninitialized() || prop.getObjectIdentifier().isUninitialized())
                 // Don't ask for properties that are not initialized.
                 continue;
@@ -233,14 +234,14 @@ public class TrendLogMultipleObject extends TrendLogBase {
      */
     @Override
     protected void updateLoggingType() {
-        final LoggingType loggingType = get(PropertyIdentifier.loggingType);
+        LoggingType loggingType = get(PropertyIdentifier.loggingType);
 
         cancelFuture(pollingFuture);
 
         if (loggingType.equals(LoggingType.polled)) {
-            final UnsignedInteger logInterval = get(PropertyIdentifier.logInterval);
-            final Boolean alignIntervals = get(PropertyIdentifier.alignIntervals);
-            final UnsignedInteger intervalOffset = get(PropertyIdentifier.intervalOffset);
+            UnsignedInteger logInterval = get(PropertyIdentifier.logInterval);
+            Boolean alignIntervals = get(PropertyIdentifier.alignIntervals);
+            UnsignedInteger intervalOffset = get(PropertyIdentifier.intervalOffset);
 
             long period = logInterval.longValue() * 10;
             if (period == 0)
@@ -250,7 +251,7 @@ public class TrendLogMultipleObject extends TrendLogBase {
             long initialDelay = 0;
             int offsetToUse = 0;
             if (alignIntervals.booleanValue()) {
-                final long now = getLocalDevice().getClock().millis();
+                long now = getLocalDevice().getClock().millis();
 
                 // Find the largest time period to which the period aligns.
                 if (period % TimeUnit.DAYS.toMillis(1) == 0) {
@@ -286,37 +287,37 @@ public class TrendLogMultipleObject extends TrendLogBase {
             return;
 
         // Get the time before the poll, so that alignment looks right.
-        final DateTime now = getNow();
+        DateTime now = getNow();
 
         // Call the delegate to perform the poll.
-        final DeviceObjectPropertyValues result = pollingDelegate.doPoll();
+        DeviceObjectPropertyValues result = pollingDelegate.doPoll();
 
         // Process the results.
-        final List<LogDataElement> elements = new ArrayList<>();
-        final BACnetArray<DeviceObjectPropertyReference> props = get(PropertyIdentifier.logDeviceObjectProperty);
-        for (final DeviceObjectPropertyReference prop : props) {
+        List<LogDataElement> elements = new ArrayList<>();
+        BACnetArray<DeviceObjectPropertyReference> props = get(PropertyIdentifier.logDeviceObjectProperty);
+        for (DeviceObjectPropertyReference prop : props) {
             LogDataElement element;
             if (prop.getDeviceIdentifier().isUninitialized() || prop.getObjectIdentifier().isUninitialized()) {
                 element = new LogDataElement(new ErrorClassAndCode(ErrorClass.property, ErrorCode.noPropertySpecified));
             } else {
-                final PropertyValues values = result.getPropertyValues(prop.getDeviceIdentifier().getInstanceNumber());
+                PropertyValues values = result.getPropertyValues(prop.getDeviceIdentifier().getInstanceNumber());
                 if (values == null) {
                     throw new NullPointerException("Didn't find device "
                             + prop.getDeviceIdentifier().getInstanceNumber() + " in results " + result
                             + ", polling delegate remote references: " + pollingDelegate.getRemoteReferences());
                 }
-                final Encodable value = values.getNoErrorCheck(prop.getObjectIdentifier(),
+                Encodable value = values.getNoErrorCheck(prop.getObjectIdentifier(),
                         new PropertyReference(prop.getPropertyIdentifier(), prop.getPropertyArrayIndex()));
                 element = LogDataElement.createFromMonitoredValue(value);
             }
             elements.add(element);
         }
 
-        final LogMultipleRecord rec = new LogMultipleRecord(now, new LogData(new SequenceOf<>(elements)));
+        LogMultipleRecord rec = new LogMultipleRecord(now, new LogData(new SequenceOf<>(elements)));
         addLogRecord(rec);
     }
 
-    private synchronized void addLogRecord(final LogMultipleRecord rec) {
+    private synchronized void addLogRecord(LogMultipleRecord rec) {
         // Check if logging is allowed.
         if (logDisabled)
             return;
@@ -327,8 +328,8 @@ public class TrendLogMultipleObject extends TrendLogBase {
         fullCheck();
     }
 
-    private void addLogRecordImpl(final LogMultipleRecord rec) {
-        final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
+    private void addLogRecordImpl(LogMultipleRecord rec) {
+        Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
 
         synchronized (buffer) {
             // Don't add more to the buffer than capacity.
@@ -342,17 +343,17 @@ public class TrendLogMultipleObject extends TrendLogBase {
 
         updateRecordCount();
 
-        final UnsignedInteger recordsSinceNotification = get(PropertyIdentifier.recordsSinceNotification);
+        Unsigned32 recordsSinceNotification = get(PropertyIdentifier.recordsSinceNotification);
         if (recordsSinceNotification != null) {
-            writePropertyInternal(PropertyIdentifier.recordsSinceNotification, recordsSinceNotification.increment32());
+            writePropertyInternal(PropertyIdentifier.recordsSinceNotification, recordsSinceNotification.increment());
         }
 
         // The total record count must be written last because it is the monitored property for intrinsic reporting.
-        UnsignedInteger totalRecordCount = get(PropertyIdentifier.totalRecordCount);
-        totalRecordCount = totalRecordCount.increment32();
+        Unsigned32 totalRecordCount = get(PropertyIdentifier.totalRecordCount);
+        totalRecordCount = totalRecordCount.increment();
         if (totalRecordCount.longValue() == 0)
             // Value overflowed. As per 12.30.21 set to 1.
-            totalRecordCount = new UnsignedInteger(1);
+            totalRecordCount = new Unsigned32(1);
         rec.setSequenceNumber(totalRecordCount.longValue());
         writePropertyInternal(PropertyIdentifier.totalRecordCount, totalRecordCount);
     }
@@ -361,8 +362,8 @@ public class TrendLogMultipleObject extends TrendLogBase {
     protected void evaluateLogDisabled() {
         // Don't evaluate until instantiation is complete.
         if (buffer != null) {
-            final DateTime now = getNow();
-            final boolean newValue = !allowLogging(now);
+            DateTime now = getNow();
+            boolean newValue = !allowLogging(now);
             if (logDisabled != newValue) {
                 logDisabled = newValue;
                 if (logDisabled)
