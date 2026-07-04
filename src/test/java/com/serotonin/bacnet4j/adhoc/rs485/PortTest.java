@@ -77,18 +77,14 @@ public class PortTest {
 
             for (int i = 0; i < 10; i++) {
                 System.out.println(prefix() + "Discovering");
-                RemoteDeviceDiscoverer rdd = ld.startRemoteDeviceDiscovery((r) -> {
-                    System.out.println(prefix() + "Device: " + r + ", " + r.getName());
-                });
+                RemoteDeviceDiscoverer rdd = ld.startRemoteDeviceDiscovery(r ->
+                        System.out.println(prefix() + "Device: " + r + ", " + r.getName()));
 
                 ThreadUtils.sleep(6000);
 
                 System.out.println(rdd.getRemoteDevices());
                 rdd.stop();
             }
-
-            //            System.out.println(node.getBytesIn());
-            //            System.out.println(node.getBytesOut());
 
             System.out.println(prefix() + "Terminating");
             ld.terminate();
@@ -104,9 +100,7 @@ public class PortTest {
             LocalDevice ld = new LocalDevice(1968, transport);
             ld.initialize();
 
-            ld.startRemoteDeviceDiscovery((r) -> {
-                System.out.println(r.getInstanceNumber());
-            });
+            ld.startRemoteDeviceDiscovery(r -> System.out.println(r.getInstanceNumber()));
 
             ThreadUtils.sleep(10000);
             System.out.println(node.getBytesIn());
@@ -118,16 +112,9 @@ public class PortTest {
 
     static void listen(SerialPort serialPort) throws SerialPortException {
         while (true) {
-            //             byte[] buf = serialPort.readBytes();
-            //            if (buf != null) {
-            //                System.out.println(Arrays.toString(buf));
-            //            }
-
             String s = serialPort.readHexString();
             if (s != null) {
                 System.out.println(prefix() + s.toLowerCase());
-                //            } else {
-                //                System.out.println("null was returned");
             }
         }
     }
