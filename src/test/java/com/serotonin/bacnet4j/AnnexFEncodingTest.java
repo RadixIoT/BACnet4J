@@ -510,7 +510,7 @@ public class AnnexFEncodingTest {
         ConfirmedRequest pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED,
                 MaxApduLength.UP_TO_206, (byte) 15, (byte) 0, 0, req);
 
-        compare(pdu, "00020f1e09121901293c39054e0c0000000a1e0e09550f1c3f80000029010e09670f29001f0c004000081e0e" + ""
+        compare(pdu, "00020f1e09121901293c39054e0c0000000a1e0e09550f1c3f80000029010e09670f29001f0c004000081e0e"
                 + "09550f1c3f80000029011f4f");
     }
 
@@ -536,14 +536,12 @@ public class AnnexFEncodingTest {
         ConfirmedRequest pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED,
                 MaxApduLength.UP_TO_206, (byte) 15, (byte) 0, 0, req);
 
-        // TODO
         // There are multiple differences with the spec here.
         // 1) ---------------------------27
         // 2) -----------------------------------------------------------------------------------2e
-        compare(pdu,
-                "00020f1f09121c0200000429233ea471060301b40317352f3f4e0c0000000a1e09552e44428200002f3c03173400"
-                        // 3) ---------------------------2e
-                        + "1f0c004000051e09552e4442a033332f1f4f");
+        compare(pdu, "00020f1f09121c0200000429233ea471060301b40317352f3f4e0c0000000a1e09552e44428200002f3c03173400"
+                // 3) ---------------------------2e
+                + "1f0c004000051e09552e4442a033332f1f4f");
     }
 
     @Test
@@ -554,7 +552,7 @@ public class AnnexFEncodingTest {
 
     @Test
     public void e1_14aTest() {
-        // TODO the spec appears to be really messed up with this one, putting an unconfirmed service into
+        // The spec appears to be really messed up with this one, putting an unconfirmed service into
         // a confirmed request
         UnconfirmedCovNotificationMultipleRequest req = new UnconfirmedCovNotificationMultipleRequest(
                 new Unsigned32(18), new ObjectIdentifier(ObjectType.device, 4), new UnsignedInteger(27), null,
@@ -870,6 +868,46 @@ public class AnnexFEncodingTest {
                 "30020E0C000000211E29554E44422933334F1F0C000000321E29555E9101911F5F1F0C000000231E29554E4443D9D99A4F1F");
     }
 
+    /**
+     * Per addendum 135-2016bl-2 (Example F.3.X): the ReadPropertyMultiple request for the
+     * OPTIONAL pseudo-property of a single object. Byte-for-byte reproduction of the spec
+     * example. Object under test is (Analog Input, 19).
+     * <p>
+     * Note: the addendum text prints X'55' for the OPTIONAL enum byte, but the correct
+     * encoding is X'50'. OPTIONAL is enum value 80 decimal (per the BACnetPropertyIdentifier
+     * production), which is 0x50 in hex. The addendum's X'55' is an encoding-annotation
+     * typo — the annotation itself reads "80 (OPTIONAL)" which is the correct value.
+     */
+    @Test
+    public void e3_bl2_optionalRequest_matchesSpecExample() {
+        List<PropertyReference> propertyReferences = new ArrayList<>();
+        propertyReferences.add(new PropertyReference(PropertyIdentifier.optional, null));
+        List<ReadAccessSpecification> readAccessSpecs = new ArrayList<>();
+        readAccessSpecs.add(new ReadAccessSpecification(new ObjectIdentifier(ObjectType.analogInput, 19),
+                new SequenceOf<>(propertyReferences)));
+        ConfirmedRequestService service = new ReadPropertyMultipleRequest(new SequenceOf<>(readAccessSpecs));
+        APDU pdu = new ConfirmedRequest(false, false, false, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_1024,
+                (byte) 2, (byte) 0, 0, service);
+        // 00 04 02 0E  0C 00000013  1E  09 50  1F
+        compare(pdu, "0004020E0C000000131E09501F");
+    }
+
+    /**
+     * Per addendum 135-2016bl-2 (Example F.3.X): the ReadPropertyMultiple-ACK response when
+     * the target object has no optional properties. The list of results is empty, encoded as
+     * opening tag 1 immediately followed by closing tag 1 with nothing in between.
+     */
+    @Test
+    public void e3_bl2_optionalResponseWithEmptyResults_matchesSpecExample() {
+        List<ReadAccessResult> readAccessResults = new ArrayList<>();
+        readAccessResults.add(new ReadAccessResult(new ObjectIdentifier(ObjectType.analogInput, 19),
+                new SequenceOf<>()));
+        AcknowledgementService service = new ReadPropertyMultipleAck(new SequenceOf<>(readAccessResults));
+        APDU pdu = new ComplexACK(false, false, (byte) 2, 0, 0, service);
+        // 30 02 0E  0C 00000013  1E 1F
+        compare(pdu, "30020E0C000000131E1F");
+    }
+
     @Test
     public void e3_8aTest() {
         ReadRangeRequest req = new ReadRangeRequest(new ObjectIdentifier(ObjectType.trendLog, 1),
@@ -898,7 +936,7 @@ public class AnnexFEncodingTest {
 
         APDU pdu = new ComplexACK(false, false, (byte) 1, 0, 0, service);
 
-        compare(pdu, "30011a0c0500000119833a05c049025e0ea462031701b413361b000f1e2c419000001f2a04000ea462031701" + ""
+        compare(pdu, "30011a0c0500000119833a05c049025e0ea462031701b413361b000f1e2c419000001f2a04000ea462031701"
                 + "b413381b000f1e2c4190cccd1f2a04005f6b013561");
     }
 
@@ -1084,7 +1122,7 @@ public class AnnexFEncodingTest {
     }
 
     @Test
-    public void e4_8bTest() {
+    public void e4_8b_and_e4_8dTest() {
         UnconfirmedRequestService service = new IHaveRequest(new ObjectIdentifier(ObjectType.device, 8),
                 new ObjectIdentifier(ObjectType.analogInput, 3),
                 new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "OATemp"));
@@ -1101,15 +1139,6 @@ public class AnnexFEncodingTest {
     }
 
     @Test
-    public void e4_8dTest() {
-        UnconfirmedRequestService service = new IHaveRequest(new ObjectIdentifier(ObjectType.device, 8),
-                new ObjectIdentifier(ObjectType.analogInput, 3),
-                new CharacterString(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), "OATemp"));
-        APDU pdu = new UnconfirmedRequest(service);
-        compare(pdu, "1001C402000008C4000000037507004F4154656D70");
-    }
-
-    @Test
     public void e4_9aTest() {
         UnconfirmedRequestService service = new WhoIsRequest(new UnsignedInteger(3), new UnsignedInteger(3));
         APDU pdu = new UnconfirmedRequest(service);
@@ -1117,7 +1146,7 @@ public class AnnexFEncodingTest {
     }
 
     @Test
-    public void e4_9bTest() {
+    public void e4_9b_and_e4_9fTest() {
         UnconfirmedRequestService service = new IAmRequest(new ObjectIdentifier(ObjectType.device, 3),
                 new UnsignedInteger(1024), Segmentation.noSegmentation, new UnsignedInteger(99));
         APDU pdu = new UnconfirmedRequest(service);
@@ -1145,14 +1174,6 @@ public class AnnexFEncodingTest {
                 new UnsignedInteger(206), Segmentation.segmentedReceive, new UnsignedInteger(33));
         APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "1000C40200000221CE91022121");
-    }
-
-    @Test
-    public void e4_9fTest() {
-        UnconfirmedRequestService service = new IAmRequest(new ObjectIdentifier(ObjectType.device, 3),
-                new UnsignedInteger(1024), Segmentation.noSegmentation, new UnsignedInteger(99));
-        APDU pdu = new UnconfirmedRequest(service);
-        compare(pdu, "1000C40200000322040091032163");
     }
 
     @Test
@@ -1260,7 +1281,6 @@ public class AnnexFEncodingTest {
             if (parsedAPDU instanceof UnconfirmedRequest)
                 ((UnconfirmedRequest) parsedAPDU).parseServiceData();
         } catch (BACnetException e) {
-            e.printStackTrace();
             fail(e.getMessage());
             return;
         }
@@ -1268,9 +1288,6 @@ public class AnnexFEncodingTest {
         assertEquals(0, queue.size());
 
         if (!parsedAPDU.equals(pdu)) {
-            parsedAPDU.equals(pdu); // For debugging
-            parsedAPDU.equals(pdu);
-            parsedAPDU.equals(pdu);
             throw new RuntimeException("Parsed APDU does not equal given APDU");
         }
     }
