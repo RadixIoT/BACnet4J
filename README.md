@@ -86,7 +86,8 @@ var av = localDevice.addObject(new AnalogValueObject(localDevice, ...));
   following:
 
 ```
-UnsignedInteger ui = trendLog.get(PropertyIdentifier.recordCount)
+UnsignedInteger ui = trendLog.get(PropertyIdentifier.recordCount); // Immediate ClassCastException
+trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(100)); // Possibly delayed ClassCastException
 ```
 
 *Version 6.2.0*
