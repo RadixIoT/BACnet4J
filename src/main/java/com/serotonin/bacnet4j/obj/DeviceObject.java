@@ -35,7 +35,7 @@ import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.npdu.Network;
-import com.serotonin.bacnet4j.npdu.mstp.MasterNode;
+import com.serotonin.bacnet4j.npdu.mstp.ManagerNode;
 import com.serotonin.bacnet4j.npdu.mstp.MstpNetwork;
 import com.serotonin.bacnet4j.npdu.mstp.MstpNode;
 import com.serotonin.bacnet4j.obj.mixin.ActiveCovSubscriptionMixin;
@@ -310,10 +310,10 @@ public class DeviceObject extends BACnetObject {
     @Override
     protected boolean validateProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
         if (value.getPropertyIdentifier().equals(PropertyIdentifier.maxManager)) {
-            MasterNode masterNode = getMasterNode();
-            if (masterNode != null) {
-                UnsignedInteger maxMaster = value.getValue();
-                if (masterNode.getThisStation() > maxMaster.intValue()) {
+            ManagerNode managerNode = getManagerNode();
+            if (managerNode != null) {
+                UnsignedInteger maxManager = value.getValue();
+                if (managerNode.getThisStation() > maxManager.intValue()) {
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
                 }
             }
@@ -329,25 +329,25 @@ public class DeviceObject extends BACnetObject {
             getLocalDevice().getPersistence()
                     .saveEncodable(getPersistenceKey(PropertyIdentifier.restartNotificationRecipients), newValue);
         } else if (pid.equals(PropertyIdentifier.maxManager)) {
-            MasterNode masterNode = getMasterNode();
-            if (masterNode != null) {
-                UnsignedInteger maxMaster = (UnsignedInteger) newValue;
-                masterNode.setMaxMaster(maxMaster.intValue());
+            ManagerNode managerNode = getManagerNode();
+            if (managerNode != null) {
+                UnsignedInteger maxManager = (UnsignedInteger) newValue;
+                managerNode.setMaxManager(maxManager.intValue());
             }
         } else if (pid.equals(PropertyIdentifier.maxInfoFrames)) {
-            MasterNode masterNode = getMasterNode();
-            if (masterNode != null) {
+            ManagerNode managerNode = getManagerNode();
+            if (managerNode != null) {
                 UnsignedInteger maxInfoFrames = (UnsignedInteger) newValue;
-                masterNode.setMaxInfoFrames(maxInfoFrames.intValue());
+                managerNode.setMaxInfoFrames(maxInfoFrames.intValue());
             }
         }
     }
 
-    private MasterNode getMasterNode() {
+    private ManagerNode getManagerNode() {
         Network network = getLocalDevice().getNetwork();
         if (network instanceof MstpNetwork mstp) {
             MstpNode node = mstp.getNode();
-            if (node instanceof MasterNode manager) {
+            if (node instanceof ManagerNode manager) {
                 return manager;
             }
         }

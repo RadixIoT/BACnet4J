@@ -38,23 +38,19 @@ import com.serotonin.bacnet4j.npdu.mstp.realtime.RealtimeDriver;
 import com.serotonin.bacnet4j.transport.Transport;
 import com.serotonin.bacnet4j.util.sero.StreamUtils;
 
-
 /**
- * MS/TP Master node using a real-time serial driver
+ * MS/TP Manager node using a real-time serial driver
  * installed in the linux Kernel.
- *
- * @author Terry Packer
  */
-public class RealtimeMasterNode extends MasterNode {
-
+public class RealtimeManagerNode extends ManagerNode {
     private final byte thisStation;
     private final RealtimeDriver driver;
     private final int baud;
     private int responseTimeoutMs = 1000;
     private long lastFrameSendTime; //Track response timeouts
 
-    public RealtimeMasterNode(final String portId, final File driver, final File configProgram, final byte thisStation,
-            final int retryCount, final int baud, int responseTimeoutMs) throws IllegalArgumentException {
+    public RealtimeManagerNode(String portId, File driver, File configProgram, byte thisStation, int retryCount,
+            int baud, int responseTimeoutMs) throws IllegalArgumentException {
         super(portId, null, null, (byte) 0xFF, retryCount);
         this.thisStation = thisStation;
         this.baud = baud;
@@ -63,28 +59,13 @@ public class RealtimeMasterNode extends MasterNode {
     }
 
     @Override
-    protected void validate(final int retryCount) {
+    protected void validate(int retryCount) {
         this.retryCount = retryCount;
         nextStation = thisStation;
         pollStation = thisStation;
         tokenCount = Constants.POLL;
-        soleMaster = false;
-        state = MasterNodeState.idle;
-    }
-
-    @Override
-    public void setMaxMaster(final int maxMaster) {
-        super.setMaxMaster(maxMaster);
-    }
-
-    @Override
-    public void setMaxInfoFrames(final int maxInfoFrames) {
-        super.setMaxInfoFrames(maxInfoFrames);
-    }
-
-    @Override
-    public void setUsageTimeout(final int usageTimeout) {
-        super.setUsageTimeout(usageTimeout);
+        soleManager = false;
+        state = ManagerNodeState.idle;
     }
 
     public void setResponseTimeoutMs(int responseTimeoutMs) {
@@ -92,14 +73,14 @@ public class RealtimeMasterNode extends MasterNode {
     }
 
     @Override
-    public void initialize(final Transport transport) throws Exception {
+    public void initialize(Transport transport) throws Exception {
         //Setup I/O
         File file = new File(portId);
         in = new FileInputStream(file);
         out = new FileOutputStream(file);
 
         //Configure Driver
-        this.driver.configure(portId, baud, thisStation, maxMaster, maxInfoFrames, usageTimeout);
+        this.driver.configure(portId, baud, thisStation, maxManager, maxInfoFrames, usageTimeout);
         super.initialize(transport);
     }
 
@@ -107,21 +88,18 @@ public class RealtimeMasterNode extends MasterNode {
     protected void doCycle() {
         readFrame();
 
-        if (state == MasterNodeState.idle)
+        if (state == ManagerNodeState.idle)
             idle();
 
-        if (state == MasterNodeState.useToken)
+        if (state == ManagerNodeState.useToken)
             useToken();
 
-        if (state == MasterNodeState.doneWithToken)
-            state = MasterNodeState.idle;
+        if (state == ManagerNodeState.doneWithToken)
+            state = ManagerNodeState.idle;
 
-        if (state == MasterNodeState.waitForReply)
+        if (state == ManagerNodeState.waitForReply)
             waitForReply();
 
-        //TODO Can't currently get to this state since we don't have 
-        // the frame type from the driver so we have to do this every time
-        //if (state == MasterNodeState.answerDataRequest)
         answerDataRequest();
     }
 
@@ -146,27 +124,25 @@ public class RealtimeMasterNode extends MasterNode {
             readCount = in.read(readArray);
             if (readCount > 0) {
                 bytesIn += readCount;
-                if (LOG.isTraceEnabled())
-                    LOG.trace(tracePrefix() + "in: " + StreamUtils.dumpArrayHex(readArray, 0, readCount));
+                if (LOG.isTraceEnabled()) {
+                    LOG.trace("{} in: {}", tracePrefix(), StreamUtils.dumpArrayHex(readArray, 0, readCount));
+                }
                 inputBuffer.push(readArray, 0, readCount);
                 eventCount += readCount;
                 int pos = 0;
-                //TODO How can we validate that this is an entire message?
                 frame.setSourceAddress(readArray[pos++]);
                 byte[] data = new byte[readCount - 1];
                 for (int i = 0; i < readCount - 1; i++) {
                     data[i] = readArray[pos++];
                 }
                 frame.setData(data);
-                if (LOG.isTraceEnabled())
-                    LOG.trace("in: " + frame);
+                LOG.trace("in: {}", frame);
                 receivedValidFrame = true;
             }
-        } catch (final IOException e) {
+        } catch (IOException e) {
             if (StringUtils.equals(e.getMessage(), "Stream closed."))
                 throw new RuntimeException(e);
-            if (LOG.isDebugEnabled())
-                LOG.debug(thisStation + " Input stream listener exception", e);
+            LOG.debug("{} Input stream listener exception", thisStation, e);
             receiveError = true;
         }
     }
@@ -175,19 +151,18 @@ public class RealtimeMasterNode extends MasterNode {
     protected void idle() {
         //Don't worry about invalid frames, assume we can use token if we didn't get a frame
         if (receivedValidFrame) {
-            if (LOG.isDebugEnabled())
-                LOG.debug(thisStation + " idle:receivedValidFrame");
+            LOG.debug("{} idle:receivedValidFrame", thisStation);
             frame();
             receivedValidFrame = false;
             activity = true;
         } else {
             //We can use the token
-            state = MasterNodeState.useToken;
+            state = ManagerNodeState.useToken;
         }
     }
 
     /* (non-Javadoc)
-     * @see com.serotonin.bacnet4j.npdu.mstp.MasterNode#frame()
+     * @see com.serotonin.bacnet4j.npdu.mstp.ManagerNode#frame()
      */
     @Override
     protected void frame() {
@@ -196,7 +171,7 @@ public class RealtimeMasterNode extends MasterNode {
         //TODO How to decide?  via NPDU or do we modify the driver
         //The idea here is that we assume the driver will always 
         // reply for us...?
-        //state = MasterNodeState.answerDataRequest;
+        //state = ManagerNodeState.answerDataRequest;
         //replyDeadline = lastNonSilence + Constants.REPLY_DELAY;
     }
 
@@ -204,19 +179,19 @@ public class RealtimeMasterNode extends MasterNode {
     protected void waitForReply() {
         if (clock.millis() > lastFrameSendTime + responseTimeoutMs) {
             if (LOG.isDebugEnabled())
-                LOG.debug(thisStation + " waitForReply:ReplyTimeout");
-            state = MasterNodeState.idle;
+                LOG.debug("{} waitForReply:ReplyTimeout", thisStation);
+            state = ManagerNodeState.idle;
         } else if (receivedValidFrame) {
             if (LOG.isDebugEnabled())
-                LOG.debug(thisStation + " waitForReply:ReceivedReply");
+                LOG.debug("{} waitForReply:ReceivedReply", thisStation);
             receivedDataNoReply(frame);
-            state = MasterNodeState.idle;
+            state = ManagerNodeState.idle;
             receivedValidFrame = false;
         }
     }
 
     /* (non-Javadoc)
-     * @see com.serotonin.bacnet4j.npdu.mstp.MasterNode#answerDataRequest()
+     * @see com.serotonin.bacnet4j.npdu.mstp.ManagerNode#answerDataRequest()
      */
     @Override
     protected void answerDataRequest() {
@@ -224,10 +199,10 @@ public class RealtimeMasterNode extends MasterNode {
             if (replyFrame != null) {
                 // Reply
                 if (LOG.isDebugEnabled())
-                    LOG.debug(thisStation + " answerDataRequest:Reply");
+                    LOG.debug("{} answerDataRequest:Reply", thisStation);
                 sendFrame(replyFrame);
                 replyFrame = null;
-                state = MasterNodeState.idle;
+                state = ManagerNodeState.idle;
                 activity = true;
             }
         }
@@ -235,11 +210,12 @@ public class RealtimeMasterNode extends MasterNode {
 
 
     @Override
-    protected void sendFrame(final Frame frame) {
-        LOG.info("Sending frame: " + frame);
+    protected void sendFrame(Frame frame) {
+        LOG.info("Sending frame: {}", frame);
         try {
-            if (LOG.isTraceEnabled())
-                LOG.trace(tracePrefix() + "out: " + frame);
+            if (LOG.isTraceEnabled()) {
+                LOG.trace("{} out: {}", tracePrefix(), frame);
+            }
 
             // Header
             byte[] writeArray = new byte[5 + frame.getLength()];
@@ -262,8 +238,8 @@ public class RealtimeMasterNode extends MasterNode {
             out.flush();
             bytesOut += frame.getLength() + 10; //Imply the missing bytes that the driver will add
             lastFrameSendTime = clock.millis();
-            LOG.info("Sent frame " + frame);
-        } catch (final IOException e) {
+            LOG.info("Sent frame {}", frame);
+        } catch (IOException e) {
             // Only write the same error message once. Prevents logs from getting filled up unnecessarily with repeated
             // error messages.
             if (!StringUtils.equals(e.getMessage(), lastWriteError)) {

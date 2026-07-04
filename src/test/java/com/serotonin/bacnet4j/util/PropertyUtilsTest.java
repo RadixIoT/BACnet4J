@@ -83,8 +83,8 @@ public class PropertyUtilsTest {
         addObjects(d6);
     }
 
-    private static void addObjects(final LocalDevice d) throws Exception {
-        final int id = d.getInstanceNumber();
+    private static void addObjects(LocalDevice d) throws Exception {
+        int id = d.getInstanceNumber();
         d.writePropertyInternal(PropertyIdentifier.objectName, str("d" + id));
         d.addObject(new BinaryValueObject(d, 0, "ai0", BinaryPV.active, false).writePropertyInternal(
                         PropertyIdentifier.inactiveText, str("inactiveText"))
@@ -97,15 +97,15 @@ public class PropertyUtilsTest {
                 .writePropertyInternal(PropertyIdentifier.activeText, str("activeText")));
     }
 
-    private static CharacterString str(final String s) {
+    private static CharacterString str(String s) {
         return new CharacterString(s);
     }
 
-    private static ObjectIdentifier oid(final ObjectType objectType, final int instanceNumber) {
+    private static ObjectIdentifier oid(ObjectType objectType, int instanceNumber) {
         return new ObjectIdentifier(objectType, instanceNumber);
     }
 
-    private static UnsignedInteger uint(final int value) {
+    private static UnsignedInteger uint(int value) {
         return new UnsignedInteger(value);
     }
 
@@ -125,14 +125,14 @@ public class PropertyUtilsTest {
      */
     @Test
     public void happy() {
-        final DeviceObjectPropertyValues callbackValues = new DeviceObjectPropertyValues();
-        final ReadListener callback = (progress, deviceId, oid, pid, pin, value) -> {
+        DeviceObjectPropertyValues callbackValues = new DeviceObjectPropertyValues();
+        ReadListener callback = (progress, deviceId, oid, pid, pin, value) -> {
             callbackValues.add(deviceId, oid, pid, pin, value);
             return false;
         };
 
         // The values specified here...
-        final DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
+        DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.objectName) //
                 .addIndex(2, ObjectType.device, 2, PropertyIdentifier.objectList, 2) //
                 .add(2, ObjectType.binaryValue, 0, PropertyIdentifier.inactiveText, PropertyIdentifier.activeText) //
@@ -151,7 +151,7 @@ public class PropertyUtilsTest {
                 .add(4, ObjectType.binaryValue, 2, PropertyIdentifier.inactiveText, PropertyIdentifier.activeText);
 
         // ... must also be specified here.
-        final DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
+        DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.objectName, null, str("d2")) //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.objectList, 2,
                         new ObjectIdentifier(ObjectType.binaryValue, 0)) //
@@ -182,7 +182,7 @@ public class PropertyUtilsTest {
                 .add(4, ObjectType.binaryValue, 2, PropertyIdentifier.inactiveText, null, str("inactiveText")) //
                 .add(4, ObjectType.binaryValue, 2, PropertyIdentifier.activeText, null, str("activeText"));
 
-        final DeviceObjectPropertyValues actualValues = PropertyUtils.readProperties(d1, refs, callback);
+        DeviceObjectPropertyValues actualValues = PropertyUtils.readProperties(d1, refs, callback);
 
         assertEquals(expectedValues.size(), callbackValues.size());
         assertEquals(expectedValues, callbackValues);
@@ -262,7 +262,7 @@ public class PropertyUtilsTest {
                 .add(6, ObjectType.binaryValue, 2, PropertyIdentifier.inactiveText, null, str("inactiveText")) //
                 .add(6, ObjectType.binaryValue, 2, PropertyIdentifier.activeText, null, str("activeText"));
 
-        final DeviceObjectPropertyValues actualValues2 = PropertyUtils.readProperties(d1, refs, callback);
+        DeviceObjectPropertyValues actualValues2 = PropertyUtils.readProperties(d1, refs, callback);
 
         assertEquals(expectedValues.size(), callbackValues.size());
         assertEquals(expectedValues, callbackValues);
@@ -288,24 +288,24 @@ public class PropertyUtilsTest {
      */
     @Test
     public void timeout() {
-        final DeviceObjectPropertyValues callbackValues = new DeviceObjectPropertyValues();
-        final ReadListener callback = (progress, deviceId, oid, pid, pin, value) -> {
+        DeviceObjectPropertyValues callbackValues = new DeviceObjectPropertyValues();
+        ReadListener callback = (progress, deviceId, oid, pid, pin, value) -> {
             callbackValues.add(deviceId, oid, pid, pin, value);
             return false;
         };
 
         // The values specified here...
-        final DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
+        DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
                 .add(6, ObjectType.device, 6, PropertyIdentifier.objectName) //
                 .add(7, ObjectType.device, 7, PropertyIdentifier.objectName);
 
         // ... must also be specified here.
-        final DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
+        DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
                 .add(6, ObjectType.device, 6, PropertyIdentifier.objectName, null, str("d6")) //
                 .add(7, ObjectType.device, 7, PropertyIdentifier.objectName, null,
                         new ErrorClassAndCode(ErrorClass.device, ErrorCode.timeout));
 
-        final DeviceObjectPropertyValues actualValues = PropertyUtils.readProperties(d1, refs, callback, 1200);
+        DeviceObjectPropertyValues actualValues = PropertyUtils.readProperties(d1, refs, callback, 1200);
 
         assertEquals(expectedValues.size(), callbackValues.size());
         assertEquals(expectedValues, callbackValues);
@@ -320,14 +320,14 @@ public class PropertyUtilsTest {
     @Test
     public void addressChangeWithIAm() throws Exception {
         // The values specified here...
-        final DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
+        DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
                 .add(6, ObjectType.device, 6, PropertyIdentifier.objectName);
 
         // ... must also be specified here.
-        final DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
+        DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
                 .add(6, ObjectType.device, 6, PropertyIdentifier.objectName, null, str("d6"));
 
-        final DeviceObjectPropertyValues actualValues = PropertyUtils.readProperties(d1, refs, null);
+        DeviceObjectPropertyValues actualValues = PropertyUtils.readProperties(d1, refs, null);
 
         assertEquals(expectedValues, actualValues);
         assertEquals(str("d6"),
@@ -348,10 +348,10 @@ public class PropertyUtilsTest {
      */
     @Test
     public void addressChange() throws Exception {
-        final DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
+        DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
                 .add(6, ObjectType.device, 6, PropertyIdentifier.objectName);
 
-        final DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
+        DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
                 .add(6, ObjectType.device, 6, PropertyIdentifier.objectName, null, str("d6"));
 
         DeviceObjectPropertyValues actualValues = PropertyUtils.readProperties(d1, refs, null, 3000);
@@ -390,38 +390,38 @@ public class PropertyUtilsTest {
 
     @Test
     public void deviceProperties() {
-        final DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
+        DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.systemStatus) //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.maxApduLengthAccepted) //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.vendorName);
 
-        final DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
+        DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.systemStatus, null, DeviceStatus.operational) //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.maxApduLengthAccepted, null,
                         new UnsignedInteger(1476)) //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.vendorName, null,
-                        str("Infinite Automation Systems, Inc."));
+                        str("Radix IoT LLC"));
 
-        final DeviceObjectPropertyValues actualValues = PropertyUtils.readProperties(d1, refs, null, 3000);
+        DeviceObjectPropertyValues actualValues = PropertyUtils.readProperties(d1, refs, null, 3000);
 
         assertEquals(expectedValues, actualValues);
     }
 
     @Test
     public void unknownObjectInReadMultiple() {
-        final DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
+        DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences() //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.systemStatus) //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.maxApduLengthAccepted) //
                 .add(2, ObjectType.analogInput, 2, PropertyIdentifier.vendorName);
 
-        final DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
+        DeviceObjectPropertyValues expectedValues = new DeviceObjectPropertyValues() //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.systemStatus, null, DeviceStatus.operational) //
                 .add(2, ObjectType.device, 2, PropertyIdentifier.maxApduLengthAccepted, null,
                         new UnsignedInteger(1476)) //
                 .add(2, ObjectType.analogInput, 2, PropertyIdentifier.vendorName, null,
                         new ErrorClassAndCode(ErrorClass.object, ErrorCode.unknownObject));
 
-        final DeviceObjectPropertyValues actualValues = PropertyUtils.readProperties(d1, refs, null, 3000);
+        DeviceObjectPropertyValues actualValues = PropertyUtils.readProperties(d1, refs, null, 3000);
 
         assertEquals(expectedValues, actualValues);
     }
