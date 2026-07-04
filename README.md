@@ -81,6 +81,13 @@ var av = localDevice.addObject(new AnalogValueObject(localDevice, ...));
 - Serialization bug fixes
 - Removal of deprecated code
 - Introduction of BACnet Secure Connection implementation as SC node connecting to Hub
+- Fixes of various spec compliance issues, including data types and spec type implementations. The use of Unsigned32
+  instead of UnsignedInteger. This will cause a break with existing client code that expects to be able to do the
+  following:
+
+```
+UnsignedInteger ui = trendLog.get(PropertyIdentifier.recordCount)
+```
 
 *Version 6.2.0*
 
