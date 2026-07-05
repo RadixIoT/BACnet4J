@@ -858,6 +858,7 @@ public class TrendLogObjectTest extends AbstractTest {
 
     // ---------- bi-3: extremely large logs — Buffer_Size = 0xFFFFFFFF sentinel ----------
 
+
     /**
      * A test log buffer whose "has space" state is toggled programmatically. Used to drive the bi-3 unknown-size
      * behavior deterministically without allocating billions of records.
