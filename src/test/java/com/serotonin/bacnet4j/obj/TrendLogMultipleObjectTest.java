@@ -717,4 +717,42 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         assertEquals(logData2, tl.getRecord(1).getLogData().getData());
         assertEquals(logData2, tl.getRecord(2).getLogData().getData());
     }
+
+    // ---------- bi-3: extremely large logs — Buffer_Size = 0xFFFFFFFF sentinel ----------
+
+    private static class TestExhaustibleLogBuffer extends LinkedListLogBuffer<LogMultipleRecord> {
+        boolean spaceExhausted;
+
+        @Override
+        public boolean hasSpaceForAnotherRecord() {
+            return !spaceExhausted;
+        }
+    }
+
+    @Test
+    public void bi3_bufferSizeUnknown_enableWhileFullYieldsLogBufferFull() throws Exception {
+        TestExhaustibleLogBuffer buffer = new TestExhaustibleLogBuffer();
+        TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", buffer, false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, props, 0, true, 10));
+        tl.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.bufferSize, new Unsigned32(TrendLogBase.BUFFER_SIZE_UNKNOWN)));
+        buffer.spaceExhausted = true;
+
+        assertBACnetServiceException(
+                () -> tl.writeProperty(null, new PropertyValue(PropertyIdentifier.enable, Boolean.TRUE)),
+                ErrorClass.object, ErrorCode.logBufferFull);
+    }
+
+    @Test
+    public void bi3_bufferSizeUnknown_enableWhileHasSpaceSucceeds() throws Exception {
+        TestExhaustibleLogBuffer buffer = new TestExhaustibleLogBuffer();
+        TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", buffer, false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, props, 0, true, 10));
+        tl.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.bufferSize, new Unsigned32(TrendLogBase.BUFFER_SIZE_UNKNOWN)));
+        buffer.spaceExhausted = false;
+
+        tl.writeProperty(null, new PropertyValue(PropertyIdentifier.enable, Boolean.TRUE));
+        assertEquals(Boolean.TRUE, tl.get(PropertyIdentifier.enable));
+    }
 }

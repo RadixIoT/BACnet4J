@@ -30,6 +30,7 @@ package com.serotonin.bacnet4j.obj;
 import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import com.serotonin.bacnet4j.LocalDevice;
@@ -65,6 +66,12 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
  * Buffer_Size / Record_Count validation, the mixin setup, and the intrinsic-reporting scaffolding.
  */
 public abstract class LogBase extends BACnetObject {
+    /**
+     * Reserved Buffer_Size value indicating that the buffer size is unknown and constrained solely by currently
+     * available resources. See addendum 135-2016bi-3.
+     */
+    public static final long BUFFER_SIZE_UNKNOWN = 0xFFFFFFFFL;
+
     protected boolean logDisabled;
     protected ScheduledFuture<?> startTimeFuture;
     protected ScheduledFuture<?> stopTimeFuture;
@@ -87,6 +94,19 @@ public abstract class LogBase extends BACnetObject {
         set(PropertyIdentifier.totalRecordCount, Unsigned32.ZERO);
         set(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false));
         set(PropertyIdentifier.reliability, Reliability.noFaultDetected);
+    }
+
+    /**
+     * Reports whether the underlying log buffer has room for another record. Concrete subclasses delegate to their
+     * LogBuffer. Used when Buffer_Size holds the reserved sentinel {@link #BUFFER_SIZE_UNKNOWN} — see
+     * addendum 135-2016bi-3.
+     */
+    protected boolean hasSpaceForAnotherRecord() {
+        AtomicBoolean hasSpaceForAnotherRecord = new AtomicBoolean(false);
+        doWithBuffer(buffer -> {
+            hasSpaceForAnotherRecord.set(buffer.hasSpaceForAnotherRecord());
+        });
+        return hasSpaceForAnotherRecord.get();
     }
 
     /**
@@ -202,7 +222,7 @@ public abstract class LogBase extends BACnetObject {
             Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
             Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
 
-            if (enable.booleanValue() && stopWhenFull.booleanValue() && bufferSize.intValue() == bufferSize()) {
+            if (enable.booleanValue() && stopWhenFull.booleanValue() && isBufferFull(bufferSize)) {
                 throw new BACnetServiceException(ErrorClass.object, ErrorCode.logBufferFull);
             }
         } else if (PropertyIdentifier.startTime.equals(value.getPropertyIdentifier()) //
@@ -249,9 +269,31 @@ public abstract class LogBase extends BACnetObject {
     protected void fullCheck() {
         Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
         Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
-        if (stopWhenFull.booleanValue() && bufferSize() == bufferSize.intValue() - 1) {
+        if (stopWhenFull.booleanValue() && isBufferFullAfterNext(bufferSize)) {
             writePropertyInternal(PropertyIdentifier.enable, Boolean.FALSE);
         }
+    }
+
+    /**
+     * True if Record_Count equals Buffer_Size, or Buffer_Size is the reserved sentinel value and the buffer cannot
+     * accept another record. Per addendum 135-2016bi-3.
+     */
+    protected boolean isBufferFull(Unsigned32 bufferSize) {
+        if (bufferSize.longValue() == BUFFER_SIZE_UNKNOWN) {
+            return !hasSpaceForAnotherRecord();
+        }
+        return bufferSize() >= bufferSize.longValue();
+    }
+
+    /**
+     * True if adding one more record would fill the buffer — either the current fill is one below Buffer_Size, or
+     * Buffer_Size is the reserved sentinel value and the buffer cannot accept another record. Per bi-3.
+     */
+    protected boolean isBufferFullAfterNext(Unsigned32 bufferSize) {
+        if (bufferSize.longValue() == BUFFER_SIZE_UNKNOWN) {
+            return !hasSpaceForAnotherRecord();
+        }
+        return bufferSize() >= bufferSize.longValue() - 1;
     }
 
     protected boolean allowLogging(DateTime now) {
@@ -286,8 +328,9 @@ public abstract class LogBase extends BACnetObject {
         Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
 
         doWithBuffer(buf -> {
-            // Don't add more to the buffer than capacity.
-            if (buf.size() == bufferSize.intValue()) {
+            // Don't add more to the buffer than capacity. Also covers the bi-3 unknown-size case where the buffer
+            // itself signals exhaustion.
+            if (isBufferFull(bufferSize)) {
                 // Buffer is already full. Drop the oldest record.
                 buf.remove();
             }

@@ -75,6 +75,7 @@ import com.serotonin.bacnet4j.type.primitive.Date;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
+import com.serotonin.bacnet4j.type.primitive.SignedInteger;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -93,7 +94,7 @@ public class ReadRangeRequestTest {
     }
 
     @After
-    public void after() throws Exception {
+    public void after() {
         d1.terminate();
     }
 
@@ -102,7 +103,7 @@ public class ReadRangeRequestTest {
      */
     @Test
     public void networkRead() throws Exception {
-        final SequenceOf<Recipient> recipients =
+        SequenceOf<Recipient> recipients =
                 new SequenceOf<>(new Recipient(new ObjectIdentifier(ObjectType.device, 1)),
                         new Recipient(new ObjectIdentifier(ObjectType.device, 2)),
                         new Recipient(new ObjectIdentifier(ObjectType.device, 3)),
@@ -111,10 +112,10 @@ public class ReadRangeRequestTest {
                         new Recipient(new ObjectIdentifier(ObjectType.device, 6)));
         d1.getObject(d1.getId()).writePropertyInternal(PropertyIdentifier.restartNotificationRecipients, recipients);
 
-        final LocalDevice d2 = new LocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 0))).initialize();
+        LocalDevice d2 = new LocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 0))).initialize();
 
-        final RemoteDevice rd1 = d2.getRemoteDeviceBlocking(1);
-        final ReadRangeAck ack =
+        RemoteDevice rd1 = d2.getRemoteDeviceBlocking(1);
+        ReadRangeAck ack =
                 d2.send(rd1, new ReadRangeRequest(d1.getId(), PropertyIdentifier.restartNotificationRecipients, null))
                         .get();
 
@@ -134,29 +135,29 @@ public class ReadRangeRequestTest {
      */
     @Test
     public void trendLogMultiple() throws Exception {
-        final WarpClock clock = new WarpClock();
+        WarpClock clock = new WarpClock();
 
-        final LocalDevice d11 =
+        LocalDevice d11 =
                 new LocalDevice(11, new DefaultTransport(new TestNetwork(map, 11, 0))).withClock(clock).initialize();
-        final AnalogInputObject ai = d11.addObject(new AnalogInputObject(
+        AnalogInputObject ai = d11.addObject(new AnalogInputObject(
                 d11, 0, "ai", 12, EngineeringUnits.noUnits, false));
 
-        final LocalDevice d12 =
+        LocalDevice d12 =
                 new LocalDevice(12, new DefaultTransport(new TestNetwork(map, 12, 0))).withClock(clock).initialize();
-        final TrendLogMultipleObject tl =
+        TrendLogMultipleObject tl =
                 d12.addObject(new TrendLogMultipleObject(d12, 0, "tlm", new LinkedListLogBuffer<>(), true,
                         DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, new BACnetArray<>(
                         new DeviceObjectPropertyReference(11, ai.getId(), PropertyIdentifier.presentValue)), 0, false,
                         100));
 
-        final RemoteDevice rd12 = d11.getRemoteDeviceBlocking(12);
-        final DateTime now = new DateTime(clock.millis());
+        RemoteDevice rd12 = d11.getRemoteDeviceBlocking(12);
+        DateTime now = new DateTime(clock.millis());
 
         // Trigger the trend log a few times.
         doTriggers(tl, 11);
 
         // Read the buffer.
-        final ReadRangeAck ack =
+        ReadRangeAck ack =
                 d11.send(rd12, new ReadRangeRequest(tl.getId(), PropertyIdentifier.logBuffer, null)).get();
 
         assertEquals(tl.getId(), ack.getObjectIdentifier());
@@ -180,7 +181,7 @@ public class ReadRangeRequestTest {
         assertNull(ack.getFirstSequenceNumber());
     }
 
-    private static void doTriggers(final TrendLogMultipleObject tl, final int count) throws Exception {
+    private static void doTriggers(TrendLogMultipleObject tl, int count) throws Exception {
         int remaining = count;
         while (remaining > 0) {
             await(tl::trigger);
@@ -191,8 +192,6 @@ public class ReadRangeRequestTest {
 
     /**
      * 15.8.1.1.4.1.3
-     *
-     * @throws BACnetException
      */
     @Test
     public void positionPositiveCount() throws BACnetException {
@@ -201,7 +200,7 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack =
+        ReadRangeAck ack =
                 (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(800, 300)).handle(d1, null);
 
         data = new SequenceOf<>(200);
@@ -219,8 +218,6 @@ public class ReadRangeRequestTest {
 
     /**
      * 15.8.1.1.4.1.4
-     *
-     * @throws BACnetException
      */
     @Test
     public void positionNegativeCount() throws BACnetException {
@@ -229,7 +226,7 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack =
+        ReadRangeAck ack =
                 (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(1000, -1000)).handle(d1,
                         null);
 
@@ -248,8 +245,6 @@ public class ReadRangeRequestTest {
 
     /**
      * 15.8.1.1.4.2.3
-     *
-     * @throws BACnetException
      */
     @Test
     public void sequencePositiveCount() throws BACnetException {
@@ -258,7 +253,7 @@ public class ReadRangeRequestTest {
             data.add(createLogRecord(now, 2001 + i));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack =
+        ReadRangeAck ack =
                 (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new BySequenceNumber(2800, 300)).handle(d1,
                         null);
 
@@ -277,8 +272,6 @@ public class ReadRangeRequestTest {
 
     /**
      * 15.8.1.1.4.2.4
-     *
-     * @throws BACnetException
      */
     @Test
     public void sequenceNegativeCount() throws BACnetException {
@@ -287,7 +280,7 @@ public class ReadRangeRequestTest {
             data.add(createLogRecord(now, 2001 + i));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack =
+        ReadRangeAck ack =
                 (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new BySequenceNumber(3000, -1000)).handle(d1,
                         null);
 
@@ -306,20 +299,18 @@ public class ReadRangeRequestTest {
 
     /**
      * 15.8.1.1.4.3.3
-     *
-     * @throws BACnetException
      */
     @Test
     public void timePositiveCount() throws BACnetException {
         SequenceOf<LogRecord> data = new SequenceOf<>(1000);
-        final GregorianCalendar gc = new GregorianCalendar(2013, Calendar.MARCH, 18, 1, 1);
+        GregorianCalendar gc = new GregorianCalendar(2013, Calendar.MARCH, 18, 1, 1);
         for (int i = 0; i < 1000; i++) {
             data.add(createLogRecord(new DateTime(gc), i + 2001));
             gc.add(Calendar.MINUTE, 1);
         }
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
+        ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
                 new ByTime(new DateTime(new Date(2013, Month.MARCH, 18, null), new Time(13, 59, 0, 0)), 300)).handle(d1,
                 null);
 
@@ -341,20 +332,18 @@ public class ReadRangeRequestTest {
 
     /**
      * 15.8.1.1.4.3.4
-     *
-     * @throws BACnetException
      */
     @Test
     public void timePositiveOutdatedCount() throws BACnetException {
         SequenceOf<LogRecord> data = new SequenceOf<>(1000);
-        final GregorianCalendar gc = new GregorianCalendar(2013, Calendar.MARCH, 18, 1, 1);
+        GregorianCalendar gc = new GregorianCalendar(2013, Calendar.MARCH, 18, 1, 1);
         for (int i = 0; i < 1000; i++) {
             data.add(createLogRecord(new DateTime(gc), i + 2001));
             gc.add(Calendar.MINUTE, 1);
         }
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
+        ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
                 new ByTime(new DateTime(new Date(1991, Month.NOVEMBER, 17, null), new Time(19, 20, 0, 0)), 300)).handle(
                 d1, null);
 
@@ -376,20 +365,18 @@ public class ReadRangeRequestTest {
 
     /**
      * 15.8.1.1.4.3.5
-     *
-     * @throws BACnetException
      */
     @Test
     public void timeNegativeCount() throws BACnetException {
         SequenceOf<LogRecord> data = new SequenceOf<>(1000);
-        final GregorianCalendar gc = new GregorianCalendar(2013, Calendar.MARCH, 18, 1, 1);
+        GregorianCalendar gc = new GregorianCalendar(2013, Calendar.MARCH, 18, 1, 1);
         for (int i = 0; i < 1000; i++) {
             data.add(createLogRecord(new DateTime(gc), i + 2001));
             gc.add(Calendar.MINUTE, 1);
         }
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
+        ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
                 new ByTime(new DateTime(new Date(2013, Month.MARCH, 18, null), new Time(17, 40, 0, 0)), -1000)).handle(
                 d1, null);
 
@@ -486,12 +473,12 @@ public class ReadRangeRequestTest {
         }
 
         @Override
-        public void write(final ByteQueue queue) {
+        public void write(ByteQueue queue) {
             throw new RuntimeException("not implemented");
         }
 
         @Override
-        public void write(final ByteQueue queue, final int contextId) {
+        public void write(ByteQueue queue, int contextId) {
             throw new RuntimeException("not implemented");
         }
 
@@ -505,7 +492,7 @@ public class ReadRangeRequestTest {
     public void noData() throws Exception {
         d1.getObject(d1.getId()).writePropertyInternal(pid, new SequenceOf<>());
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null).handle(d1, null);
+        ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null).handle(d1, null);
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
         assertEquals(pid, ack.getPropertyIdentifier());
@@ -523,7 +510,7 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack =
+        ReadRangeAck ack =
                 (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(800, 150)).handle(d1, null);
 
         data = new SequenceOf<>(150);
@@ -541,12 +528,12 @@ public class ReadRangeRequestTest {
 
     @Test
     public void positionTooLow() throws BACnetException {
-        final SequenceOf<UnsignedInteger> data = new SequenceOf<>(1000);
+        SequenceOf<UnsignedInteger> data = new SequenceOf<>(1000);
         for (int i = 0; i < 1000; i++)
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack =
+        ReadRangeAck ack =
                 (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(0, 150)).handle(d1, null);
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
@@ -560,12 +547,12 @@ public class ReadRangeRequestTest {
 
     @Test
     public void positionTooHigh() throws BACnetException {
-        final SequenceOf<UnsignedInteger> data = new SequenceOf<>(1000);
+        SequenceOf<UnsignedInteger> data = new SequenceOf<>(1000);
         for (int i = 0; i < 1000; i++)
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack =
+        ReadRangeAck ack =
                 (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(1001, 150)).handle(d1, null);
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
@@ -584,7 +571,7 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null).handle(d1, null);
+        ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null).handle(d1, null);
 
         data = new SequenceOf<>(200);
         for (int i = 0; i < 200; i++)
@@ -601,7 +588,7 @@ public class ReadRangeRequestTest {
 
     @Test
     public void sequenceOutOfRange() throws BACnetException {
-        final SequenceOf<LogRecord> data = new SequenceOf<>(1000);
+        SequenceOf<LogRecord> data = new SequenceOf<>(1000);
         for (int i = 0; i < 1000; i++)
             data.add(createLogRecord(now, 2001 + i));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
@@ -635,14 +622,14 @@ public class ReadRangeRequestTest {
     @Test
     public void timeNegativeCountSearchMiss() throws BACnetException {
         SequenceOf<LogRecord> data = new SequenceOf<>(1000);
-        final GregorianCalendar gc = new GregorianCalendar(2013, Calendar.MARCH, 18, 1, 1);
+        GregorianCalendar gc = new GregorianCalendar(2013, Calendar.MARCH, 18, 1, 1);
         for (int i = 0; i < 20; i++) {
             data.add(createLogRecord(new DateTime(gc), i + 2001));
             gc.add(Calendar.MINUTE, 1);
         }
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
+        ReadRangeAck ack = (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null,
                 new ByTime(new DateTime(new Date(2013, Month.MARCH, 18, null), new Time(1, 15, 30, 0)), -10)).handle(d1,
                 null);
 
@@ -664,8 +651,8 @@ public class ReadRangeRequestTest {
 
     @Test
     public void timeOutOfRange() throws BACnetException {
-        final SequenceOf<LogRecord> data = new SequenceOf<>(1000);
-        final GregorianCalendar gc = new GregorianCalendar(2013, Calendar.MARCH, 18, 1, 1);
+        SequenceOf<LogRecord> data = new SequenceOf<>(1000);
+        GregorianCalendar gc = new GregorianCalendar(2013, Calendar.MARCH, 18, 1, 1);
         for (int i = 0; i < 20; i++) {
             data.add(createLogRecord(new DateTime(gc), i + 2001));
             gc.add(Calendar.MINUTE, 1);
@@ -706,7 +693,7 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack =
+        ReadRangeAck ack =
                 (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(951, 100)).handle(d1, null);
 
         data = new SequenceOf<>(50);
@@ -729,7 +716,7 @@ public class ReadRangeRequestTest {
             data.add(new UnsignedInteger(i + 1));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
-        final ReadRangeAck ack =
+        ReadRangeAck ack =
                 (ReadRangeAck) new ReadRangeRequest(d1.getId(), pid, null, new ByPosition(50, -100)).handle(d1, null);
 
         data = new SequenceOf<>(50);
@@ -745,9 +732,63 @@ public class ReadRangeRequestTest {
         assertNull(ack.getFirstSequenceNumber());
     }
 
-    private static LogRecord createLogRecord(final DateTime timestamp, final long sequenceNumber) {
-        final LogRecord record = new LogRecord(timestamp, Null.instance, null);
-        record.setSequenceNumber(sequenceNumber);
-        return record;
+    private static LogRecord createLogRecord(DateTime timestamp, long sequenceNumber) {
+        LogRecord rec = new LogRecord(timestamp, Null.instance, null);
+        rec.setSequenceNumber(sequenceNumber);
+        return rec;
+    }
+
+    // ---------- bi-3: extremely large logs — ReadRange fields accept Unsigned64 widths ----------
+
+    /**
+     * Per bi-3, Reference Index in ByPosition must accept values > 2^32-1 for devices that carry Unsigned64
+     * Total_Record_Count-style properties. UnsignedInteger is variable-length ASN.1, so the wire encoding already
+     * handles arbitrary widths. This test round-trips a value above the Unsigned32 boundary.
+     */
+    @Test
+    public void bi3_byPosition_referenceIndexOverUnsigned32_roundTrip() throws Exception {
+        UnsignedInteger big = new UnsignedInteger(0x100000000L);
+        ReadRangeRequest req = new ReadRangeRequest(
+                d1.getId(), pid, null, new ByPosition(big, new SignedInteger(1)));
+
+        ByteQueue queue = new ByteQueue();
+        req.write(queue);
+        ReadRangeRequest decoded = new ReadRangeRequest(queue);
+
+        assertEquals(req, decoded);
+    }
+
+    /**
+     * Same test for BySequenceNumber's Reference Sequence Number field.
+     */
+    @Test
+    public void bi3_bySequenceNumber_referenceIndexOverUnsigned32_roundTrip() throws Exception {
+        UnsignedInteger big = new UnsignedInteger(0x123456789L);
+        ReadRangeRequest req = new ReadRangeRequest(
+                d1.getId(), pid, null, new BySequenceNumber(big, new SignedInteger(-5)));
+
+        ByteQueue queue = new ByteQueue();
+        req.write(queue);
+        ReadRangeRequest decoded = new ReadRangeRequest(queue);
+
+        assertEquals(req, decoded);
+    }
+
+    /**
+     * First Sequence Number in the response must also accept > 2^32-1 values.
+     */
+    @Test
+    public void bi3_readRangeAck_firstSequenceNumberOverUnsigned32_roundTrip() throws Exception {
+        UnsignedInteger big = new UnsignedInteger(0xFFFFFFFF00L);
+        ReadRangeAck ack = new ReadRangeAck(d1.getId(), pid, null,
+                new ResultFlags(true, false, false), UnsignedInteger.ZERO, new SequenceOf<>(), big);
+
+        ByteQueue queue = new ByteQueue();
+        ack.write(queue);
+        ReadRangeAck decoded = (ReadRangeAck)
+                com.serotonin.bacnet4j.service.acknowledgement.AcknowledgementService.createAcknowledgementService(
+                        ReadRangeAck.TYPE_ID, queue);
+
+        assertEquals(big, decoded.getFirstSequenceNumber());
     }
 }

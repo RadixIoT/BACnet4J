@@ -35,46 +35,42 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
  * Base class for all implementations of log buffers. The class extends Encodable so that it can be one of its host
  * object's properties, but the property is not network readable. It's elements, however, are network readable via the
  * ReadRange request.
- *
- * TODO a disk-based log buffer might be nice.
- *
- * @author Matthew
+ * <p>
+ * A disk-based log buffer might be nice.
  */
-abstract public class LogBuffer<E extends ILogRecord> extends Encodable implements RangeReadable<E> {
+public abstract class LogBuffer<E extends ILogRecord> extends Encodable implements RangeReadable<E> {
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         throw new RuntimeException("not actually encodable");
     }
 
     @Override
-    public void write(final ByteQueue queue, final int contextId) {
+    public void write(ByteQueue queue, int contextId) {
         throw new RuntimeException("not actually encodable");
     }
-
-    /**
-     * Returns the current size of the buffer.
-     */
-    @Override
-    abstract public int size();
 
     /**
      * Clears the buffer of all of its records.
      */
-    abstract public void clear();
+    public abstract void clear();
 
     /**
      * Adds the given record to the buffer
      */
-    abstract public void add(E record);
+    public abstract void add(E rec);
 
     /**
      * Removes the oldest record from the buffer, or does nothing if the buffer is empty.
      */
-    abstract public void remove();
+    public abstract void remove();
 
     /**
-     * Returns the record at the given index where 0 is the oldest.
+     * Reports whether the buffer has room for another record. Default implementation returns true — the in-memory
+     * buffer is bounded only by JVM heap. Storage-backed implementations override to signal exhaustion, which drives
+     * the LOG_BUFFER_FULL / discard-oldest behavior when Buffer_Size is the reserved sentinel value 2^32-1 per
+     * addendum 135-2016bi-3.
      */
-    @Override
-    abstract public E get(int index);
+    public boolean hasSpaceForAnotherRecord() {
+        return true;
+    }
 }

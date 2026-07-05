@@ -135,12 +135,20 @@ public class EventLogObject extends LogBase {
             Boolean oldStopWhenFull = (Boolean) oldValue;
             Boolean stopWhenFull = (Boolean) newValue;
             if (!oldStopWhenFull.booleanValue() && stopWhenFull.booleanValue()) {
-                // Turning StopWhenFull on.
+                // Turning StopWhenFull on. If the buffer is full — either by Record_Count reaching Buffer_Size,
+                // or (per bi-3) Buffer_Size holds the unknown-size sentinel and no space is available — discard
+                // the oldest record, set Enable to FALSE, record the event.
                 Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
-                if (buffer.size() >= bufferSize.intValue()) {
+                if (isBufferFull(bufferSize)) {
                     synchronized (buffer) {
-                        while (buffer.size() >= bufferSize.intValue())
+                        if (bufferSize.longValue() == BUFFER_SIZE_UNKNOWN) {
+                            // Sentinel mode: fullness is signaled by the buffer, not by a fixed count. A single
+                            // discard is the spec-mandated action.
                             buffer.remove();
+                        } else {
+                            while (buffer.size() >= bufferSize.intValue())
+                                buffer.remove();
+                        }
                     }
                     updateRecordCount();
                     writePropertyInternal(PropertyIdentifier.enable, Boolean.FALSE);
@@ -148,10 +156,13 @@ public class EventLogObject extends LogBase {
             }
         } else if (PropertyIdentifier.bufferSize.equals(pid)) {
             Unsigned32 bufferSize = (Unsigned32) newValue;
-            // In case the buffer size was reduced, remove extra entries in the buffer.
-            synchronized (buffer) {
-                while (buffer.size() >= bufferSize.intValue())
-                    buffer.remove();
+            // In case the buffer size was reduced, remove extra entries in the buffer. Skip when the value is the
+            // reserved "unknown size" sentinel — that means there is no fixed cap.
+            if (bufferSize.longValue() != BUFFER_SIZE_UNKNOWN) {
+                synchronized (buffer) {
+                    while (buffer.size() >= bufferSize.intValue())
+                        buffer.remove();
+                }
             }
             updateRecordCount();
         }
