@@ -39,6 +39,7 @@ import org.junit.Test;
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
+import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.Destination;
 import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
 import com.serotonin.bacnet4j.type.constructed.LimitEnable;
@@ -77,12 +78,12 @@ public class AnalogInputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void intrinsicReporting() throws Exception {
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         ai.supportIntrinsicReporting(1, 17, 100, 20, 5, 120, 0, new LimitEnable(true, true),
@@ -217,12 +218,12 @@ public class AnalogInputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void fault() throws Exception {
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         ai.supportIntrinsicReporting(1, 17, 100, 20, 5, 120, 0, new LimitEnable(true, true),
@@ -238,7 +239,7 @@ public class AnalogInputObjectTest extends AbstractTest {
         assertEquals(new StatusFlags(true, true, false, false), ai.readProperty(PropertyIdentifier.statusFlags));
 
         // Ensure that a proper looking event notification was received.
-        final EventNotifListener.Notif notif = listener.removeNotif();
+        EventNotifListener.Notif notif = listener.removeNotif();
         assertEquals(new UnsignedInteger(10), notif.processIdentifier());
         assertEquals(rd1.getObjectIdentifier(), notif.initiatingDevice());
         assertEquals(ai.getId(), notif.eventObjectIdentifier());
@@ -335,5 +336,207 @@ public class AnalogInputObjectTest extends AbstractTest {
         assertNull(ai.readProperty(PropertyIdentifier.eventAlgorithmInhibitRef));
         assertNull(ai.readProperty(PropertyIdentifier.eventAlgorithmInhibit));
         assertNull(ai.readProperty(PropertyIdentifier.timeDelayNormal));
+    }
+
+    /**
+     * Addendum 135-2016br-6: when Event_Message_Texts_Config carries a non-empty entry for a
+     * transition, the notification's Message Text shall be derived from that entry, and the
+     * Message Text conveyed shall be stored in the corresponding Event_Message_Texts array
+     * element. Untouched Event_Message_Texts slots remain empty per Clause 12.x.25.
+     */
+    @Test
+    public void br6_messageTextDerivedFromEventMessageTextsConfig() throws Exception {
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
+                new EventTransitionBits(true, true, true)));
+
+        var listener = new EventNotifListener();
+        d2.getEventHandler().addListener(listener);
+
+        ai.supportIntrinsicReporting(1, 17, 100, 20, 5, 120, 0, new LimitEnable(true, true),
+                new EventTransitionBits(true, true, true), NotifyType.alarm, 2);
+
+        // Baseline: Event_Message_Texts is initialized to three empty strings.
+        BACnetArray<CharacterString> emtBefore = ai.readProperty(PropertyIdentifier.eventMessageTexts);
+        assertEquals(CharacterString.EMPTY, emtBefore.getBase1(EventState.offnormal.getTransitionIndex()));
+        assertEquals(CharacterString.EMPTY, emtBefore.getBase1(EventState.fault.getTransitionIndex()));
+        assertEquals(CharacterString.EMPTY, emtBefore.getBase1(EventState.normal.getTransitionIndex()));
+
+        // Configure Event_Message_Texts_Config with distinct entries per transition.
+        var offNormalText = new CharacterString("went off normal");
+        var faultText = new CharacterString("faulted");
+        var normalText = new CharacterString("recovered");
+        ai.writePropertyInternal(PropertyIdentifier.eventMessageTextsConfig,
+                new BACnetArray<>(offNormalText, faultText, normalText));
+
+        // Drive the value out of range and wait for the to-offnormal transition.
+        ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(10));
+        clock.plusMillis(1100);
+        awaitEquals(1, listener::getNotifCount);
+        assertEquals(EventState.lowLimit, ai.readProperty(PropertyIdentifier.eventState));
+
+        var notif = listener.removeNotif();
+        assertEquals(EventState.lowLimit, notif.toState());
+        // Notification Message Text is derived from the offnormal slot of Event_Message_Texts_Config.
+        assertEquals(offNormalText, notif.messageText());
+
+        // Event_Message_Texts[offnormal] reflects the transmitted Message Text; the two other slots
+        // remain empty because no transition into them has occurred.
+        BACnetArray<CharacterString> emt = ai.readProperty(PropertyIdentifier.eventMessageTexts);
+        assertEquals(offNormalText, emt.getBase1(EventState.offnormal.getTransitionIndex()));
+        assertEquals(CharacterString.EMPTY, emt.getBase1(EventState.fault.getTransitionIndex()));
+        assertEquals(CharacterString.EMPTY, emt.getBase1(EventState.normal.getTransitionIndex()));
+    }
+
+    /**
+     * Br-6: with the pragmatic default (Event_Message_Texts_Config initialized to empty entries),
+     * the notification's Message Text parameter shall not be sent — an empty configured entry is
+     * treated as "no configured message." Event_Message_Texts is not overwritten in that case, so
+     * its per-transition slots remain empty per Clause 12.x.25.
+     */
+    @Test
+    public void br6_emptyEventMessageTextsConfigYieldsNullMessageText() throws Exception {
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
+                new EventTransitionBits(true, true, true)));
+
+        var listener = new EventNotifListener();
+        d2.getEventHandler().addListener(listener);
+
+        ai.supportIntrinsicReporting(1, 17, 100, 20, 5, 120, 0, new LimitEnable(true, true),
+                new EventTransitionBits(true, true, true), NotifyType.alarm, 2);
+        // Do not modify Event_Message_Texts_Config — leave the default empty entries.
+
+        ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(10));
+        clock.plusMillis(1100);
+        awaitEquals(1, listener::getNotifCount);
+
+        var notif = listener.removeNotif();
+        assertNull(notif.messageText());
+
+        // Event_Message_Texts is not overwritten — all slots remain empty.
+        BACnetArray<CharacterString> emt = ai.readProperty(PropertyIdentifier.eventMessageTexts);
+        assertEquals(CharacterString.EMPTY, emt.getBase1(EventState.offnormal.getTransitionIndex()));
+        assertEquals(CharacterString.EMPTY, emt.getBase1(EventState.fault.getTransitionIndex()));
+        assertEquals(CharacterString.EMPTY, emt.getBase1(EventState.normal.getTransitionIndex()));
+    }
+
+    /**
+     * Br-6: over the course of multiple transitions each slot of Event_Message_Texts is populated
+     * from the corresponding slot of Event_Message_Texts_Config independently. This test drives an
+     * offnormal → normal → offnormal path and verifies each notification and each Event_Message_Texts
+     * slot in turn.
+     */
+    @Test
+    public void br6_messageTextConfigPerTransitionIsIndependent() throws Exception {
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
+                new EventTransitionBits(true, true, true)));
+
+        var listener = new EventNotifListener();
+        d2.getEventHandler().addListener(listener);
+
+        ai.supportIntrinsicReporting(1, 17, 100, 20, 5, 120, 0, new LimitEnable(true, true),
+                new EventTransitionBits(true, true, true), NotifyType.alarm, 2);
+
+        var offNormalText = new CharacterString("out of range");
+        var normalText = new CharacterString("back to normal");
+        // Fault slot is deliberately left empty to prove that "empty entry means no message" is
+        // per-slot, independent of other slots being configured.
+        ai.writePropertyInternal(PropertyIdentifier.eventMessageTextsConfig,
+                new BACnetArray<>(offNormalText, CharacterString.EMPTY, normalText));
+
+        // Drive to offnormal.
+        ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(10));
+        clock.plusMillis(1100);
+        awaitEquals(1, listener::getNotifCount);
+        var toOffnormal = listener.removeNotif();
+        assertEquals(EventState.lowLimit, toOffnormal.toState());
+        assertEquals(offNormalText, toOffnormal.messageText());
+
+        // Drive back to normal.
+        ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(50));
+        clock.plusMillis(120_500);
+        awaitEquals(1, listener::getNotifCount);
+        var toNormal = listener.removeNotif();
+        assertEquals(EventState.normal, toNormal.toState());
+        assertEquals(normalText, toNormal.messageText());
+
+        // Event_Message_Texts now carries the two texts we sent; the fault slot remains empty because
+        // no fault transition ever occurred (and its config entry was empty anyway).
+        BACnetArray<CharacterString> emt = ai.readProperty(PropertyIdentifier.eventMessageTexts);
+        assertEquals(offNormalText, emt.getBase1(EventState.offnormal.getTransitionIndex()));
+        assertEquals(CharacterString.EMPTY, emt.getBase1(EventState.fault.getTransitionIndex()));
+        assertEquals(normalText, emt.getBase1(EventState.normal.getTransitionIndex()));
+    }
+
+    /**
+     * Br-6: Event_Message_Texts_Config is writable via the standard WriteProperty path. Regression
+     * guard confirming the property is not gated by the read-only mixin that also guards
+     * Event_Message_Texts.
+     */
+    @Test
+    public void br6_eventMessageTextsConfigIsWritableViaWriteProperty() throws Exception {
+        ai.supportIntrinsicReporting(1, 17, 100, 20, 5, 120, 0, new LimitEnable(true, true),
+                new EventTransitionBits(true, true, true), NotifyType.alarm, 2);
+
+        var offNormalText = new CharacterString("configured offnormal");
+        var faultText = new CharacterString("configured fault");
+        var normalText = new CharacterString("configured normal");
+        ai.writeProperty(null, new PropertyValue(PropertyIdentifier.eventMessageTextsConfig, null,
+                new BACnetArray<>(offNormalText, faultText, normalText), null));
+
+        BACnetArray<CharacterString> emtc = ai.readProperty(PropertyIdentifier.eventMessageTextsConfig);
+        assertEquals(offNormalText, emtc.getBase1(EventState.offnormal.getTransitionIndex()));
+        assertEquals(faultText, emtc.getBase1(EventState.fault.getTransitionIndex()));
+        assertEquals(normalText, emtc.getBase1(EventState.normal.getTransitionIndex()));
+
+        // Confirm Event_Message_Texts remains read-only via the same path (regression guard for
+        // EventReportingMixin.validateProperty).
+        assertBACnetServiceException(() -> ai.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.eventMessageTexts, null,
+                                new BACnetArray<>(CharacterString.EMPTY, CharacterString.EMPTY, CharacterString.EMPTY),
+                                null)),
+                ErrorClass.property, ErrorCode.writeAccessDenied);
+    }
+
+    /**
+     * Br-6: acknowledging a fault-state notification shall carry EventType == CHANGE_OF_RELIABILITY
+     * (Clauses 13.8.1.1.7 / 13.9.1.1.7). Previously the ACK path used the object's configured event
+     * algorithm's EventType regardless of the acknowledged state.
+     */
+    @Test
+    public void br6_ackOfFaultTransitionUsesChangeOfReliabilityEventType() throws Exception {
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
+                new EventTransitionBits(true, true, true)));
+        // Ack must be required for the ack notification to be dispatched by acknowledgeAlarm.
+        nc.writePropertyInternal(PropertyIdentifier.ackRequired, new EventTransitionBits(true, true, true));
+
+        var listener = new EventNotifListener();
+        d2.getEventHandler().addListener(listener);
+
+        ai.supportIntrinsicReporting(1, 17, 100, 20, 5, 120, 0, new LimitEnable(true, true),
+                new EventTransitionBits(true, true, true), NotifyType.alarm, 2);
+
+        // Drive to fault and consume the notification.
+        ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(-5));
+        awaitEquals(1, listener::getNotifCount);
+        var faultNotif = listener.removeNotif();
+        assertEquals(EventState.fault, faultNotif.toState());
+        assertEquals(EventType.changeOfReliability, faultNotif.eventType());
+
+        // Acknowledge the fault transition.
+        var ackTime = new TimeStamp(new DateTime(d1));
+        ai.acknowledgeAlarm(faultNotif.processIdentifier(), faultNotif.toState(), faultNotif.timeStamp(),
+                new CharacterString("ack"), ackTime);
+        awaitEquals(1, listener::getNotifCount);
+        var ack = listener.removeNotif();
+
+        // Per br-6, the ACK notification's EventType is CHANGE_OF_RELIABILITY when the acknowledged
+        // state is FAULT — not the object's configured event-algorithm type (which for AI is out-of-range).
+        assertEquals(NotifyType.ackNotification, ack.notifyType());
+        assertEquals(EventState.fault, ack.toState());
+        assertEquals(EventType.changeOfReliability, ack.eventType());
     }
 }
