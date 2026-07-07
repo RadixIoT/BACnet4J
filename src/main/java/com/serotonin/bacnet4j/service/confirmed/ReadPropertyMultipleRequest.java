@@ -82,6 +82,9 @@ public class ReadPropertyMultipleRequest extends ConfirmedRequestService {
         for (ReadAccessSpecification req : listOfReadAccessSpecs) {
             var oid = req.getObjectIdentifier();
             var obj = localDevice.getObject(oid, true);
+            if (obj != null) {
+                oid = obj.getId();
+            }
             var results = new ArrayList<Result>();
             for (PropertyReference propRef : req.getListOfPropertyReferences()) {
                 addProperty(obj, results, propRef.getPropertyIdentifier(), propRef.getPropertyArrayIndex());
