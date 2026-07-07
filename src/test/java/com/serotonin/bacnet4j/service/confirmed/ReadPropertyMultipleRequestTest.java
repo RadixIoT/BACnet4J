@@ -43,8 +43,6 @@ import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkUtils;
-import java.util.Set;
-
 import com.serotonin.bacnet4j.obj.GroupObject;
 import com.serotonin.bacnet4j.obj.NetworkPortObject;
 import com.serotonin.bacnet4j.service.acknowledgement.ReadPropertyMultipleAck;
@@ -68,6 +66,7 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
+
 
 public class ReadPropertyMultipleRequestTest {
     private final TestNetworkMap map = new TestNetworkMap();

@@ -29,11 +29,11 @@ package com.serotonin.bacnet4j.service.confirmed;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Set;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.Set;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.TestUtils;
