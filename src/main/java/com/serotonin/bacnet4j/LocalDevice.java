@@ -523,8 +523,13 @@ public class LocalDevice implements AutoCloseable {
      *-----------------------------------------------------------
      -----------------------------------------------------------*/
 
-    public BACnetObject getObjectRequired(ObjectIdentifier id) throws BACnetServiceException {
-        BACnetObject o = getObject(id);
+    public <T extends BACnetObject> T getObjectRequired(ObjectIdentifier id) throws BACnetServiceException {
+        return getObjectRequired(id, false);
+    }
+
+    public <T extends BACnetObject> T getObjectRequired(ObjectIdentifier id, boolean allowWildcard)
+            throws BACnetServiceException {
+        T o = getObject(id, allowWildcard);
         if (o == null)
             throw new BACnetServiceException(ErrorClass.object, ErrorCode.unknownObject);
         return o;
@@ -534,20 +539,31 @@ public class LocalDevice implements AutoCloseable {
         return localObjects;
     }
 
-    @SuppressWarnings("unchecked")
     public <T extends BACnetObject> T getObject(ObjectIdentifier id) {
-        ObjectIdentifier oidToFind = id;
-        // Treat calls for device 0x3FFFFF as calls for the local device object. See 15.5.2.
-        if (id.getObjectType().equals(ObjectType.device) && id.getInstanceNumber() == ObjectIdentifier.UNINITIALIZED) {
-            oidToFind = new ObjectIdentifier(ObjectType.device, getInstanceNumber());
+        return getObject(id, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T extends BACnetObject> T getObject(ObjectIdentifier id, boolean allowWildcard) {
+        BACnetObject obj = null;
+        if (id.getInstanceNumber() == ObjectIdentifier.UNINITIALIZED && allowWildcard) {
+            // 15.5.2.
+            if (id.getObjectType().equals(ObjectType.device)) {
+                obj = deviceObject;
+            } else if (id.getObjectType().equals(ObjectType.networkPort)) {
+                // BACnet4J has only one transport and one network, and so returning the first network port object found
+                // is sufficient.
+                obj = localObjects.stream()
+                        .filter(o -> o.getId().getObjectType().equals(ObjectType.networkPort))
+                        .findFirst().orElse(null);
+            }
+        } else {
+            obj = localObjects.stream()
+                    .filter(o -> o.getId().equals(id))
+                    .findFirst().orElse(null);
         }
 
-        for (BACnetObject obj : localObjects) {
-            if (obj.getId().equals(oidToFind))
-                return (T) obj;
-        }
-
-        return null;
+        return (T) obj;
     }
 
     public BACnetObject getObject(String name) {
@@ -658,12 +674,13 @@ public class LocalDevice implements AutoCloseable {
      * Finds a remote device for the given instanceNumber by notifying a given callback. If a cached instance is found
      * the callback is called by the calling thread. Otherwise, a finder will be used to try to find it. If this is
      * successful the device will be cached.
-     *
+     * <p>
      * The benefits of this method are: 1) It will cache the remote device if it is found 2) No blocking is performed
      *
      * @param instanceNumber  the instance number of the desired device
      * @param callback        the callback with which to receive the device
      * @param timeoutCallback the callback to notify of a timeout
+     * @param finallyCallback the callback to call in any case
      * @param timeout         the timeout scalar
      * @param unit            the timeout unit
      */
@@ -703,10 +720,10 @@ public class LocalDevice implements AutoCloseable {
      * Returns a future to get the remote device for the given instanceNumber. If a cached instance is found the future
      * will be set immediately. Otherwise, a finder will be used to try to find it. If this is successful the device
      * will be cached.
-     *
+     * <p>
      * The benefits of this method are: 1) It will cache the remote device if it is found. 2) It returns a cancelable
      * future.
-     *
+     * <p>
      * If multiple threads are likely to request a remote device reference around the same time, it may be better to use
      * the blocking method below.
      *
@@ -925,7 +942,6 @@ public class LocalDevice implements AutoCloseable {
             case ALWAYS -> d -> true;
             case NEVER -> d -> false;
             case IF_EXPIRED -> d -> remoteDeviceCache.getCachedEntity(d.getInstanceNumber()) == null;
-            default -> throw new IllegalArgumentException("Unknown value: " + cacheUpdate);
         };
     }
 
@@ -1141,15 +1157,13 @@ public class LocalDevice implements AutoCloseable {
         synchronized (communicationControlMonitor) {
             communicationControlState = enableDisable;
             cancelCommunicationControlFuture();
-            if (EnableDisable.disableInitiation.equals(enableDisable)) {
-                if (minutes > 0) {
-                    communicationControlFuture = schedule(() -> {
-                        synchronized (communicationControlMonitor) {
-                            communicationControlState = EnableDisable.enable;
-                            communicationControlFuture = null;
-                        }
-                    }, minutes, TimeUnit.MINUTES);
-                }
+            if (EnableDisable.disableInitiation.equals(enableDisable) && minutes > 0) {
+                communicationControlFuture = schedule(() -> {
+                    synchronized (communicationControlMonitor) {
+                        communicationControlState = EnableDisable.enable;
+                        communicationControlFuture = null;
+                    }
+                }, minutes, TimeUnit.MINUTES);
             }
         }
     }

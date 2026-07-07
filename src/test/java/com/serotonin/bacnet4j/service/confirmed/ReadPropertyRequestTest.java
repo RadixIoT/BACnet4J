@@ -33,19 +33,25 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Set;
+
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkUtils;
+import com.serotonin.bacnet4j.obj.NetworkPortObject;
 import com.serotonin.bacnet4j.service.acknowledgement.ReadPropertyAck;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
+import com.serotonin.bacnet4j.type.enumerated.NetworkType;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.type.enumerated.ProtocolLevel;
+import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
@@ -116,5 +122,24 @@ public class ReadPropertyRequestTest {
                 () -> new ReadPropertyRequest(new ObjectIdentifier(ObjectType.device, 4194303),
                         PropertyIdentifier.optional).handle(localDevice, addr),
                 ErrorClass.services, ErrorCode.inconsistentParameters);
+    }
+
+    /**
+     * Per Clause 15.5.2 (base standard, reinforced by addendum 135-2016br-8): a ReadProperty with
+     * (NETWORK_PORT, 4194303) shall be treated as the local Network Port object representing the
+     * network port through which the request was received.
+     */
+    @Test
+    public void networkPortWildcardInstance() throws Exception {
+        NetworkPortObject npo = localDevice.addObject(new NetworkPortObject(localDevice, 42, "port42",
+                false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
+
+        ReadPropertyAck ack = (ReadPropertyAck) new ReadPropertyRequest(
+                new ObjectIdentifier(ObjectType.networkPort, ObjectIdentifier.UNINITIALIZED),
+                PropertyIdentifier.objectName)
+                .handle(localDevice, addr);
+
+        assertEquals(npo.getId(), ack.getEventObjectIdentifier());
+        assertEquals(new CharacterString("port42"), ack.getValue());
     }
 }

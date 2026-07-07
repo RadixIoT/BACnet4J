@@ -39,7 +39,6 @@ import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
-import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.RejectReason;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
@@ -53,13 +52,13 @@ public class ReadPropertyRequest extends ConfirmedRequestService {
     private final PropertyIdentifier propertyIdentifier;
     private UnsignedInteger propertyArrayIndex;
 
-    public ReadPropertyRequest(final ObjectIdentifier objectIdentifier, final PropertyIdentifier propertyIdentifier) {
+    public ReadPropertyRequest(ObjectIdentifier objectIdentifier, PropertyIdentifier propertyIdentifier) {
         this.objectIdentifier = objectIdentifier;
         this.propertyIdentifier = propertyIdentifier;
     }
 
-    public ReadPropertyRequest(final ObjectIdentifier objectIdentifier, final PropertyIdentifier propertyIdentifier,
-            final UnsignedInteger propertyArrayIndex) {
+    public ReadPropertyRequest(ObjectIdentifier objectIdentifier, PropertyIdentifier propertyIdentifier,
+            UnsignedInteger propertyArrayIndex) {
         this.objectIdentifier = objectIdentifier;
         this.propertyIdentifier = propertyIdentifier;
         this.propertyArrayIndex = propertyArrayIndex;
@@ -71,13 +70,13 @@ public class ReadPropertyRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, objectIdentifier, 0);
         write(queue, propertyIdentifier, 1);
         writeOptional(queue, propertyArrayIndex, 2);
     }
 
-    ReadPropertyRequest(final ByteQueue queue) throws BACnetException {
+    ReadPropertyRequest(ByteQueue queue) throws BACnetException {
         try {
             objectIdentifier = read(queue, ObjectIdentifier.class, 0);
             propertyIdentifier = read(queue, PropertyIdentifier.class, 1);
@@ -92,28 +91,22 @@ public class ReadPropertyRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public AcknowledgementService handle(final LocalDevice localDevice, final Address from) throws BACnetException {
+    public AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException {
         Encodable prop;
-        ObjectIdentifier oid = objectIdentifier;
+        BACnetObject obj;
         try {
-            //Handling for unitialized device request. See 15.5.2 and standard test 135.1-2013 9.18.1.3
-            if (oid.getObjectType()
-                    .equals(ObjectType.device) && oid.getInstanceNumber() == ObjectIdentifier.UNINITIALIZED) {
-                oid = new ObjectIdentifier(ObjectType.device, localDevice.getInstanceNumber());
-            }
-
             // Handling for special properties
             if (propertyIdentifier.isOneOf(PropertyIdentifier.all, PropertyIdentifier.required,
                     PropertyIdentifier.optional)) {
                 throw new BACnetServiceException(ErrorClass.services, ErrorCode.inconsistentParameters);
             }
 
-            final BACnetObject obj = localDevice.getObjectRequired(oid);
+            obj = localDevice.getObjectRequired(objectIdentifier, true);
             prop = obj.readPropertyRequired(propertyIdentifier, propertyArrayIndex);
-        } catch (final BACnetServiceException e) {
+        } catch (BACnetServiceException e) {
             throw new BACnetErrorException(getChoiceId(), e);
         }
-        return new ReadPropertyAck(oid, propertyIdentifier, propertyArrayIndex, prop);
+        return new ReadPropertyAck(obj.getId(), propertyIdentifier, propertyArrayIndex, prop);
     }
 
     public ObjectIdentifier getObjectIdentifier() {
@@ -136,7 +129,7 @@ public class ReadPropertyRequest extends ConfirmedRequestService {
 
     @Override
     public int hashCode() {
-        final int PRIME = 31;
+        int PRIME = 31;
         int result = 1;
         result = PRIME * result + (objectIdentifier == null ? 0 : objectIdentifier.hashCode());
         result = PRIME * result + (propertyArrayIndex == null ? 0 : propertyArrayIndex.hashCode());
@@ -145,14 +138,14 @@ public class ReadPropertyRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public boolean equals(final Object obj) {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final ReadPropertyRequest other = (ReadPropertyRequest) obj;
+        ReadPropertyRequest other = (ReadPropertyRequest) obj;
         if (objectIdentifier == null) {
             if (other.objectIdentifier != null)
                 return false;
