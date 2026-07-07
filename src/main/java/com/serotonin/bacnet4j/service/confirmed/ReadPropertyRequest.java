@@ -27,6 +27,8 @@
 
 package com.serotonin.bacnet4j.service.confirmed;
 
+import java.util.Objects;
+
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
@@ -128,39 +130,16 @@ public class ReadPropertyRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public int hashCode() {
-        int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (objectIdentifier == null ? 0 : objectIdentifier.hashCode());
-        result = PRIME * result + (propertyArrayIndex == null ? 0 : propertyArrayIndex.hashCode());
-        result = PRIME * result + (propertyIdentifier == null ? 0 : propertyIdentifier.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (!(o instanceof ReadPropertyRequest that))
+            return false;
+        return Objects.equals(objectIdentifier, that.objectIdentifier) && Objects.equals(
+                propertyIdentifier, that.propertyIdentifier) && Objects.equals(propertyArrayIndex,
+                that.propertyArrayIndex);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        ReadPropertyRequest other = (ReadPropertyRequest) obj;
-        if (objectIdentifier == null) {
-            if (other.objectIdentifier != null)
-                return false;
-        } else if (!objectIdentifier.equals(other.objectIdentifier))
-            return false;
-        if (propertyArrayIndex == null) {
-            if (other.propertyArrayIndex != null)
-                return false;
-        } else if (!propertyArrayIndex.equals(other.propertyArrayIndex))
-            return false;
-        if (propertyIdentifier == null) {
-            if (other.propertyIdentifier != null)
-                return false;
-        } else if (!propertyIdentifier.equals(other.propertyIdentifier))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(objectIdentifier, propertyIdentifier, propertyArrayIndex);
     }
 }

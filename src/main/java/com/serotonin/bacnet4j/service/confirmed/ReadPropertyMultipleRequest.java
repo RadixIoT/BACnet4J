@@ -29,6 +29,7 @@ package com.serotonin.bacnet4j.service.confirmed;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import com.serotonin.bacnet4j.LocalDevice;
@@ -108,28 +109,15 @@ public class ReadPropertyMultipleRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public int hashCode() {
-        int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (listOfReadAccessSpecs == null ? 0 : listOfReadAccessSpecs.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (!(o instanceof ReadPropertyMultipleRequest that))
+            return false;
+        return Objects.equals(listOfReadAccessSpecs, that.listOfReadAccessSpecs);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        ReadPropertyMultipleRequest other = (ReadPropertyMultipleRequest) obj;
-        if (listOfReadAccessSpecs == null) {
-            if (other.listOfReadAccessSpecs != null)
-                return false;
-        } else if (!listOfReadAccessSpecs.equals(other.listOfReadAccessSpecs))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hashCode(listOfReadAccessSpecs);
     }
 
     @Override
