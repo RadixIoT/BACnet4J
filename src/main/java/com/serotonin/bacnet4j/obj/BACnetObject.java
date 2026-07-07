@@ -69,6 +69,7 @@ import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
+import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -94,20 +95,19 @@ public class BACnetObject {
     // Configuration
     private boolean deletable;
 
-    public BACnetObject(final LocalDevice localDevice, final ObjectType type, final int instanceNumber) {
+    public BACnetObject(LocalDevice localDevice, ObjectType type, int instanceNumber) {
         this(localDevice, type, instanceNumber, null);
     }
 
-    public BACnetObject(final LocalDevice localDevice, final ObjectType type, final int instanceNumber,
-            final String name) {
+    public BACnetObject(LocalDevice localDevice, ObjectType type, int instanceNumber, String name) {
         this(localDevice, new ObjectIdentifier(type, instanceNumber), name);
     }
 
-    public BACnetObject(final LocalDevice localDevice, final ObjectIdentifier id) {
+    public BACnetObject(LocalDevice localDevice, ObjectIdentifier id) {
         this(localDevice, id, null);
     }
 
-    public BACnetObject(final LocalDevice localDevice, final ObjectIdentifier id, final String name) {
+    public BACnetObject(LocalDevice localDevice, ObjectIdentifier id, String name) {
         Objects.requireNonNull(localDevice);
         Objects.requireNonNull(id);
 
@@ -136,7 +136,7 @@ public class BACnetObject {
     }
 
     public String getObjectName() {
-        final CharacterString name = get(PropertyIdentifier.objectName);
+        CharacterString name = get(PropertyIdentifier.objectName);
         if (name == null)
             return null;
         return name.getValue();
@@ -150,7 +150,7 @@ public class BACnetObject {
         return deletable;
     }
 
-    public void setDeletable(final boolean deletable) {
+    public void setDeletable(boolean deletable) {
         this.deletable = deletable;
     }
 
@@ -160,7 +160,7 @@ public class BACnetObject {
     //
     public final void initialize() {
         // Notify the mixins
-        for (final AbstractMixin mixin : mixins) {
+        for (AbstractMixin mixin : mixins) {
             mixin.initialize();
         }
         initializeImpl();
@@ -175,7 +175,7 @@ public class BACnetObject {
      */
     public final void terminate() {
         // Notify the mixins
-        for (final AbstractMixin mixin : mixins) {
+        for (AbstractMixin mixin : mixins) {
             mixin.terminate();
         }
         terminateImpl();
@@ -189,11 +189,11 @@ public class BACnetObject {
     //
     // Listeners
     //
-    public void addListener(final BACnetObjectListener l) {
+    public void addListener(BACnetObjectListener l) {
         listeners.add(l);
     }
 
-    public void removeListener(final BACnetObjectListener l) {
+    public void removeListener(BACnetObjectListener l) {
         listeners.remove(l);
     }
 
@@ -201,11 +201,11 @@ public class BACnetObject {
     //
     // Mixins
     //
-    protected final void addMixin(final AbstractMixin mixin) {
+    protected final void addMixin(AbstractMixin mixin) {
         addMixin(mixins.size(), mixin);
     }
 
-    protected final void addMixin(int index, final AbstractMixin mixin) {
+    protected final void addMixin(int index, AbstractMixin mixin) {
         mixins.add(index, mixin);
 
         if (mixin instanceof HasStatusFlagsMixin m)
@@ -218,7 +218,7 @@ public class BACnetObject {
             changeOfValueMixin = m;
     }
 
-    public void setOverridden(final boolean b) {
+    public void setOverridden(boolean b) {
         if (hasStatusFlagsMixin != null)
             hasStatusFlagsMixin.setOverridden(b);
         if (commandableMixin != null)
@@ -235,7 +235,7 @@ public class BACnetObject {
 
     //
     // Commandable
-    protected void _supportCommandable(final Encodable relinquishDefault) {
+    protected void _supportCommandable(Encodable relinquishDefault) {
         if (commandableMixin != null)
             commandableMixin.supportCommandable(relinquishDefault);
     }
@@ -270,9 +270,8 @@ public class BACnetObject {
 
     //
     // Intrinsic reporting
-    public void acknowledgeAlarm(final UnsignedInteger acknowledgingProcessIdentifier,
-            final EventState eventStateAcknowledged, final TimeStamp timeStamp,
-            final CharacterString acknowledgmentSource, final TimeStamp timeOfAcknowledgment)
+    public void acknowledgeAlarm(UnsignedInteger acknowledgingProcessIdentifier, EventState eventStateAcknowledged,
+            TimeStamp timeStamp, CharacterString acknowledgmentSource, TimeStamp timeOfAcknowledgment)
             throws BACnetServiceException {
         if (eventReportingMixin == null)
             throw new BACnetServiceException(ErrorClass.object, ErrorCode.noAlarmConfigured);
@@ -282,7 +281,7 @@ public class BACnetObject {
 
     //
     // COVs
-    protected void _supportCovReporting(final Real covIncrement, final UnsignedInteger covPeriod) {
+    protected void _supportCovReporting(Real covIncrement, UnsignedInteger covPeriod) {
         addMixin(new CovReportingMixin(this, covIncrement, covPeriod));
     }
 
@@ -298,10 +297,9 @@ public class BACnetObject {
         return null;
     }
 
-    public EnrollmentSummary getEnrollmentSummary(final AcknowledgmentFilter acknowledgmentFilter,
-            final RecipientProcess enrollmentFilter, final EventStateFilter eventStateFilter,
-            final EventType eventTypeFilter, final PriorityFilter priorityFilter,
-            final UnsignedInteger notificationClassFilter) {
+    public EnrollmentSummary getEnrollmentSummary(AcknowledgmentFilter acknowledgmentFilter,
+            RecipientProcess enrollmentFilter, EventStateFilter eventStateFilter, EventType eventTypeFilter,
+            PriorityFilter priorityFilter, UnsignedInteger notificationClassFilter) {
         if (eventReportingMixin != null)
             return eventReportingMixin.getEnrollmentSummary(acknowledgmentFilter, enrollmentFilter,
                     eventStateFilter, eventTypeFilter, priorityFilter, notificationClassFilter);
@@ -310,25 +308,24 @@ public class BACnetObject {
 
     //
     // COV
-    public void addCovSubscription(final Address from, final UnsignedInteger subscriberProcessIdentifier,
-            final Boolean issueConfirmedNotifications, final UnsignedInteger lifetime,
-            final PropertyReference monitoredPropertyIdentifier, final Real covIncrement)
-            throws BACnetServiceException {
+    public void addCovSubscription(Address from, UnsignedInteger subscriberProcessIdentifier,
+            Boolean issueConfirmedNotifications, UnsignedInteger lifetime,
+            PropertyReference monitoredPropertyIdentifier, Real covIncrement) throws BACnetServiceException {
         if (changeOfValueMixin == null)
             throw new BACnetServiceException(ErrorClass.object, ErrorCode.optionalFunctionalityNotSupported);
         changeOfValueMixin.addCovSubscription(from, subscriberProcessIdentifier, issueConfirmedNotifications, lifetime,
                 monitoredPropertyIdentifier, covIncrement);
     }
 
-    public void removeCovSubscription(final Address from, final UnsignedInteger subscriberProcessIdentifier,
-            final PropertyReference monitoredPropertyIdentifier) {
+    public void removeCovSubscription(Address from, UnsignedInteger subscriberProcessIdentifier,
+            PropertyReference monitoredPropertyIdentifier) {
         if (changeOfValueMixin != null)
             changeOfValueMixin.removeCovSubscription(from, subscriberProcessIdentifier, monitoredPropertyIdentifier);
     }
 
     //
     // Persistence
-    public String getPersistenceKey(final PropertyIdentifier pid) {
+    public String getPersistenceKey(PropertyIdentifier pid) {
         return objectType.toString() + "." + getInstanceId() + "." + pid;
     }
 
@@ -342,7 +339,7 @@ public class BACnetObject {
      * all mixins and retrieves the property directly from the internal map.
      */
     @SuppressWarnings("unchecked")
-    public <T extends Encodable> T get(final PropertyIdentifier pid) {
+    public <T extends Encodable> T get(PropertyIdentifier pid) {
         return (T) properties.get(pid);
     }
 
@@ -353,9 +350,9 @@ public class BACnetObject {
      * @throws BACnetServiceException if the object objected to the read
      */
     @SuppressWarnings("unchecked")
-    public final <T extends Encodable> T readProperty(final PropertyIdentifier pid) throws BACnetServiceException {
+    public final <T extends Encodable> T readProperty(PropertyIdentifier pid) throws BACnetServiceException {
         // Give the mixins notice that the property is being read.
-        for (final AbstractMixin mixin : mixins)
+        for (AbstractMixin mixin : mixins)
             mixin.beforeReadProperty(pid);
         beforeReadProperty(pid);
 
@@ -368,8 +365,8 @@ public class BACnetObject {
      *
      * @throws BACnetServiceException if the object objected to the read, or if the property was not found (was null).
      */
-    public final Encodable readPropertyRequired(final PropertyIdentifier pid) throws BACnetServiceException {
-        final Encodable p = readProperty(pid);
+    public final Encodable readPropertyRequired(PropertyIdentifier pid) throws BACnetServiceException {
+        Encodable p = readProperty(pid);
         if (p == null)
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.unknownProperty);
         return p;
@@ -381,16 +378,16 @@ public class BACnetObject {
      *
      * @throws BACnetServiceException if the object objected to the read
      */
-    public final Encodable readProperty(final PropertyIdentifier pid, final UnsignedInteger propertyArrayIndex)
+    public final Encodable readProperty(PropertyIdentifier pid, UnsignedInteger propertyArrayIndex)
             throws BACnetServiceException {
-        final Encodable result = readProperty(pid);
+        Encodable result = readProperty(pid);
         if (propertyArrayIndex == null)
             return result;
 
         if (!(result instanceof BACnetArray<?> array))
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.propertyIsNotAnArray);
 
-        final int index = propertyArrayIndex.intValue();
+        int index = propertyArrayIndex.intValue();
         if (index == 0)
             return new UnsignedInteger(array.getCount());
 
@@ -410,9 +407,9 @@ public class BACnetObject {
      *
      * @throws BACnetServiceException if the object objected to the read, or if the property was not found (was null).
      */
-    public final Encodable readPropertyRequired(final PropertyIdentifier pid, final UnsignedInteger propertyArrayIndex)
+    public final Encodable readPropertyRequired(PropertyIdentifier pid, UnsignedInteger propertyArrayIndex)
             throws BACnetServiceException {
-        final Encodable p = readProperty(pid, propertyArrayIndex);
+        Encodable p = readProperty(pid, propertyArrayIndex);
         if (p == null)
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.unknownProperty);
         return p;
@@ -427,23 +424,23 @@ public class BACnetObject {
      * Write a property with no notifications. Circumvents the object and all mixins for validations, handling, and
      * post-write notifications.
      */
-    protected void set(final PropertyIdentifier pid, final Encodable value) {
+    protected void set(PropertyIdentifier pid, Encodable value) {
         properties.put(pid, value);
     }
 
     /**
      * Convenience method for writing a property with full validation, handling, and post-write notifications.
      */
-    public BACnetObject writeProperty(final ValueSource valueSource, final PropertyIdentifier pid,
-            final Encodable value) throws BACnetServiceException {
+    public BACnetObject writeProperty(ValueSource valueSource, PropertyIdentifier pid, Encodable value)
+            throws BACnetServiceException {
         return writeProperty(valueSource, new PropertyValue(pid, value));
     }
 
     /**
      * Convenience method for writing a property with full validation, handling, and post-write notifications.
      */
-    public BACnetObject writeProperty(final ValueSource valueSource, final PropertyIdentifier pid, final int indexBase1,
-            final Encodable value) throws BACnetServiceException {
+    public BACnetObject writeProperty(ValueSource valueSource, PropertyIdentifier pid, int indexBase1, Encodable value)
+            throws BACnetServiceException {
         return writeProperty(valueSource, new PropertyValue(pid, new UnsignedInteger(indexBase1), value, null));
     }
 
@@ -452,10 +449,9 @@ public class BACnetObject {
      * notifications via the object itself and mixins.
      */
     @SuppressWarnings("unchecked")
-    public BACnetObject writeProperty(final ValueSource valueSource, final PropertyValue value)
-            throws BACnetServiceException {
-        final PropertyIdentifier pid = value.getPropertyIdentifier();
-        final UnsignedInteger pin = value.getPropertyArrayIndex();
+    public BACnetObject writeProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
+        PropertyIdentifier pid = value.getPropertyIdentifier();
+        UnsignedInteger pin = value.getPropertyArrayIndex();
         Encodable valueToWrite = value.getValue();
 
         if (PropertyIdentifier.objectType.equals(pid))
@@ -463,9 +459,23 @@ public class BACnetObject {
         if (PropertyIdentifier.priorityArray.equals(pid))
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
 
+        ObjectPropertyTypeDefinition def = ObjectProperties.getObjectPropertyTypeDefinition(objectType, pid);
+
+        // Per addendum 135-2016br-2: a relinquish (NULL value with a priority) targeting a non-commandable property
+        // whose declared datatype does not include NULL shall not fail. The property is not changed and the write
+        // is reported successful. Applied before any mixin validation because mixins routinely cast the incoming
+        // value to the declared type without checking, which would otherwise throw before this rule can be
+        // evaluated. Commandable properties are excluded — for those, NULL-with-priority is a real relinquish
+        // handled by CommandableMixin.
+        if (value.getValue() instanceof Null && value.getPriority() != null && def != null
+                && !(ObjectProperties.isCommandable(objectType, pid) && supportsCommandable())
+                && !def.getPropertyTypeDefinition().getClazz().isAssignableFrom(value.getValue().getClass())) {
+            return this;
+        }
+
         // Validation - run through the mixins
         boolean handled = false;
-        for (final AbstractMixin mixin : mixins) {
+        for (AbstractMixin mixin : mixins) {
             handled = mixin.validateProperty(valueSource, value);
             if (handled)
                 break;
@@ -474,9 +484,7 @@ public class BACnetObject {
             handled = validateProperty(valueSource, value);
 
         if (!handled) {
-            // Validate the value to be written. First get the definition for the property.
-            final ObjectPropertyTypeDefinition def = ObjectProperties.getObjectPropertyTypeDefinition(objectType, pid);
-
+            // Validate the value to be written.
             if (pin == null) {
                 // Not writing to an array index.
                 if (def == null) {
@@ -490,7 +498,7 @@ public class BACnetObject {
                         throw new BACnetServiceException(ErrorClass.property, ErrorCode.datatypeNotSupported);
                     }
                 } else {
-                    final PropertyTypeDefinition pdef = def.getPropertyTypeDefinition();
+                    PropertyTypeDefinition pdef = def.getPropertyTypeDefinition();
 
                     // Validate against the property definition.
                     if (pdef.isArray()) {
@@ -498,7 +506,7 @@ public class BACnetObject {
                         if (!(valueToWrite instanceof SequenceOf))
                             throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
 
-                        final SequenceOf<Encodable> seq = (SequenceOf<Encodable>) valueToWrite;
+                        SequenceOf<Encodable> seq = (SequenceOf<Encodable>) valueToWrite;
 
                         if (pdef.getArrayLength() > 0) {
                             // And the length needs to match the definition if not n
@@ -507,7 +515,7 @@ public class BACnetObject {
                         }
 
                         // And the types of the elements need to match the definition.
-                        for (final Encodable e : seq) {
+                        for (Encodable e : seq) {
                             if (!pdef.getClazz().isAssignableFrom(e.getClass()))
                                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
                         }
@@ -519,10 +527,10 @@ public class BACnetObject {
                         if (!(valueToWrite instanceof SequenceOf))
                             throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
 
-                        final SequenceOf<Encodable> seq = (SequenceOf<Encodable>) valueToWrite;
+                        SequenceOf<Encodable> seq = (SequenceOf<Encodable>) valueToWrite;
 
                         // And the types of the elements need to match the definition.
-                        for (final Encodable e : seq) {
+                        for (Encodable e : seq) {
                             if (!pdef.getClazz().isAssignableFrom(e.getClass()))
                                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
                         }
@@ -534,7 +542,7 @@ public class BACnetObject {
                 }
             } else {
                 // Writing to an array index.
-                final Encodable prop = properties.get(pid);
+                Encodable prop = properties.get(pid);
                 if (prop == null) {
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.unknownProperty);
                 }
@@ -577,7 +585,7 @@ public class BACnetObject {
 
         // Writing
         handled = false;
-        for (final AbstractMixin mixin : mixins) {
+        for (AbstractMixin mixin : mixins) {
             handled = mixin.writeProperty(valueSource, value);
             if (handled)
                 break;
@@ -589,7 +597,7 @@ public class BACnetObject {
                 writePropertyInternal(pid, valueToWrite);
             } else {
                 // Set the value in an array.
-                final BACnetArray<Encodable> arr = (BACnetArray<Encodable>) properties.get(pid);
+                BACnetArray<Encodable> arr = (BACnetArray<Encodable>) properties.get(pid);
                 arr.setBase1(pin.intValue(), valueToWrite);
                 writePropertyInternal(pid, arr);
             }
@@ -603,12 +611,12 @@ public class BACnetObject {
      * object configuration and property writes from mixins themselves, but can also be used by client code to set
      * object properties. Calls mixin "after write" methods and fires COV subscriptions.
      */
-    public BACnetObject writePropertyInternal(final PropertyIdentifier pid, final Encodable value) {
-        final Encodable oldValue = properties.get(pid);
+    public BACnetObject writePropertyInternal(PropertyIdentifier pid, Encodable value) {
+        Encodable oldValue = properties.get(pid);
         set(pid, value);
 
         // After writing.
-        for (final AbstractMixin mixin : mixins)
+        for (AbstractMixin mixin : mixins)
             mixin.afterWriteProperty(pid, oldValue, value);
         afterWriteProperty(pid, oldValue, value);
 
@@ -628,8 +636,7 @@ public class BACnetObject {
      * @return true if no more validation should occur, including the generic data type validation.
      * @throws BACnetServiceException to abort the write.
      */
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
-            throws BACnetServiceException {
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
         return false;
     }
 
@@ -640,8 +647,7 @@ public class BACnetObject {
      * @param oldValue the old value
      * @param newValue the new value
      */
-    protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
-            final Encodable newValue) {
+    protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         // no op
     }
 
@@ -650,7 +656,7 @@ public class BACnetObject {
      *
      * @param pid the property identifier
      */
-    protected void beforeReadProperty(final PropertyIdentifier pid) throws BACnetServiceException {
+    protected void beforeReadProperty(PropertyIdentifier pid) throws BACnetServiceException {
         // no op
     }
 
@@ -661,23 +667,23 @@ public class BACnetObject {
 
     @Override
     public int hashCode() {
-        final ObjectIdentifier id = getId();
-        final int PRIME = 31;
+        ObjectIdentifier id = getId();
+        int PRIME = 31;
         int result = 1;
         result = PRIME * result + (id == null ? 0 : id.hashCode());
         return result;
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        final ObjectIdentifier id = getId();
+    public boolean equals(Object obj) {
+        ObjectIdentifier id = getId();
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final BACnetObject other = (BACnetObject) obj;
+        BACnetObject other = (BACnetObject) obj;
         if (id == null) {
             if (other.getId() != null)
                 return false;

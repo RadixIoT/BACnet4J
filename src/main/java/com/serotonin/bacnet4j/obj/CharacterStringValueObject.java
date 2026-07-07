@@ -45,11 +45,10 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 /**
  * @author Phillip Dunlap, based on BinaryValueObject
  */
-public class CharacterStringObject extends BACnetObject {
-    public CharacterStringObject(LocalDevice localDevice, int instanceNumber,
-            String name, final CharacterString presentValue, final boolean outOfService) {
+public class CharacterStringValueObject extends BACnetObject {
+    public CharacterStringValueObject(LocalDevice localDevice, int instanceNumber, String name,
+            CharacterString presentValue, boolean outOfService) {
         super(localDevice, ObjectType.characterstringValue, instanceNumber, name);
-
 
         writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);
         writePropertyInternal(PropertyIdentifier.outOfService, Boolean.valueOf(outOfService));
@@ -66,13 +65,13 @@ public class CharacterStringObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.presentValue, presentValue);
     }
 
-    public CharacterStringObject supportCommandable(final CharacterString relinquishDefault) {
+    public CharacterStringValueObject supportCommandable(CharacterString relinquishDefault) {
         Objects.requireNonNull(relinquishDefault);
         super._supportCommandable(relinquishDefault);
         return this;
     }
 
-    public CharacterStringObject supportCovReporting() {
+    public CharacterStringValueObject supportCovReporting() {
         _supportCovReporting(null, null);
         return this;
     }

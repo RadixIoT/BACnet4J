@@ -27,35 +27,71 @@
 
 package com.serotonin.bacnet4j.type.constructed;
 
+import java.util.Objects;
+
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
-public class OptionalPriorityFilter extends OptionalBase {
-    private static final ChoiceOptions choiceOptions = new ChoiceOptions();
+/**
+ * Base class for optional-type classes.
+ */
+public abstract class OptionalBase extends BaseType {
+    protected final Choice choice;
 
-    static {
-        choiceOptions.addPrimitive(Null.class);
-        choiceOptions.addPrimitive(PriorityFilter.class);
+    protected OptionalBase(ChoiceOptions choiceOptions) {
+        this.choice = new Choice(Null.instance, choiceOptions);
     }
 
-    public OptionalPriorityFilter() {
-        super(choiceOptions);
+    protected OptionalBase(Encodable e, ChoiceOptions choiceOptions) {
+        this.choice = new Choice(e, choiceOptions);
     }
 
-    public OptionalPriorityFilter(PriorityFilter filter) {
-        super(filter, choiceOptions);
+    public boolean isNull() {
+        return choice.getContextId() == 0;
     }
 
-    public PriorityFilter getFilterValue() {
+    public Null getNullValue() {
         return choice.getDatum();
     }
 
-    public boolean isFilterValue() {
-        return choice.getDatum() instanceof PriorityFilter;
+    public boolean isNullValue() {
+        return choice.getDatum() instanceof Null;
     }
 
-    public OptionalPriorityFilter(ByteQueue queue) throws BACnetException {
-        super(queue, choiceOptions);
+    public Choice getChoice() {
+        return choice;
+    }
+
+    public <T extends Encodable> T getValue() {
+        return choice.getDatum();
+    }
+
+    @Override
+    public final void write(ByteQueue queue) {
+        write(queue, choice);
+    }
+
+    protected OptionalBase(ByteQueue queue, ChoiceOptions choiceOptions) throws BACnetException {
+        choice = readChoice(queue, choiceOptions);
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getName() + " [choice=" + choice + "]";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        OptionalBase that = (OptionalBase) o;
+        return Objects.equals(choice, that.choice);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(choice);
     }
 }

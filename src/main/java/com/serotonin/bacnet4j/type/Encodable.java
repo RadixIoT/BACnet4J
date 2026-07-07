@@ -45,6 +45,7 @@ import com.serotonin.bacnet4j.obj.PropertyTypeDefinition;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.constructed.Choice;
 import com.serotonin.bacnet4j.type.constructed.ChoiceOptions;
+import com.serotonin.bacnet4j.type.constructed.OptionalBase;
 import com.serotonin.bacnet4j.type.constructed.PriorityArray;
 import com.serotonin.bacnet4j.type.constructed.PriorityValue;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
@@ -74,14 +75,14 @@ public abstract class Encodable {
         return "Encodable(" + getClass().getName() + ")";
     }
 
-    protected static void popTagData(final ByteQueue queue, final TagData tagData) {
+    protected static void popTagData(ByteQueue queue, TagData tagData) {
         peekTagData(queue, tagData);
         queue.pop(tagData.tagLength);
     }
 
-    protected static void peekTagData(final ByteQueue queue, final TagData tagData) {
+    protected static void peekTagData(ByteQueue queue, TagData tagData) {
         int peekIndex = 0;
-        final byte b = queue.peek(peekIndex++);
+        byte b = queue.peek(peekIndex++);
         tagData.tagNumber = (b & 0xff) >> 4;
         tagData.contextSpecific = (b & 8) == 8;
         tagData.length = b & 7;
@@ -102,13 +103,13 @@ public abstract class Encodable {
         tagData.tagLength = peekIndex;
     }
 
-    protected static boolean isContextTag(final ByteQueue queue) {
+    protected static boolean isContextTag(ByteQueue queue) {
         if (queue.size() == 0)
             return false;
         return (queue.peek(0) & 8) == 8;
     }
 
-    protected static int peekTagNumber(final ByteQueue queue) {
+    protected static int peekTagNumber(ByteQueue queue) {
         if (queue.size() == 0)
             return -1;
 
@@ -119,12 +120,12 @@ public abstract class Encodable {
         return tagNumber;
     }
 
-    protected static int getTagLength(final ByteQueue queue) {
+    protected static int getTagLength(ByteQueue queue) {
         if (queue.size() == 0)
             return -1;
 
         // Take a peek at the tag number.
-        final int tagNumber = toInt(queue.peek(0)) >> 4;
+        int tagNumber = toInt(queue.peek(0)) >> 4;
         if (tagNumber == 15)
             return 2;
         return 1;
@@ -132,7 +133,7 @@ public abstract class Encodable {
 
     //
     // Write context tags for base types.
-    protected void writeContextTag(final ByteQueue queue, final int contextId, final boolean start) {
+    protected void writeContextTag(ByteQueue queue, int contextId, boolean start) {
         if (contextId < 0 || contextId > 254)
             throw new RuntimeException("Invalid context id: " + contextId);
 
@@ -146,11 +147,11 @@ public abstract class Encodable {
 
     //
     // Read start tags.
-    protected static int readStart(final ByteQueue queue) {
+    protected static int readStart(ByteQueue queue) {
         if (queue.size() == 0)
             return -1;
 
-        final int b = toInt(queue.peek(0));
+        int b = toInt(queue.peek(0));
         if ((b & 0xf) != 0xe)
             return -1;
         if ((b & 0xf0) == 0xf0)
@@ -158,8 +159,8 @@ public abstract class Encodable {
         return b >> 4;
     }
 
-    protected static int popStart(final ByteQueue queue) {
-        final int contextId = readStart(queue);
+    protected static int popStart(ByteQueue queue) {
+        int contextId = readStart(queue);
         if (contextId != -1) {
             queue.pop();
             if (contextId > 14)
@@ -168,17 +169,17 @@ public abstract class Encodable {
         return contextId;
     }
 
-    protected static void popStart(final ByteQueue queue, final int contextId) throws BACnetErrorException {
+    protected static void popStart(ByteQueue queue, int contextId) throws BACnetErrorException {
         if (popStart(queue) != contextId)
             throw new BACnetErrorException(ErrorClass.property, ErrorCode.missingRequiredParameter);
     }
 
     //
     // Read end tags.
-    protected static int readEnd(final ByteQueue queue) {
+    protected static int readEnd(ByteQueue queue) {
         if (queue.size() == 0)
             return -1;
-        final int b = toInt(queue.peek(0));
+        int b = toInt(queue.peek(0));
         if ((b & 0xf) != 0xf)
             return -1;
         if ((b & 0xf0) == 0xf0)
@@ -186,7 +187,7 @@ public abstract class Encodable {
         return b >> 4;
     }
 
-    protected static void popEnd(final ByteQueue queue, final int contextId) throws BACnetErrorException {
+    protected static void popEnd(ByteQueue queue, int contextId) throws BACnetErrorException {
         if (readEnd(queue) != contextId)
             throw new BACnetErrorException(ErrorClass.property, ErrorCode.missingRequiredParameter);
         queue.pop();
@@ -197,28 +198,28 @@ public abstract class Encodable {
     /**
      * Check if the tag number at the beginning of the queue matches the given context id.
      */
-    private static boolean matchContextId(final ByteQueue queue, final int contextId) {
+    private static boolean matchContextId(ByteQueue queue, int contextId) {
         return peekTagNumber(queue) == contextId;
     }
 
     /**
      * Check if the tag at the beginning of the queue is a start tag that matches given context id.
      */
-    protected static boolean matchStartTag(final ByteQueue queue, final int contextId) {
+    protected static boolean matchStartTag(ByteQueue queue, int contextId) {
         return matchContextId(queue, contextId) && (queue.peek(0) & 0xf) == 0xe;
     }
 
     /**
      * Check if the tag at the beginning of the queue is an end tag that matches given context id.
      */
-    protected static boolean matchEndTag(final ByteQueue queue, final int contextId) {
+    protected static boolean matchEndTag(ByteQueue queue, int contextId) {
         return matchContextId(queue, contextId) && (queue.peek(0) & 0xf) == 0xf;
     }
 
     /**
      * Check if the tag at the beginning of the queue is NOT an end tag, but that it matches given context id.
      */
-    protected static boolean matchNonEndTag(final ByteQueue queue, final int contextId) {
+    protected static boolean matchNonEndTag(ByteQueue queue, int contextId) {
         return matchContextId(queue, contextId) && (queue.peek(0) & 0xf) != 0xf;
     }
 
@@ -227,26 +228,25 @@ public abstract class Encodable {
     //
 
     @SuppressWarnings("unchecked")
-    public static <T extends Encodable> T read(final ByteQueue queue, final Class<T> clazz) throws BACnetException {
+    public static <T extends Encodable> T read(ByteQueue queue, Class<T> clazz) throws BACnetException {
         if (clazz == Primitive.class)
             return (T) Primitive.createPrimitive(queue);
 
         try {
             return clazz.getConstructor(ByteQueue.class).newInstance(queue);
-        } catch (final InvocationTargetException e) {
+        } catch (InvocationTargetException e) {
             // Check if there is a wrapped BACnet exception
             if (e.getCause() instanceof BACnetException be)
                 throw be;
             throw new ReflectionException(e);
-        } catch (final Exception e) {
+        } catch (Exception e) {
             throw new BACnetException(e);
         }
     }
 
     //
     // Read and write with context id.
-    public static <T extends Encodable> T read(final ByteQueue queue, final Class<T> clazz, final int contextId)
-            throws BACnetException {
+    public static <T extends Encodable> T read(ByteQueue queue, Class<T> clazz, int contextId) throws BACnetException {
         if (!matchNonEndTag(queue, contextId))
             throw new BACnetErrorException(ErrorClass.property, ErrorCode.missingRequiredParameter);
 
@@ -256,8 +256,8 @@ public abstract class Encodable {
         return readWrapped(queue, clazz, contextId);
     }
 
-    protected static <T extends Encodable> T readOptional(final ByteQueue queue, final Class<T> clazz,
-            final int contextId) throws BACnetException {
+    protected static <T extends Encodable> T readOptional(ByteQueue queue, Class<T> clazz, int contextId)
+            throws BACnetException {
         if (!matchNonEndTag(queue, contextId))
             return null;
         return read(queue, clazz, contextId);
@@ -265,12 +265,11 @@ public abstract class Encodable {
 
     //
     // Read choices
-    protected static Choice readChoice(final ByteQueue queue, final ChoiceOptions choiceOptions)
-            throws BACnetException {
+    protected static Choice readChoice(ByteQueue queue, ChoiceOptions choiceOptions) throws BACnetException {
         return new Choice(queue, choiceOptions);
     }
 
-    protected static Choice readChoice(final ByteQueue queue, final ChoiceOptions choiceOptions, final int contextId)
+    protected static Choice readChoice(ByteQueue queue, ChoiceOptions choiceOptions, int contextId)
             throws BACnetException {
         popStart(queue, contextId);
         try {
@@ -280,15 +279,14 @@ public abstract class Encodable {
         }
     }
 
-    protected static Choice readOptionalChoice(final ByteQueue queue, final ChoiceOptions choiceOptions)
-            throws BACnetException {
+    protected static Choice readOptionalChoice(ByteQueue queue, ChoiceOptions choiceOptions) throws BACnetException {
         if (peekTagNumber(queue) == -1)
             return null;
         return readChoice(queue, choiceOptions);
     }
 
-    protected static Choice readOptionalChoice(final ByteQueue queue, final ChoiceOptions choiceOptions,
-            final int contextId) throws BACnetException {
+    protected static Choice readOptionalChoice(ByteQueue queue, ChoiceOptions choiceOptions, int contextId)
+            throws BACnetException {
         if (!matchNonEndTag(queue, contextId))
             return null;
         return readChoice(queue, choiceOptions, contextId);
@@ -296,65 +294,64 @@ public abstract class Encodable {
 
     //
     // Read lists
-    public static <T extends Encodable> SequenceOf<T> readSequenceOf(final ByteQueue queue, final Class<T> clazz)
+    public static <T extends Encodable> SequenceOf<T> readSequenceOf(ByteQueue queue, Class<T> clazz)
             throws BACnetException {
         return new SequenceOf<>(queue, clazz);
     }
 
-    protected static <T extends Encodable> SequenceOf<T> readSequenceOf(final ByteQueue queue, final int count,
-            final Class<T> clazz) throws BACnetException {
+    protected static <T extends Encodable> SequenceOf<T> readSequenceOf(ByteQueue queue, int count, Class<T> clazz)
+            throws BACnetException {
         return new SequenceOf<>(queue, count, clazz);
     }
 
-    protected static <T extends Encodable> SequenceOf<T> readSequenceOf(final ByteQueue queue, final Class<T> clazz,
-            final int contextId) throws BACnetException {
+    protected static <T extends Encodable> SequenceOf<T> readSequenceOf(ByteQueue queue, Class<T> clazz, int contextId)
+            throws BACnetException {
         popStart(queue, contextId);
-        final SequenceOf<T> result = new SequenceOf<>(queue, clazz, contextId);
+        SequenceOf<T> result = new SequenceOf<>(queue, clazz, contextId);
         popEnd(queue, contextId);
         return result;
     }
 
-    protected static <T extends Encodable> T readSequenceType(final ByteQueue queue, final Class<T> clazz,
-            final int contextId) throws BACnetException {
+    protected static <T extends Encodable> T readSequenceType(ByteQueue queue, Class<T> clazz, int contextId)
+            throws BACnetException {
         popStart(queue, contextId);
         T result;
         try {
             result = clazz.getConstructor(ByteQueue.class, Integer.TYPE).newInstance(queue, contextId);
-        } catch (final Exception e) {
+        } catch (Exception e) {
             throw new BACnetException(e);
         }
         popEnd(queue, contextId);
         return result;
     }
 
-    protected static SequenceOf<Choice> readSequenceOfChoice(final ByteQueue queue, final ChoiceOptions choiceOptions,
-            final int contextId) throws BACnetException {
+    protected static SequenceOf<Choice> readSequenceOfChoice(ByteQueue queue, ChoiceOptions choiceOptions,
+            int contextId) throws BACnetException {
         popStart(queue, contextId);
-        final SequenceOf<Choice> result = new SequenceOf<>();
+        SequenceOf<Choice> result = new SequenceOf<>();
         while (readEnd(queue) != contextId)
             result.add(new Choice(queue, choiceOptions));
         popEnd(queue, contextId);
         return result;
     }
 
-    protected static <T extends Encodable> SequenceOf<T> readOptionalSequenceOf(final ByteQueue queue,
-            final Class<T> clazz, final int contextId) throws BACnetException {
+    protected static <T extends Encodable> SequenceOf<T> readOptionalSequenceOf(ByteQueue queue, Class<T> clazz,
+            int contextId) throws BACnetException {
         if (readStart(queue) != contextId)
             return null;
         return readSequenceOf(queue, clazz, contextId);
     }
 
-    protected static <T extends Encodable> BACnetArray<T> readArray(final ByteQueue queue, final Class<T> clazz,
-            final int contextId) throws BACnetException {
+    protected static <T extends Encodable> BACnetArray<T> readArray(ByteQueue queue, Class<T> clazz, int contextId)
+            throws BACnetException {
         popStart(queue, contextId);
-        final BACnetArray<T> result = new BACnetArray<>(queue, clazz, contextId);
+        BACnetArray<T> result = new BACnetArray<>(queue, clazz, contextId);
         popEnd(queue, contextId);
         return result;
     }
 
-    private static Encodable readUnknown(final ByteQueue queue, final int contextId)
-            throws BACnetException {
-        final TagData tagData = new TagData();
+    private static Encodable readUnknown(ByteQueue queue, int contextId) throws BACnetException {
+        TagData tagData = new TagData();
         peekTagData(queue, tagData);
 
         // Check if the tag number matches the context id. If they match, then create the context-specific parameter,
@@ -404,9 +401,8 @@ public abstract class Encodable {
         }
     }
 
-    protected static Encodable readANY(final ByteQueue queue, final ObjectType objectType,
-            final PropertyIdentifier propertyIdentifier, final UnsignedInteger propertyArrayIndex, final int contextId)
-            throws BACnetException {
+    protected static Encodable readANY(ByteQueue queue, ObjectType objectType, PropertyIdentifier propertyIdentifier,
+            UnsignedInteger propertyArrayIndex, int contextId) throws BACnetException {
         // A property array index of 0 indicates a request for the length of an array.
         if (propertyArrayIndex != null && propertyArrayIndex.intValue() == 0)
             return readWrapped(queue, UnsignedInteger.class, contextId);
@@ -415,7 +411,7 @@ public abstract class Encodable {
             throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType);
 
         // Get the definition for the property, if there is one.
-        final PropertyTypeDefinition def = getPropertyTypeDefinition(objectType, propertyIdentifier);
+        PropertyTypeDefinition def = getPropertyTypeDefinition(objectType, propertyIdentifier);
 
         if (def == null) {
             // We don't know what this is.
@@ -424,7 +420,7 @@ public abstract class Encodable {
 
         if (ObjectProperties.isCommandable(objectType, propertyIdentifier)) {
             // If the object is commandable, it could be set to Null, so we need to treat it as ambiguous.
-            final AmbiguousValue amb = new AmbiguousValue(queue, contextId);
+            AmbiguousValue amb = new AmbiguousValue(queue, contextId);
 
             if (amb.isNull())
                 return Null.instance;
@@ -445,37 +441,69 @@ public abstract class Encodable {
             return readWrapped(queue, PriorityValue.class, contextId);
         }
 
+        if (isNullPrimitiveBody(queue, contextId) && !OptionalBase.class.isAssignableFrom(def.getClazz())) {
+            // Per addendum 135-2016br-2: preserve a wire NULL value as a bare Null primitive so the write
+            // layer can silently succeed a relinquish attempt against a non-commandable property whose
+            // declared datatype does not include NULL. Only applied when the declared class is a leaf
+            // primitive (e.g. CharacterString, Real, Boolean); CHOICE-based wrappers such as
+            // OptionalCharacterString or ChannelValue accept NULL as a legitimate alternative and are
+            // decoded normally via readWrapped.
+            //
+            // Note that we do not include subsclasses of OptionalBase here because we need those to be instantiated
+            // normally. It's just that when they are null they look like primitive nulls.
+            popStart(queue, contextId);
+            Null n = new Null(queue);
+            popEnd(queue, contextId);
+            return n;
+        }
         return readWrapped(queue, def.getClazz(), contextId);
     }
 
-    protected static Encodable readOptionalANY(final ByteQueue queue, final ObjectType objectType,
-            final PropertyIdentifier propertyIdentifier, final int contextId) throws BACnetException {
+    /**
+     * Peeks at the byte following the opening context tag and reports whether it is a NULL primitive
+     * (application tag 0, length 0). Used by {@link #readANY} to detect a relinquish-style Null value
+     * that would otherwise be rejected by strict-type decode. Does not consume any bytes.
+     */
+    private static boolean isNullPrimitiveBody(ByteQueue queue, int contextId) {
+        if (readStart(queue) != contextId) {
+            return false;
+        }
+        int startTagLength = contextId > 14 ? 2 : 1;
+        if (queue.size() < startTagLength + 2) {
+            return false;
+        }
+        // The byte after the opening context tag encodes the value tag. NULL is application tag 0, primitive,
+        // length 0 — a single 0x00 byte. The following byte should be the closing context tag.
+        return (queue.peek(startTagLength) & 0xff) == 0x00;
+    }
+
+    protected static Encodable readOptionalANY(ByteQueue queue, ObjectType objectType,
+            PropertyIdentifier propertyIdentifier, int contextId) throws BACnetException {
         if (readStart(queue) != contextId)
             return null;
         return readANY(queue, objectType, propertyIdentifier, null, contextId);
     }
 
-    protected static Encodable readOptionalANY(final ByteQueue queue, final ObjectType objectType,
-            final PropertyIdentifier propertyIdentifier, UnsignedInteger propertyArrayIndex, final int contextId)
+    protected static Encodable readOptionalANY(ByteQueue queue, ObjectType objectType,
+            PropertyIdentifier propertyIdentifier, UnsignedInteger propertyArrayIndex, int contextId)
             throws BACnetException {
         if (readStart(queue) != contextId)
             return null;
         return readANY(queue, objectType, propertyIdentifier, propertyArrayIndex, contextId);
     }
 
-    protected static SequenceOf<? extends Encodable> readSequenceOfANY(final ByteQueue queue,
-            final ObjectType objectType, final PropertyIdentifier propertyIdentifier, final int contextId)
-            throws BACnetException {
-        final PropertyTypeDefinition def = getPropertyTypeDefinition(objectType, propertyIdentifier);
+    protected static SequenceOf<? extends Encodable> readSequenceOfANY(ByteQueue queue, ObjectType objectType,
+            PropertyIdentifier propertyIdentifier, int contextId) throws BACnetException {
+        PropertyTypeDefinition def = getPropertyTypeDefinition(objectType, propertyIdentifier);
         if (def == null)
             return readSequenceOf(queue, AmbiguousValue.class, contextId);
         return readSequenceOf(queue, def.getClazz(), contextId);
     }
 
-    private static PropertyTypeDefinition getPropertyTypeDefinition(final ObjectType objectType,
-            final PropertyIdentifier propertyIdentifier) {
+    private static PropertyTypeDefinition getPropertyTypeDefinition(ObjectType objectType,
+            PropertyIdentifier propertyIdentifier) {
         if (objectType != null && propertyIdentifier != null) {
-            final ObjectPropertyTypeDefinition def = ObjectProperties.getObjectPropertyTypeDefinition(objectType,
+            ObjectPropertyTypeDefinition def = ObjectProperties.getObjectPropertyTypeDefinition(objectType,
                     propertyIdentifier);
             if (def != null) {
                 return def.getPropertyTypeDefinition();
@@ -491,16 +519,16 @@ public abstract class Encodable {
     }
 
     // Read vendor-specific
-    protected static EncodedValue readEncodedValue(final ByteQueue queue, final int contextId) throws BACnetException {
+    protected static EncodedValue readEncodedValue(ByteQueue queue, int contextId) throws BACnetException {
         if (readStart(queue) != contextId)
             return null;
         return new EncodedValue(queue, contextId);
     }
 
-    private static <T extends Encodable> T readWrapped(final ByteQueue queue, final Class<T> clazz, final int contextId)
+    private static <T extends Encodable> T readWrapped(ByteQueue queue, Class<T> clazz, int contextId)
             throws BACnetException {
         popStart(queue, contextId);
-        final T result = read(queue, clazz);
+        T result = read(queue, clazz);
         popEnd(queue, contextId);
         return result;
     }
@@ -509,30 +537,30 @@ public abstract class Encodable {
     // Writing
     //
 
-    public static void write(final ByteQueue queue, final Encodable type) {
+    public static void write(ByteQueue queue, Encodable type) {
         type.write(queue);
     }
 
-    public static void write(final ByteQueue queue, final Encodable type, final int contextId) {
+    public static void write(ByteQueue queue, Encodable type, int contextId) {
         type.write(queue, contextId);
     }
 
     //
     // Optional read and write.
-    protected static void writeOptional(final ByteQueue queue, final Encodable type) {
+    protected static void writeOptional(ByteQueue queue, Encodable type) {
         if (type == null)
             return;
         write(queue, type);
     }
 
-    protected static void writeOptional(final ByteQueue queue, final Encodable type, final int contextId) {
+    protected static void writeOptional(ByteQueue queue, Encodable type, int contextId) {
         if (type == null)
             return;
         write(queue, type, contextId);
     }
 
     // Read and write encodable
-    protected static void writeANY(final ByteQueue queue, final Encodable type, final int contextId) {
+    protected static void writeANY(ByteQueue queue, Encodable type, int contextId) {
         if (Primitive.class.isAssignableFrom(type.getClass()))
             ((Primitive) type).writeWithContextTag(queue, contextId);
         else
