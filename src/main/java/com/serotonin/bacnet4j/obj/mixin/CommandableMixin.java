@@ -118,7 +118,7 @@ public class CommandableMixin extends AbstractMixin {
         if (supportsValueSource) {
             addProperty(valueSourceArray, new BACnetArray<>(16, new ValueSource()), false);
             addProperty(lastCommandTime, new TimeStamp(new DateTime(getLocalDevice())), false);
-            addProperty(commandTimeArray, new BACnetArray<>(16, TimeStamp.UNSPECIFIED_TIME), false);
+            addProperty(commandTimeArray, new BACnetArray<>(16, TimeStamp.UNSPECIFIED_DATETIME), false);
         }
     }
 
@@ -133,7 +133,7 @@ public class CommandableMixin extends AbstractMixin {
         if (supportsCommandable) {
             addProperty(valueSourceArray, new BACnetArray<>(16, new ValueSource()), false);
             addProperty(lastCommandTime, new TimeStamp(new DateTime(getLocalDevice())), false);
-            addProperty(commandTimeArray, new BACnetArray<>(16, TimeStamp.UNSPECIFIED_TIME), false);
+            addProperty(commandTimeArray, new BACnetArray<>(16, TimeStamp.UNSPECIFIED_DATETIME), false);
         }
     }
 
@@ -142,18 +142,19 @@ public class CommandableMixin extends AbstractMixin {
     }
 
     @Override
-    synchronized protected boolean validateProperty(ValueSource valueSource, PropertyValue value)
+    protected synchronized boolean validateProperty(ValueSource valueSource, PropertyValue value)
             throws BACnetServiceException {
         if (pvProperty.equals(value.getPropertyIdentifier())) {
-            if (overridden)
+            if (overridden) {
                 return false;
+            }
 
             Boolean oos = get(outOfService);
-            if (oos.booleanValue())
+            if (oos.booleanValue()) {
                 return false;
+            }
 
-            if (supportsCommandable && value.getValue() instanceof Null)
-                return true;
+            return supportsCommandable && value.getValue() instanceof Null;
         } else if (value.getPropertyIdentifier().isOneOf(PropertyIdentifier.priorityArray,
                 PropertyIdentifier.currentCommandPriority, PropertyIdentifier.valueSourceArray,
                 PropertyIdentifier.lastCommandTime, PropertyIdentifier.commandTimeArray)) {
@@ -168,7 +169,7 @@ public class CommandableMixin extends AbstractMixin {
             if (!vs.getAddress().equals(valueSource.getAddress()))
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
 
-            ValueSource newVs = (ValueSource) value.getValue();
+            ValueSource newVs = value.getValue();
             if (!newVs.isObject())
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
 
@@ -181,7 +182,7 @@ public class CommandableMixin extends AbstractMixin {
     }
 
     @Override
-    synchronized protected boolean writeProperty(ValueSource valueSource, PropertyValue value)
+    protected synchronized boolean writeProperty(ValueSource valueSource, PropertyValue value)
             throws BACnetServiceException {
         if (pvProperty.equals(value.getPropertyIdentifier())) {
             if (overridden) {
@@ -226,14 +227,12 @@ public class CommandableMixin extends AbstractMixin {
     }
 
     @Override
-    synchronized protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue,
-            Encodable newValue) {
+    protected synchronized void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         if (relinquishDefault.equals(pid)) {
             // The relinquish default was changed. Ensure that the present value gets updated if necessary.
             updatePresentValue(null, new TimeStamp(new DateTime(getLocalDevice())));
-        } else if (minimumOffTime.equals(pid) || minimumOnTime.equals(pid)) {
-            if (supportsValueSource)
-                updateValueSourceArray(MIN_OFF_ON_PRIORITY, getLocalValueSource());
+        } else if ((minimumOffTime.equals(pid) || minimumOnTime.equals(pid)) && supportsValueSource) {
+            updateValueSourceArray(MIN_OFF_ON_PRIORITY, getLocalValueSource());
         }
     }
 
@@ -296,41 +295,39 @@ public class CommandableMixin extends AbstractMixin {
         Encodable oldValue = get(pvProperty);
         Unsigned32 minOff = get(minimumOffTime);
         Unsigned32 minOn = get(minimumOnTime);
-        if (minOff != null && minOn != null) {
-            if (!newValue.equals(oldValue)) {
-                // The value has changed. Check for updates to the timer.
+        if (minOff != null && minOn != null && !newValue.equals(oldValue)) {
+            // The value has changed. Check for updates to the timer.
 
-                // If the write was to a priority higher than 6, cancel any existing timer.
-                if (topIndex < MIN_OFF_ON_PRIORITY && minOnOffTimerTask != null) {
-                    minOnOffTimerTask.cancel(false);
-                    minOnOffTimerTask = null;
+            // If the write was to a priority higher than 6, cancel any existing timer.
+            if (topIndex < MIN_OFF_ON_PRIORITY && minOnOffTimerTask != null) {
+                minOnOffTimerTask.cancel(false);
+                minOnOffTimerTask = null;
+            }
+
+            // If a timer task already exists, there is no action to take.
+            if (minOnOffTimerTask == null) {
+                // Initialize the timer.
+                pa.setBase1(MIN_OFF_ON_PRIORITY, new PriorityValue(newValue));
+                updateCommandTimeArray(MIN_OFF_ON_PRIORITY, now);
+
+                int time;
+                if (BinaryPV.inactive.equals(newValue)) {
+                    time = minOff.intValue();
+                    LOG.debug("Starting min off timer: {}s", time);
+                } else {
+                    time = minOn.intValue();
+                    LOG.debug("Starting min on timer: {}s", time);
                 }
 
-                // If a timer task already exists, there is no action to take.
-                if (minOnOffTimerTask == null) {
-                    // Initialize the timer.
-                    pa.setBase1(MIN_OFF_ON_PRIORITY, new PriorityValue(newValue));
-                    updateCommandTimeArray(MIN_OFF_ON_PRIORITY, now);
+                minOnOffTimerTask = getLocalDevice().schedule(() -> {
+                    // Min time has elapsed.
+                    LOG.debug("Min off/on timer has expired");
+                    minOnOffCompleted();
+                }, time, TimeUnit.SECONDS);
 
-                    int time;
-                    if (BinaryPV.inactive.equals(newValue)) {
-                        time = minOff.intValue();
-                        LOG.debug("Starting min off timer: {}s", time);
-                    } else {
-                        time = minOn.intValue();
-                        LOG.debug("Starting min on timer: {}s", time);
-                    }
-
-                    minOnOffTimerTask = getLocalDevice().schedule(() -> {
-                        // Min time has elapsed.
-                        LOG.debug("Min off/on timer has expired");
-                        minOnOffCompleted();
-                    }, time, TimeUnit.SECONDS);
-
-                    // Update the new index if it is less than 6.
-                    if (topIndex > MIN_OFF_ON_PRIORITY)
-                        topIndex = MIN_OFF_ON_PRIORITY;
-                }
+                // Update the new index if it is less than 6.
+                if (topIndex > MIN_OFF_ON_PRIORITY)
+                    topIndex = MIN_OFF_ON_PRIORITY;
             }
         }
 
