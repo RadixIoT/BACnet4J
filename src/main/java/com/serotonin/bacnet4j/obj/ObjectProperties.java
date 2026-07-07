@@ -233,13 +233,11 @@ public class ObjectProperties {
         return getObjectPropertyTypeDefinitions(objectType, 0);
     }
 
-    public static List<ObjectPropertyTypeDefinition> getRequiredObjectPropertyTypeDefinitions(
-            ObjectType objectType) {
+    public static List<ObjectPropertyTypeDefinition> getRequiredObjectPropertyTypeDefinitions(ObjectType objectType) {
         return getObjectPropertyTypeDefinitions(objectType, 1);
     }
 
-    public static List<ObjectPropertyTypeDefinition> getOptionalObjectPropertyTypeDefinitions(
-            ObjectType objectType) {
+    public static List<ObjectPropertyTypeDefinition> getOptionalObjectPropertyTypeDefinitions(ObjectType objectType) {
         return getObjectPropertyTypeDefinitions(objectType, 2);
     }
 
@@ -303,16 +301,16 @@ public class ObjectProperties {
     /**
      * Add a list property
      */
-    private static void add(ObjectType type, PropertyIdentifier pid, Class<? extends Encodable> clazz,
-            boolean required, boolean isList) {
+    private static void add(ObjectType type, PropertyIdentifier pid, Class<? extends Encodable> clazz, boolean required,
+            boolean isList) {
         add(type, required, new PropertyTypeDefinition(pid, clazz, isList));
     }
 
     /**
      * Add an array property. If the array length is n, use 0.
      */
-    private static void add(ObjectType type, PropertyIdentifier pid, Class<? extends Encodable> clazz,
-            boolean required, int arrayLength) {
+    private static void add(ObjectType type, PropertyIdentifier pid, Class<? extends Encodable> clazz, boolean required,
+            int arrayLength) {
         add(type, required, new PropertyTypeDefinition(pid, clazz, arrayLength));
     }
 
