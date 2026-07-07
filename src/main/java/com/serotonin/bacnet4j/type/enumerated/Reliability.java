@@ -61,6 +61,7 @@ public class Reliability extends Enumerated {
     public static final Reliability proprietaryCommandFailure = new Reliability(22);
     public static final Reliability faultsListed = new Reliability(23);
     public static final Reliability referencedObjectFault = new Reliability(24);
+    public static final Reliability multiStateOutOfRange = new Reliability(25);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();
@@ -70,18 +71,18 @@ public class Reliability extends Enumerated {
         Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
     }
 
-    public static Reliability forId(final int id) {
+    public static Reliability forId(int id) {
         Reliability e = (Reliability) idMap.get(id);
         if (e == null)
             e = new Reliability(id);
         return e;
     }
 
-    public static String nameForId(final int id) {
+    public static String nameForId(int id) {
         return prettyMap.get(id);
     }
 
-    public static Reliability forName(final String name) {
+    public static Reliability forName(String name) {
         return (Reliability) Enumerated.forName(nameMap, name);
     }
 
@@ -89,11 +90,11 @@ public class Reliability extends Enumerated {
         return idMap.size();
     }
 
-    private Reliability(final int value) {
+    private Reliability(int value) {
         super(value);
     }
 
-    public Reliability(final ByteQueue queue) throws BACnetErrorException {
+    public Reliability(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
 

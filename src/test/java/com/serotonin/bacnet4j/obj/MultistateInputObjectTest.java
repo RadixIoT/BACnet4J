@@ -83,7 +83,7 @@ public class MultistateInputObjectTest extends AbstractTest {
         try {
             new MultistateInputObject(d1, 2, "mi2", 0, null, 1, false);
             Assert.fail("Should have thrown an IllegalArgumentException");
-        } catch (@SuppressWarnings("unused") final IllegalArgumentException e) {
+        } catch (@SuppressWarnings("unused") IllegalArgumentException e) {
             // Expected
         }
     }
@@ -91,12 +91,12 @@ public class MultistateInputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void intrinsicReporting() throws Exception {
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         mi.supportIntrinsicReporting(5, 17, new BACnetArray<>(new UnsignedInteger(4), new UnsignedInteger(5)), null,
@@ -172,21 +172,21 @@ public class MultistateInputObjectTest extends AbstractTest {
         // Check the starting values.
         assertEquals(new UnsignedInteger(1), mi.get(PropertyIdentifier.presentValue));
 
-        final DeviceObjectPropertyReference ref =
+        DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(1, mi.getId(), PropertyIdentifier.presentValue);
-        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
                 d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(new ChangeOfState(new UnsignedInteger(30),
                         new SequenceOf<>(new PropertyStates(new UnsignedInteger(4))))),
                 new EventTransitionBits(true, true, true), 17, 1000, null, null));
 
         // Set up the notification destination
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
@@ -266,12 +266,12 @@ public class MultistateInputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void fault() throws Exception {
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         mi.supportIntrinsicReporting(5, 17, new BACnetArray<>(),
@@ -337,5 +337,59 @@ public class MultistateInputObjectTest extends AbstractTest {
                         new ChangeOfReliabilityNotif(Reliability.noFaultDetected, new StatusFlags(false, false, false, false),
                                 new SequenceOf<>(new PropertyValue(PropertyIdentifier.presentValue, new UnsignedInteger(2))))),
                 notif.eventValues());
+    }
+
+    /**
+     * Addendum 135-2016br-5: when Number_Of_States becomes less than Present_Value, Reliability shall be
+     * MULTI_STATE_OUT_OF_RANGE for as long as the situation remains, unless the object is out of service. When
+     * Number_Of_States is raised again, Reliability shall return to noFaultDetected.
+     */
+    @Test
+    public void br5_numberOfStatesShrinkBelowPresentValueSetsReliabilityMultiStateOutOfRange() throws Exception {
+        // Baseline: MSI starts with Number_Of_States=5, Present_Value=1, OOS=false, reliability=noFaultDetected.
+        // Move the Present_Value to 3 so the shrink puts it out of range.
+        mi.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(3));
+        assertEquals(Reliability.noFaultDetected, mi.get(PropertyIdentifier.reliability));
+
+        // Shrink Number_Of_States below the current Present_Value.
+        mi.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.numberOfStates, new UnsignedInteger(2)));
+        assertEquals(Reliability.multiStateOutOfRange, mi.get(PropertyIdentifier.reliability));
+
+        // Raising Number_Of_States back above Present_Value clears the condition.
+        mi.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.numberOfStates, new UnsignedInteger(5)));
+        assertEquals(Reliability.noFaultDetected, mi.get(PropertyIdentifier.reliability));
+    }
+
+    /**
+     * Br-5: while the object is out of service, Reliability is not automatically overridden when Number_Of_States
+     * shrinks below Present_Value.
+     */
+    @Test
+    public void br5_outOfServiceSuppressesMultiStateOutOfRangeUpdate() throws Exception {
+        mi.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(3));
+        mi.writeProperty(null, new PropertyValue(PropertyIdentifier.outOfService, Boolean.TRUE));
+
+        mi.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.numberOfStates, new UnsignedInteger(2)));
+
+        // Reliability must not be forced to multiStateOutOfRange while OOS.
+        assertEquals(Reliability.noFaultDetected, mi.get(PropertyIdentifier.reliability));
+    }
+
+    /**
+     * Br-5: a pre-existing CONFIGURATION_ERROR reliability shall remain in place and not be downgraded to
+     * MULTI_STATE_OUT_OF_RANGE.
+     */
+    @Test
+    public void br5_configurationErrorReliabilityIsPreserved() throws Exception {
+        mi.writePropertyInternal(PropertyIdentifier.presentValue, new UnsignedInteger(3));
+        mi.writePropertyInternal(PropertyIdentifier.reliability, Reliability.configurationError);
+
+        mi.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.numberOfStates, new UnsignedInteger(2)));
+
+        assertEquals(Reliability.configurationError, mi.get(PropertyIdentifier.reliability));
     }
 }
