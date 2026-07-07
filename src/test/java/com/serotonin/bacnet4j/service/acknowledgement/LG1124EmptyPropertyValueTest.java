@@ -29,7 +29,6 @@ package com.serotonin.bacnet4j.service.acknowledgement;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -66,8 +65,11 @@ public class LG1124EmptyPropertyValueTest {
     @Test
     public void parsingCapturedLgResponseSucceeds() throws IOException, BACnetException {
         var queue = new ByteQueue(loadHexFixture());
-        var ack = AcknowledgementService.createAcknowledgementService((byte) 14, queue);
-        assertTrue(ack instanceof ReadPropertyMultipleAck);
+        var ack = new ReadPropertyMultipleAck(queue);
+        // Result 43 contains there error
+        assertEquals(new ErrorClassAndCode(ErrorClass.property, ErrorCode.valueNotInitialized),
+                ack.getListOfReadAccessResults().get(43).getListOfResults().get(0).getReadResult().getDatum());
+
     }
 
     /**
