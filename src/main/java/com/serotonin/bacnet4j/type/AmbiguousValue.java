@@ -28,6 +28,7 @@
 package com.serotonin.bacnet4j.type;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
@@ -38,38 +39,37 @@ import com.serotonin.bacnet4j.util.sero.StreamUtils;
 
 public class AmbiguousValue extends Encodable {
     @SuppressWarnings("unchecked")
-    public static <T extends Encodable> T convertTo(final Encodable value, final Class<T> clazz)
-            throws BACnetException {
-        if (value instanceof AmbiguousValue) {
-            return ((AmbiguousValue) value).convertTo(clazz);
+    public static <T extends Encodable> T convertTo(Encodable value, Class<T> clazz) throws BACnetException {
+        if (value instanceof AmbiguousValue amb) {
+            return amb.convertTo(clazz);
         }
         return (T) value;
     }
 
     private byte[] data;
 
-    public AmbiguousValue(final byte[] data) {
+    public AmbiguousValue(byte[] data) {
         this.data = data;
     }
 
-    public AmbiguousValue(final Encodable... sequence) {
-        final ByteQueue queue = new ByteQueue();
-        for (final Encodable e : sequence) {
+    public AmbiguousValue(Encodable... sequence) {
+        ByteQueue queue = new ByteQueue();
+        for (Encodable e : sequence) {
             e.write(queue);
         }
         data = queue.popAll();
     }
 
-    public AmbiguousValue(final ByteQueue queue) {
-        final TagData tagData = new TagData();
+    public AmbiguousValue(ByteQueue queue) {
+        TagData tagData = new TagData();
         peekTagData(queue, tagData);
         readAmbiguousData(queue, tagData);
     }
 
-    public AmbiguousValue(final ByteQueue queue, final int contextId) throws BACnetException {
+    public AmbiguousValue(ByteQueue queue, int contextId) throws BACnetException {
         popStart(queue, contextId);
 
-        final TagData tagData = new TagData();
+        TagData tagData = new TagData();
         while (true) {
             peekTagData(queue, tagData);
             if (tagData.isEndTag(contextId))
@@ -81,21 +81,21 @@ public class AmbiguousValue extends Encodable {
     }
 
     @Override
-    public void write(final ByteQueue queue, final int contextId) {
+    public void write(ByteQueue queue, int contextId) {
         writeContextTag(queue, contextId, true);
         queue.push(data);
         writeContextTag(queue, contextId, false);
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         queue.push(data);
     }
 
-    private void readAmbiguousData(final ByteQueue queue, final TagData tagData) {
-        final ByteQueue data = new ByteQueue();
-        readAmbiguousData(queue, tagData, data);
-        byte[] element = data.popAll();
+    private void readAmbiguousData(ByteQueue queue, TagData tagData) {
+        ByteQueue tmp = new ByteQueue();
+        readAmbiguousData(queue, tagData, tmp);
+        byte[] element = tmp.popAll();
         //concatenate data
         byte[] newData;
         if (this.data != null) {
@@ -108,7 +108,7 @@ public class AmbiguousValue extends Encodable {
         this.data = newData;
     }
 
-    private void readAmbiguousData(final ByteQueue queue, final TagData tagData, final ByteQueue data) {
+    private void readAmbiguousData(ByteQueue queue, TagData tagData, ByteQueue data) {
         if (!tagData.contextSpecific) {
             // Application class.
             if (tagData.tagNumber == Boolean.TYPE_ID)
@@ -122,7 +122,7 @@ public class AmbiguousValue extends Encodable {
                 copyData(queue, 1, data);
 
                 // Remember the context id
-                final int contextId = tagData.tagNumber;
+                int contextId = tagData.tagNumber;
 
                 // Read ambiguous data until we find the end tag.
                 while (true) {
@@ -154,7 +154,7 @@ public class AmbiguousValue extends Encodable {
             if (Primitive.isPrimitive(data[0])) {
                 try {
                     s = convertTo(Primitive.class).toString();
-                } catch (final BACnetException e) {
+                } catch (BACnetException e) {
                     throw new RuntimeException(e);
                 }
                 return s;
@@ -166,17 +166,18 @@ public class AmbiguousValue extends Encodable {
         }
     }
 
-    private static void copyData(final ByteQueue queue, final int length, final ByteQueue data) {
+    private static void copyData(ByteQueue queue, int length, ByteQueue data) {
         int len = length;
         while (len-- > 0)
             data.push(queue.pop());
     }
 
     public boolean isNull() {
-        return data.length == 1 && data[0] == 0;
+        return data == null || data.length == 0 // Non-spec acceptance of empty content as Null
+                || (data.length == 1 && data[0] == 0);
     }
 
-    public <T extends Encodable> T convertTo(final Class<T> clazz) throws BACnetException {
+    public <T extends Encodable> T convertTo(Class<T> clazz) throws BACnetException {
         return read(new ByteQueue(data), clazz);
     }
 
@@ -185,32 +186,15 @@ public class AmbiguousValue extends Encodable {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (data == null ? 0 : data.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (!(o instanceof AmbiguousValue that))
+            return false;
+        return Objects.deepEquals(data, that.data);
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (obj instanceof AmbiguousValue) {
-            final AmbiguousValue that = (AmbiguousValue) obj;
-            return Arrays.equals(data, that.data);
-        }
-
-        if (!(obj instanceof Encodable))
-            return false;
-        final Encodable eobj = (Encodable) obj;
-        try {
-            return convertTo(eobj.getClass()).equals(obj);
-        } catch (@SuppressWarnings("unused") final BACnetException e) {
-            return false;
-        }
+    public int hashCode() {
+        return Arrays.hashCode(data);
     }
 
     @Override
