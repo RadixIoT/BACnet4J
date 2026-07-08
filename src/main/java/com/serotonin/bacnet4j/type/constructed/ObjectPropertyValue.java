@@ -41,8 +41,8 @@ public class ObjectPropertyValue extends BaseType {
     private final Encodable value;
     private final UnsignedInteger priority;
 
-    public ObjectPropertyValue(final ObjectIdentifier objectIdentifier, final PropertyIdentifier propertyIdentifier,
-            final UnsignedInteger propertyArrayIndex, final Encodable value, final UnsignedInteger priority) {
+    public ObjectPropertyValue(ObjectIdentifier objectIdentifier, PropertyIdentifier propertyIdentifier,
+            UnsignedInteger propertyArrayIndex, Encodable value, UnsignedInteger priority) {
         this.objectIdentifier = objectIdentifier;
         this.propertyIdentifier = propertyIdentifier;
         this.propertyArrayIndex = propertyArrayIndex;
@@ -51,7 +51,7 @@ public class ObjectPropertyValue extends BaseType {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, objectIdentifier, 0);
         write(queue, propertyIdentifier, 1);
         writeOptional(queue, propertyArrayIndex, 2);
@@ -59,7 +59,7 @@ public class ObjectPropertyValue extends BaseType {
         writeOptional(queue, priority, 4);
     }
 
-    public ObjectPropertyValue(final ByteQueue queue) throws BACnetException {
+    public ObjectPropertyValue(ByteQueue queue) throws BACnetException {
         objectIdentifier = read(queue, ObjectIdentifier.class, 0);
         propertyIdentifier = read(queue, PropertyIdentifier.class, 1);
         propertyArrayIndex = readOptional(queue, UnsignedInteger.class, 2);
@@ -79,8 +79,9 @@ public class ObjectPropertyValue extends BaseType {
         return propertyArrayIndex;
     }
 
-    public Encodable getValue() {
-        return value;
+    @SuppressWarnings("unchecked")
+    public <T extends Encodable> T getValue() {
+        return (T) value;
     }
 
     public UnsignedInteger getPriority() {
@@ -89,7 +90,7 @@ public class ObjectPropertyValue extends BaseType {
 
     @Override
     public int hashCode() {
-        final int PRIME = 31;
+        int PRIME = 31;
         int result = 1;
         result = PRIME * result + (objectIdentifier == null ? 0 : objectIdentifier.hashCode());
         result = PRIME * result + (priority == null ? 0 : priority.hashCode());
@@ -100,14 +101,14 @@ public class ObjectPropertyValue extends BaseType {
     }
 
     @Override
-    public boolean equals(final Object obj) {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final ObjectPropertyValue other = (ObjectPropertyValue) obj;
+        ObjectPropertyValue other = (ObjectPropertyValue) obj;
         if (objectIdentifier == null) {
             if (other.objectIdentifier != null)
                 return false;

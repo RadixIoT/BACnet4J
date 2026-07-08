@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ * Copyright (C) 2026 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,77 +25,62 @@
  * See www.radixiot.com for commercial license options.
  */
 
-package com.serotonin.bacnet4j.type.primitive;
+package com.serotonin.bacnet4j.npdu.sc;
 
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.serotonin.bacnet4j.exception.BACnetErrorException;
-import com.serotonin.bacnet4j.npdu.NetworkUtils;
-import com.serotonin.bacnet4j.util.sero.ArrayUtils;
+import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.StreamUtils;
 
-public class OctetString extends Primitive {
-    public static final byte TYPE_ID = 6;
+public abstract class SCId {
+    private final byte[] bytes;
 
-    public static OctetString fromHex(String hexString) {
-        return new OctetString(StreamUtils.fromHex(hexString));
+    protected SCId(byte[] bytes) {
+        if (bytes.length != size()) {
+            throw new IllegalArgumentException("Invalid array length given");
+        }
+        this.bytes = bytes;
     }
 
-    private final byte[] value;
+    protected SCId(ByteQueue queue) {
+        bytes = new byte[size()];
+        int len = queue.pop(bytes);
+        if (len != size()) {
+            throw new IllegalArgumentException("Unable to read required length from queue");
+        }
+    }
 
-    public OctetString(byte[] value) {
-        this.value = value;
+    public void write(ByteQueue queue) {
+        queue.push(bytes);
     }
 
     public byte[] getBytes() {
-        return value;
+        return bytes;
     }
 
-    //
-    // Reading and writing
-    //
-    public OctetString(ByteQueue queue) throws BACnetErrorException {
-        int length = (int) readTag(queue, TYPE_ID);
-        value = new byte[length];
-        queue.pop(value);
+    public OctetString getOctetString() {
+        return new OctetString(bytes);
     }
+
+    protected abstract int size();
 
     @Override
-    public void writeImpl(ByteQueue queue) {
-        queue.push(value);
-    }
-
-    @Override
-    public long getLength() {
-        return value.length;
-    }
-
-    @Override
-    public byte getTypeId() {
-        return TYPE_ID;
+    public String toString() {
+        return StreamUtils.toHex(bytes);
     }
 
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass())
             return false;
-        OctetString that = (OctetString) o;
-        return Objects.deepEquals(value, that.value);
+        SCId scId = (SCId) o;
+        return Objects.deepEquals(bytes, scId.bytes);
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(value);
-    }
-
-    @Override
-    public String toString() {
-        return ArrayUtils.toHexString(value);
-    }
-
-    public String getDescription() {
-        return NetworkUtils.toString(this);
+        return Arrays.hashCode(bytes);
     }
 }

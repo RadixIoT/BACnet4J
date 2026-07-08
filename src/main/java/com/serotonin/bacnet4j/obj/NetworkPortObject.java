@@ -141,9 +141,18 @@ public class NetworkPortObject extends BACnetObject {
         return Map.copyOf(pendingChanges);
     }
 
+    /**
+     * Returns the internal pending-changes map for subclass use. Subclasses that need to track
+     * pending changes at a finer granularity than the base class's set/get overrides (e.g.,
+     * SecureConnectNetworkPortObject tracking per-array-index cert file changes) mutate this
+     * directly. External callers should use {@link #getPendingChanges()}.
+     */
+    protected Map<PropertyIdentifier, Encodable> pendingChanges() {
+        return pendingChanges;
+    }
+
     @Override
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
-            throws BACnetServiceException {
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
         if (value.getPropertyIdentifier().equals(PropertyIdentifier.command)) {
             validateCommand(value.getValue());
         }
@@ -151,7 +160,7 @@ public class NetworkPortObject extends BACnetObject {
     }
 
     @Override
-    protected void beforeReadProperty(final PropertyIdentifier pid) throws BACnetServiceException {
+    protected void beforeReadProperty(PropertyIdentifier pid) throws BACnetServiceException {
         super.beforeReadProperty(pid);
 
         if (pid.equals(PropertyIdentifier.reliability) && isInService()) {
@@ -280,7 +289,7 @@ public class NetworkPortObject extends BACnetObject {
      * be readable, and so the {@link #get} method is overridden too.
      */
     @Override
-    protected void set(final PropertyIdentifier pid, final Encodable value) {
+    protected void set(PropertyIdentifier pid, Encodable value) {
         if (initialized && CHANGES_PENDING_PROPERTIES.contains(pid)) {
             var existing = properties.get(pid);
             if (Objects.equals(existing, value)) {
@@ -296,14 +305,14 @@ public class NetworkPortObject extends BACnetObject {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T extends Encodable> T get(final PropertyIdentifier pid) {
+    public <T extends Encodable> T get(PropertyIdentifier pid) {
         return pendingChanges.containsKey(pid) ? (T) pendingChanges.get(pid) : super.get(pid);
     }
 
     /**
      * Return the current value of the object for this property, ignoring pending changes.
      */
-    public <T extends Encodable> T getActive(final PropertyIdentifier pid) {
+    public <T extends Encodable> T getActive(PropertyIdentifier pid) {
         return super.get(pid);
     }
 
@@ -313,7 +322,10 @@ public class NetworkPortObject extends BACnetObject {
 
         if (pid.equals(PropertyIdentifier.command)) {
             if (newValue == NetworkPortCommand.discardChanges) {
-                executeCommand(pendingChanges::clear);
+                executeCommand(() -> {
+                    discardChanges();
+                    pendingChanges.clear();
+                });
             } else if (newValue == NetworkPortCommand.validateChanges) {
                 executeCommand(() -> {
                     var health = validateChanges();
@@ -336,6 +348,10 @@ public class NetworkPortObject extends BACnetObject {
             }
             writePropertyInternal(PropertyIdentifier.networkNumberQuality, quality);
         }
+    }
+
+    protected void discardChanges() {
+        // Override as needed.
     }
 
     /**

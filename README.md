@@ -80,6 +80,7 @@ var av = localDevice.addObject(new AnalogValueObject(localDevice, ...));
 - Addition of many structures, enumeration, and properties defined in the 2024 specification
 - Serialization bug fixes
 - Removal of deprecated code
+- Introduction of BACnet Secure Connection implementation as SC node connecting to Hub
 
 *Version 6.2.0*
 

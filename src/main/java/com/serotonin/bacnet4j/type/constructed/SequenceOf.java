@@ -28,10 +28,11 @@
 package com.serotonin.bacnet4j.type.constructed;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.service.confirmed.ReadRangeRequest.RangeReadable;
@@ -46,47 +47,46 @@ public class SequenceOf<E extends Encodable> extends BaseType implements Iterabl
         values = new ArrayList<>();
     }
 
-    public SequenceOf(final int capacity) {
+    public SequenceOf(int capacity) {
         values = new ArrayList<>(capacity);
     }
 
-    public SequenceOf(final List<E> values) {
+    public SequenceOf(List<E> values) {
         this.values = values;
     }
 
     @SafeVarargs
-    public SequenceOf(final E... values) {
+    public SequenceOf(E... values) {
         this();
-        for (final E value : values)
-            this.values.add(value);
+        this.values.addAll(Arrays.asList(values));
     }
 
     @Override
-    public void write(final ByteQueue queue) {
-        for (final Encodable value : values)
+    public void write(ByteQueue queue) {
+        for (Encodable value : values)
             value.write(queue);
     }
 
-    public SequenceOf(final ByteQueue queue, final Class<E> clazz) throws BACnetException {
+    public SequenceOf(ByteQueue queue, Class<E> clazz) throws BACnetException {
         values = new ArrayList<>();
         while (peekTagNumber(queue) != -1)
             values.add(read(queue, clazz));
     }
 
-    public SequenceOf(final ByteQueue queue, final int count, final Class<E> clazz) throws BACnetException {
+    public SequenceOf(ByteQueue queue, int count, Class<E> clazz) throws BACnetException {
         values = new ArrayList<>();
-        int _count = count;
-        while (_count-- > 0)
+        int c = count;
+        while (c-- > 0)
             values.add(read(queue, clazz));
     }
 
-    public SequenceOf(final ByteQueue queue, final Class<E> clazz, final int contextId) throws BACnetException {
+    public SequenceOf(ByteQueue queue, Class<E> clazz, int contextId) throws BACnetException {
         values = new ArrayList<>();
         while (readEnd(queue) != contextId)
             values.add(read(queue, clazz));
     }
 
-    public E getBase1(final int indexBase1) {
+    public E getBase1(int indexBase1) {
         if (indexBase1 < 0 || indexBase1 > values.size()) {
             throw new IndexOutOfBoundsException(
                     "Base 1 index %s out of bounds for length %s".formatted(indexBase1, values.size()));
@@ -95,12 +95,12 @@ public class SequenceOf<E extends Encodable> extends BaseType implements Iterabl
     }
 
     @Override
-    public E get(final int index) {
+    public E get(int index) {
         return values.get(index);
     }
 
-    public boolean has(final UnsignedInteger indexBase1) {
-        final int index = indexBase1.intValue() - 1;
+    public boolean has(UnsignedInteger indexBase1) {
+        int index = indexBase1.intValue() - 1;
         return index >= 0 && index < values.size();
     }
 
@@ -113,18 +113,18 @@ public class SequenceOf<E extends Encodable> extends BaseType implements Iterabl
         return values.size();
     }
 
-    public void setBase1(final int indexBase1, final E value) {
-        final int index = indexBase1 - 1;
+    public void setBase1(int indexBase1, E value) {
+        int index = indexBase1 - 1;
         while (values.size() <= index)
             values.add(null);
         values.set(index, value);
     }
 
-    public void set(final int index, final E value) {
+    public void set(int index, E value) {
         values.set(index, value);
     }
 
-    public void add(final E value) {
+    public void add(E value) {
         for (int i = 0; i < values.size(); i++) {
             if (values.get(i) == null) {
                 values.set(i, value);
@@ -134,14 +134,14 @@ public class SequenceOf<E extends Encodable> extends BaseType implements Iterabl
         values.add(value);
     }
 
-    public Encodable remove(final int indexBase1) {
-        final int index = indexBase1 - 1;
+    public Encodable remove(int indexBase1) {
+        int index = indexBase1 - 1;
         if (index < values.size())
             return values.remove(index);
         return null;
     }
 
-    public void remove(final E value) {
+    public void remove(E value) {
         if (value == null)
             return;
 
@@ -153,23 +153,19 @@ public class SequenceOf<E extends Encodable> extends BaseType implements Iterabl
         }
     }
 
-    public void removeAll(final E value) {
-        for (final ListIterator<E> it = values.listIterator(); it.hasNext(); ) {
-            final E e = it.next();
-            if (Objects.equals(e, value))
-                it.remove();
-        }
+    public void removeAll(E value) {
+        values.removeIf(e -> Objects.equals(e, value));
     }
 
-    public boolean contains(final E value) {
-        for (final E e : values) {
+    public boolean contains(E value) {
+        for (E e : values) {
             if (Objects.equals(e, value))
                 return true;
         }
         return false;
     }
 
-    public int indexOf(final Object value) {
+    public int indexOf(E value) {
         return values.indexOf(value);
     }
 
@@ -187,23 +183,27 @@ public class SequenceOf<E extends Encodable> extends BaseType implements Iterabl
         return values;
     }
 
+    public Stream<E> stream() {
+        return values.stream();
+    }
+
     @Override
     public int hashCode() {
-        final int PRIME = 31;
+        int PRIME = 31;
         int result = 1;
         result = PRIME * result + (values == null ? 0 : values.hashCode());
         return result;
     }
 
     @Override
-    public boolean equals(final Object obj) {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final SequenceOf<?> other = (SequenceOf<?>) obj;
+        SequenceOf<?> other = (SequenceOf<?>) obj;
         if (values == null) {
             if (other.values != null)
                 return false;

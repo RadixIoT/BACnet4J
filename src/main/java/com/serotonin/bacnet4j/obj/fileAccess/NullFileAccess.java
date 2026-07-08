@@ -27,8 +27,6 @@
 
 package com.serotonin.bacnet4j.obj.fileAccess;
 
-import java.io.IOException;
-
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
@@ -42,9 +40,25 @@ import com.serotonin.bacnet4j.type.primitive.OctetString;
  * @author Matthew
  */
 public class NullFileAccess implements FileAccess {
+    private final String name;
+    private final FileAccessMethod fileAccessMethod;
+
+    public NullFileAccess() {
+        this("Null", FileAccessMethod.streamAccess);
+    }
+
+    public NullFileAccess(String name) {
+        this(name, FileAccessMethod.streamAccess);
+    }
+
+    public NullFileAccess(String name, FileAccessMethod fileAccessMethod) {
+        this.name = name;
+        this.fileAccessMethod = fileAccessMethod;
+    }
+
     @Override
     public String getName() {
-        return "Null";
+        return name;
     }
 
     @Override
@@ -64,7 +78,7 @@ public class NullFileAccess implements FileAccess {
 
     @Override
     public FileAccessMethod getAccessMethod() {
-        return FileAccessMethod.streamAccess;
+        return fileAccessMethod;
     }
 
     @Override
@@ -88,12 +102,12 @@ public class NullFileAccess implements FileAccess {
     }
 
     @Override
-    public void writeFileSize(final long fileSize) {
+    public void writeFileSize(long fileSize) {
         // no op
     }
 
     @Override
-    public void writeRecordCount(final long recordCount) {
+    public void writeRecordCount(long recordCount) {
         // no op
     }
 
@@ -103,12 +117,12 @@ public class NullFileAccess implements FileAccess {
     }
 
     @Override
-    public OctetString readData(final long start, final long length) throws IOException, BACnetServiceException {
+    public OctetString readData(long start, long length) {
         return new OctetString(new byte[0]);
     }
 
     @Override
-    public long writeData(final long start, final OctetString data) throws IOException, BACnetServiceException {
+    public long writeData(long start, OctetString data) {
         return 0;
     }
 
@@ -118,14 +132,14 @@ public class NullFileAccess implements FileAccess {
     }
 
     @Override
-    public SequenceOf<OctetString> readRecords(final long start, final long count)
-            throws IOException, BACnetServiceException {
+    public SequenceOf<OctetString> readRecords(long start, long count)
+            throws BACnetServiceException {
         throw new BACnetServiceException(ErrorClass.services, ErrorCode.invalidFileAccessMethod);
     }
 
     @Override
-    public long writeRecords(final long start, final SequenceOf<OctetString> records)
-            throws IOException, BACnetServiceException {
+    public long writeRecords(long start, SequenceOf<OctetString> records)
+            throws BACnetServiceException {
         throw new BACnetServiceException(ErrorClass.services, ErrorCode.invalidFileAccessMethod);
     }
 }

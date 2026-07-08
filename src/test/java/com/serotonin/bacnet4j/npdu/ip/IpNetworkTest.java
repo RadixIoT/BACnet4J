@@ -74,7 +74,7 @@ import com.serotonin.bacnet4j.util.sero.IpAddressUtils;
 
 /**
  * These tests assume the existence of the remote devices created by the docker compose, and so only runs if being
- * executed in a docker environment. See @{@link DockerRemoteDevice}, which sends both broadcast and unicast
+ * executed in a docker environment. See {@link DockerRemoteDevice}, which sends both broadcast and unicast
  * messages every second.
  */
 public class IpNetworkTest extends AbstractTest {

@@ -187,23 +187,23 @@ public class LocalDevice implements AutoCloseable {
     // Default persistence to null.
     private IPersistence persistence = new NullPersistence();
 
-    public LocalDevice(final int deviceNumber, final Transport transport) {
+    public LocalDevice(int deviceNumber, Transport transport) {
         this.transport = transport;
         transport.setLocalDevice(this);
         afterInstantiation(deviceNumber);
     }
 
-    private void afterInstantiation(final int deviceNumber) {
+    private void afterInstantiation(int deviceNumber) {
         try {
             // Initialize the device object.
             addObject(new DeviceObject(this, deviceNumber));
-        } catch (final BACnetServiceException e) {
+        } catch (BACnetServiceException e) {
             // Should not happen
             throw new RuntimeException(e);
         }
     }
 
-    public LocalDevice withClock(final Clock clock) {
+    public LocalDevice withClock(Clock clock) {
         setClock(clock);
         return this;
     }
@@ -212,7 +212,7 @@ public class LocalDevice implements AutoCloseable {
         return clock;
     }
 
-    public void setClock(final Clock clock) {
+    public void setClock(Clock clock) {
         if (initialized)
             throw new IllegalStateException("Clock needs to be set before LocalDevice is initialized");
         this.clock = clock;
@@ -246,11 +246,11 @@ public class LocalDevice implements AutoCloseable {
         return deviceObject.getInstanceId();
     }
 
-    public <T extends Encodable> T get(final PropertyIdentifier pid) {
+    public <T extends Encodable> T get(PropertyIdentifier pid) {
         return deviceObject.get(pid);
     }
 
-    public LocalDevice writePropertyInternal(final PropertyIdentifier pid, final Encodable value) {
+    public LocalDevice writePropertyInternal(PropertyIdentifier pid, Encodable value) {
         deviceObject.writePropertyInternal(pid, value);
         return this;
     }
@@ -267,13 +267,11 @@ public class LocalDevice implements AutoCloseable {
         return nextProcessId.getAndIncrement();
     }
 
-    public void addPrivateTransferHandler(final int vendorId, final int serviceNumber,
-            final PrivateTransferHandler handler) {
+    public void addPrivateTransferHandler(int vendorId, int serviceNumber, PrivateTransferHandler handler) {
         privateTransferHandlers.put(new VendorServiceKey(vendorId, serviceNumber), handler);
     }
 
-    public PrivateTransferHandler getPrivateTransferHandler(final UnsignedInteger vendorId,
-            final UnsignedInteger serviceNumber) {
+    public PrivateTransferHandler getPrivateTransferHandler(UnsignedInteger vendorId, UnsignedInteger serviceNumber) {
         return privateTransferHandlers.get(new VendorServiceKey(vendorId, serviceNumber));
     }
 
@@ -281,7 +279,7 @@ public class LocalDevice implements AutoCloseable {
         return reinitializeDeviceHandler;
     }
 
-    public void setReinitializeDeviceHandler(final ReinitializeDeviceHandler reinitializeDeviceHandler) {
+    public void setReinitializeDeviceHandler(ReinitializeDeviceHandler reinitializeDeviceHandler) {
         this.reinitializeDeviceHandler = reinitializeDeviceHandler;
     }
 
@@ -289,7 +287,7 @@ public class LocalDevice implements AutoCloseable {
         return timeoutDeviceRetention;
     }
 
-    public void setTimeoutDeviceRetention(final long timeoutDeviceRetention) {
+    public void setTimeoutDeviceRetention(long timeoutDeviceRetention) {
         this.timeoutDeviceRetention = timeoutDeviceRetention;
     }
 
@@ -311,7 +309,7 @@ public class LocalDevice implements AutoCloseable {
         return initialize(RestartReason.unknown);
     }
 
-    public synchronized LocalDevice initialize(final RestartReason lastRestartReason) throws Exception {
+    public synchronized LocalDevice initialize(RestartReason lastRestartReason) throws Exception {
         deviceObject.writePropertyInternal(PropertyIdentifier.lastRestartReason, lastRestartReason);
 
         timer = createScheduledExecutorService();
@@ -320,19 +318,18 @@ public class LocalDevice implements AutoCloseable {
 
         // If the device id is uninitialized, try to find an available number to use.
         if (getInstanceNumber() == ObjectIdentifier.UNINITIALIZED) {
-            final int attempts = 10;
-            final int rangeSize = 20;
+            int attempts = 10;
+            int rangeSize = 20;
 
-            final Random random = new Random();
+            Random random = new Random();
             int remaining = attempts;
             while (remaining > 0) {
-                final int from = random.nextInt(ObjectIdentifier.UNINITIALIZED - rangeSize);
-                final List<Integer> idList = IntStream.range(from, from + rangeSize).boxed()
-                        .collect(Collectors.toList());
+                int from = random.nextInt(ObjectIdentifier.UNINITIALIZED - rangeSize);
+                List<Integer> idList = IntStream.range(from, from + rangeSize).boxed().collect(Collectors.toList());
 
-                final DeviceEventAdapter listener = new DeviceEventAdapter() {
+                DeviceEventAdapter listener = new DeviceEventAdapter() {
                     @Override
-                    public void iAmReceived(final RemoteDevice d) {
+                    public void iAmReceived(RemoteDevice d) {
                         LOG.info("Device id {} is not available", d.getInstanceNumber());
                         idList.remove(Integer.valueOf(d.getInstanceNumber()));
                     }
@@ -360,7 +357,7 @@ public class LocalDevice implements AutoCloseable {
         }
 
         // Notify objects.
-        for (final BACnetObject bo : localObjects) {
+        for (BACnetObject bo : localObjects) {
             bo.initialize();
         }
 
@@ -376,15 +373,15 @@ public class LocalDevice implements AutoCloseable {
             deviceObject.writePropertyInternal(PropertyIdentifier.restartNotificationRecipients,
                     restartNotificationRecipients);
         }
-        final UnconfirmedCovNotificationRequest restartNotif = new UnconfirmedCovNotificationRequest(
+        UnconfirmedCovNotificationRequest restartNotif = new UnconfirmedCovNotificationRequest(
                 UnsignedInteger.ZERO, getId(), getId(), UnsignedInteger.ZERO, new SequenceOf<>(
                 new PropertyValue(PropertyIdentifier.systemStatus, deviceObject.get(PropertyIdentifier.systemStatus)),
                 new PropertyValue(PropertyIdentifier.timeOfDeviceRestart,
                         deviceObject.get(PropertyIdentifier.timeOfDeviceRestart)),
                 new PropertyValue(PropertyIdentifier.lastRestartReason,
                         deviceObject.get(PropertyIdentifier.lastRestartReason))));
-        for (final Recipient recipient : restartNotificationRecipients) {
-            final Address address = recipient.toAddress(this);
+        for (Recipient recipient : restartNotificationRecipients) {
+            Address address = recipient.toAddress(this);
             send(address, restartNotif);
         }
 
@@ -422,7 +419,7 @@ public class LocalDevice implements AutoCloseable {
                 if (!timer.awaitTermination(timeout, timeoutUnit)) {
                     LOG.warn("BACnet4J timer did not shutdown within 10 seconds");
                 }
-            } catch (final InterruptedException e) {
+            } catch (InterruptedException e) {
                 LOG.warn("Interrupted while waiting for shutdown of executors", e);
             }
         }
@@ -444,7 +441,7 @@ public class LocalDevice implements AutoCloseable {
      * Schedules the given command for later execution.
      */
     @SuppressWarnings("unchecked")
-    public <T> ScheduledFuture<T> schedule(final Runnable command, final long period, final TimeUnit unit) {
+    public <T> ScheduledFuture<T> schedule(Runnable command, long period, TimeUnit unit) {
         return (ScheduledFuture<T>) timer.schedule(command, period, unit);
     }
 
@@ -452,8 +449,7 @@ public class LocalDevice implements AutoCloseable {
      * Schedules the given command for later execution.
      */
     @SuppressWarnings("unchecked")
-    public <T> ScheduledFuture<T> scheduleAtFixedRate(final Runnable command, final long initialDelay,
-            final long period, final TimeUnit unit) {
+    public <T> ScheduledFuture<T> scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit unit) {
         return (ScheduledFuture<T>) timer.scheduleAtFixedRate(command, initialDelay, period, unit);
     }
 
@@ -461,9 +457,8 @@ public class LocalDevice implements AutoCloseable {
      * Schedules the given command for later execution.
      */
     @SuppressWarnings("unchecked")
-    public <T> ScheduledFuture<T> scheduleWithFixedDelay(final Runnable command, final long initialDelay,
-            final long delay,
-            final TimeUnit unit) {
+    public <T> ScheduledFuture<T> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay,
+            TimeUnit unit) {
         return (ScheduledFuture<T>) timer.scheduleWithFixedDelay(command, initialDelay, delay, unit);
     }
 
@@ -471,14 +466,14 @@ public class LocalDevice implements AutoCloseable {
      * Submits the given task for immediate execution.
      */
     @SuppressWarnings("unchecked")
-    public <T> Future<T> submit(final Runnable task) {
+    public <T> Future<T> submit(Runnable task) {
         return (Future<T>) timer.submit(task);
     }
 
     /**
      * Submits the given task for immediate execution.
      */
-    public void execute(final Runnable task) {
+    public void execute(Runnable task) {
         timer.execute(task);
     }
 
@@ -492,24 +487,24 @@ public class LocalDevice implements AutoCloseable {
         return password;
     }
 
-    public LocalDevice withPassword(final String password) {
+    public LocalDevice withPassword(String password) {
         this.password = password;
         return this;
     }
 
-    public LocalDevice withAPDUSegmentTimeout(final UnsignedInteger apduSegmentTimeout) {
+    public LocalDevice withAPDUSegmentTimeout(UnsignedInteger apduSegmentTimeout) {
         deviceObject.writePropertyInternal(PropertyIdentifier.apduSegmentTimeout, apduSegmentTimeout);
         transport.setSegTimeout(apduSegmentTimeout.intValue());
         return this;
     }
 
-    public LocalDevice withAPDUTimeout(final UnsignedInteger apduTimeout) {
+    public LocalDevice withAPDUTimeout(UnsignedInteger apduTimeout) {
         deviceObject.writePropertyInternal(PropertyIdentifier.apduTimeout, apduTimeout);
         transport.setTimeout(apduTimeout.intValue());
         return this;
     }
 
-    public LocalDevice withNumberOfApduRetries(final UnsignedInteger numberOfApduRetries) {
+    public LocalDevice withNumberOfApduRetries(UnsignedInteger numberOfApduRetries) {
         deviceObject.writePropertyInternal(PropertyIdentifier.numberOfApduRetries, numberOfApduRetries);
         transport.setRetries(numberOfApduRetries.intValue());
         return this;
@@ -528,8 +523,8 @@ public class LocalDevice implements AutoCloseable {
      *-----------------------------------------------------------
      -----------------------------------------------------------*/
 
-    public BACnetObject getObjectRequired(final ObjectIdentifier id) throws BACnetServiceException {
-        final BACnetObject o = getObject(id);
+    public BACnetObject getObjectRequired(ObjectIdentifier id) throws BACnetServiceException {
+        BACnetObject o = getObject(id);
         if (o == null)
             throw new BACnetServiceException(ErrorClass.object, ErrorCode.unknownObject);
         return o;
@@ -539,30 +534,31 @@ public class LocalDevice implements AutoCloseable {
         return localObjects;
     }
 
-    public BACnetObject getObject(final ObjectIdentifier id) {
+    @SuppressWarnings("unchecked")
+    public <T extends BACnetObject> T getObject(ObjectIdentifier id) {
         ObjectIdentifier oidToFind = id;
         // Treat calls for device 0x3FFFFF as calls for the local device object. See 15.5.2.
         if (id.getObjectType().equals(ObjectType.device) && id.getInstanceNumber() == ObjectIdentifier.UNINITIALIZED) {
             oidToFind = new ObjectIdentifier(ObjectType.device, getInstanceNumber());
         }
 
-        for (final BACnetObject obj : localObjects) {
+        for (BACnetObject obj : localObjects) {
             if (obj.getId().equals(oidToFind))
-                return obj;
+                return (T) obj;
         }
 
         return null;
     }
 
-    public BACnetObject getObject(final String name) {
-        for (final BACnetObject obj : localObjects) {
+    public BACnetObject getObject(String name) {
+        for (BACnetObject obj : localObjects) {
             if (name.equals(obj.getObjectName()))
                 return obj;
         }
         return null;
     }
 
-    public <T extends BACnetObject> T addObject(final T obj) throws BACnetServiceException {
+    public <T extends BACnetObject> T addObject(T obj) throws BACnetServiceException {
         if (obj.getId().getObjectType().equals(ObjectType.device)) {
             if (deviceObject == null) {
                 deviceObject = (DeviceObject) obj;
@@ -589,16 +585,16 @@ public class LocalDevice implements AutoCloseable {
         return obj;
     }
 
-    public ObjectIdentifier getNextInstanceObjectIdentifier(final ObjectType objectType) {
+    public ObjectIdentifier getNextInstanceObjectIdentifier(ObjectType objectType) {
         return new ObjectIdentifier(objectType, getNextInstanceObjectNumber(objectType));
     }
 
-    public int getNextInstanceObjectNumber(final ObjectType objectType) {
+    public int getNextInstanceObjectNumber(ObjectType objectType) {
         // Make a list of existing ids.
-        final List<Integer> ids = new ArrayList<>();
-        final int type = objectType.intValue();
+        List<Integer> ids = new ArrayList<>();
+        int type = objectType.intValue();
         ObjectIdentifier id;
-        for (final BACnetObject obj : localObjects) {
+        for (BACnetObject obj : localObjects) {
             id = obj.getId();
             if (id.getObjectType().intValue() == type)
                 ids.add(id.getInstanceNumber());
@@ -617,8 +613,8 @@ public class LocalDevice implements AutoCloseable {
         return i;
     }
 
-    public BACnetObject removeObject(final ObjectIdentifier id) throws BACnetServiceException {
-        final BACnetObject obj = getObject(id);
+    public BACnetObject removeObject(ObjectIdentifier id) throws BACnetServiceException {
+        BACnetObject obj = getObject(id);
         if (obj != null) {
             localObjects.remove(obj);
 
@@ -646,15 +642,15 @@ public class LocalDevice implements AutoCloseable {
      * @param instanceNumber the instance number of the desired device
      * @return the remote device or null if not found.
      */
-    public RemoteDevice getCachedRemoteDevice(final int instanceNumber) {
+    public RemoteDevice getCachedRemoteDevice(int instanceNumber) {
         return remoteDeviceCache.getCachedEntity(instanceNumber);
     }
 
-    public RemoteDevice getCachedRemoteDevice(final Address address) {
+    public RemoteDevice getCachedRemoteDevice(Address address) {
         return remoteDeviceCache.getCachedEntity(rd -> rd.getAddress().equals(address));
     }
 
-    public RemoteDevice removeCachedRemoteDevice(final int instanceNumber) {
+    public RemoteDevice removeCachedRemoteDevice(int instanceNumber) {
         return remoteDeviceCache.removeEntity(instanceNumber);
     }
 
@@ -671,12 +667,12 @@ public class LocalDevice implements AutoCloseable {
      * @param timeout         the timeout scalar
      * @param unit            the timeout unit
      */
-    public void getRemoteDevice(final int instanceNumber, final Consumer<RemoteDevice> callback,
-            final Runnable timeoutCallback, final Runnable finallyCallback, final long timeout, final TimeUnit unit) {
+    public void getRemoteDevice(int instanceNumber, Consumer<RemoteDevice> callback, Runnable timeoutCallback,
+            Runnable finallyCallback, long timeout, TimeUnit unit) {
         Objects.requireNonNull(callback);
 
         // Check for a cached instance.
-        final RemoteDevice rd = getCachedRemoteDevice(instanceNumber);
+        RemoteDevice rd = getCachedRemoteDevice(instanceNumber);
 
         if (rd != null) {
             LOG.debug("Found a cached device: {}", instanceNumber);
@@ -717,14 +713,14 @@ public class LocalDevice implements AutoCloseable {
      * @param instanceNumber the instance number of the desired device
      * @return the remote device future
      */
-    public RemoteDeviceFuture getRemoteDevice(final int instanceNumber) {
+    public RemoteDeviceFuture getRemoteDevice(int instanceNumber) {
         return new RemoteDeviceFuture() {
             private RemoteDevice remoteDevice;
             private RemoteDeviceFuture future;
 
             {
                 // Check for a cached instance
-                final RemoteDevice rd = getCachedRemoteDevice(instanceNumber);
+                RemoteDevice rd = getCachedRemoteDevice(instanceNumber);
 
                 if (rd != null) {
                     LOG.debug("Found a cached device: {}", instanceNumber);
@@ -738,7 +734,7 @@ public class LocalDevice implements AutoCloseable {
             }
 
             @Override
-            public RemoteDevice get(final long timeoutMillis) throws BACnetException, CancellationException {
+            public RemoteDevice get(long timeoutMillis) throws BACnetException, CancellationException {
                 if (remoteDevice != null)
                     return remoteDevice;
                 if (future == null)
@@ -747,7 +743,7 @@ public class LocalDevice implements AutoCloseable {
                 RemoteDevice rd;
                 try {
                     rd = future.get(timeoutMillis);
-                } catch (final BACnetTimeoutException e) {
+                } catch (BACnetTimeoutException e) {
                     rememberDeviceTimeout(instanceNumber);
                     throw e;
                 }
@@ -776,7 +772,7 @@ public class LocalDevice implements AutoCloseable {
      * @return the remote device
      * @throws BACnetException if anything goes wrong, including timeout.
      */
-    public RemoteDevice getRemoteDeviceBlocking(final int instanceNumber) throws BACnetException {
+    public RemoteDevice getRemoteDeviceBlocking(int instanceNumber) throws BACnetException {
         return getRemoteDeviceBlocking(instanceNumber, transport.getTimeout());
     }
 
@@ -800,8 +796,7 @@ public class LocalDevice implements AutoCloseable {
      * @return the remote device
      * @throws BACnetException if anything goes wrong, including timeout.
      */
-    public RemoteDevice getRemoteDeviceBlocking(final int instanceNumber, final long timeoutMillis)
-            throws BACnetException {
+    public RemoteDevice getRemoteDeviceBlocking(int instanceNumber, long timeoutMillis) throws BACnetException {
         // Check for a cached instance
         RemoteDevice rd = getCachedRemoteDevice(instanceNumber);
 
@@ -833,7 +828,7 @@ public class LocalDevice implements AutoCloseable {
                 else
                     rd = future.get(timeoutMillis);
                 forgetDeviceTimeout(instanceNumber);
-            } catch (final BACnetTimeoutException e) {
+            } catch (BACnetTimeoutException e) {
                 rememberDeviceTimeout(instanceNumber);
                 throw e;
             } finally {
@@ -898,7 +893,7 @@ public class LocalDevice implements AutoCloseable {
         return startRemoteDeviceDiscovery(CacheUpdate.NEVER, null);
     }
 
-    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(final Consumer<RemoteDevice> callback) {
+    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(Consumer<RemoteDevice> callback) {
         return startRemoteDeviceDiscovery(CacheUpdate.NEVER, callback);
     }
 
@@ -910,9 +905,8 @@ public class LocalDevice implements AutoCloseable {
      * @param callback    optional client callback
      * @return the discoverer, which must be stopped by the caller
      */
-    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(CacheUpdate cacheUpdate,
-            final Consumer<RemoteDevice> callback) {
-        final RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(this, discoveredDevice -> {
+    public RemoteDeviceDiscoverer startRemoteDeviceDiscovery(CacheUpdate cacheUpdate, Consumer<RemoteDevice> callback) {
+        RemoteDeviceDiscoverer discoverer = new RemoteDeviceDiscoverer(this, discoveredDevice -> {
             // Cache the device.
             remoteDeviceCache.putEntity(discoveredDevice.getInstanceNumber(), discoveredDevice,
                     cachePolicies.getDevicePolicy(discoveredDevice.getInstanceNumber()));
@@ -942,10 +936,10 @@ public class LocalDevice implements AutoCloseable {
      * @param instanceNumber the instance number of the device to update
      * @param address        the device address
      */
-    public void updateRemoteDevice(final int instanceNumber, final Address address) {
+    public void updateRemoteDevice(int instanceNumber, Address address) {
         if (address == null)
             throw new NullPointerException("address cannot be null");
-        final RemoteDevice d = getCachedRemoteDevice(instanceNumber);
+        RemoteDevice d = getCachedRemoteDevice(instanceNumber);
         if (d != null) {
             if (address instanceof NetworkSourceAddress) {
                 LOG.debug("Updating address with source info, newAddress={}, existingAddress={}", address,
@@ -979,21 +973,21 @@ public class LocalDevice implements AutoCloseable {
         return remoteDeviceCache;
     }
 
-    private void rememberDeviceTimeout(final int instanceNumber) {
+    private void rememberDeviceTimeout(int instanceNumber) {
         synchronized (timeoutDevices) {
             timeoutDevices.put(instanceNumber, clock.millis() + timeoutDeviceRetention);
         }
     }
 
-    private void forgetDeviceTimeout(final int instanceNumber) {
+    private void forgetDeviceTimeout(int instanceNumber) {
         synchronized (timeoutDevices) {
             timeoutDevices.remove(instanceNumber);
         }
     }
 
-    private boolean deviceFindTimedOut(final int instanceNumber) {
+    private boolean deviceFindTimedOut(int instanceNumber) {
         synchronized (timeoutDevices) {
-            final Long expiry = timeoutDevices.get(instanceNumber);
+            Long expiry = timeoutDevices.get(instanceNumber);
             if (expiry == null)
                 return false;
             if (expiry <= clock.millis()) {
@@ -1012,14 +1006,13 @@ public class LocalDevice implements AutoCloseable {
 
     //
     // Get properties
-    public <T extends Encodable> T getCachedRemoteProperty(final int did, final ObjectIdentifier oid,
-            final PropertyIdentifier pid) {
+    public <T extends Encodable> T getCachedRemoteProperty(int did, ObjectIdentifier oid, PropertyIdentifier pid) {
         return getCachedRemoteProperty(did, oid, pid, null);
     }
 
-    public <T extends Encodable> T getCachedRemoteProperty(final int did, final ObjectIdentifier oid,
-            final PropertyIdentifier pid, final UnsignedInteger pin) {
-        final RemoteDevice rd = getCachedRemoteDevice(did);
+    public <T extends Encodable> T getCachedRemoteProperty(int did, ObjectIdentifier oid, PropertyIdentifier pid,
+            UnsignedInteger pin) {
+        RemoteDevice rd = getCachedRemoteDevice(did);
         if (rd == null)
             return null;
         return rd.getObjectProperty(oid, pid, pin);
@@ -1028,20 +1021,19 @@ public class LocalDevice implements AutoCloseable {
     //
     // Set properties
 
-    public void setCachedRemoteProperty(final int did, final ObjectIdentifier oid, final PropertyIdentifier pid,
-            final Encodable value) {
+    public void setCachedRemoteProperty(int did, ObjectIdentifier oid, PropertyIdentifier pid, Encodable value) {
         setCachedRemoteProperty(did, oid, pid, null, value);
     }
 
-    public void setCachedRemoteProperty(final int did, final ObjectIdentifier oid, final PropertyIdentifier pid,
-            final UnsignedInteger pin, final Encodable value) {
+    public void setCachedRemoteProperty(int did, ObjectIdentifier oid, PropertyIdentifier pid, UnsignedInteger pin,
+            Encodable value) {
         if (value instanceof ErrorClassAndCode e && ErrorClass.device.equals(e.getErrorClass())) {
             // Don't cache devices if the error is about the device. In fact, delete the cached device.
             remoteDeviceCache.removeEntity(did);
             return;
         }
 
-        final RemoteDevice rd = getCachedRemoteDevice(did);
+        RemoteDevice rd = getCachedRemoteDevice(did);
         if (rd != null) {
             rd.setObjectProperty(oid, pid, pin, value);
         }
@@ -1050,14 +1042,13 @@ public class LocalDevice implements AutoCloseable {
     //
     // Remove properties
 
-    public <T extends Encodable> T removeCachedRemoteProperty(final int did, final ObjectIdentifier oid,
-            final PropertyIdentifier pid) {
+    public <T extends Encodable> T removeCachedRemoteProperty(int did, ObjectIdentifier oid, PropertyIdentifier pid) {
         return removeCachedRemoteProperty(did, oid, pid, null);
     }
 
-    public <T extends Encodable> T removeCachedRemoteProperty(final int did, final ObjectIdentifier oid,
-            final PropertyIdentifier pid, final UnsignedInteger pin) {
-        final RemoteDevice rd = getCachedRemoteDevice(did);
+    public <T extends Encodable> T removeCachedRemoteProperty(int did, ObjectIdentifier oid, PropertyIdentifier pid,
+            UnsignedInteger pin) {
+        RemoteDevice rd = getCachedRemoteDevice(did);
         if (rd == null)
             return null;
         return rd.removeObjectProperty(oid, pid, pin);
@@ -1069,15 +1060,15 @@ public class LocalDevice implements AutoCloseable {
      *-----------------------------------------------------------
      -----------------------------------------------------------*/
 
-    public ServiceFuture send(final RemoteDevice d, final ConfirmedRequestService serviceRequest) {
+    public ServiceFuture send(RemoteDevice d, ConfirmedRequestService serviceRequest) {
         ensureInitialized();
         return transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(),
                 serviceRequest);
     }
 
-    public ServiceFuture send(final Address address, final ConfirmedRequestService serviceRequest) {
+    public ServiceFuture send(Address address, ConfirmedRequestService serviceRequest) {
         ensureInitialized();
-        final RemoteDevice d = getCachedRemoteDevice(address);
+        RemoteDevice d = getCachedRemoteDevice(address);
         if (d == null) {
             // Just use some hopeful defaults.
             return transport.send(address, MaxApduLength.UP_TO_50.getMaxLengthInt(), Segmentation.noSegmentation,
@@ -1086,17 +1077,15 @@ public class LocalDevice implements AutoCloseable {
         return send(d, serviceRequest);
     }
 
-    public void send(final RemoteDevice d, final ConfirmedRequestService serviceRequest,
-            final ResponseConsumer consumer) {
+    public void send(RemoteDevice d, ConfirmedRequestService serviceRequest, ResponseConsumer consumer) {
         ensureInitialized();
         transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(), serviceRequest,
                 consumer);
     }
 
-    public void send(final Address address, final ConfirmedRequestService serviceRequest,
-            final ResponseConsumer consumer) {
+    public void send(Address address, ConfirmedRequestService serviceRequest, ResponseConsumer consumer) {
         ensureInitialized();
-        final RemoteDevice d = getCachedRemoteDevice(address);
+        RemoteDevice d = getCachedRemoteDevice(address);
         if (d == null) {
             // Just use some hopeful defaults.
             transport.send(address, MaxApduLength.UP_TO_50.getMaxLengthInt(), Segmentation.noSegmentation,
@@ -1105,22 +1094,22 @@ public class LocalDevice implements AutoCloseable {
             send(d, serviceRequest, consumer);
     }
 
-    public void send(final RemoteDevice d, final UnconfirmedRequestService serviceRequest) {
+    public void send(RemoteDevice d, UnconfirmedRequestService serviceRequest) {
         ensureInitialized();
         transport.send(d.getAddress(), serviceRequest);
     }
 
-    public void send(final Address address, final UnconfirmedRequestService serviceRequest) {
+    public void send(Address address, UnconfirmedRequestService serviceRequest) {
         ensureInitialized();
         transport.send(address, serviceRequest);
     }
 
-    public void sendLocalBroadcast(final UnconfirmedRequestService serviceRequest) {
+    public void sendLocalBroadcast(UnconfirmedRequestService serviceRequest) {
         ensureInitialized();
         transport.send(getLocalBroadcastAddress(), serviceRequest);
     }
 
-    public void sendGlobalBroadcast(final UnconfirmedRequestService serviceRequest) {
+    public void sendGlobalBroadcast(UnconfirmedRequestService serviceRequest) {
         ensureInitialized();
         transport.send(Address.GLOBAL, serviceRequest);
     }
@@ -1141,7 +1130,7 @@ public class LocalDevice implements AutoCloseable {
     private EnableDisable communicationControlState = EnableDisable.enable;
     private ScheduledFuture<?> communicationControlFuture;
 
-    public void setCommunicationControl(final EnableDisable enableDisable, final int minutes) {
+    public void setCommunicationControl(EnableDisable enableDisable, int minutes) {
         synchronized (communicationControlMonitor) {
             communicationControlState = enableDisable;
             cancelCommunicationControlFuture();
@@ -1179,7 +1168,7 @@ public class LocalDevice implements AutoCloseable {
         return persistence;
     }
 
-    public void setPersistence(final IPersistence persistence) {
+    public void setPersistence(IPersistence persistence) {
         this.persistence = Objects.requireNonNullElseGet(persistence, NullPersistence::new);
     }
 

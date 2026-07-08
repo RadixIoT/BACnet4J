@@ -193,6 +193,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.java-websocket</groupId>
+            <artifactId>Java-WebSocket</artifactId>
+            <version>1.6.0</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>5.20.0</version>
@@ -212,7 +218,12 @@
             <version>1.1.1</version>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>1.84</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <issueManagement>
         <url>https://github.com/infiniteautomation/BACnet4J/issues</url>

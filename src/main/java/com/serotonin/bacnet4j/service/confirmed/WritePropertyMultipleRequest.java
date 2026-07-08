@@ -54,7 +54,7 @@ public class WritePropertyMultipleRequest extends ConfirmedRequestService {
 
     private final SequenceOf<WriteAccessSpecification> listOfWriteAccessSpecifications;
 
-    public WritePropertyMultipleRequest(final SequenceOf<WriteAccessSpecification> listOfWriteAccessSpecifications) {
+    public WritePropertyMultipleRequest(SequenceOf<WriteAccessSpecification> listOfWriteAccessSpecifications) {
         this.listOfWriteAccessSpecifications = listOfWriteAccessSpecifications;
     }
 
@@ -64,23 +64,27 @@ public class WritePropertyMultipleRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, listOfWriteAccessSpecifications);
     }
 
-    WritePropertyMultipleRequest(final ByteQueue queue) throws BACnetException {
+    WritePropertyMultipleRequest(ByteQueue queue) throws BACnetException {
         listOfWriteAccessSpecifications = readSequenceOf(queue, WriteAccessSpecification.class);
     }
 
+    public SequenceOf<WriteAccessSpecification> getListOfWriteAccessSpecifications() {
+        return listOfWriteAccessSpecifications;
+    }
+
     @Override
-    public AcknowledgementService handle(final LocalDevice localDevice, final Address from) throws BACnetException {
+    public AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException {
         BACnetObject obj;
-        for (final WriteAccessSpecification spec : listOfWriteAccessSpecifications) {
+        for (WriteAccessSpecification spec : listOfWriteAccessSpecifications) {
             obj = localDevice.getObject(spec.getObjectIdentifier());
             if (obj == null)
                 throw createException(ErrorClass.property, ErrorCode.unknownObject, spec, null);
 
-            for (final PropertyValue pv : spec.getListOfProperties()) {
+            for (PropertyValue pv : spec.getListOfProperties()) {
                 LOG.info("Writing property {} into {}", pv, obj);
                 try {
                     if (localDevice.getEventHandler().checkAllowPropertyWrite(from, obj, pv)) {
@@ -88,7 +92,7 @@ public class WritePropertyMultipleRequest extends ConfirmedRequestService {
                         localDevice.getEventHandler().propertyWritten(from, obj, pv);
                     } else
                         throw createException(ErrorClass.property, ErrorCode.writeAccessDenied, spec, pv);
-                } catch (final BACnetServiceException e) {
+                } catch (BACnetServiceException e) {
                     throw createException(e.getErrorClass(), e.getErrorCode(), spec, pv);
                 }
             }
@@ -97,9 +101,9 @@ public class WritePropertyMultipleRequest extends ConfirmedRequestService {
         return null;
     }
 
-    private BACnetErrorException createException(final ErrorClass errorClass, final ErrorCode errorCode,
-            final WriteAccessSpecification spec, final PropertyValue pv) {
-        final PropertyValue pvToUse = pv == null ? spec.getListOfProperties().getBase1(1) : pv;
+    private BACnetErrorException createException(ErrorClass errorClass, ErrorCode errorCode,
+            WriteAccessSpecification spec, PropertyValue pv) {
+        PropertyValue pvToUse = pv == null ? spec.getListOfProperties().getBase1(1) : pv;
         return new BACnetErrorException(getChoiceId(),
                 new WritePropertyMultipleError(new ErrorClassAndCode(errorClass, errorCode),
                         new ObjectPropertyReference(spec.getObjectIdentifier(), pvToUse.getPropertyIdentifier(),
@@ -108,7 +112,7 @@ public class WritePropertyMultipleRequest extends ConfirmedRequestService {
 
     @Override
     public int hashCode() {
-        final int PRIME = 31;
+        int PRIME = 31;
         int result = 1;
         result = PRIME * result
                 + (listOfWriteAccessSpecifications == null ? 0 : listOfWriteAccessSpecifications.hashCode());
@@ -116,14 +120,14 @@ public class WritePropertyMultipleRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public boolean equals(final Object obj) {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final WritePropertyMultipleRequest other = (WritePropertyMultipleRequest) obj;
+        WritePropertyMultipleRequest other = (WritePropertyMultipleRequest) obj;
         if (listOfWriteAccessSpecifications == null) {
             if (other.listOfWriteAccessSpecifications != null)
                 return false;
