@@ -98,7 +98,7 @@ public class DeviceObjectTest extends AbstractTest {
     @Test
     public void objectList() throws BACnetException {
         // Get the whole list.
-        final SequenceOf<ObjectIdentifier> oids = RequestUtils.getProperty(d2, rd1, PropertyIdentifier.objectList);
+        SequenceOf<ObjectIdentifier> oids = RequestUtils.getProperty(d2, rd1, PropertyIdentifier.objectList);
         assertEquals(new ObjectIdentifier(ObjectType.device, 1), oids.getBase1(1));
         assertEquals(new ObjectIdentifier(ObjectType.analogValue, 0), oids.getBase1(2));
         assertEquals(new ObjectIdentifier(ObjectType.analogValue, 1), oids.getBase1(3));
@@ -109,7 +109,7 @@ public class DeviceObjectTest extends AbstractTest {
         assertEquals(new ObjectIdentifier(ObjectType.binaryValue, 3), oids.getBase1(8));
 
         // Get one element of the list.
-        final UnsignedInteger length = RequestUtils.getProperty(d2, rd1, new ObjectIdentifier(ObjectType.device, 1),
+        UnsignedInteger length = RequestUtils.getProperty(d2, rd1, new ObjectIdentifier(ObjectType.device, 1),
                 PropertyIdentifier.objectList, 0);
         assertEquals(8, length.intValue());
 
@@ -125,7 +125,7 @@ public class DeviceObjectTest extends AbstractTest {
                 PropertyIdentifier.objectList, 8);
         assertEquals(new ObjectIdentifier(ObjectType.binaryValue, 3), oid);
 
-        final ErrorClassAndCode e = RequestUtils.getProperty(d2, rd1, new ObjectIdentifier(ObjectType.device, 1),
+        ErrorClassAndCode e = RequestUtils.getProperty(d2, rd1, new ObjectIdentifier(ObjectType.device, 1),
                 PropertyIdentifier.objectList, 9);
         assertEquals(ErrorClass.property, e.getErrorClass());
         assertEquals(ErrorCode.invalidArrayIndex, e.getErrorCode());
@@ -134,36 +134,36 @@ public class DeviceObjectTest extends AbstractTest {
     @Test
     public void incrementDatabaseRevision() throws BACnetErrorException {
         av0.setDeletable(true);
-        final UnsignedInteger databaseRevision = d1.getDeviceObject().get(PropertyIdentifier.databaseRevision);
+        UnsignedInteger databaseRevision = d1.getDeviceObject().get(PropertyIdentifier.databaseRevision);
         new DeleteObjectRequest(av0.getId()).handle(d1, null);
         assertEquals(databaseRevision.increment32(), d1.getDeviceObject().get(PropertyIdentifier.databaseRevision));
     }
 
     @Test
     public void timeSynchronization() throws Exception {
-        final CountDownLatch latch = new CountDownLatch(2);
+        CountDownLatch latch = new CountDownLatch(2);
 
-        // Set up time sync for every 4 hours aligned with a 5 minute offset.
+        // Set up time sync for every 4 hours aligned with a 5-minute offset.
         d1.getDeviceObject().supportTimeSynchronization(new SequenceOf<>(new Recipient(d2.getId())),
                 new SequenceOf<>(new Recipient(d3.getId())), 240, true, 5);
 
         // Add listeners to d2 and d3
-        final AtomicReference<DateTime> d2Time = new AtomicReference<>();
-        final AtomicBoolean d2Utc = new AtomicBoolean();
+        AtomicReference<DateTime> d2Time = new AtomicReference<>();
+        AtomicBoolean d2Utc = new AtomicBoolean();
         d2.getEventHandler().addListener(new DeviceEventAdapter() {
             @Override
-            public void synchronizeTime(final Address from, final DateTime dateTime, final boolean utc) {
+            public void synchronizeTime(Address from, DateTime dateTime, boolean utc) {
                 d2Time.set(dateTime);
                 d2Utc.set(utc);
                 latch.countDown();
             }
         });
 
-        final AtomicReference<DateTime> d3Time = new AtomicReference<>();
-        final AtomicBoolean d3Utc = new AtomicBoolean();
+        AtomicReference<DateTime> d3Time = new AtomicReference<>();
+        AtomicBoolean d3Utc = new AtomicBoolean();
         d3.getEventHandler().addListener(new DeviceEventAdapter() {
             @Override
-            public void synchronizeTime(final Address from, final DateTime dateTime, final boolean utc) {
+            public void synchronizeTime(Address from, DateTime dateTime, boolean utc) {
                 d3Time.set(dateTime);
                 d3Utc.set(utc);
                 latch.countDown();
@@ -171,21 +171,19 @@ public class DeviceObjectTest extends AbstractTest {
         });
 
         //
-        // Advance the clock to the notification time.
-        //clock.plusMillis((1000 - clock.get(ChronoField.MILLI_OF_SECOND)) % 1000);
-        //clock.plusSeconds((60 - clock.get(ChronoField.SECOND_OF_MINUTE)) % 60);
         //Advance past 4hrs to make sure there is at least 1 change
-        final int minutes = 240; //(1445 - clock.get(ChronoField.MINUTE_OF_DAY)) % 240;
+        int minutes = 240;
         clock.plusMinutes(minutes);
 
-        latch.await(1, TimeUnit.SECONDS);
+        var complete = latch.await(1, TimeUnit.SECONDS);
+        assertTrue(complete);
 
         // Check the results.
         assertNotNull(d2Time.get());
         assertNotNull(d3Time.get());
 
-        final int offsetHundredths = TimeZone.getDefault().getOffset(clock.millis()) / 10;
-        final int adjustedHundredths =
+        int offsetHundredths = TimeZone.getDefault().getOffset(clock.millis()) / 10;
+        int adjustedHundredths =
                 (d3Time.get().getTime().getHundredthInDay() + offsetHundredths + 8_640_000) % 8_640_000;
         assertEquals(new DateTime(d1), d2Time.get());
         assertEquals(d2Time.get().getTime().getHundredthInDay(), adjustedHundredths);
@@ -196,7 +194,7 @@ public class DeviceObjectTest extends AbstractTest {
 
     @Test
     public void calculatedProperties() throws Exception {
-        final TimeZone tz = TimeZone.getDefault();
+        TimeZone tz = TimeZone.getDefault();
 
         assertEquals(new Date(d1), d1.getDeviceObject().readProperty(PropertyIdentifier.localDate));
         assertEquals(new Time(d1), d1.getDeviceObject().readProperty(PropertyIdentifier.localTime));
@@ -214,7 +212,7 @@ public class DeviceObjectTest extends AbstractTest {
 
     @Test
     public void restartNotification() throws Exception {
-        final CovNotifListener listener = new CovNotifListener();
+        CovNotifListener listener = new CovNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Stop the device.
@@ -227,6 +225,10 @@ public class DeviceObjectTest extends AbstractTest {
 
         awaitEquals(1, listener::getNotifCount);
         CovNotifListener.Notif notif = listener.removeNotif();
+        // Per addendum 135-2016bu-3 Clause 13.1.2 case 3: the device-restart
+        // UnconfirmedCOVNotification's Process Identifier is zero. Since restart notifications
+        // may be broadcast (the default recipient), a non-zero Process Identifier would be
+        // non-compliant on any broadcast path.
         assertEquals(UnsignedInteger.ZERO, notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.monitoredObjectIdentifier());
         assertEquals(UnsignedInteger.ZERO, notif.timeRemaining());
@@ -240,15 +242,15 @@ public class DeviceObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void intrinsicAlarms() throws Exception {
-        final DeviceObject dev = d1.getDeviceObject();
-        final NotificationClassObject nc = d1.addObject(new NotificationClassObject(
+        DeviceObject dev = d1.getDeviceObject();
+        NotificationClassObject nc = d1.addObject(new NotificationClassObject(
                 d1, 7, "nc7", 100, 5, 200, new EventTransitionBits(false, false, false)));
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.FALSE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         dev.supportIntrinsicReporting(7, new EventTransitionBits(true, true, true), NotifyType.event);
