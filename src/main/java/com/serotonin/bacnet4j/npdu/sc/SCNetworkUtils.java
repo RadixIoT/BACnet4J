@@ -37,6 +37,8 @@ import java.util.regex.Pattern;
 import com.serotonin.bacnet4j.util.sero.StreamUtils;
 
 public class SCNetworkUtils {
+    private static final Pattern CERT_TEXT = Pattern.compile("(?m)(?s)^---*BEGIN.*---*$(.*)^---*END.*---*$.*");
+
     public static final SCVmac LOCAL_BROADCAST_VMAC = new SCVmac(StreamUtils.fromHex("FFFFFFFFFFFF"));
     public static final String DEFAULT_CERTIFICATE_TYPE = "X.509";
 
@@ -47,8 +49,7 @@ public class SCNetworkUtils {
         if (!pem.startsWith("---")) {
             throw new IllegalArgumentException("PEM data contains extra starting content. Use openssl -notext");
         }
-        Pattern parse = Pattern.compile("(?m)(?s)^---*BEGIN.*---*$(.*)^---*END.*---*$.*");
-        String encoded = parse.matcher(pem).replaceFirst("$1");
+        String encoded = CERT_TEXT.matcher(pem).replaceFirst("$1");
         return Base64.getMimeDecoder().decode(encoded);
     }
 
