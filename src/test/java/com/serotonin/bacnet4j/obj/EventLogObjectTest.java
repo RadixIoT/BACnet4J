@@ -31,7 +31,7 @@ import static com.serotonin.bacnet4j.TestUtils.advanceClock;
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static com.serotonin.bacnet4j.TestUtils.quiesce;
-import static com.serotonin.bacnet4j.obj.TrendLogBase.BUFFER_SIZE_UNKNOWN;
+import static com.serotonin.bacnet4j.obj.LogBase.BUFFER_SIZE_UNKNOWN;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -556,8 +556,28 @@ public class EventLogObjectTest extends AbstractTest {
         assertEquals(new LogStatus(false, true, false), el.getBuffer().get(0).getLogStatus());
     }
 
-    // ---------- bi-3: extremely large logs — Buffer_Size = 0xFFFFFFFF sentinel ----------
+    /**
+     * Per addendum 135-2016bu-5 (Clause 12.27.8): a log-status record in which the BUFFER_PURGED
+     * flag is set to TRUE shall always be recorded, regardless of the Enable property.
+     */
+    @Test
+    public void bu5_purgeWhileDisabledStillRecordsBufferPurged() throws Exception {
+        final EventLogObject el = d1.addObject(new EventLogObject(
+                d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, true, 7));
 
+        // Disable logging. The Enable transition also records a log-disabled status record.
+        el.writeProperty(null, new PropertyValue(PropertyIdentifier.enable, Boolean.FALSE));
+        assertEquals(1, el.getBuffer().size());
+        assertEquals(new LogStatus(true, false, false), el.getBuffer().get(0).getLogStatus());
+
+        // Purge while Enable=FALSE. Per bu-5, the BUFFER_PURGED record shall still appear.
+        el.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, UnsignedInteger.ZERO));
+        assertEquals(1, el.getBuffer().size());
+        assertEquals(new LogStatus(true, true, false), el.getBuffer().get(0).getLogStatus());
+    }
+
+    // ---------- bi-3: extremely large logs — Buffer_Size = 0xFFFFFFFF sentinel ----------
 
     private static class TestExhaustibleLogBuffer extends LinkedListLogBuffer<EventLogRecord> {
         boolean spaceExhausted;
