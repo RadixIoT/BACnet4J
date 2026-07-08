@@ -29,6 +29,7 @@ package com.serotonin.bacnet4j.npdu.sc;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import java.net.ConnectException;
@@ -119,7 +120,7 @@ public class ScWebSocketClientTest {
     public void onClose_remoteFalse_doesNotNotifyConnection() {
         SCConnection connection = mock(SCConnection.class);
         newClient(connection).onClose(1000, "normal", false);
-        verify(connection, org.mockito.Mockito.never()).onWebsocketClose(
+        verify(connection, never()).onWebsocketClose(
                 org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyString());
     }
 
