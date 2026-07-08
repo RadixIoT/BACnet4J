@@ -31,6 +31,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
+import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.type.primitive.encoding.CharacterEncoding;
 import com.serotonin.bacnet4j.type.primitive.encoding.DbcsCp850CharacterEncoder;
 import com.serotonin.bacnet4j.type.primitive.encoding.StandardCharacterEncodings;
@@ -76,5 +77,36 @@ public class CharacterStringTest {
         assertEquals(new ByteQueue(
                         "756103000000540000006800000069000000730000002000000069000000730000002000000061000000200000004200000041000000430000006E000000650000007400000020000000730000007400000072000000690000006E0000006700000021"),
                 queue);
+    }
+
+    /**
+     * Per addendum 135-2016bu-2 (Clauses 12.1.4 and 12.1.X), a receiver shall recover from an
+     * unsupported character encoding rather than fail to decode a properly-tagged message.
+     * Wire: tag 0x73 (app 7, length 3), encoding 0xFF (unassigned), payload 'hi'.
+     */
+    @Test
+    public void bu2_unsupportedEncodingRecoversAsEmpty() throws BACnetErrorException {
+        ByteQueue queue = new ByteQueue("73FF6869");
+        CharacterString cs = new CharacterString(queue);
+        assertEquals("", cs.getValue());
+        assertEquals(new CharacterEncoding(StandardCharacterEncodings.ANSI_X3_4), cs.getEncoding());
+        assertEquals(0, queue.size());
+    }
+
+    /**
+     * Follow-on: after recovery, subsequent primitives on the same queue must still decode. The
+     * malformed CharacterString's payload bytes must have been fully consumed. Wire: an
+     * unsupported-encoding "hi", an empty ANSI string, and an ANSI "ok".
+     */
+    @Test
+    public void bu2_unsupportedEncodingConsumesAllPayloadBytes() throws BACnetErrorException {
+        ByteQueue queue = new ByteQueue("73FF6869" + "7100" + "73006F6B");
+        CharacterString recovered = new CharacterString(queue);
+        assertEquals("", recovered.getValue());
+        CharacterString empty = new CharacterString(queue);
+        assertEquals("", empty.getValue());
+        CharacterString ok = new CharacterString(queue);
+        assertEquals("ok", ok.getValue());
+        assertEquals(0, queue.size());
     }
 }

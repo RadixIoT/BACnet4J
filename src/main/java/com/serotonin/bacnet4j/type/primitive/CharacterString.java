@@ -56,7 +56,7 @@ public class CharacterString extends Primitive {
     private final CharacterEncoder encoder;
     private final String value;
 
-    public CharacterString(final String value) {
+    public CharacterString(String value) {
         this(new CharacterEncoding(ANSI_X3_4), value);
     }
 
@@ -64,11 +64,11 @@ public class CharacterString extends Primitive {
      * According to Oracle java documentation about Charset, the behavior of optional charsets may vary between java
      * platform implementations. This concerns ISO_10646_UCS_4 (UTF-32), IBM_MS_DBCS and JIS_C_6226.
      */
-    public CharacterString(final CharacterEncoding encoding, final String value) {
+    public CharacterString(CharacterEncoding encoding, String value) {
         this.encoding = encoding;
         try {
             encoder = findEncoder(encoding);
-        } catch (final BACnetErrorException e) {
+        } catch (BACnetErrorException e) {
             // This is an API constructor, so it doesn't need to throw checked exceptions. Convert to runtime.
             throw new BACnetRuntimeException(e);
         }
@@ -78,18 +78,34 @@ public class CharacterString extends Primitive {
     //
     // Reading and writing
     //
-    public CharacterString(final ByteQueue queue) throws BACnetErrorException {
-        final int length = (int) readTag(queue, TYPE_ID);
+    public CharacterString(ByteQueue queue) throws BACnetErrorException {
+        int length = (int) readTag(queue, TYPE_ID);
 
-        encoding = createCharacterEncoding(queue);
-        encoder = findEncoder(encoding);
-
-        int headerLength = calcHeaderLength();
-
-        final byte[] bytes = new byte[length - headerLength];
+        var parsedEncoding = createCharacterEncoding(queue);
+        var headerLength = calcHeaderLength(parsedEncoding);
+        var bytes = new byte[length - headerLength];
         queue.pop(bytes);
 
-        value = encoder.decode(bytes);
+        CharacterEncoder foundEncoder;
+        try {
+            foundEncoder = findEncoder(parsedEncoding);
+        } catch (BACnetErrorException e) {
+            foundEncoder = null;
+        }
+
+        if (foundEncoder != null) {
+            encoding = parsedEncoding;
+            encoder = foundEncoder;
+            value = foundEncoder.decode(bytes);
+        } else {
+            // Per addendum 135-2016bu-2 (Clauses 12.1.4 and 12.1.X): the receiver shall recover
+            // from an unsupported character encoding rather than fail to decode a properly-tagged
+            // message. The malformed bytes have been consumed; substitute a zero-length string
+            // in a supported encoding.
+            encoding = new CharacterEncoding(ANSI_X3_4);
+            encoder = findEncoder(encoding);
+            value = "";
+        }
     }
 
     public CharacterEncoding getEncoding() {
@@ -101,7 +117,7 @@ public class CharacterString extends Primitive {
     }
 
     @Override
-    public void writeImpl(final ByteQueue queue) {
+    public void writeImpl(ByteQueue queue) {
         queue.push(encoding.getEncoding());
         queue.push(encoder.encode(value));
     }
@@ -116,7 +132,7 @@ public class CharacterString extends Primitive {
         return TYPE_ID;
     }
 
-    private int calcHeaderLength() {
+    private static int calcHeaderLength(CharacterEncoding encoding) {
         int headerLength = 1;
         if (encoding.getCodePage() != NO_CODE_PAGE) {
             headerLength += 2;
