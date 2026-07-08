@@ -28,13 +28,15 @@
 package com.serotonin.bacnet4j.type.constructed;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetServiceException;
+import com.serotonin.bacnet4j.service.confirmed.ReadRangeRequest;
 import com.serotonin.bacnet4j.service.confirmed.ReadRangeRequest.RangeReadable;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -58,7 +60,7 @@ public class SequenceOf<E extends Encodable> extends BaseType implements Iterabl
     @SafeVarargs
     public SequenceOf(E... values) {
         this();
-        this.values.addAll(Arrays.asList(values));
+        Collections.addAll(this.values, values);
     }
 
     @Override
@@ -75,8 +77,8 @@ public class SequenceOf<E extends Encodable> extends BaseType implements Iterabl
 
     public SequenceOf(ByteQueue queue, int count, Class<E> clazz) throws BACnetException {
         values = new ArrayList<>();
-        int c = count;
-        while (c-- > 0)
+        int rem = count;
+        while (rem-- > 0)
             values.add(read(queue, clazz));
     }
 
@@ -188,27 +190,22 @@ public class SequenceOf<E extends Encodable> extends BaseType implements Iterabl
     }
 
     @Override
-    public int hashCode() {
-        int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (values == null ? 0 : values.hashCode());
-        return result;
+    public void inSynchronizedBlock(ReadRangeRequest.BACnetServiceRunnable task) throws BACnetServiceException {
+        synchronized (this) {
+            task.run();
+        }
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
             return false;
-        if (getClass() != obj.getClass())
-            return false;
-        SequenceOf<?> other = (SequenceOf<?>) obj;
-        if (values == null) {
-            if (other.values != null)
-                return false;
-        } else if (!values.equals(other.values))
-            return false;
-        return true;
+        SequenceOf<?> that = (SequenceOf<?>) o;
+        return Objects.equals(values, that.values);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(values);
     }
 }

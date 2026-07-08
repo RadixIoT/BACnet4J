@@ -45,8 +45,8 @@ public class LinkedListLogBuffer<T extends ILogRecord> extends LogBuffer<T> {
     }
 
     @Override
-    public void add(final T record) {
-        list.add(record);
+    public void add(final T rec) {
+        list.add(rec);
     }
 
     @Override

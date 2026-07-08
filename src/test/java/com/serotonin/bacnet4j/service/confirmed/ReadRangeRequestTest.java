@@ -151,7 +151,7 @@ public class ReadRangeRequestTest {
                         100));
 
         RemoteDevice rd12 = d11.getRemoteDeviceBlocking(12);
-        DateTime now = new DateTime(clock.millis());
+        DateTime localNow = new DateTime(clock.millis());
 
         // Trigger the trend log a few times.
         doTriggers(tl, 11);
@@ -166,17 +166,17 @@ public class ReadRangeRequestTest {
         assertEquals(new ResultFlags(true, true, false), ack.getResultFlags());
         assertEquals(new UnsignedInteger(11), ack.getItemCount());
         assertEquals(new SequenceOf<>( //
-                        new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
-                        new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
-                        new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
-                        new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
-                        new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
-                        new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
-                        new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
-                        new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
-                        new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
-                        new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
-                        new LogMultipleRecord(now, new LogData(new SequenceOf<>(new LogDataElement(new Real(12)))))),
+                        new LogMultipleRecord(localNow, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
+                        new LogMultipleRecord(localNow, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
+                        new LogMultipleRecord(localNow, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
+                        new LogMultipleRecord(localNow, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
+                        new LogMultipleRecord(localNow, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
+                        new LogMultipleRecord(localNow, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
+                        new LogMultipleRecord(localNow, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
+                        new LogMultipleRecord(localNow, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
+                        new LogMultipleRecord(localNow, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
+                        new LogMultipleRecord(localNow, new LogData(new SequenceOf<>(new LogDataElement(new Real(12))))),
+                        new LogMultipleRecord(localNow, new LogData(new SequenceOf<>(new LogDataElement(new Real(12)))))),
                 ack.getItemData());
         assertNull(ack.getFirstSequenceNumber());
     }
@@ -438,29 +438,36 @@ public class ReadRangeRequestTest {
                 () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, new UnsignedInteger(1)).handle(d1,
                         null), ErrorClass.property, ErrorCode.propertyIsNotAnArray);
 
+        // Per addendum 135-2016bu-1: a By Sequence Number request against a non-sequence-numbered
+        // list is reported with LIST_ITEM_NOT_NUMBERED.
         d1.writePropertyInternal(PropertyIdentifier.logBuffer, new SequenceOf<>(UnsignedInteger.ZERO));
         TestUtils.assertRequestHandleException(
                 () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null,
                         new BySequenceNumber(1, 1)).handle(d1, null), ErrorClass.property,
-                ErrorCode.datatypeNotSupported);
+                ErrorCode.listItemNotNumbered);
 
+        // Reference time not fully specified — request-shape error, unchanged by bu-1.
         d1.writePropertyInternal(PropertyIdentifier.logBuffer, new SequenceOf<>(UnsignedInteger.ZERO));
         TestUtils.assertRequestHandleException(
                 () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null,
                         new ByTime(DateTime.UNSPECIFIED, 1)).handle(d1, null), ErrorClass.property,
                 ErrorCode.datatypeNotSupported);
 
+        // Per addendum 135-2016bu-1: a By Time request against a list whose items are neither
+        // Sequenced nor Timestamped is reported with LIST_ITEM_NOT_TIMESTAMPED.
         d1.writePropertyInternal(PropertyIdentifier.logBuffer, new SequenceOf<>(UnsignedInteger.ZERO));
         TestUtils.assertRequestHandleException(
                 () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null,
                         new ByTime(new DateTime(d1), 1)).handle(d1, null), ErrorClass.property,
-                ErrorCode.datatypeNotSupported);
+                ErrorCode.listItemNotTimestamped);
 
+        // Per addendum 135-2016bu-1: a By Time request against a list whose items are Sequenced
+        // but not Timestamped is reported with LIST_ITEM_NOT_TIMESTAMPED.
         d1.writePropertyInternal(PropertyIdentifier.logBuffer, new SequenceOf<>(new SequencedNotTimestamped()));
         TestUtils.assertRequestHandleException(
                 () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.logBuffer, null,
                         new ByTime(new DateTime(d1), 1)).handle(d1, null), ErrorClass.property,
-                ErrorCode.datatypeNotSupported);
+                ErrorCode.listItemNotTimestamped);
     }
 
     /**
