@@ -33,9 +33,6 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
@@ -69,8 +66,6 @@ import com.serotonin.bacnet4j.util.DeviceObjectPropertyValues;
 import com.serotonin.bacnet4j.util.PropertyValues;
 
 public class TrendLogMultipleObject extends TrendLogBase {
-    static final Logger LOG = LoggerFactory.getLogger(TrendLogMultipleObject.class);
-
     // CreateObject constructor
     public static TrendLogMultipleObject create(LocalDevice localDevice, int instanceNumber) {
         return new TrendLogMultipleObject(localDevice, instanceNumber,
@@ -80,7 +75,7 @@ public class TrendLogMultipleObject extends TrendLogBase {
                         NotifyType.event);
     }
 
-    private LogBuffer<LogMultipleRecord> buffer;
+    private final LogBuffer<LogMultipleRecord> buffer;
 
     public TrendLogMultipleObject(LocalDevice localDevice, int instanceNumber, String name,
             LogBuffer<LogMultipleRecord> buffer, boolean enable, DateTime startTime,
@@ -239,41 +234,7 @@ public class TrendLogMultipleObject extends TrendLogBase {
         cancelFuture(pollingFuture);
 
         if (loggingType.equals(LoggingType.polled)) {
-            UnsignedInteger logInterval = get(PropertyIdentifier.logInterval);
-            Boolean alignIntervals = get(PropertyIdentifier.alignIntervals);
-            UnsignedInteger intervalOffset = get(PropertyIdentifier.intervalOffset);
-
-            long period = logInterval.longValue() * 10;
-            if (period == 0)
-                // 0 is a poor value. Default to 5 minutes in this case, since it "is a local matter".
-                period = TimeUnit.MINUTES.toMillis(5);
-
-            long initialDelay = 0;
-            int offsetToUse = 0;
-            if (alignIntervals.booleanValue()) {
-                long now = getLocalDevice().getClock().millis();
-
-                // Find the largest time period to which the period aligns.
-                if (period % TimeUnit.DAYS.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.DAYS.toMillis(1) - now % TimeUnit.DAYS.toMillis(1);
-                } else if (period % TimeUnit.HOURS.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.HOURS.toMillis(1) - now % TimeUnit.HOURS.toMillis(1);
-                } else if (period % TimeUnit.MINUTES.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.MINUTES.toMillis(1) - now % TimeUnit.MINUTES.toMillis(1);
-                } else if (period % TimeUnit.SECONDS.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.SECONDS.toMillis(1) - now % TimeUnit.SECONDS.toMillis(1);
-                }
-
-                offsetToUse = intervalOffset.intValue() * 10;
-                offsetToUse %= (int) period;
-            }
-
-            initialDelay += offsetToUse;
-            initialDelay %= period;
-
-            pollingFuture = getLocalDevice().scheduleAtFixedRate(this::doPoll, initialDelay, period,
-                    TimeUnit.MILLISECONDS);
-
+            updatePolledLoggingType();
         } else if (loggingType.equals(LoggingType.triggered)) {
             set(PropertyIdentifier.logInterval, UnsignedInteger.ZERO);
         }

@@ -93,6 +93,43 @@ public abstract class TrendLogBase extends LogBase {
 
     protected abstract void updateLoggingType();
 
+    protected void updatePolledLoggingType() {
+        UnsignedInteger logInterval = get(PropertyIdentifier.logInterval);
+        Boolean alignIntervals = get(PropertyIdentifier.alignIntervals);
+        UnsignedInteger intervalOffset = get(PropertyIdentifier.intervalOffset);
+
+        long period = logInterval.longValue() * 10;
+        if (period == 0)
+            // 0 is a poor value. Default to 5 minutes in this case, since it "is a local matter".
+            period = TimeUnit.MINUTES.toMillis(5);
+
+        long initialDelay = 0;
+        int offsetToUse = 0;
+        if (alignIntervals.booleanValue()) {
+            long now = getLocalDevice().getClock().millis();
+
+            // Find the largest time period to which the period aligns.
+            if (period % TimeUnit.DAYS.toMillis(1) == 0) {
+                initialDelay = TimeUnit.DAYS.toMillis(1) - now % TimeUnit.DAYS.toMillis(1);
+            } else if (period % TimeUnit.HOURS.toMillis(1) == 0) {
+                initialDelay = TimeUnit.HOURS.toMillis(1) - now % TimeUnit.HOURS.toMillis(1);
+            } else if (period % TimeUnit.MINUTES.toMillis(1) == 0) {
+                initialDelay = TimeUnit.MINUTES.toMillis(1) - now % TimeUnit.MINUTES.toMillis(1);
+            } else if (period % TimeUnit.SECONDS.toMillis(1) == 0) {
+                initialDelay = TimeUnit.SECONDS.toMillis(1) - now % TimeUnit.SECONDS.toMillis(1);
+            }
+
+            offsetToUse = intervalOffset.intValue() * 10;
+            offsetToUse %= (int) period;
+        }
+
+        initialDelay += offsetToUse;
+        initialDelay %= period;
+
+        pollingFuture = getLocalDevice().scheduleAtFixedRate(this::doPoll, initialDelay, period,
+                TimeUnit.MILLISECONDS);
+    }
+
     /**
      * Locally trigger a poll.
      *

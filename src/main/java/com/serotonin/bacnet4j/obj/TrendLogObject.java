@@ -84,7 +84,7 @@ public class TrendLogObject extends TrendLogBase {
 
     // CreateObject constructor
     public static TrendLogObject create(LocalDevice localDevice, int instanceNumber) {
-        return new TrendLogObject(localDevice, instanceNumber, ObjectType.trendLog.toString() + " " + instanceNumber,
+        return new TrendLogObject(localDevice, instanceNumber, ObjectType.trendLog + " " + instanceNumber,
                 new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED,
                 new DeviceObjectPropertyReference(localDevice.getInstanceNumber(), localDevice.getId(),
                         PropertyIdentifier.databaseRevision),
@@ -318,41 +318,7 @@ public class TrendLogObject extends TrendLogBase {
         cancelCov();
 
         if (loggingType.equals(LoggingType.polled)) {
-            UnsignedInteger logInterval = get(PropertyIdentifier.logInterval);
-            Boolean alignIntervals = get(PropertyIdentifier.alignIntervals);
-            UnsignedInteger intervalOffset = get(PropertyIdentifier.intervalOffset);
-
-            long period = logInterval.longValue() * 10;
-            if (period == 0)
-                // 0 is a poor value. Default to 5 minutes in this case, since it "is a local matter".
-                period = TimeUnit.MINUTES.toMillis(5);
-
-            long initialDelay = 0;
-            int offsetToUse = 0;
-            if (alignIntervals.booleanValue()) {
-                long now = getLocalDevice().getClock().millis();
-
-                // Find the largest time period to which the period aligns.
-                if (period % TimeUnit.DAYS.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.DAYS.toMillis(1) - now % TimeUnit.DAYS.toMillis(1);
-                } else if (period % TimeUnit.HOURS.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.HOURS.toMillis(1) - now % TimeUnit.HOURS.toMillis(1);
-                } else if (period % TimeUnit.MINUTES.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.MINUTES.toMillis(1) - now % TimeUnit.MINUTES.toMillis(1);
-                } else if (period % TimeUnit.SECONDS.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.SECONDS.toMillis(1) - now % TimeUnit.SECONDS.toMillis(1);
-                }
-
-                offsetToUse = intervalOffset.intValue() * 10;
-                offsetToUse %= (int) period;
-            }
-
-            initialDelay += offsetToUse;
-            initialDelay %= period;
-
-            pollingFuture = getLocalDevice().scheduleAtFixedRate(this::doPoll, initialDelay, period,
-                    TimeUnit.MILLISECONDS);
-
+            updatePolledLoggingType();
         } else if (loggingType.equals(LoggingType.cov)) {
             DeviceObjectPropertyReference monitored = get(PropertyIdentifier.logDeviceObjectProperty);
             set(PropertyIdentifier.logInterval, UnsignedInteger.ZERO);
@@ -390,7 +356,7 @@ public class TrendLogObject extends TrendLogBase {
                             if (pv.getPropertyIdentifier().equals(monitored.getPropertyIdentifier())) {
                                 value = pv.getValue();
                             } else if (pv.getPropertyIdentifier().equals(PropertyIdentifier.statusFlags)) {
-                                statusFlags = (StatusFlags) pv.getValue();
+                                statusFlags = pv.getValue();
                             }
                         }
 
@@ -416,7 +382,6 @@ public class TrendLogObject extends TrendLogBase {
                     } catch (BACnetException e) {
                         LOG.warn("COV subscription failed", e);
                         updateConfigurationError(true);
-                        return;
                     }
                 }, 0, resubscribeSeconds, TimeUnit.SECONDS);
 
@@ -439,7 +404,6 @@ public class TrendLogObject extends TrendLogBase {
                     } catch (BACnetException e) {
                         LOG.warn("COV subscription failed", e);
                         updateConfigurationError(true);
-                        return;
                     }
                 }, 0, resubscribeSeconds, TimeUnit.SECONDS);
             }
