@@ -27,6 +27,7 @@
 
 package com.serotonin.bacnet4j.obj;
 
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -82,11 +83,12 @@ public class EventEnrollmentObject extends BACnetObject {
     private final List<DeviceObjectPropertyReference> faultParameterReferences;
     private final PropertyReferences monitoredPropertyReferences;
     private boolean configurationError;
+    private boolean monitoredObjectFault;
 
-    public EventEnrollmentObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final DeviceObjectPropertyReference objectPropertyReference, final NotifyType notifyType,
-            final EventParameter eventParameter, final EventTransitionBits eventEnable, final int notificationClass,
-            final int pollDelayMillis, final UnsignedInteger timeDelayNormal, final FaultParameter faultParameter) {
+    public EventEnrollmentObject(LocalDevice localDevice, int instanceNumber, String name,
+            DeviceObjectPropertyReference objectPropertyReference, NotifyType notifyType, EventParameter eventParameter,
+            EventTransitionBits eventEnable, int notificationClass, int pollDelayMillis,
+            UnsignedInteger timeDelayNormal, FaultParameter faultParameter) {
         super(localDevice, ObjectType.eventEnrollment, instanceNumber, name);
 
         // Validation
@@ -95,18 +97,16 @@ public class EventEnrollmentObject extends BACnetObject {
             throw new IllegalArgumentException("PropertyIdentifier cannot be special identifier: "
                     + objectPropertyReference.getPropertyIdentifier());
         }
-        final AbstractEventParameter aep = eventParameter.getChoice().getDatum();
+        AbstractEventParameter aep = eventParameter.getChoice().getDatum();
         eventParameterReference = aep.getReference();
-        if (eventParameterReference != null) {
+        if (eventParameterReference != null &&
+                !eventParameterReference.getDeviceIdentifier().equals(objectPropertyReference.getDeviceIdentifier())) {
             // Ensure that any reference made in the event parameters is to the same device
             // as the object property reference.
-            // TODO allow different devices.
-            if (!eventParameterReference.getDeviceIdentifier().equals(objectPropertyReference.getDeviceIdentifier())) {
-                throw new IllegalArgumentException(
-                        "Event parameter reference must use the same device as the object property reference: parameter="
-                                + eventParameterReference.getDeviceIdentifier() + ", property="
-                                + objectPropertyReference.getPropertyIdentifier());
-            }
+            throw new IllegalArgumentException(
+                    "Event parameter reference must use the same device as the object property reference: parameter="
+                            + eventParameterReference.getDeviceIdentifier() + ", property="
+                            + objectPropertyReference.getPropertyIdentifier());
         }
 
         writePropertyInternal(PropertyIdentifier.eventType, eventParameter.getEventType());
@@ -134,47 +134,47 @@ public class EventEnrollmentObject extends BACnetObject {
         addMixin(new ReadOnlyPropertyMixin(this, PropertyIdentifier.eventType));
 
         // Event parameters and algo
-        final EventAlgorithm eventAlgo = aep.createEventAlgorithm();
+        EventAlgorithm eventAlgo = aep.createEventAlgorithm();
         Objects.requireNonNull(eventAlgo, "No algorithm defined for event parameter type " + eventParameter.getClass());
 
         // Fault parameters and algo
         AbstractFaultParameter afp = null;
         FaultAlgorithm faultAlgo = null;
+        faultParameterReferences = new ArrayList<>();
         if (faultParameter != null) {
-            afp = (AbstractFaultParameter) faultParameter.getEntry().getDatum();
+            afp = faultParameter.getEntry().getDatum();
             faultAlgo = afp.createFaultAlgorithm();
             Objects.requireNonNull(faultAlgo,
                     "No algorithm defined for fault parameter type " + faultParameter.getClass());
 
             if (afp.getReferences() != null) {
-                faultParameterReferences = afp.getReferences();
-                for (final DeviceObjectPropertyReference faultRef : faultParameterReferences) {
+                for (DeviceObjectPropertyReference faultRef : afp.getReferences()) {
                     // Ensure that any reference made in the fault parameters is to the same device
                     // as the object property reference.
-                    // TODO allow different devices.
                     if (!faultRef.getDeviceIdentifier().equals(objectPropertyReference.getDeviceIdentifier())) {
                         throw new IllegalArgumentException(
                                 "Fault parameter reference must use the same device as the object property reference: parameter="
                                         + faultRef.getDeviceIdentifier() + ", property="
                                         + objectPropertyReference.getPropertyIdentifier());
                     }
+                    faultParameterReferences.add(faultRef);
                 }
-            } else {
-                faultParameterReferences = new ArrayList<>();
             }
-
-            // Table 13-5: add change of reliability notification parameters
-            faultParameterReferences.add(new DeviceObjectPropertyReference( //
-                    objectPropertyReference.getDeviceIdentifier().getInstanceNumber(), //
-                    objectPropertyReference.getObjectIdentifier(), //
-                    PropertyIdentifier.reliability));
-            faultParameterReferences.add(new DeviceObjectPropertyReference( //
-                    objectPropertyReference.getDeviceIdentifier().getInstanceNumber(), //
-                    objectPropertyReference.getObjectIdentifier(), //
-                    PropertyIdentifier.statusFlags));
-        } else {
-            faultParameterReferences = null;
         }
+
+        // Table 13-5 change-of-reliability notification parameters. Per addendum 135-2016bu-6
+        // (Clause 12.12.21), the monitored object's Reliability is polled unconditionally so
+        // that the Event Enrollment object's Reliability can be promoted to MONITORED_OBJECT_FAULT
+        // whenever the monitored object itself is unreliable, regardless of whether a fault
+        // algorithm is in use.
+        faultParameterReferences.add(new DeviceObjectPropertyReference(
+                objectPropertyReference.getDeviceIdentifier().getInstanceNumber(),
+                objectPropertyReference.getObjectIdentifier(),
+                PropertyIdentifier.reliability));
+        faultParameterReferences.add(new DeviceObjectPropertyReference(
+                objectPropertyReference.getDeviceIdentifier().getInstanceNumber(),
+                objectPropertyReference.getObjectIdentifier(),
+                PropertyIdentifier.statusFlags));
 
         // Algo reporting mixin
         algoReporting = new AlgoReportingMixin(this, eventAlgo, aep, faultAlgo, afp, objectPropertyReference);
@@ -190,7 +190,7 @@ public class EventEnrollmentObject extends BACnetObject {
 
         // Add the additional monitored properties (Table 12-15.1)
         monitoredProperties = eventAlgo.getAdditionalMonitoredProperties();
-        for (final PropertyIdentifier pid : monitoredProperties)
+        for (PropertyIdentifier pid : monitoredProperties)
             monitoredPropertyReferences.add(objectPropertyReference.getObjectIdentifier(), pid);
 
         // Add the event parameter reference, if any.
@@ -199,12 +199,10 @@ public class EventEnrollmentObject extends BACnetObject {
                     eventParameterReference.getPropertyIdentifier(), eventParameterReference.getPropertyArrayIndex());
         }
 
-        // Add the fault parameters references, if any.
-        if (faultParameterReferences != null) {
-            for (final DeviceObjectPropertyReference faultRef : faultParameterReferences) {
-                monitoredPropertyReferences.addIndex(faultRef.getObjectIdentifier(), faultRef.getPropertyIdentifier(),
-                        faultRef.getPropertyArrayIndex());
-            }
+        // Add the fault parameters references.
+        for (DeviceObjectPropertyReference faultRef : faultParameterReferences) {
+            monitoredPropertyReferences.addIndex(faultRef.getObjectIdentifier(), faultRef.getPropertyIdentifier(),
+                    faultRef.getPropertyArrayIndex());
         }
 
         //
@@ -221,49 +219,49 @@ public class EventEnrollmentObject extends BACnetObject {
     private void doPoll() {
         try {
             doPollThrow();
-        } catch (final PollException e) {
+        } catch (PollException e) {
             if (!configurationError) {
                 configurationError = true;
                 writePropertyInternal(PropertyIdentifier.reliability, Reliability.configurationError);
                 LOG.warn("Polling exception", e);
             }
-        } catch (final Exception e) {
+        } catch (Exception e) {
             LOG.warn("Exception while polling", e);
         }
     }
 
     private static class PollException extends Exception {
+        @Serial
         private static final long serialVersionUID = 1L;
 
-        public PollException(final String message, final Throwable cause) {
+        public PollException(String message, Throwable cause) {
             super(message, cause);
         }
 
-        public PollException(final String message) {
+        public PollException(String message) {
             super(message);
         }
     }
 
     private void doPollThrow() throws PollException {
-        // TODO consider using a polling delegate
-        final DeviceObjectPropertyReference ref = get(PropertyIdentifier.objectPropertyReference);
+        DeviceObjectPropertyReference ref = get(PropertyIdentifier.objectPropertyReference);
 
         Encodable value;
-        final Map<ObjectPropertyReference, Encodable> additionalValues = new HashMap<>();
+        Map<ObjectPropertyReference, Encodable> additionalValues = new HashMap<>();
 
         if (ref.getDeviceIdentifier().equals(getLocalDevice().getId())) {
             // A local object
-            final BACnetObject bo = getLocalDevice().getObject(ref.getObjectIdentifier());
+            BACnetObject bo = getLocalDevice().getObject(ref.getObjectIdentifier());
             if (bo == null) {
                 throw new PollException("EventEnrollment could not find local object at " + ref);
             }
 
             try {
                 value = bo.readProperty(ref.getPropertyIdentifier(), ref.getPropertyArrayIndex());
-                for (final PropertyIdentifier pid : monitoredProperties) {
+                for (PropertyIdentifier pid : monitoredProperties) {
                     additionalValues.put(new ObjectPropertyReference(bo.getId(), pid), bo.readProperty(pid));
                 }
-            } catch (final BACnetServiceException e) {
+            } catch (BACnetServiceException e) {
                 throw new PollException("Error getting property from local object at " + ref, e);
             }
 
@@ -272,29 +270,29 @@ public class EventEnrollmentObject extends BACnetObject {
             }
 
             if (faultParameterReferences != null) {
-                for (final DeviceObjectPropertyReference faultRef : faultParameterReferences) {
+                for (DeviceObjectPropertyReference faultRef : faultParameterReferences) {
                     addParameterReference(getLocalDevice(), faultRef, additionalValues);
                 }
             }
 
         } else {
             // A remote object
-            final RemoteDevice rd;
+            RemoteDevice rd;
             try {
                 rd = getLocalDevice().getRemoteDeviceBlocking(ref.getDeviceIdentifier().getInstanceNumber(), 30000);
-            } catch (final BACnetException e) {
+            } catch (BACnetException e) {
                 throw new PollException("Error finding remote device at " + ref, e);
             }
 
             try {
-                final PropertyValues results = RequestUtils.readProperties(getLocalDevice(), rd,
+                PropertyValues results = RequestUtils.readProperties(getLocalDevice(), rd,
                         monitoredPropertyReferences, false, null);
 
                 value = results.getNoErrorCheck(ref.getObjectIdentifier(),
                         new PropertyReference(ref.getPropertyIdentifier(), ref.getPropertyArrayIndex()));
 
                 // Gather the additional properties
-                for (final PropertyIdentifier pid : monitoredProperties) {
+                for (PropertyIdentifier pid : monitoredProperties) {
                     transferPropertyValue(results, additionalValues, ref.getObjectIdentifier(), pid, null);
                 }
 
@@ -306,12 +304,12 @@ public class EventEnrollmentObject extends BACnetObject {
                 }
 
                 if (faultParameterReferences != null) {
-                    for (final DeviceObjectPropertyReference faultRef : faultParameterReferences) {
+                    for (DeviceObjectPropertyReference faultRef : faultParameterReferences) {
                         transferPropertyValue(results, additionalValues, faultRef.getObjectIdentifier(),
                                 faultRef.getPropertyIdentifier(), faultRef.getPropertyArrayIndex());
                     }
                 }
-            } catch (final BACnetException e) {
+            } catch (BACnetException e) {
                 throw new PollException("Error getting property from remote device at " + ref, e);
             }
         }
@@ -330,13 +328,30 @@ public class EventEnrollmentObject extends BACnetObject {
             writePropertyInternal(PropertyIdentifier.reliability, Reliability.noFaultDetected);
         }
 
+        // Per addendum 135-2016bu-6 (Clause 12.12.21): once the Event Enrollment object's own
+        // reliability is NO_FAULT_DETECTED, if the monitored object's reliability is not
+        // NO_FAULT_DETECTED, the Event Enrollment object's Reliability shall be
+        // MONITORED_OBJECT_FAULT and the fault algorithm is not evaluated.
+        Reliability monitoredReliability = (Reliability) additionalValues.get(
+                new ObjectPropertyReference(ref.getObjectIdentifier(), PropertyIdentifier.reliability));
+        if (monitoredReliability != null && !Reliability.noFaultDetected.equals(monitoredReliability)) {
+            if (!monitoredObjectFault) {
+                monitoredObjectFault = true;
+                writePropertyInternal(PropertyIdentifier.reliability, Reliability.monitoredObjectFault);
+            }
+            return;
+        }
+        if (monitoredObjectFault) {
+            monitoredObjectFault = false;
+            writePropertyInternal(PropertyIdentifier.reliability, Reliability.noFaultDetected);
+        }
+
         algoReporting.updateValue(value, additionalValues);
     }
 
-    private static void addParameterReference(final LocalDevice localDevice,
-            final DeviceObjectPropertyReference paramRef,
-            final Map<ObjectPropertyReference, Encodable> additionalValues) throws PollException {
-        final BACnetObject bo = localDevice.getObject(paramRef.getObjectIdentifier());
+    private static void addParameterReference(LocalDevice localDevice, DeviceObjectPropertyReference paramRef,
+            Map<ObjectPropertyReference, Encodable> additionalValues) throws PollException {
+        BACnetObject bo = localDevice.getObject(paramRef.getObjectIdentifier());
         if (bo == null) {
             throw new PollException("EventEnrollment could not find local object at " + paramRef.getObjectIdentifier());
         }
@@ -346,15 +361,15 @@ public class EventEnrollmentObject extends BACnetObject {
                     new ObjectPropertyReference(bo.getId(), paramRef.getPropertyIdentifier(),
                             paramRef.getPropertyArrayIndex()),
                     bo.readProperty(paramRef.getPropertyIdentifier(), paramRef.getPropertyArrayIndex()));
-        } catch (final BACnetServiceException e) {
+        } catch (BACnetServiceException e) {
             throw new PollException("Error getting property from local object at " + paramRef, e);
         }
     }
 
-    private static void transferPropertyValue(final PropertyValues results,
-            final Map<ObjectPropertyReference, Encodable> additionalValues, final ObjectIdentifier oid,
-            final PropertyIdentifier pid, final UnsignedInteger pin) throws PollException {
-        final Encodable e = results.getNoErrorCheck(oid, pid);
+    private static void transferPropertyValue(PropertyValues results,
+            Map<ObjectPropertyReference, Encodable> additionalValues, ObjectIdentifier oid, PropertyIdentifier pid,
+            UnsignedInteger pin) throws PollException {
+        Encodable e = results.getNoErrorCheck(oid, pid);
         if (e instanceof ErrorClassAndCode) {
             throw new PollException(
                     "Error returned from reading oid=" + oid + ", pid=" + pid + ", pin=" + pin + ": " + e);
