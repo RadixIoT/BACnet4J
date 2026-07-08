@@ -69,17 +69,17 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
     private final ObjectIdentifier fileIdentifier;
     private final Choice accessMethod;
 
-    public AtomicWriteFileRequest(final ObjectIdentifier fileIdentifier, final StreamAccess streamAccess) {
+    public AtomicWriteFileRequest(ObjectIdentifier fileIdentifier, StreamAccess streamAccess) {
         this.fileIdentifier = fileIdentifier;
         this.accessMethod = new Choice(0, streamAccess, choiceOptions);
     }
 
-    public AtomicWriteFileRequest(final ObjectIdentifier fileIdentifier, final RecordAccess recordAccess) {
+    public AtomicWriteFileRequest(ObjectIdentifier fileIdentifier, RecordAccess recordAccess) {
         this.fileIdentifier = fileIdentifier;
         this.accessMethod = new Choice(1, recordAccess, choiceOptions);
     }
 
-    AtomicWriteFileRequest(final ByteQueue queue) throws BACnetException {
+    AtomicWriteFileRequest(ByteQueue queue) throws BACnetException {
         fileIdentifier = read(queue, ObjectIdentifier.class);
         accessMethod = readChoice(queue, choiceOptions);
     }
@@ -105,7 +105,7 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, fileIdentifier);
         write(queue, accessMethod);
     }
@@ -120,12 +120,12 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public AcknowledgementService handle(final LocalDevice localDevice, final Address from) throws BACnetException {
-        final AtomicWriteFileAck response;
+    public AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException {
+        AtomicWriteFileAck response;
 
         try {
             // Find the file.
-            final BACnetObject obj = localDevice.getObjectRequired(fileIdentifier);
+            BACnetObject obj = localDevice.getObjectRequired(fileIdentifier);
             if (!(obj instanceof FileObject file)) {
                 throw new BACnetServiceException(ErrorClass.services, ErrorCode.inconsistentObjectType);
             }
@@ -133,7 +133,7 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
             // Lock to ensure atomicity.
             try {
                 file.getLock().lock();
-                final FileAccess fileAccess = file.getFileAccess();
+                FileAccess fileAccess = file.getFileAccess();
 
                 if (!fileAccess.canWrite())
                     throw new BACnetServiceException(ErrorClass.services, ErrorCode.fileAccessDenied);
@@ -143,16 +143,16 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
                         throw new BACnetServiceException(ErrorClass.services, ErrorCode.invalidFileAccessMethod);
                     }
 
-                    final StreamAccess streamAccess = accessMethod.getDatum();
-                    final long start = streamAccess.getFileStartPosition().longValue();
-                    final OctetString data = streamAccess.getFileData();
+                    StreamAccess streamAccess = accessMethod.getDatum();
+                    long start = streamAccess.getFileStartPosition().longValue();
+                    OctetString data = streamAccess.getFileData();
 
                     if (start < -1) {
                         throw new BACnetErrorException(getChoiceId(), ErrorClass.object,
                                 ErrorCode.invalidFileStartPosition);
                     }
 
-                    final long actualStart = fileAccess.writeData(start, data);
+                    long actualStart = fileAccess.writeData(start, data);
 
                     response = new AtomicWriteFileAck(false, new SignedInteger(actualStart));
                 } else if (accessMethod.isa(RecordAccess.class)) {
@@ -160,16 +160,16 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
                         throw new BACnetServiceException(ErrorClass.services, ErrorCode.invalidFileAccessMethod);
                     }
 
-                    final RecordAccess recordAccess = accessMethod.getDatum();
-                    final long start = recordAccess.getFileStartRecord().longValue();
-                    final SequenceOf<OctetString> records = recordAccess.getFileRecordData();
+                    RecordAccess recordAccess = accessMethod.getDatum();
+                    long start = recordAccess.getFileStartRecord().longValue();
+                    SequenceOf<OctetString> records = recordAccess.getFileRecordData();
 
                     if (start < -1) {
                         throw new BACnetErrorException(getChoiceId(), ErrorClass.object,
                                 ErrorCode.invalidFileStartPosition);
                     }
 
-                    final long actualStart = fileAccess.writeRecords(start, records);
+                    long actualStart = fileAccess.writeRecords(start, records);
 
                     response = new AtomicWriteFileAck(true, new SignedInteger(actualStart));
                 } else {
@@ -179,10 +179,10 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
             } finally {
                 file.getLock().unlock();
             }
-        } catch (final IOException e) {
+        } catch (IOException e) {
             LOG.error("File write failed for {}", this, e);
             throw new BACnetErrorException(getChoiceId(), ErrorClass.object, ErrorCode.fileAccessDenied);
-        } catch (final BACnetServiceException e) {
+        } catch (BACnetServiceException e) {
             throw new BACnetErrorException(getChoiceId(), e);
         }
 
@@ -191,7 +191,7 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
+        int prime = 31;
         int result = 1;
         result = prime * result + (accessMethod == null ? 0 : accessMethod.hashCode());
         result = prime * result + (fileIdentifier == null ? 0 : fileIdentifier.hashCode());
@@ -199,14 +199,14 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public boolean equals(final Object obj) {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final AtomicWriteFileRequest other = (AtomicWriteFileRequest) obj;
+        AtomicWriteFileRequest other = (AtomicWriteFileRequest) obj;
         if (accessMethod == null) {
             if (other.accessMethod != null)
                 return false;
@@ -224,18 +224,18 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
         private final SignedInteger fileStartPosition;
         private final OctetString fileData;
 
-        public StreamAccess(final SignedInteger fileStartPosition, final OctetString fileData) {
+        public StreamAccess(SignedInteger fileStartPosition, OctetString fileData) {
             this.fileStartPosition = fileStartPosition;
             this.fileData = fileData;
         }
 
-        public StreamAccess(final ByteQueue queue) throws BACnetException {
+        public StreamAccess(ByteQueue queue) throws BACnetException {
             fileStartPosition = read(queue, SignedInteger.class);
             fileData = read(queue, OctetString.class);
         }
 
         @Override
-        public void write(final ByteQueue queue) {
+        public void write(ByteQueue queue) {
             write(queue, fileStartPosition);
             write(queue, fileData);
         }
@@ -254,7 +254,7 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
 
         @Override
         public int hashCode() {
-            final int prime = 31;
+            int prime = 31;
             int result = 1;
             result = prime * result + (fileData == null ? 0 : fileData.hashCode());
             result = prime * result + (fileStartPosition == null ? 0 : fileStartPosition.hashCode());
@@ -262,14 +262,14 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
         }
 
         @Override
-        public boolean equals(final Object obj) {
+        public boolean equals(Object obj) {
             if (this == obj)
                 return true;
             if (obj == null)
                 return false;
             if (getClass() != obj.getClass())
                 return false;
-            final StreamAccess other = (StreamAccess) obj;
+            StreamAccess other = (StreamAccess) obj;
             if (fileData == null) {
                 if (other.fileData != null)
                     return false;
@@ -290,21 +290,21 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
         private final UnsignedInteger recordCount;
         private final SequenceOf<OctetString> fileRecordData;
 
-        public RecordAccess(final SignedInteger fileStartRecord, final UnsignedInteger recordCount,
-                final SequenceOf<OctetString> fileRecordData) {
+        public RecordAccess(SignedInteger fileStartRecord, UnsignedInteger recordCount,
+                SequenceOf<OctetString> fileRecordData) {
             this.fileStartRecord = fileStartRecord;
             this.recordCount = recordCount;
             this.fileRecordData = fileRecordData;
         }
 
-        public RecordAccess(final ByteQueue queue) throws BACnetException {
+        public RecordAccess(ByteQueue queue) throws BACnetException {
             fileStartRecord = read(queue, SignedInteger.class);
             recordCount = read(queue, UnsignedInteger.class);
             fileRecordData = readSequenceOf(queue, recordCount.intValue(), OctetString.class);
         }
 
         @Override
-        public void write(final ByteQueue queue) {
+        public void write(ByteQueue queue) {
             write(queue, fileStartRecord);
             write(queue, recordCount);
             write(queue, fileRecordData);
@@ -324,7 +324,7 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
 
         @Override
         public int hashCode() {
-            final int prime = 31;
+            int prime = 31;
             int result = 1;
             result = prime * result + (fileRecordData == null ? 0 : fileRecordData.hashCode());
             result = prime * result + (fileStartRecord == null ? 0 : fileStartRecord.hashCode());
@@ -333,14 +333,14 @@ public class AtomicWriteFileRequest extends ConfirmedRequestService {
         }
 
         @Override
-        public boolean equals(final Object obj) {
+        public boolean equals(Object obj) {
             if (this == obj)
                 return true;
             if (obj == null)
                 return false;
             if (getClass() != obj.getClass())
                 return false;
-            final RecordAccess other = (RecordAccess) obj;
+            RecordAccess other = (RecordAccess) obj;
             if (fileRecordData == null) {
                 if (other.fileRecordData != null)
                     return false;

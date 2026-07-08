@@ -73,7 +73,7 @@ public class Ipv6NetworkPortObject extends NetworkPortObject {
     }
 
     @Override
-    protected void beforeReadProperty(final PropertyIdentifier pid) {
+    protected void beforeReadProperty(PropertyIdentifier pid) {
         if (pid.equals(PropertyIdentifier.virtualMacAddressTable) && !isChanged()) {
             writePropertyInternal(PropertyIdentifier.virtualMacAddressTable,
                     new SequenceOf<>(network.getVirtualMacAddressTable()));

@@ -137,8 +137,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
     }
 
     @Override
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
-            throws BACnetServiceException {
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
         PropertyIdentifier pid = value.getPropertyIdentifier();
         if (pid.equals(PropertyIdentifier.scPrimaryHubUri) || pid.equals(PropertyIdentifier.scFailoverHubUri)) {
             CharacterString cs = value.getValue();
@@ -219,7 +218,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         super.initializeImpl();
 
         getLocalDevice().getEventHandler().addListener(new DeviceEventAdapter() {
-            final List<ObjectIdentifier> certIds;
+            List<ObjectIdentifier> certIds;
 
             {
                 var issuerCerts = network.getIssuerCertificateFileIds();

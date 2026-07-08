@@ -53,8 +53,8 @@ public class WritePropertyRequest extends ConfirmedRequestService {
     private final Encodable propertyValue;
     private final UnsignedInteger priority;
 
-    public WritePropertyRequest(final ObjectIdentifier objectIdentifier, final PropertyIdentifier propertyIdentifier,
-            final UnsignedInteger propertyArrayIndex, final Encodable propertyValue, final UnsignedInteger priority) {
+    public WritePropertyRequest(ObjectIdentifier objectIdentifier, PropertyIdentifier propertyIdentifier,
+            UnsignedInteger propertyArrayIndex, Encodable propertyValue, UnsignedInteger priority) {
         this.objectIdentifier = objectIdentifier;
         this.propertyIdentifier = propertyIdentifier;
         this.propertyArrayIndex = propertyArrayIndex;
@@ -68,7 +68,7 @@ public class WritePropertyRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, objectIdentifier, 0);
         write(queue, propertyIdentifier, 1);
         writeOptional(queue, propertyArrayIndex, 2);
@@ -76,7 +76,7 @@ public class WritePropertyRequest extends ConfirmedRequestService {
         writeOptional(queue, priority, 4);
     }
 
-    WritePropertyRequest(final ByteQueue queue) throws BACnetException {
+    WritePropertyRequest(ByteQueue queue) throws BACnetException {
         try {
             objectIdentifier = read(queue, ObjectIdentifier.class, 0);
             propertyIdentifier = read(queue, PropertyIdentifier.class, 1);
@@ -89,20 +89,19 @@ public class WritePropertyRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public AcknowledgementService handle(final LocalDevice localDevice, final Address from)
-            throws BACnetErrorException {
-        final BACnetObject obj = localDevice.getObject(objectIdentifier);
+    public AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetErrorException {
+        BACnetObject obj = localDevice.getObject(objectIdentifier);
         if (obj == null)
             throw new BACnetErrorException(getChoiceId(), ErrorClass.object, ErrorCode.unknownObject);
 
-        final PropertyValue pv = new PropertyValue(propertyIdentifier, propertyArrayIndex, propertyValue, priority);
+        PropertyValue pv = new PropertyValue(propertyIdentifier, propertyArrayIndex, propertyValue, priority);
         try {
             if (localDevice.getEventHandler().checkAllowPropertyWrite(from, obj, pv)) {
                 obj.writeProperty(new ValueSource(from), pv);
                 localDevice.getEventHandler().propertyWritten(from, obj, pv);
             } else
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
-        } catch (final BACnetServiceException e) {
+        } catch (BACnetServiceException e) {
             throw new BACnetErrorException(getChoiceId(), e);
         }
 
@@ -137,7 +136,7 @@ public class WritePropertyRequest extends ConfirmedRequestService {
 
     @Override
     public int hashCode() {
-        final int PRIME = 31;
+        int PRIME = 31;
         int result = 1;
         result = PRIME * result + (objectIdentifier == null ? 0 : objectIdentifier.hashCode());
         result = PRIME * result + (priority == null ? 0 : priority.hashCode());
@@ -148,14 +147,14 @@ public class WritePropertyRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public boolean equals(final Object obj) {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final WritePropertyRequest other = (WritePropertyRequest) obj;
+        WritePropertyRequest other = (WritePropertyRequest) obj;
         if (objectIdentifier == null) {
             if (other.objectIdentifier != null)
                 return false;

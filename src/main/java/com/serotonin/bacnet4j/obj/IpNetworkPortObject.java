@@ -92,7 +92,7 @@ public class IpNetworkPortObject extends NetworkPortObject {
     }
 
     @Override
-    protected void beforeReadProperty(final PropertyIdentifier pid) throws BACnetServiceException {
+    protected void beforeReadProperty(PropertyIdentifier pid) throws BACnetServiceException {
         super.beforeReadProperty(pid);
 
         if (network.getIpMode() == IPMode.bbmd) {

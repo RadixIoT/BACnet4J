@@ -28,6 +28,7 @@
 package com.serotonin.bacnet4j.type.primitive;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.npdu.NetworkUtils;
@@ -44,7 +45,7 @@ public class OctetString extends Primitive {
 
     private final byte[] value;
 
-    public OctetString(final byte[] value) {
+    public OctetString(byte[] value) {
         this.value = value;
     }
 
@@ -55,14 +56,14 @@ public class OctetString extends Primitive {
     //
     // Reading and writing
     //
-    public OctetString(final ByteQueue queue) throws BACnetErrorException {
-        final int length = (int) readTag(queue, TYPE_ID);
+    public OctetString(ByteQueue queue) throws BACnetErrorException {
+        int length = (int) readTag(queue, TYPE_ID);
         value = new byte[length];
         queue.pop(value);
     }
 
     @Override
-    public void writeImpl(final ByteQueue queue) {
+    public void writeImpl(ByteQueue queue) {
         queue.push(value);
     }
 
@@ -77,25 +78,16 @@ public class OctetString extends Primitive {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + Arrays.hashCode(value);
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        OctetString that = (OctetString) o;
+        return Objects.deepEquals(value, that.value);
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final OctetString other = (OctetString) obj;
-        if (!Arrays.equals(value, other.value))
-            return false;
-        return true;
+    public int hashCode() {
+        return Arrays.hashCode(value);
     }
 
     @Override

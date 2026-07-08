@@ -82,7 +82,7 @@ public class RestoreClient {
     private final int recordsPerRequest;
     private final int maxOctetsPerRequest;
 
-    public RestoreClient(final LocalDevice localDevice, final int targetDeviceId, final String password) {
+    public RestoreClient(LocalDevice localDevice, int targetDeviceId, String password) {
         this.localDevice = localDevice;
         this.targetDeviceId = targetDeviceId;
         this.password = password == null ? null : new CharacterString(password);
@@ -104,8 +104,8 @@ public class RestoreClient {
      *                            choice of the number of bytes per request is based upon the max APDU size of the
      *                            target.
      */
-    public RestoreClient(final LocalDevice localDevice, final int targetDeviceId, final String password,
-            int recordsPerRequest, int maxOctetsPerRequest) {
+    public RestoreClient(LocalDevice localDevice, int targetDeviceId, String password, int recordsPerRequest,
+            int maxOctetsPerRequest) {
         this.localDevice = localDevice;
         this.targetDeviceId = targetDeviceId;
         this.password = password == null ? null : new CharacterString(password);
@@ -116,7 +116,7 @@ public class RestoreClient {
     /**
      * Start the restore procedure with a default timeout of 30s.
      */
-    public void begin(final List<File> files) throws BACnetException, IOException {
+    public void begin(List<File> files) throws BACnetException, IOException {
         begin(files, 30000);
     }
 
@@ -131,23 +131,23 @@ public class RestoreClient {
      * @throws BACnetException in case of state error
      * @throws IOException     file read error
      */
-    public void begin(final List<File> files, final long restoreStateChangeTimeout)
+    public void begin(List<File> files, long restoreStateChangeTimeout)
             throws BACnetException, IOException {
         // Get a remote device handle for the device.
         LOG.info("Beginning restore procedure");
         LOG.info("Getting remote device...");
-        final RemoteDevice rd = localDevice.getRemoteDeviceBlocking(targetDeviceId);
+        RemoteDevice rd = localDevice.getRemoteDeviceBlocking(targetDeviceId);
 
         // Get the restore preparation time.
         LOG.info("Getting restore preparation time...");
         int restorePreparationTimeSeconds = 0;
         try {
-            final UnsignedInteger restorePreparationTime = RequestUtils.getProperty(localDevice, rd,
+            UnsignedInteger restorePreparationTime = RequestUtils.getProperty(localDevice, rd,
                     PropertyIdentifier.restorePreparationTime);
             restorePreparationTimeSeconds = restorePreparationTime.intValue();
-        } catch (final BACnetErrorException e) {
+        } catch (BACnetErrorException e) {
             // Ignore unknown property to support old devices.
-            final ErrorClassAndCode ecac = e.getBacnetError().getError().getErrorClassAndCode();
+            ErrorClassAndCode ecac = e.getBacnetError().getError().getErrorClassAndCode();
             if (!ecac.equals(ErrorClass.property, ErrorCode.unknownProperty)) {
                 throw e;
             }
@@ -168,11 +168,11 @@ public class RestoreClient {
 
             // Poll the backup state of the target, waiting for it to change to something actionable.
             // It should already be preparingForRestore, and then change to either performingARestore or restoreFailure.
-            final long deadline = localDevice.getClock().millis() + restoreStateChangeTimeout;
+            long deadline = localDevice.getClock().millis() + restoreStateChangeTimeout;
             try {
                 while (true) {
                     LOG.info("Getting restore state...");
-                    final BackupState backupState = RequestUtils.getProperty(localDevice, rd,
+                    BackupState backupState = RequestUtils.getProperty(localDevice, rd,
                             PropertyIdentifier.backupAndRestoreState);
 
                     if (backupState.equals(BackupState.preparingForRestore)) {
@@ -194,9 +194,9 @@ public class RestoreClient {
                         throw new BACnetException("Timeout waiting for backup state of target to change.");
                     }
                 }
-            } catch (final BACnetErrorException e) {
+            } catch (BACnetErrorException e) {
                 // Ignore unknown property to support old devices.
-                final ErrorClassAndCode ecac = e.getBacnetError().getError().getErrorClassAndCode();
+                ErrorClassAndCode ecac = e.getBacnetError().getError().getErrorClassAndCode();
                 if (!ecac.equals(ErrorClass.property, ErrorCode.unknownProperty)) {
                     throw e;
                 }
@@ -213,11 +213,11 @@ public class RestoreClient {
         }
     }
 
-    private void copyFiles(final List<File> files, final RemoteDevice rd) throws BACnetException, IOException {
+    private void copyFiles(List<File> files, RemoteDevice rd) throws BACnetException, IOException {
         // 19.1.3.3
         // The property is of type BACnetArray, but encoding loses that information, and returns it as a SequenceOf.
         LOG.info("Getting configuration file list...");
-        final SequenceOf<ObjectIdentifier> configurationFiles = RequestUtils.getProperty(localDevice, rd,
+        SequenceOf<ObjectIdentifier> configurationFiles = RequestUtils.getProperty(localDevice, rd,
                 PropertyIdentifier.configurationFiles);
 
         LOG.info("Target reported {} configuration files", configurationFiles.size());
@@ -231,11 +231,11 @@ public class RestoreClient {
         }
         LOG.debug("With streamAccess, {} octets per Request can be transmitted", octetsPerRequest);
 
-        for (final File file : files) {
+        for (File file : files) {
             // Find a matching file object.
-            final int fileNumber = toFileInstanceNumber(file);
+            int fileNumber = toFileInstanceNumber(file);
             ObjectIdentifier fileOid = null;
-            for (final ObjectIdentifier oid : configurationFiles) {
+            for (ObjectIdentifier oid : configurationFiles) {
                 if (oid.getInstanceNumber() == fileNumber) {
                     fileOid = oid;
                     break;
@@ -244,7 +244,7 @@ public class RestoreClient {
 
             if (fileOid == null) {
                 // Didn't find a matching file. Create a new file on the target.
-                final CreateObjectAck ack = localDevice.send(rd,
+                CreateObjectAck ack = localDevice.send(rd,
                                 new CreateObjectRequest(ObjectType.file, new SequenceOf<>(
                                         new PropertyValue(PropertyIdentifier.objectName, new CharacterString(file.getName())),
                                         new PropertyValue(PropertyIdentifier.fileType,
@@ -255,7 +255,7 @@ public class RestoreClient {
             }
 
             LOG.info("Retrieving configuration file access method for {}", fileOid);
-            final FileAccessMethod fileAccessMethod = RequestUtils.getProperty(localDevice, rd, fileOid,
+            FileAccessMethod fileAccessMethod = RequestUtils.getProperty(localDevice, rd, fileOid,
                     PropertyIdentifier.fileAccessMethod);
 
             LOG.info("Writing configuration file contents for {}", file);
@@ -271,9 +271,9 @@ public class RestoreClient {
                 try (BufferedReader in = new BufferedReader(new FileReader(file))) {
                     boolean done = false;
                     while (!done) {
-                        final SequenceOf<OctetString> records = new SequenceOf<>();
+                        SequenceOf<OctetString> records = new SequenceOf<>();
                         while (records.size() < recordsPerRequest) {
-                            final String line = in.readLine();
+                            String line = in.readLine();
                             if (line == null) {
                                 // EOF
                                 done = true;
@@ -284,7 +284,7 @@ public class RestoreClient {
 
                         if (records.size() > 0) {
                             reqCount++;
-                            final AtomicWriteFileRequest req = new AtomicWriteFileRequest(fileOid, new RecordAccess(
+                            AtomicWriteFileRequest req = new AtomicWriteFileRequest(fileOid, new RecordAccess(
                                     new SignedInteger(currentRecord), new UnsignedInteger(records.size()), records));
                             localDevice.send(rd, req).get();
 
@@ -296,17 +296,17 @@ public class RestoreClient {
                 // Empty the existing file by writing a file size of 0.
                 RequestUtils.writeProperty(localDevice, rd, fileOid, PropertyIdentifier.fileSize, UnsignedInteger.ZERO);
 
-                final byte[] buffer = new byte[octetsPerRequest];
+                byte[] buffer = new byte[octetsPerRequest];
                 int currentPosition = 0;
                 try (FileInputStream in = new FileInputStream(file)) {
                     while (true) {
-                        final int readCount = in.read(buffer);
+                        int readCount = in.read(buffer);
                         if (readCount == -1)
                             break;
 
                         OctetString data;
                         if (readCount < buffer.length) {
-                            final byte[] b = new byte[readCount];
+                            byte[] b = new byte[readCount];
                             System.arraycopy(buffer, 0, b, 0, readCount);
                             data = new OctetString(b);
                         } else {
@@ -314,7 +314,7 @@ public class RestoreClient {
                         }
 
                         reqCount++;
-                        final AtomicWriteFileRequest req = new AtomicWriteFileRequest(fileOid,
+                        AtomicWriteFileRequest req = new AtomicWriteFileRequest(fileOid,
                                 new StreamAccess(new SignedInteger(currentPosition), data));
                         localDevice.send(rd, req).get();
 
@@ -332,8 +332,8 @@ public class RestoreClient {
      * @param file the file name
      * @return the instance number of the corresponding file object
      */
-    protected int toFileInstanceNumber(final File file) {
-        final Matcher matcher = FILE_NAME_PATTERN.matcher(file.getName());
+    protected int toFileInstanceNumber(File file) {
+        Matcher matcher = FILE_NAME_PATTERN.matcher(file.getName());
         if (matcher.matches()) {
             return Integer.parseInt(matcher.group(1));
         }
