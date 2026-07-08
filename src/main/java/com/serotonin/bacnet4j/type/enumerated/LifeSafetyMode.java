@@ -52,6 +52,11 @@ public class LifeSafetyMode extends Enumerated {
     public static final LifeSafetyMode disabled = new LifeSafetyMode(12);
     public static final LifeSafetyMode automaticReleaseDisabled = new LifeSafetyMode(13);
     public static final LifeSafetyMode defaultMode = new LifeSafetyMode(14);
+    public static final LifeSafetyMode activatedOeoAlarm = new LifeSafetyMode(15);
+    public static final LifeSafetyMode activatedOeoEvacuate = new LifeSafetyMode(16);
+    public static final LifeSafetyMode activatedOeoPhase1Recall = new LifeSafetyMode(17);
+    public static final LifeSafetyMode activatedOeoUnavailable = new LifeSafetyMode(18);
+    public static final LifeSafetyMode deactivated = new LifeSafetyMode(19);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();
@@ -61,18 +66,18 @@ public class LifeSafetyMode extends Enumerated {
         Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
     }
 
-    public static LifeSafetyMode forId(final int id) {
+    public static LifeSafetyMode forId(int id) {
         LifeSafetyMode e = (LifeSafetyMode) idMap.get(id);
         if (e == null)
             e = new LifeSafetyMode(id);
         return e;
     }
 
-    public static String nameForId(final int id) {
+    public static String nameForId(int id) {
         return prettyMap.get(id);
     }
 
-    public static LifeSafetyMode forName(final String name) {
+    public static LifeSafetyMode forName(String name) {
         return (LifeSafetyMode) Enumerated.forName(nameMap, name);
     }
 
@@ -80,11 +85,11 @@ public class LifeSafetyMode extends Enumerated {
         return idMap.size();
     }
 
-    private LifeSafetyMode(final int value) {
+    private LifeSafetyMode(int value) {
         super(value);
     }
 
-    public LifeSafetyMode(final ByteQueue queue) throws BACnetErrorException {
+    public LifeSafetyMode(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
 

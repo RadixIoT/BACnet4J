@@ -77,7 +77,8 @@ import com.serotonin.bacnet4j.type.enumerated.ProgramState;
 import com.serotonin.bacnet4j.type.enumerated.ProtocolLevel;
 import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.enumerated.RestartReason;
-import com.serotonin.bacnet4j.type.enumerated.SecurityLevel;
+import com.serotonin.bacnet4j.type.enumerated.SCConnectionState;
+import com.serotonin.bacnet4j.type.enumerated.SCHubConnectorState;
 import com.serotonin.bacnet4j.type.enumerated.ShedState;
 import com.serotonin.bacnet4j.type.enumerated.SilencedState;
 import com.serotonin.bacnet4j.type.enumerated.TimerState;
@@ -90,14 +91,14 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class PropertyStates extends BaseType {
-    private static ChoiceOptions choiceOptions = new ChoiceOptions();
+    private static final ChoiceOptions choiceOptions = new ChoiceOptions();
 
     static {
         choiceOptions.addContextual(0, Boolean.class); // 0
         choiceOptions.addContextual(1, BinaryPV.class); // 1
         choiceOptions.addContextual(2, EventType.class); // 2
         choiceOptions.addContextual(3, Polarity.class); // 3
-        choiceOptions.addContextual(4, ProgramRequest.class); // 4;
+        choiceOptions.addContextual(4, ProgramRequest.class); // 4
         choiceOptions.addContextual(5, ProgramState.class); // 5
         choiceOptions.addContextual(6, ProgramError.class); // 6
         choiceOptions.addContextual(7, Reliability.class); // 7
@@ -119,7 +120,6 @@ public class PropertyStates extends BaseType {
         choiceOptions.addContextual(23, Maintenance.class); // 23
         choiceOptions.addContextual(24, NodeType.class); // 24
         choiceOptions.addContextual(25, NotifyType.class); // 25
-        choiceOptions.addContextual(26, SecurityLevel.class); // 26
         choiceOptions.addContextual(27, ShedState.class); // 27
         choiceOptions.addContextual(28, SilencedState.class); // 28
         choiceOptions.addContextual(30, AccessEvent.class); // 30
@@ -151,11 +151,15 @@ public class PropertyStates extends BaseType {
         choiceOptions.addContextual(57, LiftFault.class);
         choiceOptions.addContextual(58, ProtocolLevel.class); // 58
         choiceOptions.addContextual(63, Unsigned32.class);
+        // -- example-one [256] BACnetExampleTypeOne,
+        // -- example-two [257] BACnetExampleTypeTwo,
+        choiceOptions.addContextual(258, SCConnectionState.class);
+        choiceOptions.addContextual(259, SCHubConnectorState.class);
     }
 
     private final Choice state;
 
-    public PropertyStates(final Encodable state) {
+    public PropertyStates(Encodable state) {
         this.state = new Choice(choiceOptions.getContextId(state.getClass(), false), state, choiceOptions);
     }
 
@@ -165,11 +169,11 @@ public class PropertyStates extends BaseType {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, state);
     }
 
-    public PropertyStates(final ByteQueue queue) throws BACnetException {
+    public PropertyStates(ByteQueue queue) throws BACnetException {
         state = new Choice(queue, choiceOptions);
     }
 
@@ -180,21 +184,21 @@ public class PropertyStates extends BaseType {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
+        int prime = 31;
         int result = 1;
         result = prime * result + (state == null ? 0 : state.hashCode());
         return result;
     }
 
     @Override
-    public boolean equals(final Object obj) {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final PropertyStates other = (PropertyStates) obj;
+        PropertyStates other = (PropertyStates) obj;
         if (state == null) {
             if (other.state != null)
                 return false;

@@ -43,6 +43,7 @@ public class BinaryLightingPV extends Enumerated {
     public static final BinaryLightingPV warnOff = new BinaryLightingPV(3);
     public static final BinaryLightingPV warnRelinquish = new BinaryLightingPV(4);
     public static final BinaryLightingPV stop = new BinaryLightingPV(5);
+    public static final BinaryLightingPV toggle = new BinaryLightingPV(6);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();
@@ -52,18 +53,18 @@ public class BinaryLightingPV extends Enumerated {
         Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
     }
 
-    public static BinaryLightingPV forId(final int id) {
+    public static BinaryLightingPV forId(int id) {
         BinaryLightingPV e = (BinaryLightingPV) idMap.get(id);
         if (e == null)
             e = new BinaryLightingPV(id);
         return e;
     }
 
-    public static String nameForId(final int id) {
+    public static String nameForId(int id) {
         return prettyMap.get(id);
     }
 
-    public static BinaryLightingPV forName(final String name) {
+    public static BinaryLightingPV forName(String name) {
         return (BinaryLightingPV) Enumerated.forName(nameMap, name);
     }
 
@@ -71,11 +72,11 @@ public class BinaryLightingPV extends Enumerated {
         return idMap.size();
     }
 
-    private BinaryLightingPV(final int value) {
+    private BinaryLightingPV(int value) {
         super(value);
     }
 
-    public BinaryLightingPV(final ByteQueue queue) throws BACnetErrorException {
+    public BinaryLightingPV(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
 

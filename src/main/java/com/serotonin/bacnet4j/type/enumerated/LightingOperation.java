@@ -48,6 +48,10 @@ public class LightingOperation extends Enumerated {
     public static final LightingOperation warnOff = new LightingOperation(8);
     public static final LightingOperation warnRelinquish = new LightingOperation(9);
     public static final LightingOperation stop = new LightingOperation(10);
+    public static final LightingOperation restoreOn = new LightingOperation(11);
+    public static final LightingOperation defaultOn = new LightingOperation(12);
+    public static final LightingOperation toggleRestore = new LightingOperation(13);
+    public static final LightingOperation toggleDefault = new LightingOperation(14);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();
@@ -57,18 +61,18 @@ public class LightingOperation extends Enumerated {
         Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
     }
 
-    public static LightingOperation forId(final int id) {
+    public static LightingOperation forId(int id) {
         LightingOperation e = (LightingOperation) idMap.get(id);
         if (e == null)
             e = new LightingOperation(id);
         return e;
     }
 
-    public static String nameForId(final int id) {
+    public static String nameForId(int id) {
         return prettyMap.get(id);
     }
 
-    public static LightingOperation forName(final String name) {
+    public static LightingOperation forName(String name) {
         return (LightingOperation) Enumerated.forName(nameMap, name);
     }
 
@@ -76,11 +80,11 @@ public class LightingOperation extends Enumerated {
         return idMap.size();
     }
 
-    private LightingOperation(final int value) {
+    private LightingOperation(int value) {
         super(value);
     }
 
-    public LightingOperation(final ByteQueue queue) throws BACnetErrorException {
+    public LightingOperation(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
 
