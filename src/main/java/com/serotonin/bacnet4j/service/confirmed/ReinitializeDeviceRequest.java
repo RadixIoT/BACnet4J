@@ -155,33 +155,16 @@ public class ReinitializeDeviceRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public int hashCode() {
-        int prime = 31;
-        int result = 1;
-        result = prime * result + (password == null ? 0 : password.hashCode());
-        result = prime * result + (reinitializedStateOfDevice == null ? 0 : reinitializedStateOfDevice.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        ReinitializeDeviceRequest that = (ReinitializeDeviceRequest) o;
+        return Objects.equals(reinitializedStateOfDevice,
+                that.reinitializedStateOfDevice) && Objects.equals(password, that.password);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        ReinitializeDeviceRequest other = (ReinitializeDeviceRequest) obj;
-        if (password == null) {
-            if (other.password != null)
-                return false;
-        } else if (!password.equals(other.password))
-            return false;
-        if (reinitializedStateOfDevice == null) {
-            if (other.reinitializedStateOfDevice != null)
-                return false;
-        } else if (!reinitializedStateOfDevice.equals(other.reinitializedStateOfDevice))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(reinitializedStateOfDevice, password);
     }
 }

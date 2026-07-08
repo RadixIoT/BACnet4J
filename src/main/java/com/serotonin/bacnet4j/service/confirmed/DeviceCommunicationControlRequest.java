@@ -109,7 +109,7 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
 
     public static class EnableDisable extends Enumerated {
         public static final EnableDisable enable = new EnableDisable(0);
-        public static final EnableDisable disable = new EnableDisable(1);
+        public static final EnableDisable disable = new EnableDisable(1); // Deprecated
         public static final EnableDisable disableInitiation = new EnableDisable(2);
 
         private static final Map<Integer, Enumerated> idMap = new HashMap<>();
@@ -154,39 +154,16 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public int hashCode() {
-        int prime = 31;
-        int result = 1;
-        result = prime * result + (enableDisable == null ? 0 : enableDisable.hashCode());
-        result = prime * result + (password == null ? 0 : password.hashCode());
-        result = prime * result + (timeDuration == null ? 0 : timeDuration.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        DeviceCommunicationControlRequest that = (DeviceCommunicationControlRequest) o;
+        return Objects.equals(timeDuration, that.timeDuration) && Objects.equals(enableDisable,
+                that.enableDisable) && Objects.equals(password, that.password);
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        DeviceCommunicationControlRequest other = (DeviceCommunicationControlRequest) obj;
-        if (enableDisable == null) {
-            if (other.enableDisable != null)
-                return false;
-        } else if (!enableDisable.equals(other.enableDisable))
-            return false;
-        if (password == null) {
-            if (other.password != null)
-                return false;
-        } else if (!password.equals(other.password))
-            return false;
-        if (timeDuration == null) {
-            if (other.timeDuration != null)
-                return false;
-        } else if (!timeDuration.equals(other.timeDuration))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(timeDuration, enableDisable, password);
     }
 }
