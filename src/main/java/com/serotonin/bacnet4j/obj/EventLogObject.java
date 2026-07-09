@@ -27,8 +27,11 @@
 
 package com.serotonin.bacnet4j.obj;
 
+import java.util.function.Consumer;
+
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
+import com.serotonin.bacnet4j.obj.logBuffer.ILogRecord;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
 import com.serotonin.bacnet4j.obj.logBuffer.LogBuffer;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedEventNotificationRequest;
@@ -51,7 +54,6 @@ import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class EventLogObject extends LogBase {
-
     // CreateObject constructor
     public static EventLogObject create(LocalDevice localDevice, int instanceNumber) {
         return new EventLogObject(localDevice, instanceNumber, ObjectType.eventLog.toString() + " " + instanceNumber,
@@ -97,6 +99,18 @@ public class EventLogObject extends LogBase {
             }
         };
         localDevice.getEventHandler().addListener(eventListener);
+    }
+
+    /**
+     * Allows the consumer to work with the buffer in a thread-safe manner.
+     *
+     * @param consumer the work to do while synchronized.
+     */
+    @SuppressWarnings("unchecked")
+    public <E extends ILogRecord> void doWithBuffer(Consumer<LogBuffer<E>> consumer) {
+        synchronized (buffer) {
+            consumer.accept((LogBuffer<E>) buffer);
+        }
     }
 
     public EventLogObject supportIntrinsicReporting(int notificationThreshold, int notificationClass,
@@ -167,36 +181,6 @@ public class EventLogObject extends LogBase {
         addLogRecordImpl(rec);
 
         fullCheck();
-    }
-
-    private void addLogRecordImpl(EventLogRecord rec) {
-        Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
-
-        synchronized (buffer) {
-            // Don't add more to the buffer than capacity.
-            if (buffer.size() == bufferSize.intValue()) {
-                // Buffer is already full. Drop the oldest record.
-                buffer.remove();
-            }
-
-            buffer.add(rec);
-        }
-
-        updateRecordCount();
-
-        Unsigned32 recordsSinceNotification = get(PropertyIdentifier.recordsSinceNotification);
-        if (recordsSinceNotification != null) {
-            writePropertyInternal(PropertyIdentifier.recordsSinceNotification, recordsSinceNotification.increment());
-        }
-
-        // The total record count must be written last because it is the monitored property for intrinsic reporting.
-        Unsigned32 totalRecordCount = get(PropertyIdentifier.totalRecordCount);
-        totalRecordCount = totalRecordCount.increment();
-        if (totalRecordCount.longValue() == 0)
-            // Value overflowed. As per 12.27.15 set to 1.
-            totalRecordCount = new Unsigned32(1);
-        rec.setSequenceNumber(totalRecordCount.longValue());
-        writePropertyInternal(PropertyIdentifier.totalRecordCount, totalRecordCount);
     }
 
     @Override

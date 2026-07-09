@@ -30,9 +30,12 @@ package com.serotonin.bacnet4j.obj;
 import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
+import com.serotonin.bacnet4j.obj.logBuffer.ILogRecord;
+import com.serotonin.bacnet4j.obj.logBuffer.LogBuffer;
 import com.serotonin.bacnet4j.obj.mixin.HasStatusFlagsMixin;
 import com.serotonin.bacnet4j.obj.mixin.ReadOnlyPropertyMixin;
 import com.serotonin.bacnet4j.obj.mixin.event.IntrinsicReportingMixin;
@@ -275,5 +278,37 @@ public abstract class LogBase extends BACnetObject {
 
     protected void updateRecordCount() {
         writePropertyInternal(PropertyIdentifier.recordCount, new Unsigned32(bufferSize()));
+    }
+
+    public abstract <E extends ILogRecord> void doWithBuffer(Consumer<LogBuffer<E>> consumer);
+
+    protected <E extends ILogRecord> void addLogRecordImpl(E rec) {
+        Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
+
+        doWithBuffer(buf -> {
+            // Don't add more to the buffer than capacity.
+            if (buf.size() == bufferSize.intValue()) {
+                // Buffer is already full. Drop the oldest record.
+                buf.remove();
+            }
+
+            buf.add(rec);
+        });
+
+        updateRecordCount();
+
+        Unsigned32 recordsSinceNotification = get(PropertyIdentifier.recordsSinceNotification);
+        if (recordsSinceNotification != null) {
+            writePropertyInternal(PropertyIdentifier.recordsSinceNotification, recordsSinceNotification.increment());
+        }
+
+        // The total record count must be written last because it is the monitored property for intrinsic reporting.
+        Unsigned32 totalRecordCount = get(PropertyIdentifier.totalRecordCount);
+        totalRecordCount = totalRecordCount.increment();
+        if (totalRecordCount.longValue() == 0)
+            // Value overflowed. As per 12.27.15, 12.30.21, 12.25.16 set to 1.
+            totalRecordCount = new Unsigned32(1);
+        rec.setSequenceNumber(totalRecordCount.longValue());
+        writePropertyInternal(PropertyIdentifier.totalRecordCount, totalRecordCount);
     }
 }
