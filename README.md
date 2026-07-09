@@ -63,6 +63,17 @@ The dependency information is BACnet4J pre 5.0 is:
 
 Releases
 ========
+*Version 6.1.2*
+
+- Some non-conformant devices encode an uninitialized property value as an opening context tag immediately followed by
+  its closing tag, with no content between them. Previously this caused the decoding of the entire response to fail.
+  Such values are now decoded as a `value-not-initialized` error for the property, or as Null for commandable
+  properties, and the remainder of the response is decoded normally.
+
+*Version 6.1.1*
+
+- Fixed an infinite loop that could occur when decoding corrupt extended length values.
+
 *Version 6.1.0*
 
 - Previously upon a final timeout for a segmented request or response, BACnet4J would issue a segment NAK to the peer  
