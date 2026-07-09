@@ -65,9 +65,11 @@ Releases
 ========
 *Version 7.0.0*
 
-- Breaking change: BACnet objects are no longer added to the local device in their constructors because of
-  initialization problems. Instead, objects need to be explicitly added to the local device after instantiation. Many
-  examples can be found in the unit tests, but e.g.:
+This version contains many breaking changes. Please review carefully.
+
+- BACnet objects are no longer added to the local device in their constructors because of initialization problems.
+  Instead, objects need to be explicitly added to the local device after instantiation. Many examples can be found in
+  the unit tests, but e.g.:
 
 ```
 // Old code
@@ -100,6 +102,7 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
 - LifeSafetyPoint and LifeSafetyZone now handle `trackingValue` and `reliability` properly according to out of service
   rules.
 - Changes for compliance with addendum 135-2016bi-3 regarding extremely large logs
+- Time form construction of DateTime choice has been deprecated. They should no longer be created by client code
 
 *Version 6.2.0*
 

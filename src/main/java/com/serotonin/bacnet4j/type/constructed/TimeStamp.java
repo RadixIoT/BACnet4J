@@ -27,49 +27,52 @@
 
 package com.serotonin.bacnet4j.type.constructed;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class TimeStamp extends BaseType {
-    static final Logger LOG = LoggerFactory.getLogger(TimeStamp.class);
-
     private static final ChoiceOptions choiceOptions = new ChoiceOptions();
 
     static {
-        choiceOptions.addContextual(0, Time.class);
+        choiceOptions.addContextual(0, Time.class); // Deprecated
         choiceOptions.addContextual(1, UnsignedInteger.class);
         choiceOptions.addContextual(2, DateTime.class);
     }
 
+    /**
+     * @deprecated 135-2016br-4
+     */
+    @Deprecated(since = "7.0.0")
     public static final TimeStamp UNSPECIFIED_TIME = new TimeStamp(Time.UNSPECIFIED);
     public static final TimeStamp UNSPECIFIED_SEQUENCE = new TimeStamp(UnsignedInteger.ZERO);
     public static final TimeStamp UNSPECIFIED_DATETIME = new TimeStamp(DateTime.UNSPECIFIED);
 
     private final Choice choice;
 
-    public TimeStamp(final Time time) {
+    /**
+     * @deprecated 135-2016br-4
+     */
+    @Deprecated(since = "7.0.0") // 135-2016br-4
+    public TimeStamp(Time time) {
         choice = new Choice(0, time, choiceOptions);
     }
 
-    public TimeStamp(final UnsignedInteger sequenceNumber) {
+    public TimeStamp(UnsignedInteger sequenceNumber) {
         choice = new Choice(1, sequenceNumber, choiceOptions);
     }
 
-    public TimeStamp(final DateTime dateTime) {
+    public TimeStamp(DateTime dateTime) {
         choice = new Choice(2, dateTime, choiceOptions);
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, choice);
     }
 
-    public TimeStamp(final ByteQueue queue) throws BACnetException {
+    public TimeStamp(ByteQueue queue) throws BACnetException {
         choice = new Choice(queue, choiceOptions);
     }
 
@@ -104,21 +107,21 @@ public class TimeStamp extends BaseType {
 
     @Override
     public int hashCode() {
-        final int PRIME = 31;
+        int PRIME = 31;
         int result = 1;
         result = PRIME * result + (choice == null ? 0 : choice.hashCode());
         return result;
     }
 
     @Override
-    public boolean equals(final Object obj) {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final TimeStamp other = (TimeStamp) obj;
+        TimeStamp other = (TimeStamp) obj;
         if (choice == null) {
             if (other.choice != null)
                 return false;
