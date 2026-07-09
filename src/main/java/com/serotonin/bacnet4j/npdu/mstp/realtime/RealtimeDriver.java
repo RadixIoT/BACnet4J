@@ -37,8 +37,6 @@ import org.slf4j.LoggerFactory;
 /**
  * IOCTL JNA Wrapper To handle IOCTL calls to proprietary
  * Realtime MS/TP Driver
- *
- * @author Terry Packer
  */
 public class RealtimeDriver {
     static final Logger LOG = LoggerFactory.getLogger(RealtimeDriver.class);
@@ -51,18 +49,8 @@ public class RealtimeDriver {
         this.configProgram = configProgram;
     }
 
-    /**
-     * @param portId
-     * @param baud
-     * @param thisStation
-     * @throws InterruptedException
-     * @throws IOException
-     */
-    public void configure(String portId, int baud, byte thisStation, int maxMaster, int maxInfoFrames, int usageTimeout)
-            throws InterruptedException, IOException {
-        //TODO Redirect output to LOGs
-        //TODO Create a setuid wrapper to call insmod to load the driver if not running as root
-
+    public void configure(String portId, int baud, byte thisStation, int maxManager, int maxInfoFrames,
+            int usageTimeout) throws InterruptedException, IOException {
         //modprobe the driver
         ProcessBuilder pb = new ProcessBuilder("insmod",
                 driver.getAbsolutePath());
@@ -77,7 +65,7 @@ public class RealtimeDriver {
                 "-d" + portId,
                 "-b" + baud,
                 "-t" + thisStation,
-                "-m" + maxMaster,
+                "-m" + maxManager,
                 "-f" + maxInfoFrames,
                 "-u" + usageTimeout);
         pb.redirectError(Redirect.INHERIT);

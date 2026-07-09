@@ -40,12 +40,12 @@ import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.SerialPortWrapper;
 
-public class MasterNode extends MstpNode {
-    static final Logger LOG = LoggerFactory.getLogger(MasterNode.class);
+public class ManagerNode extends MstpNode {
+    static final Logger LOG = LoggerFactory.getLogger(ManagerNode.class);
 
 
-    protected enum MasterNodeState {
-        idle, useToken, waitForReply, doneWithToken, passToken, noToken, pollForMaster, answerDataRequest
+    protected enum ManagerNodeState {
+        idle, useToken, waitForReply, doneWithToken, passToken, noToken, pollForManager, answerDataRequest
     }
 
 
@@ -58,35 +58,35 @@ public class MasterNode extends MstpNode {
     protected byte nextStation;
 
     /**
-     * The MAC address of the node to which This Station last sent a Poll For Master. This is
+     * The MAC address of the node to which This Station last sent a Poll For Manager. This is
      * used during token maintenance.
      */
     protected byte pollStation;
 
     /**
-     * A counter of transmission retries used for Token and Poll For Master transmission.
+     * A counter of transmission retries used for Token and Poll For Manager transmission.
      */
     protected int retryCount;
 
     /**
-     * A Boolean flag set to TRUE by the master machine if this node is the only known master node.
+     * A Boolean flag set to TRUE by the manager machine if this node is the only known manager node.
      */
-    protected boolean soleMaster;
+    protected boolean soleManager;
 
     /**
      * The number of tokens received by this node. When this counter reaches the value Npoll, the node
-     * polls the address range between TS and NS for additional master nodes. TokenCount is set to one at
+     * polls the address range between TS and NS for additional manager nodes. TokenCount is set to one at
      * the end of the polling process.
      */
     protected int tokenCount;
 
-    protected int maxMaster = Constants.MAX_MASTER;
+    protected int maxManager = Constants.MAX_MANAGER;
 
     protected int maxInfoFrames = Constants.MAX_INFO_FRAMES;
 
     protected int usageTimeout = Constants.USAGE_TIMEOUT;
 
-    protected MasterNodeState state;
+    protected ManagerNodeState state;
 
     protected long replyDeadline;
     protected Frame replyFrame;
@@ -96,22 +96,19 @@ public class MasterNode extends MstpNode {
      */
     private boolean receivedToken;
 
-    //    private long lastTokenPossession;
-
-    public MasterNode(final SerialPortWrapper wrapper, final byte thisStation, final int retryCount)
-            throws IllegalArgumentException {
+    public ManagerNode(SerialPortWrapper wrapper, byte thisStation, int retryCount) throws IllegalArgumentException {
         super(wrapper, thisStation);
         validate(retryCount);
     }
 
-    public MasterNode(final String portId, final InputStream in, final OutputStream out, final byte thisStation,
-            final int retryCount) throws IllegalArgumentException {
+    public ManagerNode(String portId, InputStream in, OutputStream out, byte thisStation, int retryCount)
+            throws IllegalArgumentException {
         super(portId, in, out, thisStation);
         validate(retryCount);
     }
 
-    protected void validate(final int retryCount) {
-        final int is = thisStation & 0xff;
+    protected void validate(int retryCount) {
+        int is = thisStation & 0xff;
         if (is > 127)
             throw new IllegalArgumentException("thisStation cannot be greater than 127");
 
@@ -120,31 +117,31 @@ public class MasterNode extends MstpNode {
         nextStation = thisStation;
         pollStation = thisStation;
         tokenCount = Constants.POLL;
-        soleMaster = false;
-        state = MasterNodeState.idle;
+        soleManager = false;
+        state = ManagerNodeState.idle;
     }
 
-    public void setMaxMaster(final int maxMaster) {
-        if (maxMaster > Constants.MAX_MASTER)
-            throw new IllegalArgumentException("Cannot be greater than " + Constants.MAX_MASTER);
-        this.maxMaster = maxMaster;
+    public void setMaxManager(int maxManager) {
+        if (maxManager > Constants.MAX_MANAGER)
+            throw new IllegalArgumentException("Cannot be greater than " + Constants.MAX_MANAGER);
+        this.maxManager = maxManager;
     }
 
     /**
      * @param maxInfoFrames the maxInfoFrames to set
      */
-    public void setMaxInfoFrames(final int maxInfoFrames) {
+    public void setMaxInfoFrames(int maxInfoFrames) {
         if (maxInfoFrames < 1)
             throw new IllegalArgumentException("Cannot be less than 1");
         this.maxInfoFrames = maxInfoFrames;
     }
 
-    public void setUsageTimeout(final int usageTimeout) {
+    public void setUsageTimeout(int usageTimeout) {
         if (usageTimeout < 20) {
             throw new IllegalArgumentException("Cannot be less than 20");
         }
-        if (usageTimeout > 100) {
-            throw new IllegalArgumentException("Cannot be greater than 100");
+        if (usageTimeout > 35) {
+            throw new IllegalArgumentException("Cannot be greater than 35");
         }
         this.usageTimeout = usageTimeout;
     }
@@ -154,30 +151,30 @@ public class MasterNode extends MstpNode {
     }
 
     @Override
-    public void initialize(final Transport transport) throws Exception {
+    public void initialize(Transport transport) throws Exception {
         super.initialize(transport);
 
         transport.getLocalDevice().getDeviceObject().writePropertyInternal(PropertyIdentifier.maxManager,
-                new UnsignedInteger(maxMaster));
+                new UnsignedInteger(maxManager));
         transport.getLocalDevice().getDeviceObject().writePropertyInternal(PropertyIdentifier.maxInfoFrames,
                 new UnsignedInteger(maxInfoFrames));
     }
 
-    public void queueFrame(final FrameType type, final byte destination, final byte[] data) {
+    public void queueFrame(FrameType type, byte destination, byte[] data) {
         if (!type.oneOf(FrameType.bacnetDataExpectingReply, FrameType.bacnetDataNotExpectingReply,
                 FrameType.testRequest))
             throw new RuntimeException("Cannot send frame of type: " + type);
 
-        final Frame frame = new Frame(type, destination, thisStation, data);
+        Frame frame = new Frame(type, destination, thisStation, data);
         synchronized (framesToSend) {
             framesToSend.add(frame);
         }
     }
 
     @Override
-    public void setReplyFrame(final FrameType type, final byte destination, final byte[] data) {
+    public void setReplyFrame(FrameType type, byte destination, byte[] data) {
         synchronized (this) {
-            if (state == MasterNodeState.answerDataRequest)
+            if (state == ManagerNodeState.answerDataRequest)
                 // If there is still time to reply immediately...
                 replyFrame = new Frame(type, destination, thisStation, data);
             else
@@ -190,28 +187,28 @@ public class MasterNode extends MstpNode {
     protected void doCycle() {
         readFrame();
 
-        if (state == MasterNodeState.idle)
+        if (state == ManagerNodeState.idle)
             idle();
 
-        if (state == MasterNodeState.useToken)
+        if (state == ManagerNodeState.useToken)
             useToken();
 
-        if (state == MasterNodeState.waitForReply)
+        if (state == ManagerNodeState.waitForReply)
             waitForReply();
 
-        if (state == MasterNodeState.doneWithToken)
+        if (state == ManagerNodeState.doneWithToken)
             doneWithToken();
 
-        if (state == MasterNodeState.passToken)
+        if (state == ManagerNodeState.passToken)
             passToken();
 
-        if (state == MasterNodeState.noToken)
+        if (state == ManagerNodeState.noToken)
             noToken();
 
-        if (state == MasterNodeState.pollForMaster)
-            pollForMaster();
+        if (state == ManagerNodeState.pollForManager)
+            pollForManager();
 
-        if (state == MasterNodeState.answerDataRequest)
+        if (state == ManagerNodeState.answerDataRequest)
             answerDataRequest();
     }
 
@@ -221,13 +218,11 @@ public class MasterNode extends MstpNode {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("idle:LostToken");
             }
-            state = MasterNodeState.noToken;
+            state = ManagerNodeState.noToken;
             activity = true;
         } else if (receivedInvalidFrame != null) {
             // ReceivedInvalidFrame
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("idle:Received invalid frame: " + receivedInvalidFrame);
-            }
+            LOG.debug("idle:Received invalid frame: {}", receivedInvalidFrame);
             receivedInvalidFrame = null;
             activity = true;
         } else if (receivedValidFrame) {
@@ -241,88 +236,76 @@ public class MasterNode extends MstpNode {
     }
 
     protected void frame() {
-        final FrameType type = frame.getFrameType();
+        FrameType type = frame.getFrameType();
 
         if (type == null) {
-            // ReceivedUnwantedFrame
-            if (LOG.isDebugEnabled())
-                LOG.debug(thisStation + " idle:Unknown frame type");
+            // ReceivedUnwantedFrame (c): FrameType has a value that is not known to this node.
+            LOG.debug("{} idle:ReceivedUnwantedFrame Unknown frame type", thisStation);
         } else if (frame.broadcast()
-                && type.oneOf(FrameType.token, FrameType.bacnetDataExpectingReply, FrameType.testRequest)) {
-            // ReceivedUnwantedFrame
-            if (LOG.isDebugEnabled())
-                LOG.debug("idle:ReceiveUnwantedFrame Frame type should not be broadcast: " + type);
+                && type.oneOf(FrameType.token, FrameType.testRequest, FrameType.bacnetDataExpectingReply)) {
+            // ReceivedUnwantedFrame (b): DestinationAddress is broadcast and FrameType is Token,
+            // Test_Request, or a proprietary type that expects a reply.
+            LOG.debug("{} idle:ReceivedUnwantedFrame Frame type should not be broadcast: {}", thisStation, type);
+        } else if (frame.forStation(thisStation)
+                && type.oneOf(FrameType.replyToPollForManager, FrameType.replyPostponed)) {
+            // ReceivedUnwantedFrame (d): DestinationAddress equals TS and FrameType is
+            // Reply To Poll For Manager or Reply Postponed.
+            LOG.debug("{} idle:ReceivedUnwantedFrame Unexpected reply frame: {}", thisStation, type);
         } else if (frame.forStation(thisStation) && type == FrameType.token) {
             // ReceivedToken
             receivedToken = true;
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("idle:ReceivedToken (" + frame.getSourceAddress() + ")");
-            }
+            LOG.debug("idle:ReceivedToken ({})", frame.getSourceAddress());
             frameCount = 0;
-            soleMaster = false;
-            state = MasterNodeState.useToken;
-            //
-            //            long now = clock.millis();
-            //            if (lastTokenPossession > 0)
-            //                debug("Since last token possession: " + (now - lastTokenPossession) + " ms");
-            //            else
-            //                debug("Received first token possession");
-            //            lastTokenPossession = now;
-        } else if (frame.forStation(thisStation) && type == FrameType.pollForMaster) {
+            soleManager = false;
+            state = ManagerNodeState.useToken;
+        } else if (frame.forStation(thisStation) && type == FrameType.pollForManager) {
             // ReceivedPFM
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("idle:ReceivedPFM (" + frame.getSourceAddress() + ")");
-            }
-            sendFrame(FrameType.replyToPollForMaster, frame.getSourceAddress());
+            LOG.debug("idle:ReceivedPFM ({})", frame.getSourceAddress());
+            sendFrame(FrameType.replyToPollForManager, frame.getSourceAddress());
         } else if (frame.forStationOrBroadcast(thisStation)
                 && type.oneOf(FrameType.bacnetDataNotExpectingReply, FrameType.testResponse)) {
             // ReceivedDataNoReply
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("idle:ReceivedDataNoReply (" + frame.getSourceAddress() + ")");
-            }
+            LOG.debug("idle:ReceivedDataNoReply ({})", frame.getSourceAddress());
             receivedDataNoReply(frame);
         } else if (frame.forStation(thisStation)
                 && type.oneOf(FrameType.bacnetDataExpectingReply, FrameType.testRequest)) {
             // ReceivedDataNeedingReply
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("idle:ReceivedDataNeedingReply (" + frame.getSourceAddress() + ")");
-            }
+            LOG.debug("idle:ReceivedDataNeedingReply ({})", frame.getSourceAddress());
             receivedDataNeedingReply(frame);
-            state = MasterNodeState.answerDataRequest;
+            state = ManagerNodeState.answerDataRequest;
             replyDeadline = lastNonSilence + Constants.REPLY_DELAY;
         } else {
-            if (LOG.isDebugEnabled())
-                LOG.debug(thisStation + " idle:frame-other");
+            // ReceivedUnwantedFrame (a): DestinationAddress is neither TS nor broadcast, or any
+            // other frame not addressed to this node in a way this state handles.
+            LOG.debug("{} idle:ReceivedUnwantedFrame", thisStation);
         }
     }
 
     protected void useToken() {
         Frame frameToSend = null;
         synchronized (framesToSend) {
-            if (!framesToSend.isEmpty())
+            if (!framesToSend.isEmpty()) {
                 frameToSend = framesToSend.remove(0);
+            }
         }
 
         if (frameToSend == null) {
             // NothingToSend
             frameCount = maxInfoFrames;
-            state = MasterNodeState.doneWithToken;
+            state = ManagerNodeState.doneWithToken;
         } else {
             activity = true;
             if (frameToSend.getFrameType().oneOf(FrameType.testResponse, FrameType.bacnetDataNotExpectingReply)) {
                 // SendNoWait
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("useToken:SendNoWait (" + frameToSend.getDestinationAddress() + ")");
-                }
-                state = MasterNodeState.doneWithToken;
+                LOG.debug("useToken:SendNoWait ({})", frameToSend.getDestinationAddress());
+                state = ManagerNodeState.doneWithToken;
             } else if (frameToSend.getFrameType().oneOf(FrameType.testRequest, FrameType.bacnetDataExpectingReply)) {
                 // SendAndWait
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("useToken:SendAndWait (" + frameToSend.getDestinationAddress() + ")");
-                }
-                state = MasterNodeState.waitForReply;
-            } else
+                LOG.debug("useToken:SendAndWait ({})", frameToSend.getDestinationAddress());
+                state = ManagerNodeState.waitForReply;
+            } else {
                 throw new RuntimeException("Unhandled frame type: " + frameToSend.getFrameType());
+            }
 
             sendFrame(frameToSend);
             frameCount++;
@@ -332,47 +315,37 @@ public class MasterNode extends MstpNode {
     protected void waitForReply() {
         if (silence() > Constants.REPLY_TIMEOUT) {
             // ReplyTimeout - assume that the request has failed
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("waitForReply:ReplyTimeout");
-            }
+            LOG.debug("waitForReply:ReplyTimeout");
             frameCount = maxInfoFrames;
-            state = MasterNodeState.doneWithToken;
+            state = ManagerNodeState.doneWithToken;
         } else if (receivedInvalidFrame != null) {
             // InvalidFrame
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("waitForReply:InvalidFrame: " + receivedInvalidFrame + "(" + frame.getSourceAddress() + ")");
-            }
+            LOG.debug("waitForReply:InvalidFrame: {} ({})", receivedInvalidFrame, frame.getSourceAddress());
             receivedInvalidFrame = null;
-            state = MasterNodeState.doneWithToken;
+            state = ManagerNodeState.doneWithToken;
             activity = true;
         } else if (receivedValidFrame) {
             activity = true;
-            final FrameType type = frame.getFrameType();
+            FrameType type = frame.getFrameType();
 
             if (frame.forStation(thisStation)) {
                 if (type.oneOf(FrameType.testResponse, FrameType.bacnetDataNotExpectingReply)) {
                     // ReceivedReply
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug(thisStation + " waitForReply:ReceivedReply (" + frame.getSourceAddress() + ")");
-                    }
+                    LOG.debug("{} waitForReply:ReceivedReply ({})", thisStation, frame.getSourceAddress());
                     receivedDataNoReply(frame);
                 } else if (type.oneOf(FrameType.replyPostponed)) {
                     // ReceivedPostpone
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug(thisStation + " waitForReply:ReceivedPostpone (" + frame.getSourceAddress() + ")");
-                    }
+                    LOG.debug("{} waitForReply:ReceivedPostpone ({})", thisStation, frame.getSourceAddress());
                     // The reply to the message has been postponed until a later time.
                 }
 
-                state = MasterNodeState.doneWithToken;
+                state = ManagerNodeState.doneWithToken;
             } else if (!type.oneOf(FrameType.testResponse, FrameType.bacnetDataNotExpectingReply)) {
                 // ReceivedUnexpectedFrame
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(thisStation + " waitForReply:ReceivedUnexpectedFrame (" + frame.getSourceAddress() + ")");
-                }
+                LOG.debug("{} waitForReply:ReceivedUnexpectedFrame ({})", thisStation, frame.getSourceAddress());
 
                 // This may indicate the presence of multiple tokens.
-                state = MasterNodeState.idle;
+                state = ManagerNodeState.idle;
             }
 
             receivedValidFrame = false;
@@ -380,76 +353,62 @@ public class MasterNode extends MstpNode {
     }
 
     /**
-     * The DONE_WITH_TOKEN state either sends another data frame, passes the token, or initiates a Poll For Master
+     * The DONE_WITH_TOKEN state either sends another data frame, passes the token, or initiates a Poll For Manager
      * cycle.
      */
     private void doneWithToken() {
         activity = true;
         if (frameCount < maxInfoFrames) {
             // SendAnotherFrame
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(thisStation + " doneWithToken:SendAnotherFrame");
-            }
-            state = MasterNodeState.useToken;
-        } else if (!soleMaster && nextStation == thisStation) {
+            LOG.debug("{} doneWithToken:SendAnotherFrame", thisStation);
+            state = ManagerNodeState.useToken;
+        } else if (!soleManager && nextStation == thisStation) {
             // NextStationUnknown
             pollStation = adjacentStation(thisStation);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(thisStation + " doneWithToken:NextStationUnknown [" + pollStation + "]");
-            }
-            sendFrame(FrameType.pollForMaster, pollStation);
+            LOG.debug("{} doneWithToken:NextStationUnknown [{}]", thisStation, pollStation);
+            sendFrame(FrameType.pollForManager, pollStation);
             retryCount = 0;
-            state = MasterNodeState.pollForMaster;
-        } else if (tokenCount < Constants.POLL - 1 && soleMaster) {
-            // SoleMaster
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(thisStation + " doneWithToken:SoleMaster");
-            }
+            state = ManagerNodeState.pollForManager;
+        } else if (tokenCount < Constants.POLL - 1 && soleManager) {
+            // SoleManager
+            LOG.debug("{} doneWithToken:SoleManager", thisStation);
             frameCount = 0;
             tokenCount++;
-            state = MasterNodeState.useToken;
-        } else if (tokenCount < Constants.POLL - 1 && !soleMaster || nextStation == adjacentStation(thisStation)) {
+            state = ManagerNodeState.useToken;
+        } else if (tokenCount < Constants.POLL - 1 && !soleManager || nextStation == adjacentStation(thisStation)) {
             // SendToken
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(thisStation + " doneWithToken:SendToken [" + nextStation + "]");
-            }
+            LOG.debug("{} doneWithToken:SendToken [{}]", thisStation, nextStation);
             tokenCount++;
             sendFrame(FrameType.token, nextStation);
             retryCount = 0;
             eventCount = 0;
-            state = MasterNodeState.passToken;
+            state = ManagerNodeState.passToken;
         } else if (tokenCount >= Constants.POLL - 1 && adjacentStation(pollStation) != nextStation) {
             // SendMaintenancePFM
             pollStation = adjacentStation(pollStation);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(thisStation + " doneWithToken:SendMaintenancePFM [" + pollStation + "]");
-            }
-            sendFrame(FrameType.pollForMaster, pollStation);
+            LOG.debug("{} doneWithToken:SendMaintenancePFM [{}]", thisStation, pollStation);
+            sendFrame(FrameType.pollForManager, pollStation);
             retryCount = 0;
-            state = MasterNodeState.pollForMaster;
-        } else if (tokenCount >= Constants.POLL - 1 && adjacentStation(pollStation) == nextStation && !soleMaster) {
+            state = ManagerNodeState.pollForManager;
+        } else if (tokenCount >= Constants.POLL - 1 && adjacentStation(pollStation) == nextStation && !soleManager) {
             // ResetMaintenancePFM
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(thisStation + " doneWithToken:ResetMaintenancePFM [" + nextStation + "]");
-            }
+            LOG.debug("{} doneWithToken:ResetMaintenancePFM [{}]", thisStation, nextStation);
             pollStation = thisStation;
             sendFrame(FrameType.token, nextStation);
             retryCount = 0;
             eventCount = 0;
             tokenCount = 1;
-            state = MasterNodeState.passToken;
-        } else if (tokenCount >= Constants.POLL - 1 && adjacentStation(pollStation) == nextStation && soleMaster) {
-            // SoleMasterRestartMaintenancePFM
+            state = ManagerNodeState.passToken;
+        } else if (tokenCount >= Constants.POLL - 1 && adjacentStation(pollStation) == nextStation && soleManager) {
+            // SoleManagerRestartMaintenancePFM
             pollStation = adjacentStation(nextStation);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(thisStation + " doneWithToken:SoleMasterRestartMaintenancePFM [" + pollStation + "]");
-            }
-            sendFrame(FrameType.pollForMaster, pollStation);
+            LOG.debug("{} doneWithToken:SoleManagerRestartMaintenancePFM [{}]", thisStation, pollStation);
+            sendFrame(FrameType.pollForManager, pollStation);
             nextStation = thisStation;
             retryCount = 0;
             eventCount = 0;
             tokenCount = 1;
-            state = MasterNodeState.pollForMaster;
+            state = ManagerNodeState.pollForManager;
         }
     }
 
@@ -460,28 +419,24 @@ public class MasterNode extends MstpNode {
         activity = true;
         if (silence() < usageTimeout && eventCount > Constants.MIN_OCTETS) {
             // SawTokenUser
-            if (LOG.isDebugEnabled())
-                LOG.debug(thisStation + " passToken:SawTokenUser");
-            state = MasterNodeState.idle;
+            LOG.debug("{} passToken:SawTokenUser", thisStation);
+            state = ManagerNodeState.idle;
         } else if (silence() >= usageTimeout && retryCount < Constants.RETRY_TOKEN) {
             // RetrySendToken
-            if (LOG.isDebugEnabled())
-                LOG.debug(thisStation + " passToken:RetrySendToken [" + nextStation + "]");
+            LOG.debug("{} passToken:RetrySendToken [{}]", thisStation, nextStation);
             retryCount++;
             sendFrame(FrameType.token, nextStation);
             eventCount = 0;
         } else if (silence() >= usageTimeout && retryCount >= Constants.RETRY_TOKEN) {
             // FindNewSuccessor
             pollStation = adjacentStation(nextStation);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(thisStation + " passToken:FindNewSuccessor trying [" + pollStation + "]");
-            }
-            sendFrame(FrameType.pollForMaster, pollStation);
+            LOG.debug("{} passToken:FindNewSuccessor trying [{}]", thisStation, pollStation);
+            sendFrame(FrameType.pollForManager, pollStation);
             nextStation = thisStation;
             retryCount = 0;
             tokenCount = 0;
             eventCount = 0;
-            state = MasterNodeState.pollForMaster;
+            state = ManagerNodeState.pollForManager;
         }
     }
 
@@ -491,44 +446,39 @@ public class MasterNode extends MstpNode {
      * create a token.
      */
     private void noToken() {
-        final long silence = silence();
-        final long delay = Constants.NO_TOKEN + Constants.SLOT * (thisStation & 0xff);
+        long silence = silence();
+        long delay = Constants.NO_TOKEN + Constants.SLOT * (thisStation & 0xffL);
         if (silence < delay && eventCount > Constants.MIN_OCTETS) {
             // SawFrame
-            if (LOG.isDebugEnabled())
-                LOG.debug(thisStation + " noToken:SawFrame");
-            state = MasterNodeState.idle;
+            LOG.debug("{} noToken:SawFrame", thisStation);
+            state = ManagerNodeState.idle;
             activity = true;
-        } else if (silence >= delay && silence < delay + Constants.SLOT // Silence is in this master's slot.
+        } else if (silence >= delay && silence < delay + Constants.SLOT // Silence is in this manager's slot.
                 // Silence is beyond all slots.
-                || silence > Constants.NO_TOKEN + Constants.SLOT * (maxMaster + 1)) {
+                || silence > Constants.NO_TOKEN + Constants.SLOT * (maxManager + 1L)) {
             // GenerateToken
             pollStation = adjacentStation(thisStation);
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(thisStation + " noToken:GenerateToken [" + pollStation + "]");
-            }
-            sendFrame(FrameType.pollForMaster, pollStation);
+            LOG.debug("{} noToken:GenerateToken [{}]", thisStation, pollStation);
+            sendFrame(FrameType.pollForManager, pollStation);
             nextStation = thisStation;
             tokenCount = 0;
             retryCount = 0;
             eventCount = 0;
-            state = MasterNodeState.pollForMaster;
+            state = ManagerNodeState.pollForManager;
             activity = true;
         }
     }
 
     /**
-     * In the POLL_FOR_MASTER state, the node listens for a reply to a previously sent Poll For Master frame in order to
-     * find a successor node.
+     * In the POLL_FOR_MANAGER state, the node listens for a reply to a previously sent Poll For Manager frame in order
+     * to find a successor node.
      */
-    private void pollForMaster() {
+    private void pollForManager() {
         if (receivedValidFrame) {
-            if (frame.forStation(thisStation) && frame.getFrameType() == FrameType.replyToPollForMaster) {
+            if (frame.forStation(thisStation) && frame.getFrameType() == FrameType.replyToPollForManager) {
                 // ReceivedReplyToPFM
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(thisStation + " pollForMaster:ReceivedReplyToPFM (" + frame.getSourceAddress() + ")");
-                }
-                soleMaster = false;
+                LOG.debug("{} pollForManager:ReceivedReplyToPFM ({})", thisStation, frame.getSourceAddress());
+                soleManager = false;
                 nextStation = frame.getSourceAddress();
                 eventCount = 0;
                 sendFrame(FrameType.token, nextStation);
@@ -536,59 +486,49 @@ public class MasterNode extends MstpNode {
                 tokenCount = 0;
                 retryCount = 0;
                 receivedValidFrame = false;
-                state = MasterNodeState.passToken;
+                state = ManagerNodeState.passToken;
             } else {
                 // ReceivedUnexpectedFrame
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(
-                            thisStation + " pollForMaster:ReceivedUnexpectedFrame (" + frame.getSourceAddress() + ")");
-                }
+                LOG.debug("{} pollForManager:ReceivedUnexpectedFrame ({})", thisStation, frame.getSourceAddress());
                 receivedValidFrame = false;
-                state = MasterNodeState.idle;
+                state = ManagerNodeState.idle;
             }
             activity = true;
-        } else if (soleMaster && (silence() >= usageTimeout || receivedInvalidFrame != null)) {
-            // SoleMaster
-            if (LOG.isDebugEnabled()) {
-                LOG.debug(thisStation + " pollForMaster:SoleMaster");
-            }
+        } else if (soleManager && (silence() >= usageTimeout || receivedInvalidFrame != null)) {
+            // SoleManager
+            LOG.debug("{} pollForManager:SoleManager", thisStation);
             frameCount = 0;
             receivedInvalidFrame = null;
-            state = MasterNodeState.useToken;
+            state = ManagerNodeState.useToken;
             activity = true;
-        } else if (!soleMaster) {
-            final boolean longCondition = silence() >= usageTimeout || receivedInvalidFrame != null;
+        } else if (!soleManager) {
+            boolean longCondition = silence() >= usageTimeout || receivedInvalidFrame != null;
             if (nextStation != thisStation && longCondition) {
                 // DoneWithPFM
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(thisStation + " pollForMaster:DoneWithPFM [" + nextStation + "]");
-                }
+                LOG.debug("{} pollForManager:DoneWithPFM [{}]", thisStation, nextStation);
                 eventCount = 0;
                 sendFrame(FrameType.token, nextStation);
                 retryCount = 0;
                 receivedInvalidFrame = null;
-                state = MasterNodeState.passToken;
+                state = ManagerNodeState.passToken;
                 activity = true;
             } else if (nextStation == thisStation) {
                 if (adjacentStation(pollStation) != thisStation && longCondition) {
                     // SendNextPFM
                     pollStation = adjacentStation(pollStation);
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug(thisStation + " pollForMaster:SendNextPFM [" + pollStation + "]");
-                    }
-                    sendFrame(FrameType.pollForMaster, pollStation);
+                    LOG.debug("{} pollForManager:SendNextPFM [{}]", thisStation, pollStation);
+                    sendFrame(FrameType.pollForManager, pollStation);
                     retryCount = 0;
                     receivedInvalidFrame = null;
                     activity = true;
                 } else if (adjacentStation(pollStation) == thisStation && longCondition) {
-                    // DeclareSoleMaster
+                    // DeclareSoleManager
                     receivedToken = true;
-                    if (LOG.isDebugEnabled())
-                        LOG.debug(thisStation + " pollForMaster:DeclareSoleMaster");
-                    soleMaster = true;
+                    LOG.debug("{} pollForManager:DeclareSoleManager", thisStation);
+                    soleManager = true;
                     frameCount = 0;
                     receivedInvalidFrame = null;
-                    state = MasterNodeState.useToken;
+                    state = ManagerNodeState.useToken;
                     activity = true;
                 }
             }
@@ -603,29 +543,25 @@ public class MasterNode extends MstpNode {
         synchronized (this) {
             if (replyFrame != null) {
                 // Reply
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(thisStation + " answerDataRequest:Reply");
-                }
+                LOG.debug("{} answerDataRequest:Reply", thisStation);
                 sendFrame(replyFrame);
                 replyFrame = null;
-                state = MasterNodeState.idle;
+                state = ManagerNodeState.idle;
                 activity = true;
             } else {
-                final long now = clock.millis();
+                long now = clock.millis();
                 if (replyDeadline < now) {
                     // DeferredReply
-                    if (LOG.isDebugEnabled()) {
-                        LOG.debug(thisStation + " answerDataRequest:DeferredReply (" + frame.getSourceAddress() + ")");
-                    }
+                    LOG.debug("{} answerDataRequest:DeferredReply ({})", thisStation, frame.getSourceAddress());
                     sendFrame(FrameType.replyPostponed, frame.getSourceAddress());
-                    state = MasterNodeState.idle;
+                    state = ManagerNodeState.idle;
                     activity = true;
                 } else {
                     // If the current time of the host was moved back, the above condition could cause an indefinite
                     // wait. So, we check if the reply deadline is too long, and correct if so.
-                    final long timeDiff = replyDeadline - now;
+                    long timeDiff = replyDeadline - now;
                     if (timeDiff > Constants.REPLY_DELAY) {
-                        LOG.warn("Correcting replyDeadline time because of timeDiff of " + timeDiff);
+                        LOG.warn("Correcting replyDeadline time because of timeDiff of {}", timeDiff);
                         replyDeadline = now + Constants.REPLY_DELAY;
                     }
                 }
@@ -633,9 +569,9 @@ public class MasterNode extends MstpNode {
         }
     }
 
-    private byte adjacentStation(final byte station) {
+    private byte adjacentStation(byte station) {
         int i = station & 0xff;
-        i = (i + 1) % (maxMaster + 1);
+        i = (i + 1) % (maxManager + 1);
         return (byte) i;
     }
 }

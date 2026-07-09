@@ -38,7 +38,7 @@ import com.serotonin.bacnet4j.apdu.ConfirmedRequest;
 import com.serotonin.bacnet4j.apdu.UnconfirmedRequest;
 import com.serotonin.bacnet4j.npdu.NPDU;
 import com.serotonin.bacnet4j.npdu.Network;
-import com.serotonin.bacnet4j.npdu.mstp.MasterNode;
+import com.serotonin.bacnet4j.npdu.mstp.ManagerNode;
 import com.serotonin.bacnet4j.npdu.mstp.MstpNetwork;
 import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
@@ -58,7 +58,7 @@ public class Mstp {
         //        final String s = hex("1,0,30,3,c,c,2,2,dd,d6,19,4c,29,0,3e,21,68,3f,e2,3b");
 
         final Network network = new MstpNetwork(
-                new MasterNode(null, new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream(), (byte) 0, 2));
+                new ManagerNode(null, new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream(), (byte) 0, 2));
         final NPDU npdu = network.parseNpduData(new ByteQueue(s), new OctetString(new byte[] {1}));
         final ServicesSupported servicesSupported = new ServicesSupported();
         servicesSupported.setAll(true);

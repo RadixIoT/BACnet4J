@@ -34,8 +34,8 @@ import org.apache.commons.lang3.ArrayUtils;
  */
 public enum FrameType {
     token(0), //
-    pollForMaster(1), //
-    replyToPollForMaster(2), //
+    pollForManager(1), //
+    replyToPollForManager(2), //
     testRequest(3), //
     testResponse(4), //
     bacnetDataExpectingReply(5), //
@@ -45,7 +45,7 @@ public enum FrameType {
 
     public final byte id;
 
-    private FrameType(int id) {
+    FrameType(int id) {
         this.id = (byte) id;
     }
 

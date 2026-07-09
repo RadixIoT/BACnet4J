@@ -35,7 +35,7 @@ import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.npdu.Network;
-import com.serotonin.bacnet4j.npdu.mstp.MasterNode;
+import com.serotonin.bacnet4j.npdu.mstp.ManagerNode;
 import com.serotonin.bacnet4j.npdu.mstp.MstpNetwork;
 import com.serotonin.bacnet4j.npdu.mstp.MstpNode;
 import com.serotonin.bacnet4j.obj.mixin.ActiveCovSubscriptionMixin;
@@ -79,16 +79,15 @@ import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class DeviceObject extends BACnetObject {
-    private static final int VENDOR_ID = 865; //Infinite Automation Systems, Inc.
+    private static final int VENDOR_ID = 865; // Radix IoT LLC
 
-    public DeviceObject(final LocalDevice localDevice, final int instanceNumber) {
+    public DeviceObject(LocalDevice localDevice, int instanceNumber) {
         super(localDevice, ObjectType.device, instanceNumber, "BACnet4J device " + instanceNumber);
 
         writePropertyInternal(PropertyIdentifier.maxApduLengthAccepted,
                 new UnsignedInteger(MaxApduLength.UP_TO_1476.getMaxLengthInt()));
         writePropertyInternal(PropertyIdentifier.vendorIdentifier, new UnsignedInteger(VENDOR_ID));
-        writePropertyInternal(PropertyIdentifier.vendorName,
-                new CharacterString("Infinite Automation Systems, Inc."));
+        writePropertyInternal(PropertyIdentifier.vendorName, new CharacterString("Radix IoT LLC"));
         writePropertyInternal(PropertyIdentifier.segmentationSupported, Segmentation.segmentedBoth);
         writePropertyInternal(PropertyIdentifier.maxSegmentsAccepted, new UnsignedInteger(Integer.MAX_VALUE));
         writePropertyInternal(PropertyIdentifier.apduSegmentTimeout,
@@ -98,7 +97,7 @@ public class DeviceObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.objectList, new BACnetArray<ObjectIdentifier>());
 
         // Set up the supported services indicators. Remove lines as services get implemented.
-        final ServicesSupported servicesSupported = new ServicesSupported();
+        ServicesSupported servicesSupported = new ServicesSupported();
         servicesSupported.setAcknowledgeAlarm(true);
         servicesSupported.setConfirmedCovNotification(true);
         servicesSupported.setConfirmedEventNotification(true);
@@ -150,7 +149,7 @@ public class DeviceObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.protocolServicesSupported, servicesSupported);
 
         // Set up the object types supported.
-        final ObjectTypesSupported objectTypesSupported = new ObjectTypesSupported();
+        ObjectTypesSupported objectTypesSupported = new ObjectTypesSupported();
         objectTypesSupported.set(ObjectType.analogInput, true);
         objectTypesSupported.set(ObjectType.analogOutput, true);
         objectTypesSupported.set(ObjectType.analogValue, true);
@@ -225,7 +224,7 @@ public class DeviceObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.firmwareRevision, new CharacterString("not set"));
         writePropertyInternal(PropertyIdentifier.applicationSoftwareVersion, new CharacterString(LocalDevice.VERSION));
         writePropertyInternal(PropertyIdentifier.protocolVersion, new UnsignedInteger(1));
-        writePropertyInternal(PropertyIdentifier.protocolRevision, new UnsignedInteger(19));
+        writePropertyInternal(PropertyIdentifier.protocolRevision, new UnsignedInteger(20));
 
         UnsignedInteger databaseRevision = getLocalDevice().getPersistence()
                 .loadEncodable(getPersistenceKey(PropertyIdentifier.databaseRevision), UnsignedInteger.class);
@@ -259,18 +258,18 @@ public class DeviceObject extends BACnetObject {
         addMixin(new ObjectListMixin(this));
     }
 
-    public DeviceObject supportTimeSynchronization(final SequenceOf<Recipient> timeSynchronizationRecipients,
-            final SequenceOf<Recipient> utcTimeSynchronizationRecipients, final int timeSynchronizationInterval,
-            final boolean alignIntervals, final int intervalOffset) {
-        final TimeSynchronizationMixin m = new TimeSynchronizationMixin(this, timeSynchronizationRecipients,
+    public DeviceObject supportTimeSynchronization(SequenceOf<Recipient> timeSynchronizationRecipients,
+            SequenceOf<Recipient> utcTimeSynchronizationRecipients, int timeSynchronizationInterval,
+            boolean alignIntervals, int intervalOffset) {
+        TimeSynchronizationMixin m = new TimeSynchronizationMixin(this, timeSynchronizationRecipients,
                 utcTimeSynchronizationRecipients, timeSynchronizationInterval, alignIntervals, intervalOffset);
         addMixin(m);
         m.update();
         return this;
     }
 
-    public DeviceObject supportIntrinsicReporting(final int notificationClass, final EventTransitionBits eventEnable,
-            final NotifyType notifyType) {
+    public DeviceObject supportIntrinsicReporting(int notificationClass, EventTransitionBits eventEnable,
+            NotifyType notifyType) {
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
 
@@ -285,21 +284,21 @@ public class DeviceObject extends BACnetObject {
     }
 
     @Override
-    protected void beforeReadProperty(final PropertyIdentifier pid) {
+    protected void beforeReadProperty(PropertyIdentifier pid) {
         if (pid.equals(PropertyIdentifier.localTime)) {
             set(PropertyIdentifier.localTime, new Time(getLocalDevice()));
         } else if (pid.equals(PropertyIdentifier.localDate)) {
             set(PropertyIdentifier.localDate, new Date(getLocalDevice()));
         } else if (pid.equals(PropertyIdentifier.utcOffset)) {
-            final int offsetMillis = TimeZone.getDefault().getOffset(getLocalDevice().getClock().millis());
+            int offsetMillis = TimeZone.getDefault().getOffset(getLocalDevice().getClock().millis());
             writePropertyInternal(PropertyIdentifier.utcOffset, new SignedInteger(offsetMillis / 1000 / 60));
         } else if (pid.equals(PropertyIdentifier.daylightSavingsStatus)) {
-            final boolean dst = TimeZone.getDefault()
+            boolean dst = TimeZone.getDefault()
                     .inDaylightTime(new java.util.Date(getLocalDevice().getClock().millis()));
             writePropertyInternal(PropertyIdentifier.daylightSavingsStatus, Boolean.valueOf(dst));
         } else if (pid.equals(PropertyIdentifier.deviceAddressBinding)) {
-            final SequenceOf<AddressBinding> bindings = new SequenceOf<>();
-            for (final RemoteDevice d : getLocalDevice().getRemoteDevices()) {
+            SequenceOf<AddressBinding> bindings = new SequenceOf<>();
+            for (RemoteDevice d : getLocalDevice().getRemoteDevices()) {
                 if (d != null) {
                     bindings.add(new AddressBinding(d.getObjectIdentifier(), d.getAddress()));
                 }
@@ -309,13 +308,12 @@ public class DeviceObject extends BACnetObject {
     }
 
     @Override
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
-            throws BACnetServiceException {
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
         if (value.getPropertyIdentifier().equals(PropertyIdentifier.maxManager)) {
-            final MasterNode masterNode = getMasterNode();
-            if (masterNode != null) {
-                final UnsignedInteger maxMaster = value.getValue();
-                if (masterNode.getThisStation() > maxMaster.intValue()) {
+            ManagerNode managerNode = getManagerNode();
+            if (managerNode != null) {
+                UnsignedInteger maxManager = value.getValue();
+                if (managerNode.getThisStation() > maxManager.intValue()) {
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
                 }
             }
@@ -325,32 +323,31 @@ public class DeviceObject extends BACnetObject {
     }
 
     @Override
-    protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
-            final Encodable newValue) {
+    protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         if (pid.equals(PropertyIdentifier.restartNotificationRecipients)) {
             // Persist the new list.
             getLocalDevice().getPersistence()
                     .saveEncodable(getPersistenceKey(PropertyIdentifier.restartNotificationRecipients), newValue);
         } else if (pid.equals(PropertyIdentifier.maxManager)) {
-            final MasterNode masterNode = getMasterNode();
-            if (masterNode != null) {
-                final UnsignedInteger maxMaster = (UnsignedInteger) newValue;
-                masterNode.setMaxMaster(maxMaster.intValue());
+            ManagerNode managerNode = getManagerNode();
+            if (managerNode != null) {
+                UnsignedInteger maxManager = (UnsignedInteger) newValue;
+                managerNode.setMaxManager(maxManager.intValue());
             }
         } else if (pid.equals(PropertyIdentifier.maxInfoFrames)) {
-            final MasterNode masterNode = getMasterNode();
-            if (masterNode != null) {
-                final UnsignedInteger maxInfoFrames = (UnsignedInteger) newValue;
-                masterNode.setMaxInfoFrames(maxInfoFrames.intValue());
+            ManagerNode managerNode = getManagerNode();
+            if (managerNode != null) {
+                UnsignedInteger maxInfoFrames = (UnsignedInteger) newValue;
+                managerNode.setMaxInfoFrames(maxInfoFrames.intValue());
             }
         }
     }
 
-    private MasterNode getMasterNode() {
-        final Network network = getLocalDevice().getNetwork();
+    private ManagerNode getManagerNode() {
+        Network network = getLocalDevice().getNetwork();
         if (network instanceof MstpNetwork mstp) {
-            final MstpNode node = mstp.getNode();
-            if (node instanceof MasterNode manager) {
+            MstpNode node = mstp.getNode();
+            if (node instanceof ManagerNode manager) {
                 return manager;
             }
         }

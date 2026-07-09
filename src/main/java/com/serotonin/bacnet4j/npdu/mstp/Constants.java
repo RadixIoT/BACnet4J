@@ -28,6 +28,9 @@
 package com.serotonin.bacnet4j.npdu.mstp;
 
 public class Constants {
+    private Constants() {
+    }
+
     /**
      * This parameter represents the value of the Max_Info_Frames property of the node's Device object. The value
      * of Max_Info_Frames specifies the maximum number of information frames the node may send before it must
@@ -38,14 +41,14 @@ public class Constants {
     public static final int MAX_INFO_FRAMES = 1;
 
     /**
-     * This parameter represents the value of the Max_Master property of the node's Device object. The value of
-     * Max_Master specifies the highest allowable address for master nodes. The value of Max_Master shall be less
-     * than or equal to 127. If Max_Master is not writable in a node, its value shall be 127.
+     * This parameter represents the value of the Max_Manager property of the node's Device object. The value of
+     * Max_Manager specifies the highest allowable address for manager nodes. The value of Max_Manager shall be
+     * less than or equal to 127. If Max_Manager is not writable in a node, its value shall be 127.
      */
-    public static final int MAX_MASTER = 127;
+    public static final int MAX_MANAGER = 127;
 
     /**
-     * The number of tokens received or used before a Poll For Master cycle is executed: 50.
+     * The number of tokens received or used before a Poll For Manager cycle is executed: 50.
      */
     public static final int POLL = 50;
 
@@ -115,15 +118,15 @@ public class Constants {
     public static final int TURNAROUND = 40;
 
     /**
-     * The maximum time a node may wait after reception of the token or a Poll For Master frame before sending
+     * The maximum time a node may wait after reception of the token or a Poll For Manager frame before sending
      * the first octet of a frame: 15 milliseconds.
      */
     public static final int USAGE_DELAY = 15;
 
     /**
-     * The minimum time without a DataAvailable or ReceiveError event that a node must wait for a remote node to
-     * begin using a token or replying to a Poll For Master frame: 20 milliseconds. (Implementations may use larger
-     * values for this timeout, not to exceed 100 milliseconds.)
+     * The time without a DataAvailable or ReceiveError event that a node must wait for a remote node to
+     * begin using a token or replying to a Poll For Manager frame: 20 milliseconds. (Implementations may use larger
+     * values for this timeout, not to exceed 35 milliseconds.)
      */
     public static final int USAGE_TIMEOUT = 20;
 
