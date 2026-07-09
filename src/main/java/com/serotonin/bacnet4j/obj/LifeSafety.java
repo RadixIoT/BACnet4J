@@ -27,8 +27,11 @@
 
 package com.serotonin.bacnet4j.obj;
 
+import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.Address;
+import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
+import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.LifeSafetyOperation;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.SilencedState;
@@ -37,15 +40,22 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public interface LifeSafety {
     /**
-     * Override as required. Default implementation implements minimal behaviour.
+     * Handles an incoming LifeSafetyOperation. The default implementation supports the silence
+     * and unsilence variants; any other operation is rejected with
+     * {@code OBJECT / VALUE_OUT_OF_RANGE} per addendum 135-2016bt-2 (Clause 13.13.1.3.1).
      *
-     * @param from
-     * @param requestingProcessIdentifier
-     * @param requestingSource
-     * @param request
+     * <p>Overrides that add support for further operations should follow the same error mapping:
+     * throw {@code OBJECT / VALUE_OUT_OF_RANGE} for operations the object does not implement, and
+     * {@code OBJECT / INVALID_OPERATION_IN_THIS_STATE} for operations that are otherwise
+     * supported but inapplicable in the object's current state.
+     *
+     * @param from                        request sender
+     * @param requestingProcessIdentifier requesting process identifier
+     * @param requestingSource            requesting source
+     * @param request                     the request
      */
-    default void handleLifeSafetyOperation(final Address from, final UnsignedInteger requestingProcessIdentifier,
-            final CharacterString requestingSource, final LifeSafetyOperation request) {
+    default void handleLifeSafetyOperation(Address from, UnsignedInteger requestingProcessIdentifier,
+            CharacterString requestingSource, LifeSafetyOperation request) throws BACnetServiceException {
         if (request.equals(LifeSafetyOperation.silence)) {
             writePropertyInternal(PropertyIdentifier.silenced, SilencedState.allSilenced);
         } else if (request.equals(LifeSafetyOperation.silenceAudible)) {
@@ -55,8 +65,10 @@ public interface LifeSafety {
         } else if (request.isOneOf(LifeSafetyOperation.unsilence, LifeSafetyOperation.unsilenceAudible,
                 LifeSafetyOperation.unsilenceVisual)) {
             writePropertyInternal(PropertyIdentifier.silenced, SilencedState.unsilenced);
+        } else {
+            throw new BACnetServiceException(ErrorClass.object, ErrorCode.valueOutOfRange);
         }
     }
 
-    BACnetObject writePropertyInternal(final PropertyIdentifier pid, final Encodable value);
+    BACnetObject writePropertyInternal(PropertyIdentifier pid, Encodable value);
 }
