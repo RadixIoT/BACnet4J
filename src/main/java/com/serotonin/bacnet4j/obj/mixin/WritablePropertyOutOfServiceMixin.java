@@ -27,6 +27,7 @@
 
 package com.serotonin.bacnet4j.obj.mixin;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -42,25 +43,21 @@ import com.serotonin.bacnet4j.type.primitive.Boolean;
 
 /**
  * Allows writing of the given properties only when the object is out of service.
- *
- * @author Matthew
  */
 public class WritablePropertyOutOfServiceMixin extends AbstractMixin {
     private final Set<PropertyIdentifier> pids = new HashSet<>();
 
-    public WritablePropertyOutOfServiceMixin(final BACnetObject bo, final PropertyIdentifier... pids) {
+    public WritablePropertyOutOfServiceMixin(BACnetObject bo, PropertyIdentifier... pids) {
         super(bo);
-        for (final PropertyIdentifier pid : pids)
-            this.pids.add(pid);
+        this.pids.addAll(Arrays.asList(pids));
     }
 
     @Override
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value)
             throws BACnetServiceException {
-        final Boolean outOfService = get(PropertyIdentifier.outOfService);
-        if (!outOfService.booleanValue()) {
-            if (pids.contains(value.getPropertyIdentifier()))
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
+        Boolean outOfService = get(PropertyIdentifier.outOfService);
+        if (!outOfService.booleanValue() && pids.contains(value.getPropertyIdentifier())) {
+            throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
         }
         return false;
     }

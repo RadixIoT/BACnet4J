@@ -76,7 +76,6 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class LifeSafetyZoneObjectTest extends AbstractTest {
     private LifeSafetyZoneObject lsz;
-    private NotificationClassObject nc;
     private EventNotifListener listener;
 
     @Override
@@ -85,10 +84,10 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
                 d1, 0, "lsz", LifeSafetyState.quiet, LifeSafetyMode.on, false,
                 new SequenceOf<>(LifeSafetyMode.on, LifeSafetyMode.off, LifeSafetyMode.enabled),
                 LifeSafetyOperation.none, SilencedState.unsilenced, new SequenceOf<>()));
-        nc = d1.addObject(new NotificationClassObject(
+        var nc = d1.addObject(new NotificationClassObject(
                 d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false)));
 
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
@@ -204,8 +203,6 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
 
     /**
      * Tests the timing of when notifications are sent. Normal to offnormal immediately after a mode change.
-     *
-     * @throws Exception
      */
     @Test
     public void changeOfLifeSafetyAlgoA2() throws Exception {
@@ -295,7 +292,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.fault, notif.toState());
-        ChangeOfReliabilityNotif cor = ((NotificationParameters) notif.eventValues()).getParameter();
+        ChangeOfReliabilityNotif cor = notif.eventValues().getParameter();
         assertEquals(Reliability.multiStateFault, cor.getReliability());
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
@@ -328,7 +325,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.fault, notif.fromState());
         assertEquals(EventState.fault, notif.toState());
-        cor = ((NotificationParameters) notif.eventValues()).getParameter();
+        cor = notif.eventValues().getParameter();
         assertEquals(Reliability.multiStateFault, cor.getReliability());
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
@@ -369,7 +366,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.fault, notif.fromState());
         assertEquals(EventState.fault, notif.toState());
-        cor = ((NotificationParameters) notif.eventValues()).getParameter();
+        cor = notif.eventValues().getParameter();
         assertEquals(Reliability.multiStateFault, cor.getReliability());
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
@@ -405,7 +402,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.fault, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        cor = ((NotificationParameters) notif.eventValues()).getParameter();
+        cor = notif.eventValues().getParameter();
         assertEquals(Reliability.noFaultDetected, cor.getReliability());
         assertEquals(new StatusFlags(false, false, false, false), cor.getStatusFlags());
         assertEquals(3, cor.getPropertyValues().size());
@@ -439,11 +436,11 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReporting() throws Exception {
-        final DeviceObjectPropertyReference pvRef =
+        DeviceObjectPropertyReference pvRef =
                 new DeviceObjectPropertyReference(1, lsz.getId(), PropertyIdentifier.presentValue);
-        final DeviceObjectPropertyReference modeRef =
+        DeviceObjectPropertyReference modeRef =
                 new DeviceObjectPropertyReference(1, lsz.getId(), PropertyIdentifier.mode);
-        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
                 d1, 0, "ee", pvRef, NotifyType.alarm,
                 new EventParameter(new ChangeOfLifeSafety(new UnsignedInteger(30),
                         new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory), //
@@ -541,7 +538,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.offnormal, notif.fromState());
         assertEquals(EventState.fault, notif.toState());
-        ChangeOfReliabilityNotif cor = ((NotificationParameters) notif.eventValues()).getParameter();
+        ChangeOfReliabilityNotif cor = notif.eventValues().getParameter();
         assertEquals(Reliability.multiStateFault, cor.getReliability());
         assertEquals(new StatusFlags(true, true, false, false), cor.getStatusFlags());
         assertEquals(4, cor.getPropertyValues().size());
@@ -580,7 +577,7 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.fault, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        cor = ((NotificationParameters) notif.eventValues()).getParameter();
+        cor = notif.eventValues().getParameter();
         assertEquals(Reliability.noFaultDetected, cor.getReliability());
         assertEquals(new StatusFlags(false, false, false, false), cor.getStatusFlags());
         assertEquals(4, cor.getPropertyValues().size());
@@ -602,16 +599,16 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         lsz.supportCovReporting();
 
         // Create a COV listener to catch the notifications.
-        final CovNotifListener listener = new CovNotifListener();
-        d2.getEventHandler().addListener(listener);
+        CovNotifListener covListener = new CovNotifListener();
+        d2.getEventHandler().addListener(covListener);
 
         //
         // Subscribe for notifications. Doing so should cause an initial notification to be sent.
         d2.send(rd1,
                         new SubscribeCOVRequest(new UnsignedInteger(987), lsz.getId(), Boolean.FALSE, new UnsignedInteger(600)))
                 .get();
-        awaitEquals(1, listener::getNotifCount);
-        CovNotifListener.Notif notif = listener.removeNotif();
+        awaitEquals(1, covListener::getNotifCount);
+        CovNotifListener.Notif notif = covListener.removeNotif();
         assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
         assertEquals(lsz.getId(), notif.monitoredObjectIdentifier());
@@ -626,8 +623,8 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
         clock.plusMinutes(2);
 
         lsz.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.blocked);
-        awaitEquals(1, listener::getNotifCount);
-        notif = listener.removeNotif(0);
+        awaitEquals(1, covListener::getNotifCount);
+        notif = covListener.removeNotif(0);
         assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
         assertEquals(lsz.getId(), notif.monitoredObjectIdentifier());
@@ -677,5 +674,48 @@ public class LifeSafetyZoneObjectTest extends AbstractTest {
                         new DeviceObjectReference(new ObjectIdentifier(ObjectType.device, 10),
                                 new ObjectIdentifier(ObjectType.loop, 0))))), ErrorClass.property,
                 ErrorCode.unsupportedObjectType);
+    }
+
+    // =========================================================================================
+    // Addendum 135-2016bl-3: Out_Of_Service semantics for Life Safety Zone.
+    // Tracking_Value and Reliability shall be writable only when Out_Of_Service is TRUE.
+    // =========================================================================================
+
+    @Test
+    public void trackingValue_writeWhenInService_isDenied() {
+        assertEquals(Boolean.FALSE, lsz.get(PropertyIdentifier.outOfService));
+
+        assertBACnetServiceException(() -> lsz.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.trackingValue, LifeSafetyState.tamper)),
+                ErrorClass.property, ErrorCode.writeAccessDenied);
+    }
+
+    @Test
+    public void trackingValue_writeWhenOutOfService_isAllowed() throws Exception {
+        lsz.writePropertyInternal(PropertyIdentifier.outOfService, Boolean.TRUE);
+
+        lsz.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.trackingValue, LifeSafetyState.tamper));
+
+        assertEquals(LifeSafetyState.tamper, lsz.get(PropertyIdentifier.trackingValue));
+    }
+
+    @Test
+    public void reliability_writeWhenInService_isDenied() {
+        assertEquals(Boolean.FALSE, lsz.get(PropertyIdentifier.outOfService));
+
+        assertBACnetServiceException(() -> lsz.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.reliability, Reliability.unreliableOther)),
+                ErrorClass.property, ErrorCode.writeAccessDenied);
+    }
+
+    @Test
+    public void reliability_writeWhenOutOfService_isAllowed() throws Exception {
+        lsz.writePropertyInternal(PropertyIdentifier.outOfService, Boolean.TRUE);
+
+        lsz.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.reliability, Reliability.unreliableOther));
+
+        assertEquals(Reliability.unreliableOther, lsz.get(PropertyIdentifier.reliability));
     }
 }

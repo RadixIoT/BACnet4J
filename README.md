@@ -97,6 +97,8 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
   nomenclature changes
 - Names of engineering units have been changed to align with the spec
 - CharacterStringObject was renamed to CharacterStringValueObject
+- LifeSafetyPoint and LifeSafetyZone now handle `trackingValue` and `reliability` properly according to out of service
+  rules.
 
 *Version 6.2.0*
 

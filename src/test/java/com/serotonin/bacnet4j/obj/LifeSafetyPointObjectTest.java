@@ -27,6 +27,7 @@
 
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
@@ -48,6 +49,8 @@ import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.TimeStamp;
 import com.serotonin.bacnet4j.type.enumerated.EngineeringUnits;
+import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
+import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.EventState;
 import com.serotonin.bacnet4j.type.enumerated.EventType;
 import com.serotonin.bacnet4j.type.enumerated.LifeSafetyMode;
@@ -69,7 +72,6 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class LifeSafetyPointObjectTest extends AbstractTest {
     private LifeSafetyPointObject lsp;
-    private NotificationClassObject nc;
     private EventNotifListener listener;
 
     @Override
@@ -78,10 +80,10 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
                 d1, 0, "lsp", LifeSafetyState.quiet, LifeSafetyMode.on, false,
                 new SequenceOf<>(LifeSafetyMode.on, LifeSafetyMode.off, LifeSafetyMode.enabled),
                 LifeSafetyOperation.none, SilencedState.unsilenced));
-        nc = d1.addObject(new NotificationClassObject(
+        var nc = d1.addObject(new NotificationClassObject(
                 d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false)));
 
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
@@ -196,8 +198,6 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
 
     /**
      * Tests the timing of when notifications are sent. Normal to offnormal immediately after a mode change.
-     *
-     * @throws Exception
      */
     @Test
     public void changeOfLifeSafetyAlgoA2() throws Exception {
@@ -430,11 +430,11 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReporting() throws Exception {
-        final DeviceObjectPropertyReference pvRef =
+        DeviceObjectPropertyReference pvRef =
                 new DeviceObjectPropertyReference(1, lsp.getId(), PropertyIdentifier.presentValue);
-        final DeviceObjectPropertyReference modeRef =
+        DeviceObjectPropertyReference modeRef =
                 new DeviceObjectPropertyReference(1, lsp.getId(), PropertyIdentifier.mode);
-        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
                 d1, 0, "ee", pvRef, NotifyType.alarm,
                 new EventParameter(new ChangeOfLifeSafety(new UnsignedInteger(30),
                         new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory), //
@@ -592,16 +592,16 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         lsp.supportCovReporting();
 
         // Create a COV listener to catch the notifications.
-        final CovNotifListener listener = new CovNotifListener();
-        d2.getEventHandler().addListener(listener);
+        CovNotifListener covListener = new CovNotifListener();
+        d2.getEventHandler().addListener(covListener);
 
         //
         // Subscribe for notifications. Doing so should cause an initial notification to be sent.
         d2.send(rd1,
                         new SubscribeCOVRequest(new UnsignedInteger(987), lsp.getId(), Boolean.FALSE, new UnsignedInteger(600)))
                 .get();
-        awaitEquals(1, listener::getNotifCount);
-        CovNotifListener.Notif notif = listener.removeNotif();
+        awaitEquals(1, covListener::getNotifCount);
+        CovNotifListener.Notif notif = covListener.removeNotif();
         assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
         assertEquals(lsp.getId(), notif.monitoredObjectIdentifier());
@@ -616,8 +616,8 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         clock.plusMinutes(2);
 
         lsp.writePropertyInternal(PropertyIdentifier.presentValue, LifeSafetyState.blocked);
-        awaitEquals(1, listener::getNotifCount);
-        notif = listener.removeNotif();
+        awaitEquals(1, covListener::getNotifCount);
+        notif = covListener.removeNotif();
         assertEquals(new UnsignedInteger(987), notif.subscriberProcessIdentifier());
         assertEquals(d1.getId(), notif.initiatingDevice());
         assertEquals(lsp.getId(), notif.monitoredObjectIdentifier());
@@ -633,5 +633,49 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
 
         assertEquals(new Real(150), lsp.get(PropertyIdentifier.directReading));
         assertEquals(EngineeringUnits.ampereSeconds, lsp.get(PropertyIdentifier.units));
+    }
+
+    // =========================================================================================
+    // Addendum 135-2016bl-3: Out_Of_Service semantics for Life Safety Point.
+    // Tracking_Value and Reliability shall be writable only when Out_Of_Service is TRUE.
+    // =========================================================================================
+
+    @Test
+    public void trackingValue_writeWhenInService_isDenied() {
+        // Object was constructed with outOfService=false in afterInit().
+        assertEquals(Boolean.FALSE, lsp.get(PropertyIdentifier.outOfService));
+
+        assertBACnetServiceException(() -> lsp.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.trackingValue, LifeSafetyState.tamper)),
+                ErrorClass.property, ErrorCode.writeAccessDenied);
+    }
+
+    @Test
+    public void trackingValue_writeWhenOutOfService_isAllowed() throws Exception {
+        lsp.writePropertyInternal(PropertyIdentifier.outOfService, Boolean.TRUE);
+
+        lsp.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.trackingValue, LifeSafetyState.tamper));
+
+        assertEquals(LifeSafetyState.tamper, lsp.get(PropertyIdentifier.trackingValue));
+    }
+
+    @Test
+    public void reliability_writeWhenInService_isDenied() {
+        assertEquals(Boolean.FALSE, lsp.get(PropertyIdentifier.outOfService));
+
+        assertBACnetServiceException(() -> lsp.writeProperty(null,
+                        new PropertyValue(PropertyIdentifier.reliability, Reliability.unreliableOther)),
+                ErrorClass.property, ErrorCode.writeAccessDenied);
+    }
+
+    @Test
+    public void reliability_writeWhenOutOfService_isAllowed() throws Exception {
+        lsp.writePropertyInternal(PropertyIdentifier.outOfService, Boolean.TRUE);
+
+        lsp.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.reliability, Reliability.unreliableOther));
+
+        assertEquals(Reliability.unreliableOther, lsp.get(PropertyIdentifier.reliability));
     }
 }
