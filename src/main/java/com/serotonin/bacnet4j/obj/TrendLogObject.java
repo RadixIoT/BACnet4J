@@ -67,7 +67,6 @@ import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
-import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.DeviceObjectPropertyReferences;
 import com.serotonin.bacnet4j.util.DeviceObjectPropertyValues;
@@ -213,29 +212,6 @@ public class TrendLogObject extends TrendLogBase {
             }
 
             updateLoggingType();
-        } else if (PropertyIdentifier.stopWhenFull.equals(pid)) {
-            Boolean oldStopWhenFull = (Boolean) oldValue;
-            Boolean stopWhenFull = (Boolean) newValue;
-            if (!oldStopWhenFull.booleanValue() && stopWhenFull.booleanValue()) {
-                // Turning StopWhenFull on.
-                Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
-                if (buffer.size() >= bufferSize.intValue()) {
-                    synchronized (buffer) {
-                        while (buffer.size() >= bufferSize.intValue())
-                            buffer.remove();
-                    }
-                    updateRecordCount();
-                    writePropertyInternal(PropertyIdentifier.enable, Boolean.FALSE);
-                }
-            }
-        } else if (PropertyIdentifier.bufferSize.equals(pid)) {
-            Unsigned32 bufferSize = (Unsigned32) newValue;
-            // In case the buffer size was reduced, remove extra entries in the buffer.
-            synchronized (buffer) {
-                while (buffer.size() >= bufferSize.intValue())
-                    buffer.remove();
-            }
-            updateRecordCount();
         } else if (pid.isOneOf(PropertyIdentifier.covResubscriptionInterval, PropertyIdentifier.clientCovIncrement)) {
             LoggingType loggingType = get(PropertyIdentifier.loggingType);
             if (loggingType.equals(LoggingType.cov)) {
@@ -246,10 +222,7 @@ public class TrendLogObject extends TrendLogBase {
 
     @Override
     protected void purge() {
-        synchronized (buffer) {
-            buffer.clear();
-        }
-        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, Unsigned32.ZERO);
+        super.purge();
         addLogRecordImpl(new LogRecord(getNow(), new LogStatus(logDisabled, true, false), null));
     }
 
@@ -476,29 +449,12 @@ public class TrendLogObject extends TrendLogBase {
         }
     }
 
-    private synchronized void addLogRecord(LogRecord rec) {
-        // Check if logging is allowed.
-        if (logDisabled)
-            return;
-
-        // Add the new record.
-        addLogRecordImpl(rec);
-
-        fullCheck();
-    }
-
     @Override
     protected void evaluateLogDisabled() {
         // Don't evaluate until instantiation is complete.
         if (buffer != null) {
-            DateTime now = getNow();
-            boolean newValue = !allowLogging(now);
-            if (logDisabled != newValue) {
-                logDisabled = newValue;
-                if (logDisabled)
-                    // Only write a log status if the log is disabled.
-                    addLogRecordImpl(new LogRecord(now, new LogStatus(logDisabled, false, false), null));
-            }
+            updateLogDisabled(now ->
+                    addLogRecordImpl(new LogRecord(now, new LogStatus(true, false, false), null)));
         }
     }
 }

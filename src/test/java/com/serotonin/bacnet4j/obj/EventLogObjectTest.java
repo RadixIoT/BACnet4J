@@ -31,6 +31,7 @@ import static com.serotonin.bacnet4j.TestUtils.advanceClock;
 import static com.serotonin.bacnet4j.TestUtils.assertBACnetServiceException;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static com.serotonin.bacnet4j.TestUtils.quiesce;
+import static com.serotonin.bacnet4j.obj.TrendLogBase.BUFFER_SIZE_UNKNOWN;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -553,5 +554,44 @@ public class EventLogObjectTest extends AbstractTest {
         el.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, Unsigned32.ZERO));
         assertEquals(1, el.getBuffer().size());
         assertEquals(new LogStatus(false, true, false), el.getBuffer().get(0).getLogStatus());
+    }
+
+    // ---------- bi-3: extremely large logs — Buffer_Size = 0xFFFFFFFF sentinel ----------
+
+
+    private static class TestExhaustibleLogBuffer extends LinkedListLogBuffer<EventLogRecord> {
+        boolean spaceExhausted;
+
+        @Override
+        public boolean hasSpaceForAnotherRecord() {
+            return !spaceExhausted;
+        }
+    }
+
+    @Test
+    public void bi3_bufferSizeUnknown_enableWhileFullYieldsLogBufferFull() throws Exception {
+        TestExhaustibleLogBuffer buffer = new TestExhaustibleLogBuffer();
+        EventLogObject el = d1.addObject(new EventLogObject(
+                d1, 0, "el", buffer, false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, true, 10));
+        el.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.bufferSize, new Unsigned32(BUFFER_SIZE_UNKNOWN)));
+        buffer.spaceExhausted = true;
+
+        assertBACnetServiceException(
+                () -> el.writeProperty(null, new PropertyValue(PropertyIdentifier.enable, Boolean.TRUE)),
+                ErrorClass.object, ErrorCode.logBufferFull);
+    }
+
+    @Test
+    public void bi3_bufferSizeUnknown_enableWhileHasSpaceSucceeds() throws Exception {
+        TestExhaustibleLogBuffer buffer = new TestExhaustibleLogBuffer();
+        EventLogObject el = d1.addObject(new EventLogObject(
+                d1, 0, "el", buffer, false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, true, 10));
+        el.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.bufferSize, new Unsigned32(BUFFER_SIZE_UNKNOWN)));
+        buffer.spaceExhausted = false;
+
+        el.writeProperty(null, new PropertyValue(PropertyIdentifier.enable, Boolean.TRUE));
+        assertEquals(Boolean.TRUE, el.get(PropertyIdentifier.enable));
     }
 }

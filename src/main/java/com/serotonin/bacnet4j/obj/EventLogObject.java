@@ -35,7 +35,6 @@ import com.serotonin.bacnet4j.obj.logBuffer.ILogRecord;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
 import com.serotonin.bacnet4j.obj.logBuffer.LogBuffer;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedEventNotificationRequest;
-import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.EventLogRecord;
 import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
@@ -50,7 +49,6 @@ import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
-import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class EventLogObject extends LogBase {
@@ -129,40 +127,8 @@ public class EventLogObject extends LogBase {
     }
 
     @Override
-    protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
-        super.afterWriteProperty(pid, oldValue, newValue);
-        if (PropertyIdentifier.stopWhenFull.equals(pid)) {
-            Boolean oldStopWhenFull = (Boolean) oldValue;
-            Boolean stopWhenFull = (Boolean) newValue;
-            if (!oldStopWhenFull.booleanValue() && stopWhenFull.booleanValue()) {
-                // Turning StopWhenFull on.
-                Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
-                if (buffer.size() >= bufferSize.intValue()) {
-                    synchronized (buffer) {
-                        while (buffer.size() >= bufferSize.intValue())
-                            buffer.remove();
-                    }
-                    updateRecordCount();
-                    writePropertyInternal(PropertyIdentifier.enable, Boolean.FALSE);
-                }
-            }
-        } else if (PropertyIdentifier.bufferSize.equals(pid)) {
-            Unsigned32 bufferSize = (Unsigned32) newValue;
-            // In case the buffer size was reduced, remove extra entries in the buffer.
-            synchronized (buffer) {
-                while (buffer.size() >= bufferSize.intValue())
-                    buffer.remove();
-            }
-            updateRecordCount();
-        }
-    }
-
-    @Override
     protected void purge() {
-        synchronized (buffer) {
-            buffer.clear();
-        }
-        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, Unsigned32.ZERO);
+        super.purge();
         addLogRecordImpl(new EventLogRecord(getNow(), new LogStatus(logDisabled, true, false)));
     }
 
@@ -172,29 +138,12 @@ public class EventLogObject extends LogBase {
         getLocalDevice().getEventHandler().removeListener(eventListener);
     }
 
-    private synchronized void addLogRecord(EventLogRecord rec) {
-        // Check if logging is allowed.
-        if (logDisabled)
-            return;
-
-        // Add the new record.
-        addLogRecordImpl(rec);
-
-        fullCheck();
-    }
-
     @Override
     protected void evaluateLogDisabled() {
         // Don't evaluate until instantiation is complete.
         if (buffer != null) {
-            DateTime now = getNow();
-            boolean newValue = !allowLogging(now);
-            if (logDisabled != newValue) {
-                logDisabled = newValue;
-                if (logDisabled)
-                    // Only write a log status if the log is disabled.
-                    addLogRecordImpl(new EventLogRecord(now, new LogStatus(logDisabled, false, false)));
-            }
+            updateLogDisabled(now ->
+                    addLogRecordImpl(new EventLogRecord(now, new LogStatus(true, false, false))));
         }
     }
 }

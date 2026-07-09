@@ -99,6 +99,7 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
 - CharacterStringObject was renamed to CharacterStringValueObject
 - LifeSafetyPoint and LifeSafetyZone now handle `trackingValue` and `reliability` properly according to out of service
   rules.
+- Changes for compliance with addendum 135-2016bi-3 regarding extremely large logs
 
 *Version 6.2.0*
 

@@ -34,17 +34,14 @@ import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.obj.mixin.PollingDelegate;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
+import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
 import com.serotonin.bacnet4j.type.enumerated.LoggingType;
+import com.serotonin.bacnet4j.type.enumerated.NotifyType;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
-/**
- * Base for the periodic-sampling log objects (Trend Log and Trend Log Multiple). Adds the polling
- * / triggering / interval-alignment concerns on top of the buffer-and-schedule primitives provided
- * by {@link LogBase}.
- */
 public abstract class TrendLogBase extends LogBase {
     protected PollingDelegate pollingDelegate;
     protected ScheduledFuture<?> pollingFuture;
@@ -78,8 +75,7 @@ public abstract class TrendLogBase extends LogBase {
 
     @Override
     protected void baseSupportIntrinsicReporting(int notificationThreshold, int notificationClass,
-            com.serotonin.bacnet4j.type.constructed.EventTransitionBits eventEnable,
-            com.serotonin.bacnet4j.type.enumerated.NotifyType notifyType) {
+            EventTransitionBits eventEnable, NotifyType notifyType) {
         super.baseSupportIntrinsicReporting(notificationThreshold, notificationClass, eventEnable, notifyType);
         updateMonitoredProperty();
     }

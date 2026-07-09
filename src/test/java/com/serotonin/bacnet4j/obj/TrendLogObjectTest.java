@@ -855,4 +855,76 @@ public class TrendLogObjectTest extends AbstractTest {
                 new ChangeOfReliabilityNotif(Reliability.configurationError, new StatusFlags(true, true, false, false),
                         new SequenceOf<>())), notif.eventValues());
     }
+
+    // ---------- bi-3: extremely large logs — Buffer_Size = 0xFFFFFFFF sentinel ----------
+
+
+    /**
+     * A test log buffer whose "has space" state is toggled programmatically. Used to drive the bi-3 unknown-size
+     * behavior deterministically without allocating billions of records.
+     */
+    private static class TestExhaustibleLogBuffer extends LinkedListLogBuffer<LogRecord> {
+        boolean spaceExhausted;
+
+        @Override
+        public boolean hasSpaceForAnotherRecord() {
+            return !spaceExhausted;
+        }
+    }
+
+    @Test
+    public void bi3_bufferSizeUnknown_enableWhileFullYieldsLogBufferFull() throws Exception {
+        // Buffer_Size = 0xFFFFFFFF, Stop_When_Full = TRUE, no space available → Enable=TRUE must yield LOG_BUFFER_FULL.
+        TestExhaustibleLogBuffer buffer = new TestExhaustibleLogBuffer();
+        TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", buffer, false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(1, ao.getId(), PropertyIdentifier.presentValue), 0, true, 10));
+        tl.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.bufferSize, new Unsigned32(TrendLogBase.BUFFER_SIZE_UNKNOWN)));
+        buffer.spaceExhausted = true;
+
+        assertBACnetServiceException(
+                () -> tl.writeProperty(null, new PropertyValue(PropertyIdentifier.enable, Boolean.TRUE)),
+                ErrorClass.object, ErrorCode.logBufferFull);
+    }
+
+    @Test
+    public void bi3_bufferSizeUnknown_enableWhileHasSpaceSucceeds() throws Exception {
+        // Buffer_Size = 0xFFFFFFFF and space available → Enable can be written to TRUE normally.
+        TestExhaustibleLogBuffer buffer = new TestExhaustibleLogBuffer();
+        TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", buffer, false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(1, ao.getId(), PropertyIdentifier.presentValue), 0, true, 10));
+        tl.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.bufferSize, new Unsigned32(TrendLogBase.BUFFER_SIZE_UNKNOWN)));
+        buffer.spaceExhausted = false;
+
+        tl.writeProperty(null, new PropertyValue(PropertyIdentifier.enable, Boolean.TRUE));
+        assertEquals(Boolean.TRUE, tl.get(PropertyIdentifier.enable));
+    }
+
+    @Test
+    public void bi3_bufferSizeUnknown_writeStopWhenFullWhileExhaustedDisablesLogging() throws Exception {
+        // With Buffer_Size = 0xFFFFFFFF, Enable = TRUE, and no space, writing Stop_When_Full=TRUE must
+        // discard the oldest record and set Enable to FALSE.
+        TestExhaustibleLogBuffer buffer = new TestExhaustibleLogBuffer();
+        TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", buffer, false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(1, ao.getId(), PropertyIdentifier.presentValue), 0, false, 10));
+        // Seed the buffer with a few records so we can observe an eviction.
+        tl.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.bufferSize, new Unsigned32(TrendLogBase.BUFFER_SIZE_UNKNOWN)));
+        tl.writeProperty(null, new PropertyValue(PropertyIdentifier.enable, Boolean.TRUE));
+        doTriggers(tl, 3);
+        int initialSize = tl.getRecordCount();
+        assertTrue("buffer should have records before eviction test", initialSize >= 1);
+
+        // Signal exhaustion and turn StopWhenFull on.
+        buffer.spaceExhausted = true;
+        tl.writeProperty(null, new PropertyValue(PropertyIdentifier.stopWhenFull, Boolean.TRUE));
+
+        // Enable must have been set to FALSE and at least the oldest record evicted.
+        assertEquals(Boolean.FALSE, tl.get(PropertyIdentifier.enable));
+        assertTrue("oldest record should have been evicted", tl.getRecordCount() < initialSize);
+    }
 }
