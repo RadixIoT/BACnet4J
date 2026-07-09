@@ -55,6 +55,13 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits currency8 = new EngineeringUnits(112);
     public static final EngineeringUnits currency9 = new EngineeringUnits(113);
     public static final EngineeringUnits currency10 = new EngineeringUnits(114);
+    // Efficiency
+    public static final EngineeringUnits btuPerHourPerWatt = new EngineeringUnits(47898);
+    public static final EngineeringUnits btuPerWattHourSeasonal = new EngineeringUnits(47899);
+    public static final EngineeringUnits coefficientOfPerformance = new EngineeringUnits(47900);
+    public static final EngineeringUnits coefficientOfPerformanceSeasonal = new EngineeringUnits(47901);
+    public static final EngineeringUnits kilowattPerTonRefrigeration = new EngineeringUnits(47902);
+    public static final EngineeringUnits lumensPerWatt = new EngineeringUnits(47903);
     // Electrical
     public static final EngineeringUnits milliamperes = new EngineeringUnits(2);
     public static final EngineeringUnits amperes = new EngineeringUnits(3);
@@ -76,6 +83,9 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits millisiemens = new EngineeringUnits(202);
     public static final EngineeringUnits siemens = new EngineeringUnits(173); // 1 mho equals 1 siemens
     public static final EngineeringUnits siemensPerMeter = new EngineeringUnits(174);
+    public static final EngineeringUnits microsiemensPerCentimeter = new EngineeringUnits(47909);
+    public static final EngineeringUnits millisiemensPerCentimeter = new EngineeringUnits(47910);
+    public static final EngineeringUnits millisiemensPerMeter = new EngineeringUnits(47911);
     public static final EngineeringUnits teslas = new EngineeringUnits(175);
     public static final EngineeringUnits volts = new EngineeringUnits(5);
     public static final EngineeringUnits millivolts = new EngineeringUnits(124);
@@ -87,7 +97,7 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits voltAmperesReactive = new EngineeringUnits(11);
     public static final EngineeringUnits kilovoltAmperesReactive = new EngineeringUnits(12);
     public static final EngineeringUnits megavoltAmperesReactive = new EngineeringUnits(13);
-    public static final EngineeringUnits voltsPerDegreeKelvin = new EngineeringUnits(176);
+    public static final EngineeringUnits voltsPerKelvin = new EngineeringUnits(176);
     public static final EngineeringUnits voltsPerMeter = new EngineeringUnits(177);
     public static final EngineeringUnits degreesPhase = new EngineeringUnits(14);
     public static final EngineeringUnits powerFactor = new EngineeringUnits(15);
@@ -117,6 +127,11 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits megaBtus = new EngineeringUnits(148);
     public static final EngineeringUnits therms = new EngineeringUnits(21);
     public static final EngineeringUnits tonHours = new EngineeringUnits(22);
+    public static final EngineeringUnits activeEnergyPulseValue = new EngineeringUnits(47918);
+    public static final EngineeringUnits reactiveEnergyPulseValue = new EngineeringUnits(47919);
+    public static final EngineeringUnits apparentEnergyPulseValue = new EngineeringUnits(47920);
+    public static final EngineeringUnits voltSquaredHourPulseValue = new EngineeringUnits(47921);
+    public static final EngineeringUnits ampereSquaredHourPulseValue = new EngineeringUnits(47922);
     // Enthalpy
     public static final EngineeringUnits joulesPerKilogramDryAir = new EngineeringUnits(23);
     public static final EngineeringUnits kilojoulesPerKilogramDryAir = new EngineeringUnits(149);
@@ -124,10 +139,10 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits btusPerPoundDryAir = new EngineeringUnits(24);
     public static final EngineeringUnits btusPerPound = new EngineeringUnits(117);
     // Entropy
-    public static final EngineeringUnits joulesPerDegreeKelvin = new EngineeringUnits(127);
-    public static final EngineeringUnits kilojoulesPerDegreeKelvin = new EngineeringUnits(151);
-    public static final EngineeringUnits megajoulesPerDegreeKelvin = new EngineeringUnits(152);
-    public static final EngineeringUnits joulesPerKilogramDegreeKelvin = new EngineeringUnits(128);
+    public static final EngineeringUnits joulesPerKelvin = new EngineeringUnits(127);
+    public static final EngineeringUnits kilojoulesPerKelvin = new EngineeringUnits(151);
+    public static final EngineeringUnits megajoulesPerKelvin = new EngineeringUnits(152);
+    public static final EngineeringUnits joulesPerKilogramKelvin = new EngineeringUnits(128);
     // Force
     public static final EngineeringUnits newton = new EngineeringUnits(153);
     // Frequency
@@ -136,9 +151,12 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits hertz = new EngineeringUnits(27);
     public static final EngineeringUnits kilohertz = new EngineeringUnits(129);
     public static final EngineeringUnits megahertz = new EngineeringUnits(130);
+    public static final EngineeringUnits perDay = new EngineeringUnits(47823);
     public static final EngineeringUnits perHour = new EngineeringUnits(131);
+    public static final EngineeringUnits perMillisecond = new EngineeringUnits(47824);
     // Humidity
     public static final EngineeringUnits gramsOfWaterPerKilogramDryAir = new EngineeringUnits(28);
+    public static final EngineeringUnits grainsOfWaterPerPoundDryAir = new EngineeringUnits(47972);
     public static final EngineeringUnits percentRelativeHumidity = new EngineeringUnits(29);
     // Length
     public static final EngineeringUnits micrometers = new EngineeringUnits(194);
@@ -148,6 +166,9 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits meters = new EngineeringUnits(31);
     public static final EngineeringUnits inches = new EngineeringUnits(32);
     public static final EngineeringUnits feet = new EngineeringUnits(33);
+    public static final EngineeringUnits yards = new EngineeringUnits(47825);
+    public static final EngineeringUnits miles = new EngineeringUnits(47826);
+    public static final EngineeringUnits nauticalMiles = new EngineeringUnits(47827);
     // Light
     public static final EngineeringUnits candelas = new EngineeringUnits(179);
     public static final EngineeringUnits candelasPerSquareMeter = new EngineeringUnits(180);
@@ -162,24 +183,64 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits kilograms = new EngineeringUnits(39);
     public static final EngineeringUnits poundsMass = new EngineeringUnits(40);
     public static final EngineeringUnits tons = new EngineeringUnits(41);
+    public static final EngineeringUnits metricTonnes = new EngineeringUnits(47830);
+    public static final EngineeringUnits shortTons = new EngineeringUnits(47831);
+    public static final EngineeringUnits longTons = new EngineeringUnits(47832);
     // Mass Flow
     public static final EngineeringUnits gramsPerSecond = new EngineeringUnits(154);
     public static final EngineeringUnits gramsPerMinute = new EngineeringUnits(155);
+    public static final EngineeringUnits gramsPerHour = new EngineeringUnits(47833);
+    public static final EngineeringUnits gramsPerDay = new EngineeringUnits(47834);
     public static final EngineeringUnits kilogramsPerSecond = new EngineeringUnits(42);
     public static final EngineeringUnits kilogramsPerMinute = new EngineeringUnits(43);
     public static final EngineeringUnits kilogramsPerHour = new EngineeringUnits(44);
+    public static final EngineeringUnits kilogramsPerDay = new EngineeringUnits(47835);
     public static final EngineeringUnits poundsMassPerSecond = new EngineeringUnits(119);
     public static final EngineeringUnits poundsMassPerMinute = new EngineeringUnits(45);
     public static final EngineeringUnits poundsMassPerHour = new EngineeringUnits(46);
     public static final EngineeringUnits tonsPerHour = new EngineeringUnits(156);
+    public static final EngineeringUnits shortTonsPerSecond = new EngineeringUnits(47836);
+    public static final EngineeringUnits shortTonsPerMinute = new EngineeringUnits(47837);
+    public static final EngineeringUnits shortTonsPerHour = new EngineeringUnits(47838);
+    public static final EngineeringUnits shortTonsPerDay = new EngineeringUnits(47839);
+    public static final EngineeringUnits metricTonnesPerSecond = new EngineeringUnits(47840);
+    public static final EngineeringUnits metricTonnesPerMinute = new EngineeringUnits(47841);
+    public static final EngineeringUnits metricTonnesPerHour = new EngineeringUnits(47842);
+    public static final EngineeringUnits metricTonnesPerDay = new EngineeringUnits(47843);
+    public static final EngineeringUnits longTonsPerSecond = new EngineeringUnits(47844);
+    public static final EngineeringUnits longTonsPerMinute = new EngineeringUnits(47845);
+    public static final EngineeringUnits longTonsPerHour = new EngineeringUnits(47846);
+    public static final EngineeringUnits longTonsPerDay = new EngineeringUnits(47847);
     // Power
     public static final EngineeringUnits milliwatts = new EngineeringUnits(132);
     public static final EngineeringUnits watts = new EngineeringUnits(47);
     public static final EngineeringUnits kilowatts = new EngineeringUnits(48);
     public static final EngineeringUnits megawatts = new EngineeringUnits(49);
+    public static final EngineeringUnits gigawatts = new EngineeringUnits(47924);
+    public static final EngineeringUnits btusPerSecond = new EngineeringUnits(47848);
+    public static final EngineeringUnits btusPerMinute = new EngineeringUnits(47849);
     public static final EngineeringUnits btusPerHour = new EngineeringUnits(50);
+    public static final EngineeringUnits btusPerDay = new EngineeringUnits(47850);
+    public static final EngineeringUnits kiloBtusPerSecond = new EngineeringUnits(47851);
+    public static final EngineeringUnits kiloBtusPerMinute = new EngineeringUnits(47852);
     public static final EngineeringUnits kiloBtusPerHour = new EngineeringUnits(157);
+    public static final EngineeringUnits kiloBtusPerDay = new EngineeringUnits(47853);
+    public static final EngineeringUnits megaBtusPerSecond = new EngineeringUnits(47854);
+    public static final EngineeringUnits megaBtusPerMinute = new EngineeringUnits(47855);
+    public static final EngineeringUnits megaBtusPerHour = new EngineeringUnits(47856);
+    public static final EngineeringUnits megaBtusPerDay = new EngineeringUnits(47857);
+    public static final EngineeringUnits joulesPerSecond = new EngineeringUnits(47858);
+    public static final EngineeringUnits joulesPerMinute = new EngineeringUnits(47859);
     public static final EngineeringUnits joulesPerHour = new EngineeringUnits(247);
+    public static final EngineeringUnits joulesPerDay = new EngineeringUnits(47860);
+    public static final EngineeringUnits kilojoulesPerSecond = new EngineeringUnits(47861);
+    public static final EngineeringUnits kilojoulesPerMinute = new EngineeringUnits(47862);
+    public static final EngineeringUnits kilojoulesPerHour = new EngineeringUnits(47863);
+    public static final EngineeringUnits kilojoulesPerDay = new EngineeringUnits(47864);
+    public static final EngineeringUnits megajoulesPerSecond = new EngineeringUnits(47865);
+    public static final EngineeringUnits megajoulesPerMinute = new EngineeringUnits(47866);
+    public static final EngineeringUnits megajoulesPerHour = new EngineeringUnits(47867);
+    public static final EngineeringUnits megajoulesPerDay = new EngineeringUnits(47868);
     public static final EngineeringUnits horsepower = new EngineeringUnits(51);
     public static final EngineeringUnits tonsRefrigeration = new EngineeringUnits(52);
     // Pressure
@@ -189,6 +250,8 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits millibars = new EngineeringUnits(134);
     public static final EngineeringUnits bars = new EngineeringUnits(55);
     public static final EngineeringUnits poundsForcePerSquareInch = new EngineeringUnits(56);
+    public static final EngineeringUnits poundsForcePerSquareInchAbsolute = new EngineeringUnits(47907);
+    public static final EngineeringUnits poundsForcePerSquareInchGauge = new EngineeringUnits(47908);
     public static final EngineeringUnits millimetersOfWater = new EngineeringUnits(206);
     public static final EngineeringUnits centimetersOfWater = new EngineeringUnits(57);
     public static final EngineeringUnits inchesOfWater = new EngineeringUnits(58);
@@ -197,14 +260,22 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits inchesOfMercury = new EngineeringUnits(61);
     // Temperature
     public static final EngineeringUnits degreesCelsius = new EngineeringUnits(62);
-    public static final EngineeringUnits degreesKelvin = new EngineeringUnits(63);
-    public static final EngineeringUnits degreesKelvinPerHour = new EngineeringUnits(181);
-    public static final EngineeringUnits degreesKelvinPerMinute = new EngineeringUnits(182);
+    public static final EngineeringUnits degreesCelsiusPerDay = new EngineeringUnits(47869);
+    public static final EngineeringUnits degreesCelsiusPerHour = new EngineeringUnits(91);
+    public static final EngineeringUnits degreesCelsiusPerMinute = new EngineeringUnits(92);
+    public static final EngineeringUnits kelvin = new EngineeringUnits(63);
+    public static final EngineeringUnits kelvinPerDay = new EngineeringUnits(47870);
+    public static final EngineeringUnits kelvinPerHour = new EngineeringUnits(181);
+    public static final EngineeringUnits kelvinPerMinute = new EngineeringUnits(182);
     public static final EngineeringUnits degreesFahrenheit = new EngineeringUnits(64);
+    public static final EngineeringUnits degreesFahrenheitPerDay = new EngineeringUnits(47871);
+    public static final EngineeringUnits degreesFahrenheitPerHour = new EngineeringUnits(93);
+    public static final EngineeringUnits degreesFahrenheitPerMinute = new EngineeringUnits(94);
     public static final EngineeringUnits degreeDaysCelsius = new EngineeringUnits(65);
     public static final EngineeringUnits degreeDaysFahrenheit = new EngineeringUnits(66);
+    public static final EngineeringUnits deltaDegreesCelsius = new EngineeringUnits(47872);
     public static final EngineeringUnits deltaDegreesFahrenheit = new EngineeringUnits(120);
-    public static final EngineeringUnits deltaDegreesKelvin = new EngineeringUnits(121);
+    public static final EngineeringUnits deltaKelvin = new EngineeringUnits(121);
     // Time
     public static final EngineeringUnits years = new EngineeringUnits(67);
     public static final EngineeringUnits months = new EngineeringUnits(68);
@@ -215,8 +286,14 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits seconds = new EngineeringUnits(73);
     public static final EngineeringUnits hundredthsSeconds = new EngineeringUnits(158);
     public static final EngineeringUnits milliseconds = new EngineeringUnits(159);
+    public static final EngineeringUnits microseconds = new EngineeringUnits(47979);
+    public static final EngineeringUnits nanoseconds = new EngineeringUnits(47980);
+    public static final EngineeringUnits picoseconds = new EngineeringUnits(47981);
     // Torque
     public static final EngineeringUnits newtonMeters = new EngineeringUnits(160);
+    public static final EngineeringUnits poundForceFeet = new EngineeringUnits(47904);
+    public static final EngineeringUnits poundForceInches = new EngineeringUnits(47905);
+    public static final EngineeringUnits ounceForceInches = new EngineeringUnits(47906);
     // Velocity
     public static final EngineeringUnits millimetersPerSecond = new EngineeringUnits(161);
     public static final EngineeringUnits millimetersPerMinute = new EngineeringUnits(162);
@@ -234,6 +311,18 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits milliliters = new EngineeringUnits(197);
     public static final EngineeringUnits liters = new EngineeringUnits(82);
     public static final EngineeringUnits usGallons = new EngineeringUnits(83);
+    public static final EngineeringUnits millionsOfUsGallons = new EngineeringUnits(47912);
+    public static final EngineeringUnits millionsOfImperialGallons = new EngineeringUnits(47913);
+    public static final EngineeringUnits volume1 = new EngineeringUnits(47937);
+    public static final EngineeringUnits volume2 = new EngineeringUnits(47938);
+    public static final EngineeringUnits volume3 = new EngineeringUnits(47939);
+    public static final EngineeringUnits volume4 = new EngineeringUnits(47940);
+    public static final EngineeringUnits volume5 = new EngineeringUnits(47941);
+    public static final EngineeringUnits volume6 = new EngineeringUnits(47942);
+    public static final EngineeringUnits volume7 = new EngineeringUnits(47943);
+    public static final EngineeringUnits volume8 = new EngineeringUnits(47944);
+    public static final EngineeringUnits volume9 = new EngineeringUnits(47945);
+    public static final EngineeringUnits volume10 = new EngineeringUnits(47946);
     // Volumetric Flow
     public static final EngineeringUnits cubicFeetPerSecond = new EngineeringUnits(142);
     public static final EngineeringUnits cubicFeetPerMinute = new EngineeringUnits(84);
@@ -244,24 +333,38 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits millionStandardCubicFeetPerDay = new EngineeringUnits(47809);
     public static final EngineeringUnits thousandCubicFeetPerDay = new EngineeringUnits(47810);
     public static final EngineeringUnits thousandStandardCubicFeetPerDay = new EngineeringUnits(47811);
+    public static final EngineeringUnits millionCubicFeetPerMinute = new EngineeringUnits(47873);
+    public static final EngineeringUnits millionCubicFeetPerDay = new EngineeringUnits(47874);
     public static final EngineeringUnits poundsMassPerDay = new EngineeringUnits(47812);
     public static final EngineeringUnits cubicMetersPerSecond = new EngineeringUnits(85);
     public static final EngineeringUnits cubicMetersPerMinute = new EngineeringUnits(165);
     public static final EngineeringUnits cubicMetersPerHour = new EngineeringUnits(135);
     public static final EngineeringUnits cubicMetersPerDay = new EngineeringUnits(249);
+    public static final EngineeringUnits imperialGallonsPerSecond = new EngineeringUnits(47875);
     public static final EngineeringUnits imperialGallonsPerMinute = new EngineeringUnits(86);
     public static final EngineeringUnits millilitersPerSecond = new EngineeringUnits(198);
+    public static final EngineeringUnits millilitersPerMinute = new EngineeringUnits(47914);
     public static final EngineeringUnits litersPerSecond = new EngineeringUnits(87);
     public static final EngineeringUnits litersPerMinute = new EngineeringUnits(88);
     public static final EngineeringUnits litersPerHour = new EngineeringUnits(136);
+    public static final EngineeringUnits litersPerDay = new EngineeringUnits(47878);
+    public static final EngineeringUnits usGallonsPerSecond = new EngineeringUnits(47879);
     public static final EngineeringUnits usGallonsPerMinute = new EngineeringUnits(89);
     public static final EngineeringUnits usGallonsPerHour = new EngineeringUnits(192);
+    public static final EngineeringUnits usGallonsPerDay = new EngineeringUnits(47880);
+    public static final EngineeringUnits cubicMeterPulseValue = new EngineeringUnits(47923);
+    public static final EngineeringUnits volumetricFlow1 = new EngineeringUnits(47947);
+    public static final EngineeringUnits volumetricFlow2 = new EngineeringUnits(47948);
+    public static final EngineeringUnits volumetricFlow3 = new EngineeringUnits(47949);
+    public static final EngineeringUnits volumetricFlow4 = new EngineeringUnits(47950);
+    public static final EngineeringUnits volumetricFlow5 = new EngineeringUnits(47951);
+    public static final EngineeringUnits volumetricFlow6 = new EngineeringUnits(47952);
+    public static final EngineeringUnits volumetricFlow7 = new EngineeringUnits(47953);
+    public static final EngineeringUnits volumetricFlow8 = new EngineeringUnits(47954);
+    public static final EngineeringUnits volumetricFlow9 = new EngineeringUnits(47955);
+    public static final EngineeringUnits volumetricFlow10 = new EngineeringUnits(47956);
     // Other
     public static final EngineeringUnits degreesAngular = new EngineeringUnits(90);
-    public static final EngineeringUnits degreesCelsiusPerHour = new EngineeringUnits(91);
-    public static final EngineeringUnits degreesCelsiusPerMinute = new EngineeringUnits(92);
-    public static final EngineeringUnits degreesFahrenheitPerHour = new EngineeringUnits(93);
-    public static final EngineeringUnits degreesFahrenheitPerMinute = new EngineeringUnits(94);
     public static final EngineeringUnits jouleSeconds = new EngineeringUnits(183);
     public static final EngineeringUnits kilogramsPerCubicMeter = new EngineeringUnits(186);
     public static final EngineeringUnits kilowattHoursPerSquareMeter = new EngineeringUnits(137);
@@ -281,6 +384,9 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits percentObscurationPerFoot = new EngineeringUnits(143);
     public static final EngineeringUnits percentObscurationPerMeter = new EngineeringUnits(144);
     public static final EngineeringUnits percentPerSecond = new EngineeringUnits(99);
+    public static final EngineeringUnits percentPerMinute = new EngineeringUnits(47881);
+    public static final EngineeringUnits percentPerHour = new EngineeringUnits(47882);
+    public static final EngineeringUnits percentPerDay = new EngineeringUnits(47883);
     public static final EngineeringUnits perMinute = new EngineeringUnits(100);
     public static final EngineeringUnits perSecond = new EngineeringUnits(101);
     public static final EngineeringUnits psiPerDegreeFahrenheit = new EngineeringUnits(102);
@@ -288,23 +394,39 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits radiansPerSecond = new EngineeringUnits(184);
     public static final EngineeringUnits revolutionsPerMinute = new EngineeringUnits(104);
     public static final EngineeringUnits squareMetersPerNewton = new EngineeringUnits(185);
-    public static final EngineeringUnits wattsPerMeterPerDegreeKelvin = new EngineeringUnits(189);
-    public static final EngineeringUnits wattsPerSquareMeterDegreeKelvin = new EngineeringUnits(141);
+    public static final EngineeringUnits wattsPerMeterPerKelvin = new EngineeringUnits(189);
+    public static final EngineeringUnits wattsPerSquareMeterPerKelvin = new EngineeringUnits(141);
     public static final EngineeringUnits perMille = new EngineeringUnits(207);
+    public static final EngineeringUnits perMillion = new EngineeringUnits(47884);
+    public static final EngineeringUnits perBillion = new EngineeringUnits(47885);
     public static final EngineeringUnits gramsPerGram = new EngineeringUnits(208);
+    public static final EngineeringUnits milligramsPerGram = new EngineeringUnits(211);
     public static final EngineeringUnits kilogramsPerKilogram = new EngineeringUnits(209);
     public static final EngineeringUnits gramsPerKilogram = new EngineeringUnits(210);
-    public static final EngineeringUnits milligramsPerGram = new EngineeringUnits(211);
     public static final EngineeringUnits milligramsPerKilogram = new EngineeringUnits(212);
+    public static final EngineeringUnits microgramsPerKilogram = new EngineeringUnits(47888);
+    public static final EngineeringUnits nanogramsPerKilogram = new EngineeringUnits(47889);
     public static final EngineeringUnits gramsPerMilliliter = new EngineeringUnits(213);
+    public static final EngineeringUnits milligramsPerMilliliter = new EngineeringUnits(47890);
+    public static final EngineeringUnits microgramsPerMilliliter = new EngineeringUnits(47891);
+    public static final EngineeringUnits nanogramsPerMilliliter = new EngineeringUnits(47892);
+    public static final EngineeringUnits kilogramsPerLiter = new EngineeringUnits(47893);
     public static final EngineeringUnits gramsPerLiter = new EngineeringUnits(214);
     public static final EngineeringUnits milligramsPerLiter = new EngineeringUnits(215);
     public static final EngineeringUnits microgramsPerLiter = new EngineeringUnits(216);
+    public static final EngineeringUnits nanogramsPerLiter = new EngineeringUnits(47894);
     public static final EngineeringUnits gramsPerCubicMeter = new EngineeringUnits(217);
     public static final EngineeringUnits milligramsPerCubicMeter = new EngineeringUnits(218);
     public static final EngineeringUnits microgramsPerCubicMeter = new EngineeringUnits(219);
     public static final EngineeringUnits nanogramsPerCubicMeter = new EngineeringUnits(220);
     public static final EngineeringUnits gramsPerCubicCentimeter = new EngineeringUnits(221);
+    public static final EngineeringUnits milligramsPerCubicCentimeter = new EngineeringUnits(47895);
+    public static final EngineeringUnits microgramsPerCubicCentimeter = new EngineeringUnits(47896);
+    public static final EngineeringUnits nanogramsPerCubicCentimeter = new EngineeringUnits(47897);
+    public static final EngineeringUnits particlesPerCubicFoot = new EngineeringUnits(47968);
+    public static final EngineeringUnits particlesPerCubicMeter = new EngineeringUnits(47969);
+    public static final EngineeringUnits picocuriesPerLiter = new EngineeringUnits(47970);
+    public static final EngineeringUnits becquerelsPerCubicMeter = new EngineeringUnits(47971);
     public static final EngineeringUnits becquerels = new EngineeringUnits(222);
     public static final EngineeringUnits kilobecquerels = new EngineeringUnits(223);
     public static final EngineeringUnits megabecquerels = new EngineeringUnits(224);
@@ -321,7 +443,52 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits nephelometricTurbidityUnit = new EngineeringUnits(233);
     public static final EngineeringUnits pH = new EngineeringUnits(234);
     public static final EngineeringUnits gramsPerSquareMeter = new EngineeringUnits(235);
-    public static final EngineeringUnits minutesPerDegreeKelvin = new EngineeringUnits(236);
+    public static final EngineeringUnits minutesPerKelvin = new EngineeringUnits(236);
+    public static final EngineeringUnits degreesLovibond = new EngineeringUnits(47816);
+    public static final EngineeringUnits alcoholByVolume = new EngineeringUnits(47817);
+    public static final EngineeringUnits internationalBitteringUnits = new EngineeringUnits(47818);
+    public static final EngineeringUnits europeanBitternessUnits = new EngineeringUnits(47819);
+    public static final EngineeringUnits degreesPlato = new EngineeringUnits(47820);
+    public static final EngineeringUnits specificGravity = new EngineeringUnits(47821);
+    public static final EngineeringUnits europeanBrewingConvention = new EngineeringUnits(47822);
+    public static final EngineeringUnits milsPerYear = new EngineeringUnits(47915);
+    public static final EngineeringUnits millimetersPerYear = new EngineeringUnits(47916);
+    public static final EngineeringUnits pulsesPerMinute = new EngineeringUnits(47917);
+    public static final EngineeringUnits bitsPerSecond = new EngineeringUnits(47929);
+    public static final EngineeringUnits kilobitsPerSecond = new EngineeringUnits(47930);
+    public static final EngineeringUnits megabitsPerSecond = new EngineeringUnits(47931);
+    public static final EngineeringUnits gigabitsPerSecond = new EngineeringUnits(47932);
+    public static final EngineeringUnits bytesPerSecond = new EngineeringUnits(47933);
+    public static final EngineeringUnits kilobytesPerSecond = new EngineeringUnits(47934);
+    public static final EngineeringUnits megabytesPerSecond = new EngineeringUnits(47935);
+    public static final EngineeringUnits gigabytesPerSecond = new EngineeringUnits(47936);
+    public static final EngineeringUnits siteUnit1 = new EngineeringUnits(47958);
+    public static final EngineeringUnits siteUnit2 = new EngineeringUnits(47959);
+    public static final EngineeringUnits siteUnit3 = new EngineeringUnits(47960);
+    public static final EngineeringUnits siteUnit4 = new EngineeringUnits(47961);
+    public static final EngineeringUnits siteUnit5 = new EngineeringUnits(47962);
+    public static final EngineeringUnits siteUnit6 = new EngineeringUnits(47963);
+    public static final EngineeringUnits siteUnit7 = new EngineeringUnits(47964);
+    public static final EngineeringUnits siteUnit8 = new EngineeringUnits(47965);
+    public static final EngineeringUnits siteUnit9 = new EngineeringUnits(47966);
+    public static final EngineeringUnits siteUnit10 = new EngineeringUnits(47967);
+    public static final EngineeringUnits degreeHoursCelsius = new EngineeringUnits(47973);
+    public static final EngineeringUnits degreeHoursFahrenheit = new EngineeringUnits(47974);
+    public static final EngineeringUnits degreeMinutesCelsius = new EngineeringUnits(47975);
+    public static final EngineeringUnits degreeMinutesFahrenheit = new EngineeringUnits(47976);
+    public static final EngineeringUnits degreeSecondsCelsius = new EngineeringUnits(47977);
+    public static final EngineeringUnits degreeSecondsFahrenheit = new EngineeringUnits(47978);
+    // Uncategorized
+    public static final EngineeringUnits nanograms = new EngineeringUnits(47828);
+    public static final EngineeringUnits micrograms = new EngineeringUnits(47829);
+    public static final EngineeringUnits imperialGallonsPerHour = new EngineeringUnits(47876);
+    public static final EngineeringUnits imperialGallonsPerDay = new EngineeringUnits(47877);
+    public static final EngineeringUnits microgramsPerGram = new EngineeringUnits(47886);
+    public static final EngineeringUnits nanogramsPerGram = new EngineeringUnits(47887);
+    public static final EngineeringUnits gigajoules = new EngineeringUnits(47925);
+    public static final EngineeringUnits terajoules = new EngineeringUnits(47926);
+    public static final EngineeringUnits gigawattHours = new EngineeringUnits(47927);
+    public static final EngineeringUnits gigawattReactiveHours = new EngineeringUnits(47928);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();
@@ -331,18 +498,18 @@ public class EngineeringUnits extends Enumerated {
         Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
     }
 
-    public static EngineeringUnits forId(final int id) {
+    public static EngineeringUnits forId(int id) {
         EngineeringUnits e = (EngineeringUnits) idMap.get(id);
         if (e == null)
             e = new EngineeringUnits(id);
         return e;
     }
 
-    public static String nameForId(final int id) {
+    public static String nameForId(int id) {
         return prettyMap.get(id);
     }
 
-    public static EngineeringUnits forName(final String name) {
+    public static EngineeringUnits forName(String name) {
         return (EngineeringUnits) Enumerated.forName(nameMap, name);
     }
 
@@ -350,11 +517,11 @@ public class EngineeringUnits extends Enumerated {
         return idMap.size();
     }
 
-    private EngineeringUnits(final int value) {
+    private EngineeringUnits(int value) {
         super(value);
     }
 
-    public EngineeringUnits(final ByteQueue queue) throws BACnetErrorException {
+    public EngineeringUnits(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
 

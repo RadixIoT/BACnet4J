@@ -95,6 +95,8 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
 - Protocol revision increased to 20
 - Many renamings on multiple levels (class, method, field, enum, etc.) to make BACnet4J compliant with MS/TP
   nomenclature changes
+- Names of engineering units have been changed to align with the spec
+- CharacterStringObject was renamed to CharacterStringValueObject
 
 *Version 6.2.0*
 
