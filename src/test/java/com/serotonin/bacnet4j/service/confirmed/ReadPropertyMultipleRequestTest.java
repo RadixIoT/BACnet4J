@@ -44,6 +44,7 @@ import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkUtils;
 import com.serotonin.bacnet4j.obj.GroupObject;
+import com.serotonin.bacnet4j.obj.NetworkPortObject;
 import com.serotonin.bacnet4j.service.acknowledgement.ReadPropertyMultipleAck;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.constructed.Address;
@@ -55,14 +56,17 @@ import com.serotonin.bacnet4j.type.constructed.ReadAccessSpecification;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
+import com.serotonin.bacnet4j.type.enumerated.NetworkType;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.type.enumerated.ProtocolLevel;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
+
 
 public class ReadPropertyMultipleRequestTest {
     private final TestNetworkMap map = new TestNetworkMap();
@@ -276,5 +280,32 @@ public class ReadPropertyMultipleRequestTest {
         public int hashCode() {
             return Objects.hash(testUnsigned, testBoolean);
         }
+    }
+
+    /**
+     * Addendum 135-2016br-8: ReadPropertyMultiple with (NETWORK_PORT, 4194303) shall be treated as
+     * the local Network Port object representing the network port through which the request was
+     * received.
+     */
+    @Test
+    public void networkPortWildcardInstance() throws Exception {
+        NetworkPortObject npo = localDevice.addObject(new NetworkPortObject(localDevice, 42, "port42",
+                false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
+
+        SequenceOf<ReadAccessSpecification> listOfReadAccessSpecs = new SequenceOf<>(
+                new ReadAccessSpecification(
+                        new ObjectIdentifier(ObjectType.networkPort, ObjectIdentifier.UNINITIALIZED),
+                        PropertyIdentifier.objectName));
+
+        ReadPropertyMultipleAck ack = (ReadPropertyMultipleAck) new ReadPropertyMultipleRequest(listOfReadAccessSpecs)
+                .handle(localDevice, addr);
+
+        List<ReadAccessResult> readAccessResults = ack.getListOfReadAccessResults().getValues();
+        assertEquals(1, readAccessResults.size());
+        assertEquals(npo.getId(), readAccessResults.get(0).getObjectIdentifier());
+        List<Result> results = readAccessResults.get(0).getListOfResults().getValues();
+        assertEquals(1, results.size());
+        assertEquals(new Result(PropertyIdentifier.objectName, null, new CharacterString("port42")),
+                results.get(0));
     }
 }
