@@ -41,13 +41,19 @@ public class TimeStamp extends BaseType {
         choiceOptions.addContextual(2, DateTime.class);
     }
 
-    @Deprecated(since = "7.0.0") // 135-2016br-4
+    /**
+     * @deprecated 135-2016br-4
+     */
+    @Deprecated(since = "7.0.0")
     public static final TimeStamp UNSPECIFIED_TIME = new TimeStamp(Time.UNSPECIFIED);
     public static final TimeStamp UNSPECIFIED_SEQUENCE = new TimeStamp(UnsignedInteger.ZERO);
     public static final TimeStamp UNSPECIFIED_DATETIME = new TimeStamp(DateTime.UNSPECIFIED);
 
     private final Choice choice;
 
+    /**
+     * @deprecated 135-2016br-4
+     */
     @Deprecated(since = "7.0.0") // 135-2016br-4
     public TimeStamp(Time time) {
         choice = new Choice(0, time, choiceOptions);
