@@ -33,6 +33,7 @@ import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.enumerated.BinaryPV;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
@@ -52,11 +53,11 @@ public class ActiveTimeMixin extends AbstractMixin {
      * @param useFeedback whether to use present-value (false) or feedback-value (true) as the indicator for the
      *                    calculations.
      */
-    public ActiveTimeMixin(final BACnetObject bo, final boolean useFeedback) {
+    public ActiveTimeMixin(BACnetObject bo, boolean useFeedback) {
         super(bo);
 
         // Default the values.
-        writePropertyInternal(PropertyIdentifier.elapsedActiveTime, UnsignedInteger.ZERO);
+        writePropertyInternal(PropertyIdentifier.elapsedActiveTime, Unsigned32.ZERO);
         writePropertyInternal(PropertyIdentifier.timeOfActiveTimeReset, new DateTime(getLocalDevice()));
 
         if (useFeedback) {
@@ -69,24 +70,23 @@ public class ActiveTimeMixin extends AbstractMixin {
     }
 
     @Override
-    protected void beforeReadProperty(final PropertyIdentifier pid) {
+    protected void beforeReadProperty(PropertyIdentifier pid) {
         if (pid.equals(PropertyIdentifier.elapsedActiveTime)) {
             synchronized (monitoredValue) {
                 long elapsed = accumulatedActiveTime;
                 if (lastActiveTime != -1) {
                     elapsed += getLocalDevice().getClock().millis() - lastActiveTime;
                 }
-                set(PropertyIdentifier.elapsedActiveTime, new UnsignedInteger(elapsed / 1000));
+                set(PropertyIdentifier.elapsedActiveTime, new Unsigned32(elapsed / 1000));
             }
         }
     }
 
     @Override
-    protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
-            final Encodable newValue) {
+    protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         if (pid.equals(monitoredValue)) {
             synchronized (monitoredValue) {
-                final BinaryPV presentValue = (BinaryPV) newValue;
+                BinaryPV presentValue = (BinaryPV) newValue;
                 if (presentValue.equals(BinaryPV.active)) {
                     if (lastActiveTime == -1) {
                         lastActiveTime = getLocalDevice().getClock().millis();
@@ -100,7 +100,7 @@ public class ActiveTimeMixin extends AbstractMixin {
             }
         } else if (pid.equals(PropertyIdentifier.elapsedActiveTime)) {
             synchronized (monitoredValue) {
-                final UnsignedInteger elapsedActiveTime = (UnsignedInteger) newValue;
+                UnsignedInteger elapsedActiveTime = (UnsignedInteger) newValue;
                 accumulatedActiveTime = elapsedActiveTime.longValue() * 1000;
                 resetLastActiveTime();
                 if (elapsedActiveTime.longValue() == 0) {
@@ -111,7 +111,7 @@ public class ActiveTimeMixin extends AbstractMixin {
     }
 
     private void resetLastActiveTime() {
-        final BinaryPV presentValue = get(monitoredValue);
+        BinaryPV presentValue = get(monitoredValue);
         if (presentValue.equals(BinaryPV.active)) {
             lastActiveTime = getLocalDevice().getClock().millis();
         } else {

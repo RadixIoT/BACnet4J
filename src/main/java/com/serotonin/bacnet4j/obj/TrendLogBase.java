@@ -27,66 +27,35 @@
 
 package com.serotonin.bacnet4j.obj;
 
-import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import com.serotonin.bacnet4j.LocalDevice;
-import com.serotonin.bacnet4j.exception.BACnetServiceException;
-import com.serotonin.bacnet4j.obj.mixin.HasStatusFlagsMixin;
 import com.serotonin.bacnet4j.obj.mixin.PollingDelegate;
-import com.serotonin.bacnet4j.obj.mixin.ReadOnlyPropertyMixin;
-import com.serotonin.bacnet4j.obj.mixin.event.IntrinsicReportingMixin;
-import com.serotonin.bacnet4j.obj.mixin.event.eventAlgo.BufferReadyAlgo;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
-import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
-import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
-import com.serotonin.bacnet4j.type.constructed.PropertyValue;
-import com.serotonin.bacnet4j.type.constructed.StatusFlags;
-import com.serotonin.bacnet4j.type.constructed.ValueSource;
-import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
-import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
-import com.serotonin.bacnet4j.type.enumerated.EventState;
 import com.serotonin.bacnet4j.type.enumerated.LoggingType;
-import com.serotonin.bacnet4j.type.enumerated.NotifyType;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
-import com.serotonin.bacnet4j.type.enumerated.Reliability;
-import com.serotonin.bacnet4j.type.notificationParameters.BufferReadyNotif;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
-abstract class TrendLogBase extends BACnetObject {
-    protected boolean logDisabled;
-    protected ScheduledFuture<?> startTimeFuture;
-    protected ScheduledFuture<?> stopTimeFuture;
-
+/**
+ * Base for the periodic-sampling log objects (Trend Log and Trend Log Multiple). Adds the polling
+ * / triggering / interval-alignment concerns on top of the buffer-and-schedule primitives provided
+ * by {@link LogBase}.
+ */
+public abstract class TrendLogBase extends LogBase {
     protected PollingDelegate pollingDelegate;
     protected ScheduledFuture<?> pollingFuture;
 
     protected TrendLogBase(LocalDevice localDevice, ObjectType type, int instanceNumber, String name, boolean enable,
             DateTime startTime, DateTime stopTime, int logInterval, boolean stopWhenFull, int bufferSize) {
-        super(localDevice, type, instanceNumber, name);
-
-        Objects.requireNonNull(localDevice);
-        Objects.requireNonNull(name);
-        Objects.requireNonNull(startTime);
-        Objects.requireNonNull(stopTime);
-
-        set(PropertyIdentifier.enable, Boolean.valueOf(enable));
-        set(PropertyIdentifier.startTime, startTime);
-        set(PropertyIdentifier.stopTime, stopTime);
+        super(localDevice, type, instanceNumber, name, enable, startTime, stopTime, stopWhenFull, bufferSize);
         set(PropertyIdentifier.logInterval, new UnsignedInteger(logInterval));
-        set(PropertyIdentifier.stopWhenFull, Boolean.valueOf(stopWhenFull));
-        set(PropertyIdentifier.bufferSize, new UnsignedInteger(bufferSize));
-        set(PropertyIdentifier.recordCount, UnsignedInteger.ZERO);
-        set(PropertyIdentifier.totalRecordCount, UnsignedInteger.ZERO);
         set(PropertyIdentifier.alignIntervals, Boolean.TRUE);
         set(PropertyIdentifier.intervalOffset, UnsignedInteger.ZERO);
         set(PropertyIdentifier.trigger, Boolean.FALSE);
-        set(PropertyIdentifier.statusFlags, new StatusFlags(false, false, false, false));
-        set(PropertyIdentifier.reliability, Reliability.noFaultDetected);
     }
 
     protected void postInitialize() {
@@ -95,10 +64,7 @@ abstract class TrendLogBase extends BACnetObject {
         updateStopTime(get(PropertyIdentifier.stopTime));
         withTriggered();
 
-        // Mixins
-        addMixin(new HasStatusFlagsMixin(this));
-        addMixin(new ReadOnlyPropertyMixin(this, PropertyIdentifier.logBuffer, PropertyIdentifier.reliability,
-                PropertyIdentifier.totalRecordCount));
+        addLogMixins();
     }
 
     protected void baseWithPolled(int logInterval, TimeUnit logIntervalUnit, boolean alignIntervals,
@@ -110,98 +76,59 @@ abstract class TrendLogBase extends BACnetObject {
         updateLoggingType();
     }
 
+    @Override
     protected void baseSupportIntrinsicReporting(int notificationThreshold, int notificationClass,
-            EventTransitionBits eventEnable, NotifyType notifyType) {
-        Objects.requireNonNull(eventEnable);
-        Objects.requireNonNull(notifyType);
-
-        // Prepare the object with all the properties that intrinsic reporting will need.
-        // User-defined properties
-        writePropertyInternal(PropertyIdentifier.notificationThreshold, new UnsignedInteger(notificationThreshold));
-        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
-        writePropertyInternal(PropertyIdentifier.lastNotifyRecord, UnsignedInteger.ZERO);
-        writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);
-        writePropertyInternal(PropertyIdentifier.notificationClass, new UnsignedInteger(notificationClass));
-        writePropertyInternal(PropertyIdentifier.eventEnable, eventEnable);
-        writePropertyInternal(PropertyIdentifier.notifyType, notifyType);
-        writePropertyInternal(PropertyIdentifier.eventDetectionEnable, Boolean.TRUE);
-
-        BufferReadyAlgo algo = new BufferReadyAlgo(PropertyIdentifier.totalRecordCount,
-                new DeviceObjectPropertyReference(getId(), PropertyIdentifier.logBuffer, null,
-                        getLocalDevice().getId()),
-                PropertyIdentifier.notificationThreshold, PropertyIdentifier.lastNotifyRecord);
-
-        PropertyIdentifier[] triggerProps = new PropertyIdentifier[] { //
-                PropertyIdentifier.totalRecordCount, //
-                PropertyIdentifier.notificationThreshold};
-
-        // Now add the mixin.
-        addMixin(new IntrinsicReportingMixin(this, algo, null, PropertyIdentifier.totalRecordCount, triggerProps)
-                .withPostNotificationAction(notifParams -> {
-                    if (notifParams.getParameter() instanceof BufferReadyNotif brn) {
-                        // After a notification has been sent, a couple values need to be updated.
-                        writePropertyInternal(PropertyIdentifier.lastNotifyRecord, brn.getCurrentNotification());
-                        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
-                    }
-                }));
-
+            com.serotonin.bacnet4j.type.constructed.EventTransitionBits eventEnable,
+            com.serotonin.bacnet4j.type.enumerated.NotifyType notifyType) {
+        super.baseSupportIntrinsicReporting(notificationThreshold, notificationClass, eventEnable, notifyType);
         updateMonitoredProperty();
     }
 
-    public boolean isLogDisabled() {
-        return logDisabled;
-    }
-
-    public void setEnabled(boolean enabled) {
-        writePropertyInternal(PropertyIdentifier.enable, Boolean.valueOf(enabled));
-    }
-
     protected abstract void updateMonitoredProperty();
-
-    protected void updateStartTime(DateTime startTime) {
-        cancelFuture(startTimeFuture);
-        if (!startTime.equals(DateTime.UNSPECIFIED)) {
-            DateTime now = getNow();
-            long diff = startTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
-            if (diff > 0) {
-                startTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
-            }
-        }
-        evaluateLogDisabled();
-    }
-
-    protected void updateStopTime(DateTime stopTime) {
-        cancelFuture(stopTimeFuture);
-        if (!stopTime.equals(DateTime.UNSPECIFIED)) {
-            DateTime now = getNow();
-            long diff = stopTime.getGC().getTimeInMillis() - now.getGC().getTimeInMillis();
-            if (diff > 0) {
-                stopTimeFuture = getLocalDevice().schedule(this::evaluateLogDisabled, diff, TimeUnit.MILLISECONDS);
-            }
-        }
-        evaluateLogDisabled();
-    }
 
     protected void withTriggered() {
         set(PropertyIdentifier.loggingType, LoggingType.triggered);
         updateLoggingType();
     }
 
-    protected static void cancelFuture(ScheduledFuture<?> future) {
-        if (future != null)
-            future.cancel(false);
-    }
-
-    protected DateTime getNow() {
-        return new DateTime(getLocalDevice().getClock().millis());
-    }
-
-    protected abstract void evaluateLogDisabled();
-
     protected abstract void updateLoggingType();
 
-    protected abstract int bufferSize();
+    protected void updatePolledLoggingType() {
+        UnsignedInteger logInterval = get(PropertyIdentifier.logInterval);
+        Boolean alignIntervals = get(PropertyIdentifier.alignIntervals);
+        UnsignedInteger intervalOffset = get(PropertyIdentifier.intervalOffset);
 
+        long period = logInterval.longValue() * 10;
+        if (period == 0)
+            // 0 is a poor value. Default to 5 minutes in this case, since it "is a local matter".
+            period = TimeUnit.MINUTES.toMillis(5);
+
+        long initialDelay = 0;
+        int offsetToUse = 0;
+        if (alignIntervals.booleanValue()) {
+            long now = getLocalDevice().getClock().millis();
+
+            // Find the largest time period to which the period aligns.
+            if (period % TimeUnit.DAYS.toMillis(1) == 0) {
+                initialDelay = TimeUnit.DAYS.toMillis(1) - now % TimeUnit.DAYS.toMillis(1);
+            } else if (period % TimeUnit.HOURS.toMillis(1) == 0) {
+                initialDelay = TimeUnit.HOURS.toMillis(1) - now % TimeUnit.HOURS.toMillis(1);
+            } else if (period % TimeUnit.MINUTES.toMillis(1) == 0) {
+                initialDelay = TimeUnit.MINUTES.toMillis(1) - now % TimeUnit.MINUTES.toMillis(1);
+            } else if (period % TimeUnit.SECONDS.toMillis(1) == 0) {
+                initialDelay = TimeUnit.SECONDS.toMillis(1) - now % TimeUnit.SECONDS.toMillis(1);
+            }
+
+            offsetToUse = intervalOffset.intValue() * 10;
+            offsetToUse %= (int) period;
+        }
+
+        initialDelay += offsetToUse;
+        initialDelay %= period;
+
+        pollingFuture = getLocalDevice().scheduleAtFixedRate(this::doPoll, initialDelay, period,
+                TimeUnit.MILLISECONDS);
+    }
 
     /**
      * Locally trigger a poll.
@@ -220,61 +147,11 @@ abstract class TrendLogBase extends BACnetObject {
     }
 
     @Override
-    protected void beforeReadProperty(PropertyIdentifier pid) throws BACnetServiceException {
-        if (PropertyIdentifier.logBuffer.equals(pid)) {
-            throw new BACnetServiceException(ErrorClass.property, ErrorCode.readAccessDenied);
-        }
-    }
-
-    @Override
-    protected boolean validateProperty(ValueSource valueSource, PropertyValue value)
-            throws BACnetServiceException {
-        if (PropertyIdentifier.enable.equals(value.getPropertyIdentifier())) {
-            Boolean enable = value.getValue();
-            Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
-            UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
-
-            if (enable.booleanValue() && stopWhenFull.booleanValue() && bufferSize.intValue() == bufferSize()) {
-                throw new BACnetServiceException(ErrorClass.object, ErrorCode.logBufferFull);
-            }
-        } else if (PropertyIdentifier.startTime.equals(value.getPropertyIdentifier()) //
-                || PropertyIdentifier.stopTime.equals(value.getPropertyIdentifier())) {
-            // Ensure that the date time is either entirely unspecified or entirely specified.
-            DateTime dt = value.getValue();
-            if (dt.equals(DateTime.UNSPECIFIED))
-                return false;
-
-            if (!dt.isFullySpecified())
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.parameterOutOfRange);
-        } else if (PropertyIdentifier.bufferSize.equals(value.getPropertyIdentifier())) {
-            Boolean enable = get(PropertyIdentifier.enable);
-            if (enable.booleanValue()) {
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
-            }
-        } else if (PropertyIdentifier.recordCount.equals(value.getPropertyIdentifier())) {
-            // Only allowed to write a zero to this record. What would any other value do?
-            UnsignedInteger recordCount = value.getValue();
-            if (recordCount.intValue() != 0)
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
-        }
-        return false;
-    }
-
-    @Override
     protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
-        if (PropertyIdentifier.enable.equals(pid)) {
-            evaluateLogDisabled();
-        } else if (PropertyIdentifier.startTime.equals(pid)) {
-            updateStartTime((DateTime) newValue);
-        } else if (PropertyIdentifier.stopTime.equals(pid)) {
-            updateStopTime((DateTime) newValue);
-        } else if (PropertyIdentifier.logDeviceObjectProperty.equals(pid)) {
+        super.afterWriteProperty(pid, oldValue, newValue);
+        if (PropertyIdentifier.logDeviceObjectProperty.equals(pid)) {
             purge();
             updateMonitoredProperty();
-        } else if (PropertyIdentifier.recordCount.equals(pid)) {
-            UnsignedInteger recordCount = (UnsignedInteger) newValue;
-            if (recordCount.intValue() == 0)
-                purge();
         } else if (PropertyIdentifier.loggingType.equals(pid)) {
             updateLoggingType();
         } else if (pid.isOneOf(PropertyIdentifier.alignIntervals, PropertyIdentifier.intervalOffset)) {
@@ -294,65 +171,19 @@ abstract class TrendLogBase extends BACnetObject {
         // Perform the trigger asynchronously
         getLocalDevice().execute(() -> {
             try {
-                // Do the poll.
                 doPoll();
                 LOG.debug("Trigger complete");
             } finally {
-                // Set the trigger value back to false.
                 writePropertyInternal(PropertyIdentifier.trigger, Boolean.FALSE);
             }
         });
     }
 
-    protected abstract void purge();
-
     protected abstract void doPoll();
 
     @Override
     protected void terminateImpl() {
-        super.terminate();
-        cancelFuture(startTimeFuture);
-        cancelFuture(stopTimeFuture);
+        super.terminateImpl();
         cancelFuture(pollingFuture);
-    }
-
-    protected void fullCheck() {
-        Boolean stopWhenFull = get(PropertyIdentifier.stopWhenFull);
-        UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
-        if (stopWhenFull.booleanValue() && bufferSize() == bufferSize.intValue() - 1) {
-            // There is only one spot left in the buffer, and StopWhenFull is true. Set Enable to false.
-            writePropertyInternal(PropertyIdentifier.enable, Boolean.FALSE);
-        }
-    }
-
-
-    /**
-     * Determines whether logging should be performed based upon Enable, StartTime, and StopTime.
-     */
-    protected boolean allowLogging(DateTime now) {
-        Boolean enabled = get(PropertyIdentifier.enable);
-        if (!enabled.booleanValue())
-            return false;
-
-        DateTime start = get(PropertyIdentifier.startTime);
-        DateTime stop = get(PropertyIdentifier.stopTime);
-
-        if (!start.equals(DateTime.UNSPECIFIED)) {
-            LOG.debug("Checking start time");
-            if (now.compareTo(start) < 0)
-                return false;
-        }
-
-        if (!stop.equals(DateTime.UNSPECIFIED)) {
-            LOG.debug("Checking stop time, now={}, stop={}", now, stop);
-            if (now.compareTo(stop) >= 0)
-                return false;
-        }
-
-        return true;
-    }
-
-    protected void updateRecordCount() {
-        writePropertyInternal(PropertyIdentifier.recordCount, new UnsignedInteger(bufferSize()));
     }
 }

@@ -63,6 +63,7 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Null;
+import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class CommandableMixin extends AbstractMixin {
@@ -85,7 +86,7 @@ public class CommandableMixin extends AbstractMixin {
     // Runtime
     private ScheduledFuture<?> minOnOffTimerTask;
 
-    public CommandableMixin(final BACnetObject bo, final PropertyIdentifier pvProperty) {
+    public CommandableMixin(BACnetObject bo, PropertyIdentifier pvProperty) {
         super(bo);
         this.pvProperty = pvProperty;
     }
@@ -94,7 +95,7 @@ public class CommandableMixin extends AbstractMixin {
         return overridden;
     }
 
-    public void setOverridden(final boolean overridden) {
+    public void setOverridden(boolean overridden) {
         this.overridden = overridden;
     }
 
@@ -106,7 +107,7 @@ public class CommandableMixin extends AbstractMixin {
         return supportsWritable;
     }
 
-    public void supportCommandable(final Encodable relqDefault) {
+    public void supportCommandable(Encodable relqDefault) {
         supportsCommandable = true;
 
         // If the object does not have a priority array and relinquish default, add them
@@ -141,13 +142,13 @@ public class CommandableMixin extends AbstractMixin {
     }
 
     @Override
-    synchronized protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
+    synchronized protected boolean validateProperty(ValueSource valueSource, PropertyValue value)
             throws BACnetServiceException {
         if (pvProperty.equals(value.getPropertyIdentifier())) {
             if (overridden)
                 return false;
 
-            final Boolean oos = get(outOfService);
+            Boolean oos = get(outOfService);
             if (oos.booleanValue())
                 return false;
 
@@ -161,13 +162,13 @@ public class CommandableMixin extends AbstractMixin {
             if (!supportsValueSource)
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
 
-            final ValueSource vs = get(PropertyIdentifier.valueSource);
+            ValueSource vs = get(PropertyIdentifier.valueSource);
             if (vs == null || !vs.isAddress())
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
             if (!vs.getAddress().equals(valueSource.getAddress()))
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
 
-            final ValueSource newVs = (ValueSource) value.getValue();
+            ValueSource newVs = (ValueSource) value.getValue();
             if (!newVs.isObject())
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
 
@@ -180,7 +181,7 @@ public class CommandableMixin extends AbstractMixin {
     }
 
     @Override
-    synchronized protected boolean writeProperty(final ValueSource valueSource, final PropertyValue value)
+    synchronized protected boolean writeProperty(ValueSource valueSource, PropertyValue value)
             throws BACnetServiceException {
         if (pvProperty.equals(value.getPropertyIdentifier())) {
             if (overridden) {
@@ -188,7 +189,7 @@ public class CommandableMixin extends AbstractMixin {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
             }
 
-            final Boolean oos = get(outOfService);
+            Boolean oos = get(outOfService);
             if (oos.booleanValue()) {
                 // Writable while the object is out of service.
                 directPVWrite(valueSource, value);
@@ -218,15 +219,15 @@ public class CommandableMixin extends AbstractMixin {
         return false;
     }
 
-    private void directPVWrite(final ValueSource valueSource, final PropertyValue value) {
+    private void directPVWrite(ValueSource valueSource, PropertyValue value) {
         writePropertyInternal(pvProperty, value.getValue());
         if (supportsValueSource)
             writePropertyInternal(PropertyIdentifier.valueSource, valueSource);
     }
 
     @Override
-    synchronized protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
-            final Encodable newValue) {
+    synchronized protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue,
+            Encodable newValue) {
         if (relinquishDefault.equals(pid)) {
             // The relinquish default was changed. Ensure that the present value gets updated if necessary.
             updatePresentValue(null, new TimeStamp(new DateTime(getLocalDevice())));
@@ -236,7 +237,7 @@ public class CommandableMixin extends AbstractMixin {
         }
     }
 
-    private void command(final ValueSource valueSource, final Encodable value, final UnsignedInteger priority)
+    private void command(ValueSource valueSource, Encodable value, UnsignedInteger priority)
             throws BACnetServiceException {
         int pri = 16;
         if (priority != null)
@@ -250,10 +251,10 @@ public class CommandableMixin extends AbstractMixin {
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
 
         // Set the value in the priority array.
-        final PriorityArray priArr = get(priorityArray);
+        PriorityArray priArr = get(priorityArray);
         priArr.setBase1(pri, new PriorityValue(value));
 
-        final TimeStamp now = new TimeStamp(new DateTime(getLocalDevice()));
+        TimeStamp now = new TimeStamp(new DateTime(getLocalDevice()));
         if (supportsValueSource) {
             updateValueSourceArray(pri, valueSource);
             updateCommandTimeArray(pri, now);
@@ -264,19 +265,19 @@ public class CommandableMixin extends AbstractMixin {
 
     synchronized void minOnOffCompleted() {
         minOnOffTimerTask = null;
-        final PriorityArray priArr = get(priorityArray);
+        PriorityArray priArr = get(priorityArray);
         priArr.setBase1(MIN_OFF_ON_PRIORITY, new PriorityValue(Null.instance));
         updatePresentValue(priArr, new TimeStamp(new DateTime(getLocalDevice())));
     }
 
-    private void updatePresentValue(final PriorityArray priorityArray, final TimeStamp now) {
-        final PriorityArray pa = priorityArray == null ? get(PropertyIdentifier.priorityArray) : priorityArray;
+    private void updatePresentValue(PriorityArray priorityArray, TimeStamp now) {
+        PriorityArray pa = priorityArray == null ? get(PropertyIdentifier.priorityArray) : priorityArray;
 
         // Calculate from the priority array what are the current value and index.
         PriorityValue topValue = null;
         int topIndex = 17;
         for (int i = 1; i <= pa.getCount(); i++) {
-            final PriorityValue priv = pa.getBase1(i);
+            PriorityValue priv = pa.getBase1(i);
             if (!priv.isa(Null.class)) {
                 topValue = priv;
                 topIndex = i;
@@ -292,9 +293,9 @@ public class CommandableMixin extends AbstractMixin {
         }
 
         // Minimum on/off time. See 19.2.3.
-        final Encodable oldValue = get(pvProperty);
-        final UnsignedInteger minOff = get(minimumOffTime);
-        final UnsignedInteger minOn = get(minimumOnTime);
+        Encodable oldValue = get(pvProperty);
+        Unsigned32 minOff = get(minimumOffTime);
+        Unsigned32 minOn = get(minimumOnTime);
         if (minOff != null && minOn != null) {
             if (!newValue.equals(oldValue)) {
                 // The value has changed. Check for updates to the timer.
@@ -333,21 +334,21 @@ public class CommandableMixin extends AbstractMixin {
             }
         }
 
-        final OptionalUnsigned newIndex;
+        OptionalUnsigned newIndex;
         if (topValue == null) {
             newIndex = new OptionalUnsigned();
         } else {
             newIndex = new OptionalUnsigned(topIndex);
         }
 
-        final OptionalUnsigned oldIndex = get(currentCommandPriority);
+        OptionalUnsigned oldIndex = get(currentCommandPriority);
         writePropertyInternal(currentCommandPriority, newIndex);
         if (supportsValueSource) {
             ValueSource vs;
             if (topValue == null) {
                 vs = getLocalValueSource();
             } else {
-                final BACnetArray<ValueSource> vsa = get(valueSourceArray);
+                BACnetArray<ValueSource> vsa = get(valueSourceArray);
                 vs = vsa.getBase1(topIndex);
             }
             writePropertyInternal(PropertyIdentifier.valueSource, vs);
@@ -364,13 +365,13 @@ public class CommandableMixin extends AbstractMixin {
         return new ValueSource(new DeviceObjectReference(getLocalDevice().getId(), getId()));
     }
 
-    private void updateValueSourceArray(final int indexBase1, final ValueSource va) {
-        final BACnetArray<ValueSource> vsa = get(valueSourceArray);
+    private void updateValueSourceArray(int indexBase1, ValueSource va) {
+        BACnetArray<ValueSource> vsa = get(valueSourceArray);
         vsa.setBase1(indexBase1, va);
     }
 
-    private void updateCommandTimeArray(final int indexBase1, final TimeStamp ts) {
-        final BACnetArray<TimeStamp> cta = get(commandTimeArray);
+    private void updateCommandTimeArray(int indexBase1, TimeStamp ts) {
+        BACnetArray<TimeStamp> cta = get(commandTimeArray);
         cta.setBase1(indexBase1, ts);
     }
 

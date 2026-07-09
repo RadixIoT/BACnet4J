@@ -37,7 +37,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Calendar;
-import java.util.GregorianCalendar;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
@@ -74,6 +73,7 @@ import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
+import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class EventLogObjectTest extends AbstractTest {
@@ -105,7 +105,7 @@ public class EventLogObjectTest extends AbstractTest {
 
     @Test
     public void logging() throws Exception {
-        final EventLogObject el = d1.addObject(new EventLogObject(
+        EventLogObject el = d1.addObject(new EventLogObject(
                 d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED, false, 20));
 
         // The buffer should still be empty
@@ -116,7 +116,7 @@ public class EventLogObjectTest extends AbstractTest {
 
         // The log record should be there.
         assertEquals(1, el.getBuffer().size());
-        final EventLogRecord record0 = el.getBuffer().get(0);
+        EventLogRecord record0 = el.getBuffer().get(0);
         assertEquals(now, record0.getTimestamp());
         assertEquals(1, record0.getSequenceNumber());
         assertEquals(n1, record0.getNotification());
@@ -127,12 +127,12 @@ public class EventLogObjectTest extends AbstractTest {
 
         // The log record should be there.
         assertEquals(3, el.getBuffer().size());
-        final EventLogRecord record1 = el.getBuffer().get(1);
+        EventLogRecord record1 = el.getBuffer().get(1);
         assertEquals(now, record1.getTimestamp());
         assertEquals(2, record1.getSequenceNumber());
         assertEquals(n2, record1.getNotification());
 
-        final EventLogRecord record2 = el.getBuffer().get(2);
+        EventLogRecord record2 = el.getBuffer().get(2);
         assertEquals(now, record2.getTimestamp());
         assertEquals(3, record2.getSequenceNumber());
         assertEquals(n1, record2.getNotification());
@@ -142,18 +142,18 @@ public class EventLogObjectTest extends AbstractTest {
     @Test
     public void intrinsicReporting() throws Exception {
         // Create a triggered trend log with intrinsic reporting enabled.
-        final EventLogObject el = d1.addObject(new EventLogObject(
+        EventLogObject el = d1.addObject(new EventLogObject(
                 d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
                 DateTime.UNSPECIFIED, false, 20)
                 .supportIntrinsicReporting(5, 23, new EventTransitionBits(true, true, true), NotifyType.event));
 
         // Add d2 as an event recipient.
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(27), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         //
@@ -164,10 +164,10 @@ public class EventLogObjectTest extends AbstractTest {
         d2.send(rd1, n1).get();
         assertEquals(4, el.getBuffer().size());
         assertEquals(0, listener.getNotifCount());
-        assertEquals(new UnsignedInteger(4), el.get(PropertyIdentifier.recordCount));
-        assertEquals(new UnsignedInteger(4), el.get(PropertyIdentifier.totalRecordCount));
-        assertEquals(new UnsignedInteger(4), el.get(PropertyIdentifier.recordsSinceNotification));
-        assertEquals(UnsignedInteger.ZERO, el.get(PropertyIdentifier.lastNotifyRecord));
+        assertEquals(new Unsigned32(4), el.get(PropertyIdentifier.recordCount));
+        assertEquals(new Unsigned32(4), el.get(PropertyIdentifier.totalRecordCount));
+        assertEquals(new Unsigned32(4), el.get(PropertyIdentifier.recordsSinceNotification));
+        assertEquals(Unsigned32.ZERO, el.get(PropertyIdentifier.lastNotifyRecord));
 
         //
         // Write one more and make sure a notification was received.
@@ -193,10 +193,10 @@ public class EventLogObjectTest extends AbstractTest {
                         UnsignedInteger.ZERO, new UnsignedInteger(5))), notif.eventValues());
 
         // Validate the internally maintained values.
-        assertEquals(new UnsignedInteger(5), el.get(PropertyIdentifier.recordCount));
-        assertEquals(new UnsignedInteger(5), el.get(PropertyIdentifier.totalRecordCount));
-        assertEquals(UnsignedInteger.ZERO, el.get(PropertyIdentifier.recordsSinceNotification));
-        assertEquals(new UnsignedInteger(5), el.get(PropertyIdentifier.lastNotifyRecord));
+        assertEquals(new Unsigned32(5), el.get(PropertyIdentifier.recordCount));
+        assertEquals(new Unsigned32(5), el.get(PropertyIdentifier.totalRecordCount));
+        assertEquals(Unsigned32.ZERO, el.get(PropertyIdentifier.recordsSinceNotification));
+        assertEquals(new Unsigned32(5), el.get(PropertyIdentifier.lastNotifyRecord));
 
         //
         // Write another 5 triggers and ensure that the notification looks ok.
@@ -226,15 +226,15 @@ public class EventLogObjectTest extends AbstractTest {
                         new UnsignedInteger(5), new UnsignedInteger(10))), notif.eventValues());
 
         // Validate the internally maintained values.
-        assertEquals(new UnsignedInteger(10), el.get(PropertyIdentifier.recordCount));
-        assertEquals(new UnsignedInteger(10), el.get(PropertyIdentifier.totalRecordCount));
-        assertEquals(UnsignedInteger.ZERO, el.get(PropertyIdentifier.recordsSinceNotification));
-        assertEquals(new UnsignedInteger(10), el.get(PropertyIdentifier.lastNotifyRecord));
+        assertEquals(new Unsigned32(10), el.get(PropertyIdentifier.recordCount));
+        assertEquals(new Unsigned32(10), el.get(PropertyIdentifier.totalRecordCount));
+        assertEquals(Unsigned32.ZERO, el.get(PropertyIdentifier.recordsSinceNotification));
+        assertEquals(new Unsigned32(10), el.get(PropertyIdentifier.lastNotifyRecord));
 
         //
         // Update the values of the trend log such that we can trigger condition 2 in the buffer ready algo.
-        el.set(PropertyIdentifier.lastNotifyRecord, new UnsignedInteger(0xFFFFFFFDL));
-        el.set(PropertyIdentifier.totalRecordCount, new UnsignedInteger(0xFFFFFFFDL));
+        el.set(PropertyIdentifier.lastNotifyRecord, new Unsigned32(0xFFFFFFFDL));
+        el.set(PropertyIdentifier.totalRecordCount, new Unsigned32(0xFFFFFFFDL));
         d2.send(rd1, n1).get();
         d2.send(rd1, n1).get();
         d2.send(rd1, n1).get();
@@ -261,35 +261,35 @@ public class EventLogObjectTest extends AbstractTest {
                         new UnsignedInteger(0xFFFFFFFDL), new UnsignedInteger(3))), notif.eventValues());
 
         // Validate the internally maintained values.
-        assertEquals(new UnsignedInteger(15), el.get(PropertyIdentifier.recordCount));
-        assertEquals(new UnsignedInteger(3), el.get(PropertyIdentifier.totalRecordCount));
-        assertEquals(UnsignedInteger.ZERO, el.get(PropertyIdentifier.recordsSinceNotification));
-        assertEquals(new UnsignedInteger(3), el.get(PropertyIdentifier.lastNotifyRecord));
+        assertEquals(new Unsigned32(15), el.get(PropertyIdentifier.recordCount));
+        assertEquals(new Unsigned32(3), el.get(PropertyIdentifier.totalRecordCount));
+        assertEquals(Unsigned32.ZERO, el.get(PropertyIdentifier.recordsSinceNotification));
+        assertEquals(new Unsigned32(3), el.get(PropertyIdentifier.lastNotifyRecord));
     }
 
     @SuppressWarnings("unchecked")
     @Test
     public void eventReporting() throws Exception {
         // Create a triggered trend log
-        final EventLogObject el = d1.addObject(new EventLogObject(
+        EventLogObject el = d1.addObject(new EventLogObject(
                 d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
                 DateTime.UNSPECIFIED, false, 20));
 
         // Create the event enrollment.
-        final DeviceObjectPropertyReference ref =
+        DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(el.getId(), PropertyIdentifier.totalRecordCount, null, d1.getId());
-        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
                 d1, 0, "ee", ref, NotifyType.event,
                 new EventParameter(new BufferReady(new UnsignedInteger(3), UnsignedInteger.ZERO)),
                 new EventTransitionBits(true, true, true), 23, 1000, null, null));
 
         // Set d2 as an event recipient.
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(d2.getId()), new UnsignedInteger(28), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Trigger updates, but not enough to cause a notification.
@@ -357,7 +357,7 @@ public class EventLogObjectTest extends AbstractTest {
     @Test
     public void stopWhenFull() throws Exception {
         // Create a triggered trend log
-        final EventLogObject el = d1.addObject(new EventLogObject(
+        EventLogObject el = d1.addObject(new EventLogObject(
                 d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
                 DateTime.UNSPECIFIED, true, 4));
 
@@ -367,8 +367,8 @@ public class EventLogObjectTest extends AbstractTest {
         assertEquals(2, el.getBuffer().size());
         assertEquals(n1, el.getBuffer().get(0).getNotification());
         assertEquals(n1, el.getBuffer().get(1).getNotification());
-        assertEquals(new UnsignedInteger(2), el.get(PropertyIdentifier.recordCount));
-        assertEquals(new UnsignedInteger(2), el.get(PropertyIdentifier.totalRecordCount));
+        assertEquals(new Unsigned32(2), el.get(PropertyIdentifier.recordCount));
+        assertEquals(new Unsigned32(2), el.get(PropertyIdentifier.totalRecordCount));
 
         // Add another record. This will cause the buffer to be full after the buffer full notification is written.
         d2.send(rd1, n1).get();
@@ -377,8 +377,8 @@ public class EventLogObjectTest extends AbstractTest {
         assertEquals(n1, el.getBuffer().get(1).getNotification());
         assertEquals(n1, el.getBuffer().get(2).getNotification());
         assertEquals(new LogStatus(true, false, false), el.getBuffer().get(3).getLogStatus());
-        assertEquals(new UnsignedInteger(4), el.get(PropertyIdentifier.recordCount));
-        assertEquals(new UnsignedInteger(4), el.get(PropertyIdentifier.totalRecordCount));
+        assertEquals(new Unsigned32(4), el.get(PropertyIdentifier.recordCount));
+        assertEquals(new Unsigned32(4), el.get(PropertyIdentifier.totalRecordCount));
         assertTrue(el.isLogDisabled());
 
         // Add more records. The log should not change. Advance the time just to be sure.
@@ -390,8 +390,8 @@ public class EventLogObjectTest extends AbstractTest {
         assertEquals(n1, el.getBuffer().get(1).getNotification());
         assertEquals(n1, el.getBuffer().get(2).getNotification());
         assertEquals(new LogStatus(true, false, false), el.getBuffer().get(3).getLogStatus());
-        assertEquals(new UnsignedInteger(4), el.get(PropertyIdentifier.recordCount));
-        assertEquals(new UnsignedInteger(4), el.get(PropertyIdentifier.totalRecordCount));
+        assertEquals(new Unsigned32(4), el.get(PropertyIdentifier.recordCount));
+        assertEquals(new Unsigned32(4), el.get(PropertyIdentifier.totalRecordCount));
         assertTrue(el.isLogDisabled());
 
         // Set StopWhenFull to false and write a couple records.
@@ -404,8 +404,8 @@ public class EventLogObjectTest extends AbstractTest {
         assertEquals(new LogStatus(true, false, false), el.getBuffer().get(1).getLogStatus());
         assertEquals(n1, el.getBuffer().get(2).getNotification());
         assertEquals(n1, el.getBuffer().get(3).getNotification());
-        assertEquals(new UnsignedInteger(4), el.get(PropertyIdentifier.recordCount));
-        assertEquals(new UnsignedInteger(6), el.get(PropertyIdentifier.totalRecordCount));
+        assertEquals(new Unsigned32(4), el.get(PropertyIdentifier.recordCount));
+        assertEquals(new Unsigned32(6), el.get(PropertyIdentifier.totalRecordCount));
         assertFalse(el.isLogDisabled());
 
         // Set StopWhenFull back to true.
@@ -415,15 +415,15 @@ public class EventLogObjectTest extends AbstractTest {
         assertEquals(n1, el.getBuffer().get(1).getNotification());
         assertEquals(n1, el.getBuffer().get(2).getNotification());
         assertEquals(new LogStatus(true, false, false), el.getBuffer().get(3).getLogStatus());
-        assertEquals(new UnsignedInteger(4), el.get(PropertyIdentifier.recordCount));
-        assertEquals(new UnsignedInteger(7), el.get(PropertyIdentifier.totalRecordCount));
+        assertEquals(new Unsigned32(4), el.get(PropertyIdentifier.recordCount));
+        assertEquals(new Unsigned32(7), el.get(PropertyIdentifier.totalRecordCount));
         assertTrue(el.isLogDisabled());
     }
 
     @Test
     public void enableDisable() throws Exception {
         // Create a disabled triggered trend log
-        final EventLogObject el = d1.addObject(new EventLogObject(
+        EventLogObject el = d1.addObject(new EventLogObject(
                 d1, 0, "el", new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED,
                 DateTime.UNSPECIFIED, true, 4));
         assertEquals(0, el.getBuffer().size());
@@ -443,19 +443,19 @@ public class EventLogObjectTest extends AbstractTest {
 
     @Test
     public void startStopTimes() throws Exception {
-        final DateTime now = new DateTime(clock.millis());
-        GregorianCalendar nowgg = now.getGC();
+        var localNow = new DateTime(clock.millis());
+        var nowgg = localNow.getGC();
 
         // Set the start time to 5 minutes from now.
         nowgg.add(Calendar.MINUTE, 5);
-        DateTime startTime = new DateTime(nowgg);
+        var startTime = new DateTime(nowgg);
 
         // Set the stop time to 10 minutes from now.
         nowgg.add(Calendar.MINUTE, 5);
-        DateTime stopTime = new DateTime(nowgg);
+        var stopTime = new DateTime(nowgg);
 
         // Create a triggered trend log
-        final EventLogObject el = d1.addObject(new EventLogObject(
+        EventLogObject el = d1.addObject(new EventLogObject(
                 d1, 0, "el", new LinkedListLogBuffer<>(), true, startTime, stopTime, true, 7));
         assertTrue(el.isLogDisabled());
         assertEquals(0, el.getBuffer().size());
@@ -481,7 +481,7 @@ public class EventLogObjectTest extends AbstractTest {
 
         // Advance the time past the stop time and do some triggers.
         advanceClock(clock, 5, TimeUnit.MINUTES, 1, TimeUnit.MINUTES, null, TestUtils::quiesce);
-        final DateTime now3 = new DateTime(clock.millis());
+        DateTime now3 = new DateTime(clock.millis());
         assertTrue(el.isLogDisabled());
         assertEquals(3, el.getBuffer().size());
         d2.send(rd1, n2).get();
@@ -523,7 +523,7 @@ public class EventLogObjectTest extends AbstractTest {
     @Test
     public void readLogBuffer() throws Exception {
         // Create a triggered trend log
-        final EventLogObject el = d1.addObject(new EventLogObject(
+        EventLogObject el = d1.addObject(new EventLogObject(
                 d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
                 DateTime.UNSPECIFIED, true, 7));
 
@@ -535,7 +535,7 @@ public class EventLogObjectTest extends AbstractTest {
     @Test
     public void purge() throws Exception {
         // Create a triggered trend log
-        final EventLogObject el = d1.addObject(new EventLogObject(
+        EventLogObject el = d1.addObject(new EventLogObject(
                 d1, 0, "el", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
                 DateTime.UNSPECIFIED, true, 7));
 
@@ -546,11 +546,11 @@ public class EventLogObjectTest extends AbstractTest {
 
         // Set the record count to non-zero.
         assertBACnetServiceException(
-                () -> el.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, new UnsignedInteger(1))),
+                () -> el.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, new Unsigned32(1))),
                 ErrorClass.property, ErrorCode.writeAccessDenied);
 
         // Set the record count to zero. There should be one log status record.
-        el.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, UnsignedInteger.ZERO));
+        el.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, Unsigned32.ZERO));
         assertEquals(1, el.getBuffer().size());
         assertEquals(new LogStatus(false, true, false), el.getBuffer().get(0).getLogStatus());
     }

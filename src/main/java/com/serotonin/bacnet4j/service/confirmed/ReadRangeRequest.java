@@ -473,6 +473,10 @@ public class ReadRangeRequest extends ConfirmedRequestService {
         default int compareSequenceNumbero(final Sequenced that) {
             return Long.compare(getSequenceNumber(), that.getSequenceNumber());
         }
+
+        default void setSequenceNumber(long num) {
+            // no op
+        }
     }
 
     @Override

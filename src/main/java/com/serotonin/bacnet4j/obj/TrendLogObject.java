@@ -40,6 +40,7 @@ import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
+import com.serotonin.bacnet4j.obj.logBuffer.ILogRecord;
 import com.serotonin.bacnet4j.obj.logBuffer.LinkedListLogBuffer;
 import com.serotonin.bacnet4j.obj.logBuffer.LogBuffer;
 import com.serotonin.bacnet4j.obj.mixin.PollingDelegate;
@@ -66,6 +67,7 @@ import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.DeviceObjectPropertyReferences;
 import com.serotonin.bacnet4j.util.DeviceObjectPropertyValues;
@@ -82,8 +84,8 @@ public class TrendLogObject extends TrendLogBase {
     static final Logger LOG = LoggerFactory.getLogger(TrendLogObject.class);
 
     // CreateObject constructor
-    public static TrendLogObject create(final LocalDevice localDevice, final int instanceNumber) {
-        return new TrendLogObject(localDevice, instanceNumber, ObjectType.trendLog.toString() + " " + instanceNumber,
+    public static TrendLogObject create(LocalDevice localDevice, int instanceNumber) {
+        return new TrendLogObject(localDevice, instanceNumber, ObjectType.trendLog + " " + instanceNumber,
                 new LinkedListLogBuffer<>(), false, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED,
                 new DeviceObjectPropertyReference(localDevice.getInstanceNumber(), localDevice.getId(),
                         PropertyIdentifier.databaseRevision),
@@ -103,10 +105,10 @@ public class TrendLogObject extends TrendLogBase {
     /**
      * Log buffers are expected to have been initialized to their buffer size.
      */
-    public TrendLogObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final LogBuffer<LogRecord> buffer, final boolean enable, final DateTime startTime, final DateTime stopTime,
-            final DeviceObjectPropertyReference logDeviceObjectProperty, final int logInterval,
-            final boolean stopWhenFull, final int bufferSize) {
+    public TrendLogObject(LocalDevice localDevice, int instanceNumber, String name, LogBuffer<LogRecord> buffer,
+            boolean enable, DateTime startTime, DateTime stopTime,
+            DeviceObjectPropertyReference logDeviceObjectProperty, int logInterval, boolean stopWhenFull,
+            int bufferSize) {
         super(localDevice, ObjectType.trendLog, instanceNumber, name, enable, startTime, stopTime, logInterval,
                 stopWhenFull, bufferSize);
 
@@ -133,7 +135,7 @@ public class TrendLogObject extends TrendLogBase {
         return this;
     }
 
-    public TrendLogObject withCov(final int covResubscriptionIntervalSeconds, final ClientCov clientCovIncrement) {
+    public TrendLogObject withCov(int covResubscriptionIntervalSeconds, ClientCov clientCovIncrement) {
         Objects.requireNonNull(clientCovIncrement);
 
         set(PropertyIdentifier.covResubscriptionInterval, new UnsignedInteger(covResubscriptionIntervalSeconds));
@@ -144,9 +146,15 @@ public class TrendLogObject extends TrendLogBase {
         return this;
     }
 
-    public void doWithBuffer(Consumer<LogBuffer<LogRecord>> consumer) {
+    /**
+     * Allows the consumer to work with the buffer in a thread-safe manner.
+     *
+     * @param consumer the work to do while synchronized.
+     */
+    @SuppressWarnings("unchecked")
+    public <E extends ILogRecord> void doWithBuffer(Consumer<LogBuffer<E>> consumer) {
         synchronized (buffer) {
-            consumer.accept(buffer);
+            consumer.accept((LogBuffer<E>) buffer);
         }
     }
 
@@ -176,13 +184,13 @@ public class TrendLogObject extends TrendLogBase {
             throws BACnetServiceException {
         super.validateProperty(valueSource, value);
         if (PropertyIdentifier.logDeviceObjectProperty.equals(value.getPropertyIdentifier())) {
-            final DeviceObjectPropertyReference logDeviceObjectProperty = value.getValue();
+            DeviceObjectPropertyReference logDeviceObjectProperty = value.getValue();
             if (logDeviceObjectProperty.getPropertyIdentifier().isOneOf(PropertyIdentifier.all,
                     PropertyIdentifier.required, PropertyIdentifier.optional)) {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.parameterOutOfRange);
             }
         } else if (PropertyIdentifier.logInterval.equals(value.getPropertyIdentifier())) {
-            final LoggingType loggingType = get(PropertyIdentifier.loggingType);
+            LoggingType loggingType = get(PropertyIdentifier.loggingType);
             if (!loggingType.isOneOf(LoggingType.polled, LoggingType.cov)) {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
             }
@@ -194,9 +202,9 @@ public class TrendLogObject extends TrendLogBase {
     protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         super.afterWriteProperty(pid, oldValue, newValue);
         if (PropertyIdentifier.logInterval.equals(pid)) {
-            final int oldLogInterval = ((UnsignedInteger) oldValue).intValue();
-            final int logInterval = ((UnsignedInteger) newValue).intValue();
-            final LoggingType loggingType = get(PropertyIdentifier.loggingType);
+            int oldLogInterval = ((UnsignedInteger) oldValue).intValue();
+            int logInterval = ((UnsignedInteger) newValue).intValue();
+            LoggingType loggingType = get(PropertyIdentifier.loggingType);
 
             if (loggingType.equals(LoggingType.polled) && oldLogInterval != 0 && logInterval == 0) {
                 set(PropertyIdentifier.loggingType, LoggingType.cov);
@@ -206,11 +214,11 @@ public class TrendLogObject extends TrendLogBase {
 
             updateLoggingType();
         } else if (PropertyIdentifier.stopWhenFull.equals(pid)) {
-            final Boolean oldStopWhenFull = (Boolean) oldValue;
-            final Boolean stopWhenFull = (Boolean) newValue;
+            Boolean oldStopWhenFull = (Boolean) oldValue;
+            Boolean stopWhenFull = (Boolean) newValue;
             if (!oldStopWhenFull.booleanValue() && stopWhenFull.booleanValue()) {
                 // Turning StopWhenFull on.
-                final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
+                Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
                 if (buffer.size() >= bufferSize.intValue()) {
                     synchronized (buffer) {
                         while (buffer.size() >= bufferSize.intValue())
@@ -221,7 +229,7 @@ public class TrendLogObject extends TrendLogBase {
                 }
             }
         } else if (PropertyIdentifier.bufferSize.equals(pid)) {
-            final UnsignedInteger bufferSize = (UnsignedInteger) newValue;
+            Unsigned32 bufferSize = (Unsigned32) newValue;
             // In case the buffer size was reduced, remove extra entries in the buffer.
             synchronized (buffer) {
                 while (buffer.size() >= bufferSize.intValue())
@@ -229,7 +237,7 @@ public class TrendLogObject extends TrendLogBase {
             }
             updateRecordCount();
         } else if (pid.isOneOf(PropertyIdentifier.covResubscriptionInterval, PropertyIdentifier.clientCovIncrement)) {
-            final LoggingType loggingType = get(PropertyIdentifier.loggingType);
+            LoggingType loggingType = get(PropertyIdentifier.loggingType);
             if (loggingType.equals(LoggingType.cov)) {
                 updateLoggingType();
             }
@@ -241,7 +249,7 @@ public class TrendLogObject extends TrendLogBase {
         synchronized (buffer) {
             buffer.clear();
         }
-        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, UnsignedInteger.ZERO);
+        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, Unsigned32.ZERO);
         addLogRecordImpl(new LogRecord(getNow(), new LogStatus(logDisabled, true, false), null));
     }
 
@@ -253,14 +261,14 @@ public class TrendLogObject extends TrendLogBase {
 
     private void cancelCov() {
         if (covSubscription != null) {
-            final DeviceObjectPropertyReference monitored = get(PropertyIdentifier.logDeviceObjectProperty);
+            DeviceObjectPropertyReference monitored = get(PropertyIdentifier.logDeviceObjectProperty);
 
             // Cancel the subscription
-            final SubscribeCOVPropertyRequest cancellation = new SubscribeCOVPropertyRequest(covSubscription);
+            SubscribeCOVPropertyRequest cancellation = new SubscribeCOVPropertyRequest(covSubscription);
             if (monitored.getDeviceIdentifier().getInstanceNumber() == getLocalDevice().getInstanceNumber()) {
                 try {
                     cancellation.handle(getLocalDevice(), getLocalDevice().getLoopbackAddress());
-                } catch (final BACnetException e) {
+                } catch (BACnetException e) {
                     // Shouldn't really happen, but note it anyway.
                     LOG.error("Failed to unsubscribe locally", e);
                 }
@@ -268,7 +276,7 @@ public class TrendLogObject extends TrendLogBase {
                 RemoteDevice rd;
                 try {
                     rd = getLocalDevice().getRemoteDeviceBlocking(monitored.getDeviceIdentifier().getInstanceNumber());
-                } catch (final BACnetException e) {
+                } catch (BACnetException e) {
                     LOG.warn("Failed to find remote device to which to send unsubscribe", e);
                     updateConfigurationError(true);
                     return;
@@ -288,15 +296,15 @@ public class TrendLogObject extends TrendLogBase {
 
     @Override
     protected void updateMonitoredProperty() {
-        final DeviceObjectPropertyReference monitored = get(PropertyIdentifier.logDeviceObjectProperty);
+        DeviceObjectPropertyReference monitored = get(PropertyIdentifier.logDeviceObjectProperty);
 
         // Add the monitored property.
-        final DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences();
+        DeviceObjectPropertyReferences refs = new DeviceObjectPropertyReferences();
         refs.addIndex(monitored.getDeviceIdentifier().getInstanceNumber(), monitored.getObjectIdentifier(),
                 monitored.getPropertyIdentifier(), monitored.getPropertyArrayIndex());
 
         // Check if status flags exist for the object.
-        final ObjectPropertyTypeDefinition def = ObjectProperties.getObjectPropertyTypeDefinition(
+        ObjectPropertyTypeDefinition def = ObjectProperties.getObjectPropertyTypeDefinition(
                 monitored.getObjectIdentifier().getObjectType(), PropertyIdentifier.statusFlags);
         if (def != null) {
             refs.add(monitored.getDeviceIdentifier().getInstanceNumber(), monitored.getObjectIdentifier(),
@@ -311,58 +319,24 @@ public class TrendLogObject extends TrendLogBase {
      */
     @Override
     protected void updateLoggingType() {
-        final LoggingType loggingType = get(PropertyIdentifier.loggingType);
+        LoggingType loggingType = get(PropertyIdentifier.loggingType);
 
         cancelFuture(pollingFuture);
         cancelCov();
 
         if (loggingType.equals(LoggingType.polled)) {
-            final UnsignedInteger logInterval = get(PropertyIdentifier.logInterval);
-            final Boolean alignIntervals = get(PropertyIdentifier.alignIntervals);
-            final UnsignedInteger intervalOffset = get(PropertyIdentifier.intervalOffset);
-
-            long period = logInterval.longValue() * 10;
-            if (period == 0)
-                // 0 is a poor value. Default to 5 minutes in this case, since it "is a local matter".
-                period = TimeUnit.MINUTES.toMillis(5);
-
-            long initialDelay = 0;
-            int offsetToUse = 0;
-            if (alignIntervals.booleanValue()) {
-                final long now = getLocalDevice().getClock().millis();
-
-                // Find the largest time period to which the period aligns.
-                if (period % TimeUnit.DAYS.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.DAYS.toMillis(1) - now % TimeUnit.DAYS.toMillis(1);
-                } else if (period % TimeUnit.HOURS.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.HOURS.toMillis(1) - now % TimeUnit.HOURS.toMillis(1);
-                } else if (period % TimeUnit.MINUTES.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.MINUTES.toMillis(1) - now % TimeUnit.MINUTES.toMillis(1);
-                } else if (period % TimeUnit.SECONDS.toMillis(1) == 0) {
-                    initialDelay = TimeUnit.SECONDS.toMillis(1) - now % TimeUnit.SECONDS.toMillis(1);
-                }
-
-                offsetToUse = intervalOffset.intValue() * 10;
-                offsetToUse %= (int) period;
-            }
-
-            initialDelay += offsetToUse;
-            initialDelay %= period;
-
-            pollingFuture = getLocalDevice().scheduleAtFixedRate(this::doPoll, initialDelay, period,
-                    TimeUnit.MILLISECONDS);
-
+            updatePolledLoggingType();
         } else if (loggingType.equals(LoggingType.cov)) {
-            final DeviceObjectPropertyReference monitored = get(PropertyIdentifier.logDeviceObjectProperty);
+            DeviceObjectPropertyReference monitored = get(PropertyIdentifier.logDeviceObjectProperty);
             set(PropertyIdentifier.logInterval, UnsignedInteger.ZERO);
 
-            final UnsignedInteger covResubscriptionInterval = get(PropertyIdentifier.covResubscriptionInterval);
-            final int resubscribeSeconds = covResubscriptionInterval.intValue();
-            final ClientCov clientCovIncrement = get(PropertyIdentifier.clientCovIncrement);
+            UnsignedInteger covResubscriptionInterval = get(PropertyIdentifier.covResubscriptionInterval);
+            int resubscribeSeconds = covResubscriptionInterval.intValue();
+            ClientCov clientCovIncrement = get(PropertyIdentifier.clientCovIncrement);
 
             // Create the subscription
-            final ObjectIdentifier deviceIdentifier = monitored.getDeviceIdentifier();
-            final SubscribeCOVPropertyRequest localCovSubscription = new SubscribeCOVPropertyRequest(
+            ObjectIdentifier deviceIdentifier = monitored.getDeviceIdentifier();
+            SubscribeCOVPropertyRequest localCovSubscription = new SubscribeCOVPropertyRequest(
                     new UnsignedInteger(getLocalDevice().getNextProcessId()), monitored.getObjectIdentifier(),
                     Boolean.TRUE, new UnsignedInteger(resubscribeSeconds * 2),
                     new PropertyReference(monitored.getPropertyIdentifier(), monitored.getPropertyArrayIndex()),
@@ -372,10 +346,10 @@ public class TrendLogObject extends TrendLogBase {
             // Create the listener that will catch the COV notifications.
             covListener = new DeviceEventAdapter() {
                 @Override
-                public void covNotificationReceived(final UnsignedInteger subscriberProcessIdentifier,
-                        final ObjectIdentifier initiatingDeviceIdentifier,
-                        final ObjectIdentifier monitoredObjectIdentifier, final UnsignedInteger timeRemaining,
-                        final SequenceOf<PropertyValue> listOfValues) {
+                public void covNotificationReceived(UnsignedInteger subscriberProcessIdentifier,
+                        ObjectIdentifier initiatingDeviceIdentifier,
+                        ObjectIdentifier monitoredObjectIdentifier, UnsignedInteger timeRemaining,
+                        SequenceOf<PropertyValue> listOfValues) {
                     LOG.debug("Received COV notification");
 
                     // Handle the COV subscription. Check if it matches the subscription.
@@ -385,11 +359,11 @@ public class TrendLogObject extends TrendLogBase {
                         // Looks like this is for us.
                         Encodable value = null;
                         StatusFlags statusFlags = null;
-                        for (final PropertyValue pv : listOfValues) {
+                        for (PropertyValue pv : listOfValues) {
                             if (pv.getPropertyIdentifier().equals(monitored.getPropertyIdentifier())) {
                                 value = pv.getValue();
                             } else if (pv.getPropertyIdentifier().equals(PropertyIdentifier.statusFlags)) {
-                                statusFlags = (StatusFlags) pv.getValue();
+                                statusFlags = pv.getValue();
                             }
                         }
 
@@ -412,10 +386,9 @@ public class TrendLogObject extends TrendLogBase {
                     try {
                         covSubscription.handle(getLocalDevice(), getLocalDevice().getLoopbackAddress());
                         LOG.debug("COV subscription successful");
-                    } catch (final BACnetException e) {
+                    } catch (BACnetException e) {
                         LOG.warn("COV subscription failed", e);
                         updateConfigurationError(true);
-                        return;
                     }
                 }, 0, resubscribeSeconds, TimeUnit.SECONDS);
 
@@ -424,7 +397,7 @@ public class TrendLogObject extends TrendLogBase {
                 RemoteDevice rd;
                 try {
                     rd = getLocalDevice().getRemoteDeviceBlocking(monitored.getDeviceIdentifier().getInstanceNumber());
-                } catch (final BACnetException e) {
+                } catch (BACnetException e) {
                     LOG.warn("Failed to find remote device to which to send unsubscribe", e);
                     updateConfigurationError(true);
                     return;
@@ -435,10 +408,9 @@ public class TrendLogObject extends TrendLogBase {
                     try {
                         getLocalDevice().send(rd, covSubscription).get();
                         LOG.debug("COV subscription successful");
-                    } catch (final BACnetException e) {
+                    } catch (BACnetException e) {
                         LOG.warn("COV subscription failed", e);
                         updateConfigurationError(true);
-                        return;
                     }
                 }, 0, resubscribeSeconds, TimeUnit.SECONDS);
             }
@@ -458,15 +430,15 @@ public class TrendLogObject extends TrendLogBase {
             return;
 
         // Get the time before the poll, so that alignment looks right.
-        final DateTime now = getNow();
+        DateTime now = getNow();
 
         // Call the delegate to perform the poll.
-        final DeviceObjectPropertyValues result = pollingDelegate.doPoll();
+        DeviceObjectPropertyValues result = pollingDelegate.doPoll();
 
         // Check the result.
-        final DeviceObjectPropertyReference monitored = get(PropertyIdentifier.logDeviceObjectProperty);
-        final PropertyValues values = result.getPropertyValues(monitored.getDeviceIdentifier().getInstanceNumber());
-        final Encodable value = values.getNoErrorCheck(monitored.getObjectIdentifier(),
+        DeviceObjectPropertyReference monitored = get(PropertyIdentifier.logDeviceObjectProperty);
+        PropertyValues values = result.getPropertyValues(monitored.getDeviceIdentifier().getInstanceNumber());
+        Encodable value = values.getNoErrorCheck(monitored.getObjectIdentifier(),
                 new PropertyReference(monitored.getPropertyIdentifier(), monitored.getPropertyArrayIndex()));
 
         LogRecord rec;
@@ -477,7 +449,7 @@ public class TrendLogObject extends TrendLogBase {
             LOG.warn("Error returned for value from poll: {}", value);
         } else {
             // Get the status flags
-            final Encodable statusFlags = values.getNoErrorCheck(monitored.getObjectIdentifier(),
+            Encodable statusFlags = values.getNoErrorCheck(monitored.getObjectIdentifier(),
                     PropertyIdentifier.statusFlags);
             if (statusFlags instanceof ErrorClassAndCode) {
                 error = true;
@@ -493,7 +465,7 @@ public class TrendLogObject extends TrendLogBase {
         addLogRecord(rec);
     }
 
-    private void updateConfigurationError(final boolean error) {
+    private void updateConfigurationError(boolean error) {
         if (configurationError != error) {
             configurationError = error;
             if (error) {
@@ -504,7 +476,7 @@ public class TrendLogObject extends TrendLogBase {
         }
     }
 
-    private synchronized void addLogRecord(final LogRecord rec) {
+    private synchronized void addLogRecord(LogRecord rec) {
         // Check if logging is allowed.
         if (logDisabled)
             return;
@@ -515,42 +487,12 @@ public class TrendLogObject extends TrendLogBase {
         fullCheck();
     }
 
-    private void addLogRecordImpl(final LogRecord rec) {
-        final UnsignedInteger bufferSize = get(PropertyIdentifier.bufferSize);
-
-        synchronized (buffer) {
-            // Don't add more to the buffer than capacity.
-            if (buffer.size() == bufferSize.intValue()) {
-                // Buffer is already full. Drop the oldest record.
-                buffer.remove();
-            }
-
-            buffer.add(rec);
-        }
-
-        updateRecordCount();
-
-        final UnsignedInteger recordsSinceNotification = get(PropertyIdentifier.recordsSinceNotification);
-        if (recordsSinceNotification != null) {
-            writePropertyInternal(PropertyIdentifier.recordsSinceNotification, recordsSinceNotification.increment32());
-        }
-
-        // The total record count must be written last because it is the monitored property for intrinsic reporting.
-        UnsignedInteger totalRecordCount = get(PropertyIdentifier.totalRecordCount);
-        totalRecordCount = totalRecordCount.increment32();
-        if (totalRecordCount.longValue() == 0)
-            // Value overflowed. As per 12.25.16 set to 1.
-            totalRecordCount = new UnsignedInteger(1);
-        rec.setSequenceNumber(totalRecordCount.longValue());
-        writePropertyInternal(PropertyIdentifier.totalRecordCount, totalRecordCount);
-    }
-
     @Override
     protected void evaluateLogDisabled() {
         // Don't evaluate until instantiation is complete.
         if (buffer != null) {
-            final DateTime now = getNow();
-            final boolean newValue = !allowLogging(now);
+            DateTime now = getNow();
+            boolean newValue = !allowLogging(now);
             if (logDisabled != newValue) {
                 logDisabled = newValue;
                 if (logDisabled)
