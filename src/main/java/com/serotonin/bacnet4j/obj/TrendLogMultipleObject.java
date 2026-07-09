@@ -59,8 +59,6 @@ import com.serotonin.bacnet4j.type.enumerated.NotifyType;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
-import com.serotonin.bacnet4j.type.primitive.Boolean;
-import com.serotonin.bacnet4j.type.primitive.Unsigned32;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.DeviceObjectPropertyReferences;
 import com.serotonin.bacnet4j.util.DeviceObjectPropertyValues;
@@ -173,49 +171,12 @@ public class TrendLogMultipleObject extends TrendLogBase {
 
         if (PropertyIdentifier.logInterval.equals(pid)) {
             updateLoggingType();
-        } else if (PropertyIdentifier.stopWhenFull.equals(pid)) {
-            Boolean oldStopWhenFull = (Boolean) oldValue;
-            Boolean stopWhenFull = (Boolean) newValue;
-            if (!oldStopWhenFull.booleanValue() && stopWhenFull.booleanValue()) {
-                // Turning StopWhenFull on. If the buffer is full — either by Record_Count reaching Buffer_Size,
-                // or (per bi-3) Buffer_Size holds the unknown-size sentinel and no space is available — discard
-                // the oldest record, set Enable to FALSE, record the event.
-                Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
-                if (isBufferFull(bufferSize)) {
-                    synchronized (buffer) {
-                        if (bufferSize.longValue() == BUFFER_SIZE_UNKNOWN) {
-                            // Sentinel mode: fullness is signaled by the buffer, not by a fixed count. A single
-                            // discard is the spec-mandated action.
-                            buffer.remove();
-                        } else {
-                            while (buffer.size() >= bufferSize.intValue())
-                                buffer.remove();
-                        }
-                    }
-                    updateRecordCount();
-                    writePropertyInternal(PropertyIdentifier.enable, Boolean.FALSE);
-                }
-            }
-        } else if (PropertyIdentifier.bufferSize.equals(pid)) {
-            Unsigned32 bufferSize = (Unsigned32) newValue;
-            // In case the buffer size was reduced, remove extra entries in the buffer. Skip when the value is the
-            // reserved "unknown size" sentinel — that means there is no fixed cap.
-            if (bufferSize.longValue() != BUFFER_SIZE_UNKNOWN) {
-                synchronized (buffer) {
-                    while (buffer.size() >= bufferSize.intValue())
-                        buffer.remove();
-                }
-            }
-            updateRecordCount();
         }
     }
 
     @Override
     protected void purge() {
-        synchronized (buffer) {
-            buffer.clear();
-        }
-        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, Unsigned32.ZERO);
+        super.purge();
         addLogRecordImpl(new LogMultipleRecord(getNow(), new LogData(new LogStatus(logDisabled, true, false))));
     }
 
@@ -291,29 +252,12 @@ public class TrendLogMultipleObject extends TrendLogBase {
         addLogRecord(rec);
     }
 
-    private synchronized void addLogRecord(LogMultipleRecord rec) {
-        // Check if logging is allowed.
-        if (logDisabled)
-            return;
-
-        // Add the new record.
-        addLogRecordImpl(rec);
-
-        fullCheck();
-    }
-
     @Override
     protected void evaluateLogDisabled() {
         // Don't evaluate until instantiation is complete.
         if (buffer != null) {
-            DateTime now = getNow();
-            boolean newValue = !allowLogging(now);
-            if (logDisabled != newValue) {
-                logDisabled = newValue;
-                if (logDisabled)
-                    // Only write a log status if the log is disabled.
-                    addLogRecordImpl(new LogMultipleRecord(now, new LogData(new LogStatus(logDisabled, false, false))));
-            }
+            updateLogDisabled(now ->
+                    addLogRecordImpl(new LogMultipleRecord(now, new LogData(new LogStatus(true, false, false)))));
         }
     }
 }

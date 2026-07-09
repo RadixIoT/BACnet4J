@@ -206,8 +206,6 @@ public abstract class LogBase extends BACnetObject {
      */
     protected abstract void evaluateLogDisabled();
 
-    protected abstract void purge();
-
     @Override
     protected void beforeReadProperty(PropertyIdentifier pid) throws BACnetServiceException {
         if (PropertyIdentifier.logBuffer.equals(pid)) {
@@ -257,6 +255,40 @@ public abstract class LogBase extends BACnetObject {
             Unsigned32 recordCount = (Unsigned32) newValue;
             if (recordCount.intValue() == 0)
                 purge();
+        } else if (PropertyIdentifier.stopWhenFull.equals(pid)) {
+            Boolean oldStopWhenFull = (Boolean) oldValue;
+            Boolean stopWhenFull = (Boolean) newValue;
+            if (!oldStopWhenFull.booleanValue() && stopWhenFull.booleanValue()) {
+                // Turning StopWhenFull on. If the buffer is full — either by Record_Count reaching Buffer_Size,
+                // or (per bi-3) Buffer_Size holds the unknown-size sentinel and no space is available — discard
+                // the oldest record, set Enable to FALSE, record the event.
+                Unsigned32 bufferSize = get(PropertyIdentifier.bufferSize);
+                if (isBufferFull(bufferSize)) {
+                    doWithBuffer(buffer -> {
+                        if (bufferSize.longValue() == BUFFER_SIZE_UNKNOWN) {
+                            // Sentinel mode: fullness is signaled by the buffer, not by a fixed count. A single
+                            // discard is the spec-mandated action.
+                            buffer.remove();
+                        } else {
+                            while (buffer.size() >= bufferSize.intValue())
+                                buffer.remove();
+                        }
+                    });
+                    updateRecordCount();
+                    writePropertyInternal(PropertyIdentifier.enable, Boolean.FALSE);
+                }
+            }
+        } else if (PropertyIdentifier.bufferSize.equals(pid)) {
+            Unsigned32 bufferSize = (Unsigned32) newValue;
+            // In case the buffer size was reduced, remove extra entries in the buffer. Skip when the value is the
+            // reserved "unknown size" sentinel — that means there is no fixed cap.
+            if (bufferSize.longValue() != BUFFER_SIZE_UNKNOWN) {
+                doWithBuffer(buffer -> {
+                    while (buffer.size() >= bufferSize.intValue())
+                        buffer.remove();
+                });
+            }
+            updateRecordCount();
         }
     }
 
@@ -353,5 +385,33 @@ public abstract class LogBase extends BACnetObject {
             totalRecordCount = new Unsigned32(1);
         rec.setSequenceNumber(totalRecordCount.longValue());
         writePropertyInternal(PropertyIdentifier.totalRecordCount, totalRecordCount);
+    }
+
+    protected synchronized void addLogRecord(ILogRecord rec) {
+        // Check if logging is allowed.
+        if (logDisabled)
+            return;
+
+        // Add the new record.
+        addLogRecordImpl(rec);
+
+        fullCheck();
+    }
+
+    protected void purge() {
+        doWithBuffer(LogBuffer::clear);
+        writePropertyInternal(PropertyIdentifier.recordsSinceNotification, Unsigned32.ZERO);
+    }
+
+    protected void updateLogDisabled(Consumer<DateTime> writeLogStatus) {
+        DateTime now = getNow();
+        boolean newValue = !allowLogging(now);
+        if (logDisabled != newValue) {
+            logDisabled = newValue;
+            if (logDisabled) {
+                // Only write a log status if the log is disabled.
+                writeLogStatus.accept(now);
+            }
+        }
     }
 }
