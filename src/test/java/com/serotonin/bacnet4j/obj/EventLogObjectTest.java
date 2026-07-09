@@ -579,6 +579,7 @@ public class EventLogObjectTest extends AbstractTest {
 
     // ---------- bi-3: extremely large logs — Buffer_Size = 0xFFFFFFFF sentinel ----------
 
+
     private static class TestExhaustibleLogBuffer extends LinkedListLogBuffer<EventLogRecord> {
         boolean spaceExhausted;
 
