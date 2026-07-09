@@ -888,46 +888,36 @@ public class DefaultTransport implements Transport, Runnable {
         unackedMessages.add(key, ctx);
     }
 
-    private void incomingConfirmedRequest(final ConfirmedRequest confAPDU, final Address address,
-            final OctetString linkService, final byte invokeId) {
+    private void incomingConfirmedRequest(ConfirmedRequest confAPDU, Address address,
+            OctetString linkService, byte invokeId) {
         try {
             try {
                 confAPDU.parseServiceData();
-                final AcknowledgementService ackService = handleConfirmedRequest(address, invokeId,
+                AcknowledgementService ackService = handleConfirmedRequest(address, invokeId,
                         confAPDU.getServiceRequest());
 
-                // 16.1.2: Check if communication is currently disabled. If so, only certain requests are responded.
-                boolean allowResponse = true;
-                if (EnableDisable.disable.equals(localDevice.getCommunicationControlState())) {
-                    // Communication is disabled. Check if the response should be allowed anyway. This includes at
-                    // least communication control and reinitialize device.
-                    if (!confAPDU.getServiceRequest().isCommunicationControlOverride()) {
-                        allowResponse = false;
-                    }
-                }
-
-                if (allowResponse) {
-                    // Send the response.
-                    sendConfirmedResponse(address, linkService, confAPDU, ackService);
-                } else {
-                    LOG.info("Response suppressed because communication has been disabled.");
-                }
-            } catch (final BACnetErrorException e) {
+                // Per addendum 135-2016bi-2 (Protocol Revision 20): DISABLE_INITIATION means the
+                // device stops initiating BACnet messages but continues responding to incoming
+                // requests normally. The old DISABLE option (which suppressed responses) is
+                // deprecated and rejected at the service handler, so no response suppression is
+                // required here.
+                sendConfirmedResponse(address, linkService, confAPDU, ackService);
+            } catch (BACnetErrorException e) {
                 network.sendAPDU(address, linkService,
                         new com.serotonin.bacnet4j.apdu.Error(invokeId, e.getBacnetError()), false);
-            } catch (final BACnetRejectException e) {
+            } catch (BACnetRejectException e) {
                 network.sendAPDU(address, linkService, new Reject(invokeId, e.getRejectReason()), false);
-            } catch (final BACnetAbortException e) {
+            } catch (BACnetAbortException e) {
                 network.sendAPDU(address, linkService, new Abort(true, invokeId, e.getAbortReason()), false);
-            } catch (final BACnetException e) {
+            } catch (BACnetException e) {
                 LOG.warn("Error handling incoming request", e);
-                final com.serotonin.bacnet4j.apdu.Error error = new com.serotonin.bacnet4j.apdu.Error(
+                com.serotonin.bacnet4j.apdu.Error error = new com.serotonin.bacnet4j.apdu.Error(
                         confAPDU.getInvokeId(), 127,
                         new ErrorClassAndCode(ErrorClass.services, ErrorCode.operationalProblem));
                 network.sendAPDU(address, linkService, error, false);
                 localDevice.getExceptionDispatcher().fireReceivedException(e);
             }
-        } catch (final BACnetException e) {
+        } catch (BACnetException e) {
             localDevice.getExceptionDispatcher().fireReceivedException(e);
         }
     }

@@ -41,18 +41,18 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.Enumerated;
-import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
     public static final byte TYPE_ID = 17;
 
-    private final UnsignedInteger timeDuration;
+    private final Unsigned16 timeDuration;
     private final EnableDisable enableDisable;
     private final CharacterString password;
 
-    public DeviceCommunicationControlRequest(final UnsignedInteger timeDuration, final EnableDisable enableDisable,
-            final CharacterString password) {
+    public DeviceCommunicationControlRequest(Unsigned16 timeDuration, EnableDisable enableDisable,
+            CharacterString password) {
         super();
         this.timeDuration = timeDuration;
         this.enableDisable = enableDisable;
@@ -65,13 +65,20 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public AcknowledgementService handle(final LocalDevice localDevice, final Address from) throws BACnetException {
+    public AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException {
         String givenPassword = null;
         if (password != null)
             givenPassword = password.getValue();
 
         if (!Objects.equals(givenPassword, localDevice.getPassword())) {
             throw new BACnetErrorException(getChoiceId(), ErrorClass.security, ErrorCode.passwordFailure);
+        }
+
+        // Per addendum 135-2016bi-2: 'disable' was deprecated in Protocol Revision 20. A valid
+        // request carrying the deprecated value shall be ignored and an Error-PDU with
+        // ErrorClass=SERVICES / ErrorCode=SERVICE_REQUEST_DENIED shall be returned.
+        if (EnableDisable.disable.equals(enableDisable)) {
+            throw new BACnetErrorException(getChoiceId(), ErrorClass.services, ErrorCode.serviceRequestDenied);
         }
 
         int minutes = 0;
@@ -83,14 +90,14 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         writeOptional(queue, timeDuration, 0);
         write(queue, enableDisable, 1);
         writeOptional(queue, password, 2);
     }
 
-    DeviceCommunicationControlRequest(final ByteQueue queue) throws BACnetException {
-        timeDuration = readOptional(queue, UnsignedInteger.class, 0);
+    DeviceCommunicationControlRequest(ByteQueue queue) throws BACnetException {
+        timeDuration = readOptional(queue, Unsigned16.class, 0);
         enableDisable = read(queue, EnableDisable.class, 1);
         password = readOptional(queue, CharacterString.class, 2);
     }
@@ -102,7 +109,7 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
 
     public static class EnableDisable extends Enumerated {
         public static final EnableDisable enable = new EnableDisable(0);
-        public static final EnableDisable disable = new EnableDisable(1);
+        public static final EnableDisable disable = new EnableDisable(1); // Deprecated
         public static final EnableDisable disableInitiation = new EnableDisable(2);
 
         private static final Map<Integer, Enumerated> idMap = new HashMap<>();
@@ -113,18 +120,18 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
             Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
         }
 
-        public static EnableDisable forId(final int id) {
+        public static EnableDisable forId(int id) {
             EnableDisable e = (EnableDisable) idMap.get(id);
             if (e == null)
                 e = new EnableDisable(id);
             return e;
         }
 
-        public static String nameForId(final int id) {
+        public static String nameForId(int id) {
             return prettyMap.get(id);
         }
 
-        public static EnableDisable forName(final String name) {
+        public static EnableDisable forName(String name) {
             return (EnableDisable) Enumerated.forName(nameMap, name);
         }
 
@@ -132,11 +139,11 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
             return idMap.size();
         }
 
-        private EnableDisable(final int value) {
+        private EnableDisable(int value) {
             super(value);
         }
 
-        public EnableDisable(final ByteQueue queue) throws BACnetErrorException {
+        public EnableDisable(ByteQueue queue) throws BACnetErrorException {
             super(queue);
         }
 
@@ -147,39 +154,16 @@ public class DeviceCommunicationControlRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (enableDisable == null ? 0 : enableDisable.hashCode());
-        result = PRIME * result + (password == null ? 0 : password.hashCode());
-        result = PRIME * result + (timeDuration == null ? 0 : timeDuration.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        DeviceCommunicationControlRequest that = (DeviceCommunicationControlRequest) o;
+        return Objects.equals(timeDuration, that.timeDuration) && Objects.equals(enableDisable,
+                that.enableDisable) && Objects.equals(password, that.password);
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final DeviceCommunicationControlRequest other = (DeviceCommunicationControlRequest) obj;
-        if (enableDisable == null) {
-            if (other.enableDisable != null)
-                return false;
-        } else if (!enableDisable.equals(other.enableDisable))
-            return false;
-        if (password == null) {
-            if (other.password != null)
-                return false;
-        } else if (!password.equals(other.password))
-            return false;
-        if (timeDuration == null) {
-            if (other.timeDuration != null)
-                return false;
-        } else if (!timeDuration.equals(other.timeDuration))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(timeDuration, enableDisable, password);
     }
 }
