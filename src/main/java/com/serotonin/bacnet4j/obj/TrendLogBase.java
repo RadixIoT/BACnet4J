@@ -43,10 +43,6 @@ import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public abstract class TrendLogBase extends LogBase {
-    protected boolean logDisabled;
-    protected ScheduledFuture<?> startTimeFuture;
-    protected ScheduledFuture<?> stopTimeFuture;
-
     protected PollingDelegate pollingDelegate;
     protected ScheduledFuture<?> pollingFuture;
 
