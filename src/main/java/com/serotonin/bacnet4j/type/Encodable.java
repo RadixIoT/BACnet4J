@@ -53,6 +53,7 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.Primitive;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -456,6 +457,24 @@ public abstract class Encodable {
             popEnd(queue, contextId);
             return n;
         }
+
+        // Some non-conformant devices (observed on LG Smart 5) encode "no value" for a
+        // scalar property as an opening context tag immediately followed by its matching
+        // closing tag, with nothing between them. ASHRAE 135 requires propertyAccessError
+        // [5] in this situation, but rather than abort the surrounding RPM response we
+        // consume the empty value and substitute Error so the caller can keep parsing the
+        // remaining results. This check runs last, after the branches above, so it never
+        // overrides their own correct handling of an empty `[n][/n]` -- an empty collection
+        // already decodes to an empty SequenceOf via readSequenceOf, and a commandable
+        // property's Null already flows through the AmbiguousValue branch above.
+        if (isEmptyConstructedValue(queue, contextId)) {
+            LOG.warn("Non-conformant empty property value for object={} property={}; decoding as not initialized",
+                    objectType, propertyIdentifier);
+            popStart(queue, contextId);
+            popEnd(queue, contextId);
+            return new ErrorClassAndCode(ErrorClass.property, ErrorCode.valueNotInitialized);
+        }
+
         return readWrapped(queue, def.getClazz(), contextId);
     }
 
@@ -475,6 +494,37 @@ public abstract class Encodable {
         // The byte after the opening context tag encodes the value tag. NULL is application tag 0, primitive,
         // length 0 — a single 0x00 byte. The following byte should be the closing context tag.
         return (queue.peek(startTagLength) & 0xff) == 0x00;
+    }
+
+    /**
+     * Return true if the queue begins with an opening context tag for contextId that is
+     * immediately followed by its matching closing tag -- an empty constructed value,
+     * such as `[4][/4]`. This is a non-conformant encoding emitted by some devices to
+     * indicate "no value", and should be handled gracefully rather than failing the
+     * enclosing response.
+     */
+    private static boolean isEmptyConstructedValue(ByteQueue queue, int contextId) {
+        if (readStart(queue) != contextId)
+            return false;
+
+        int startTagLength = contextId > 14 ? 2 : 1;
+        if (queue.size() <= startTagLength) {
+            return false;
+        }
+
+        int b = toInt(queue.peek(startTagLength));
+        if ((b & 0xf) != 0xf)
+            return false;
+
+        int endTagNumber;
+        if ((b & 0xf0) == 0xf0) {
+            if (queue.size() <= startTagLength + 1)
+                return false;
+            endTagNumber = toInt(queue.peek(startTagLength + 1));
+        } else {
+            endTagNumber = (b & 0xff) >> 4;
+        }
+        return endTagNumber == contextId;
     }
 
     protected static Encodable readOptionalANY(ByteQueue queue, ObjectType objectType,
