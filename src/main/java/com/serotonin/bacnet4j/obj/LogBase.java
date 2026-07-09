@@ -103,9 +103,8 @@ public abstract class LogBase extends BACnetObject {
      */
     protected boolean hasSpaceForAnotherRecord() {
         AtomicBoolean hasSpaceForAnotherRecord = new AtomicBoolean(false);
-        doWithBuffer(buffer -> {
-            hasSpaceForAnotherRecord.set(buffer.hasSpaceForAnotherRecord());
-        });
+        doWithBuffer(buffer ->
+                hasSpaceForAnotherRecord.set(buffer.hasSpaceForAnotherRecord()));
         return hasSpaceForAnotherRecord.get();
     }
 

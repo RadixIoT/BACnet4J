@@ -138,21 +138,6 @@ public class EventLogObject extends LogBase {
         getLocalDevice().getEventHandler().removeListener(eventListener);
     }
 
-    //    @Override
-    //    protected void evaluateLogDisabled() {
-    //        // Don't evaluate until instantiation is complete.
-    //        if (buffer != null) {
-    //            DateTime now = getNow();
-    //            boolean newValue = !allowLogging(now);
-    //            if (logDisabled != newValue) {
-    //                logDisabled = newValue;
-    //                if (logDisabled)
-    //                    // Only write a log status if the log is disabled.
-    //                    addLogRecordImpl(new EventLogRecord(now, new LogStatus(logDisabled, false, false)));
-    //            }
-    //        }
-    //    }
-
     @Override
     protected void evaluateLogDisabled() {
         // Don't evaluate until instantiation is complete.

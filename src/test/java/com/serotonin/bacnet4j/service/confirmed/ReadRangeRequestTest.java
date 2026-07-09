@@ -86,7 +86,7 @@ public class ReadRangeRequestTest {
     private final TestNetworkMap map = new TestNetworkMap();
     final PropertyIdentifier pid = PropertyIdentifier.forId(9999);
     private final LocalDevice d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
-    final DateTime now = new DateTime(d1);
+    final DateTime localNow = new DateTime(d1);
 
     @Before
     public void before() throws Exception {
@@ -250,7 +250,7 @@ public class ReadRangeRequestTest {
     public void sequencePositiveCount() throws BACnetException {
         SequenceOf<LogRecord> data = new SequenceOf<>(1000);
         for (int i = 0; i < 1000; i++)
-            data.add(createLogRecord(now, 2001 + i));
+            data.add(createLogRecord(localNow, 2001 + i));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
         ReadRangeAck ack =
@@ -259,7 +259,7 @@ public class ReadRangeRequestTest {
 
         data = new SequenceOf<>(200);
         for (int i = 0; i < 200; i++)
-            data.add(createLogRecord(now, i + 2800));
+            data.add(createLogRecord(localNow, i + 2800));
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
         assertEquals(pid, ack.getPropertyIdentifier());
@@ -277,7 +277,7 @@ public class ReadRangeRequestTest {
     public void sequenceNegativeCount() throws BACnetException {
         SequenceOf<LogRecord> data = new SequenceOf<>(1000);
         for (int i = 0; i < 1000; i++)
-            data.add(createLogRecord(now, 2001 + i));
+            data.add(createLogRecord(localNow, 2001 + i));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
         ReadRangeAck ack =
@@ -286,7 +286,7 @@ public class ReadRangeRequestTest {
 
         data = new SequenceOf<>(200);
         for (int i = 0; i < 200; i++)
-            data.add(createLogRecord(now, i + 2801));
+            data.add(createLogRecord(localNow, i + 2801));
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
         assertEquals(pid, ack.getPropertyIdentifier());
@@ -590,7 +590,7 @@ public class ReadRangeRequestTest {
     public void sequenceOutOfRange() throws BACnetException {
         SequenceOf<LogRecord> data = new SequenceOf<>(1000);
         for (int i = 0; i < 1000; i++)
-            data.add(createLogRecord(now, 2001 + i));
+            data.add(createLogRecord(localNow, 2001 + i));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
         // Too low
