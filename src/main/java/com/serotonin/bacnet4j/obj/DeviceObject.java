@@ -188,7 +188,6 @@ public class DeviceObject extends BACnetObject {
         //        objectTypesSupported.set(ObjectType.accessUser, true);
         //        objectTypesSupported.set(ObjectType.accessZone, true);
         //        objectTypesSupported.set(ObjectType.credentialDataInput, true);
-        //        objectTypesSupported.set(ObjectType.networkSecurity, true);
         //        objectTypesSupported.set(ObjectType.bitstringValue, true);
         //        objectTypesSupported.set(ObjectType.characterstringValue, true);
         //        objectTypesSupported.set(ObjectType.datePatternValue, true);

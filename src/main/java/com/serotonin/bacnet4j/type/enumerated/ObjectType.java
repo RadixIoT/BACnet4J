@@ -110,18 +110,18 @@ public class ObjectType extends Enumerated {
         Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
     }
 
-    public static ObjectType forId(final int id) {
+    public static ObjectType forId(int id) {
         ObjectType e = (ObjectType) idMap.get(id);
         if (e == null)
             e = new ObjectType(id);
         return e;
     }
 
-    public static String nameForId(final int id) {
+    public static String nameForId(int id) {
         return prettyMap.get(id);
     }
 
-    public static ObjectType forName(final String name) {
+    public static ObjectType forName(String name) {
         return (ObjectType) Enumerated.forName(nameMap, name);
     }
 
@@ -129,11 +129,11 @@ public class ObjectType extends Enumerated {
         return idMap.size();
     }
 
-    private ObjectType(final int value) {
+    private ObjectType(int value) {
         super(value);
     }
 
-    public ObjectType(final ByteQueue queue) throws BACnetErrorException {
+    public ObjectType(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
 
@@ -159,130 +159,4 @@ public class ObjectType extends Enumerated {
     public String toString() {
         return super.toString(prettyMap);
     }
-
-    //    @Override
-    //    public String toString() {
-    //        final int type = intValue();
-    //        if (type == analogInput.intValue())
-    //            return "Analog Input";
-    //        if (type == analogOutput.intValue())
-    //            return "Analog Output";
-    //        if (type == analogValue.intValue())
-    //            return "Analog Value";
-    //        if (type == binaryInput.intValue())
-    //            return "Binary Input";
-    //        if (type == binaryOutput.intValue())
-    //            return "Binary Output";
-    //        if (type == binaryValue.intValue())
-    //            return "Binary Value";
-    //        if (type == calendar.intValue())
-    //            return "Calendar";
-    //        if (type == command.intValue())
-    //            return "Command";
-    //        if (type == device.intValue())
-    //            return "Device";
-    //        if (type == eventEnrollment.intValue())
-    //            return "Event Enrollment";
-    //        if (type == file.intValue())
-    //            return "File";
-    //        if (type == group.intValue())
-    //            return "Group";
-    //        if (type == loop.intValue())
-    //            return "Loop";
-    //        if (type == multiStateInput.intValue())
-    //            return "Multi-state Input";
-    //        if (type == multiStateOutput.intValue())
-    //            return "Multi-state Output";
-    //        if (type == notificationClass.intValue())
-    //            return "Notification Class";
-    //        if (type == program.intValue())
-    //            return "Program";
-    //        if (type == schedule.intValue())
-    //            return "Schedule";
-    //        if (type == averaging.intValue())
-    //            return "Averaging";
-    //        if (type == multiStateValue.intValue())
-    //            return "Multi-state Value";
-    //        if (type == trendLog.intValue())
-    //            return "Trend Log";
-    //        if (type == lifeSafetyPoint.intValue())
-    //            return "Life Safety Point";
-    //        if (type == lifeSafetyZone.intValue())
-    //            return "Life Safety Zone";
-    //        if (type == accumulator.intValue())
-    //            return "Accumulator";
-    //        if (type == pulseConverter.intValue())
-    //            return "Pulse Converter";
-    //        if (type == eventLog.intValue())
-    //            return "Event Log";
-    //        if (type == globalGroup.intValue())
-    //            return "Global Group";
-    //        if (type == trendLogMultiple.intValue())
-    //            return "Trend Log Multiple";
-    //        if (type == loadControl.intValue())
-    //            return "Load Control";
-    //        if (type == structuredView.intValue())
-    //            return "Structured View";
-    //        if (type == accessDoor.intValue())
-    //            return "Access Door";
-    //        if (type == timer.intValue())
-    //            return "Timer";
-    //        if (type == accessCredential.intValue())
-    //            return "Access Credential";
-    //        if (type == accessPoint.intValue())
-    //            return "Access Point";
-    //        if (type == accessRights.intValue())
-    //            return "Access Rights";
-    //        if (type == accessUser.intValue())
-    //            return "Access User";
-    //        if (type == accessZone.intValue())
-    //            return "Access Zone";
-    //        if (type == credentialDataInput.intValue())
-    //            return "Credential Data Input";
-    //        if (type == networkSecurity.intValue())
-    //            return "Network Security";
-    //        if (type == bitstringValue.intValue())
-    //            return "Bitstring Value";
-    //        if (type == characterstringValue.intValue())
-    //            return "Characterstring Value";
-    //        if (type == datePatternValue.intValue())
-    //            return "Date Pattern Value";
-    //        if (type == dateValue.intValue())
-    //            return "Date Value";
-    //        if (type == datetimePatternValue.intValue())
-    //            return "Datetime Pattern Value";
-    //        if (type == datetimeValue.intValue())
-    //            return "Datetime Value";
-    //        if (type == integerValue.intValue())
-    //            return "Integer Value";
-    //        if (type == largeAnalogValue.intValue())
-    //            return "Large Analog Value";
-    //        if (type == octetstringValue.intValue())
-    //            return "Octetstring Value";
-    //        if (type == positiveIntegerValue.intValue())
-    //            return "Positive Integer Value";
-    //        if (type == timePatternValue.intValue())
-    //            return "Time Pattern Value";
-    //        if (type == timeValue.intValue())
-    //            return "Time Value";
-    //        if (type == notificationForwarder.intValue())
-    //            return "Notification Forwarder";
-    //        if (type == alertEnrollment.intValue())
-    //            return "Alert Enrollment";
-    //        if (type == channel.intValue())
-    //            return "Channel";
-    //        if (type == lightingOutput.intValue())
-    //            return "Lighting Output";
-    //        if (type == binaryLightingOutput.intValue())
-    //            return "Binary Lighting Output";
-    //        if (type == networkPort.intValue())
-    //            return "Network Port";
-    //        if (type == elevatorGroup.intValue())
-    //            return "Elevator Group";
-    //        if (type == escalator.intValue())
-    //            return "Escalator";
-    //        if (type == lift.intValue())
-    //            return "Lift";
-    //        return "Vendor Specific (" + type + ")";
-    //    }
 }
