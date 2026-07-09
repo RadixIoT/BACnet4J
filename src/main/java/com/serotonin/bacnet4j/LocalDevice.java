@@ -1131,10 +1131,17 @@ public class LocalDevice implements AutoCloseable {
     private ScheduledFuture<?> communicationControlFuture;
 
     public void setCommunicationControl(EnableDisable enableDisable, int minutes) {
+        // Per addendum 135-2016bi-2: 'disable' was deprecated in Protocol Revision 20. Callers
+        // must migrate to 'disableInitiation'. Requests carrying 'disable' are rejected at the
+        // service handler; this guard protects the state field from any other caller.
+        if (EnableDisable.disable.equals(enableDisable)) {
+            throw new IllegalArgumentException(
+                    "EnableDisable.disable is deprecated (bi-2); use EnableDisable.disableInitiation");
+        }
         synchronized (communicationControlMonitor) {
             communicationControlState = enableDisable;
             cancelCommunicationControlFuture();
-            if (enableDisable.isOneOf(EnableDisable.disableInitiation, EnableDisable.disable)) {
+            if (EnableDisable.disableInitiation.equals(enableDisable)) {
                 if (minutes > 0) {
                     communicationControlFuture = schedule(() -> {
                         synchronized (communicationControlMonitor) {
