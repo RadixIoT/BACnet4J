@@ -572,7 +572,7 @@ public class EventLogObjectTest extends AbstractTest {
         assertEquals(new LogStatus(true, false, false), el.getBuffer().get(0).getLogStatus());
 
         // Purge while Enable=FALSE. Per bu-5, the BUFFER_PURGED record shall still appear.
-        el.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, UnsignedInteger.ZERO));
+        el.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, Unsigned32.ZERO));
         assertEquals(1, el.getBuffer().size());
         assertEquals(new LogStatus(true, true, false), el.getBuffer().get(0).getLogStatus());
     }

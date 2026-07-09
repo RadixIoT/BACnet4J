@@ -797,7 +797,7 @@ public class TrendLogObjectTest extends AbstractTest {
         assertEquals(new LogRecord(now, new LogStatus(true, false, false), null), tl.getRecord(0));
 
         // Purge while Enable=FALSE. Per bu-5, the BUFFER_PURGED record shall still appear.
-        tl.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, UnsignedInteger.ZERO));
+        tl.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, Unsigned32.ZERO));
         assertEquals(1, tl.getRecordCount());
         assertEquals(new LogRecord(now, new LogStatus(true, true, false), null), tl.getRecord(0));
     }
