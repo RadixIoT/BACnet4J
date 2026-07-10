@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import com.serotonin.bacnet4j.apdu.APDU;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.transport.Transport;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.constructed.NetworkSourceAddress;
@@ -83,7 +84,11 @@ public abstract class Network {
         return null;
     }
 
-    public void initialize(Transport transport) throws Exception {
+    /**
+     * @param transport the transport to use
+     * @throws BACnetException subclasses may throw
+     */
+    public void initialize(Transport transport) throws BACnetException {
         this.transport = transport;
     }
 
@@ -112,12 +117,12 @@ public abstract class Network {
             npci = new NPCI(getSourceAddress(apdu));
         else if (isThisNetwork(recipient)) {
             if (router != null)
-                throw new RuntimeException(
+                throw new BACnetRuntimeException(
                         "Invalid arguments: router address provided for local recipient " + recipient);
             npci = new NPCI(null, getSourceAddress(apdu), apdu.expectsReply());
         } else {
             if (router == null)
-                throw new RuntimeException(
+                throw new BACnetRuntimeException(
                         "Invalid arguments: router address not provided for remote recipient " + recipient);
             npci = new NPCI(recipient, getSourceAddress(apdu), apdu.expectsReply());
         }
@@ -141,11 +146,12 @@ public abstract class Network {
             npci = new NPCI(null, null, expectsReply, messageType, 0);
         else if (isThisNetwork(recipient)) {
             if (router != null)
-                throw new RuntimeException("Invalid arguments: router address provided for a local recipient");
+                throw new BACnetRuntimeException("Invalid arguments: router address provided for a local recipient");
             npci = new NPCI(null, null, expectsReply, messageType, 0);
         } else {
             if (router == null)
-                throw new RuntimeException("Invalid arguments: router address not provided for a remote recipient");
+                throw new BACnetRuntimeException(
+                        "Invalid arguments: router address not provided for a remote recipient");
             npci = new NPCI(recipient, null, expectsReply, messageType, 0);
         }
         npci.write(npdu);
@@ -157,7 +163,7 @@ public abstract class Network {
         sendNPDU(recipient, router, npdu, broadcast, expectsReply);
     }
 
-    abstract public void sendNPDU(Address recipient, OctetString router, ByteQueue npdu, boolean broadcast,
+    public abstract void sendNPDU(Address recipient, OctetString router, ByteQueue npdu, boolean broadcast,
             boolean expectsReply) throws BACnetException;
 
     protected OctetString getDestination(Address recipient, OctetString link) {
@@ -182,12 +188,10 @@ public abstract class Network {
             }
         } catch (Exception e) {
             transport.getLocalDevice().getExceptionDispatcher().fireReceivedException(e);
-        } catch (Throwable t) {
-            transport.getLocalDevice().getExceptionDispatcher().fireReceivedThrowable(t);
         }
     }
 
-    abstract protected NPDU handleIncomingDataImpl(ByteQueue queue, OctetString linkService) throws Exception;
+    protected abstract NPDU handleIncomingDataImpl(ByteQueue queue, OctetString linkService) throws BACnetException;
 
     public NPDU parseNpduData(ByteQueue queue, OctetString linkService) throws MessageValidationException {
         // Network layer protocol control information. See 6.2.2
@@ -233,27 +237,5 @@ public abstract class Network {
 
         // APDU message
         return new NPDU(from, ls, queue);
-    }
-
-    @Override
-    public int hashCode() {
-        int prime = 31;
-        int result = 1;
-        result = prime * result + localNetworkNumber;
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        Network other = (Network) obj;
-        if (localNetworkNumber != other.localNetworkNumber)
-            return false;
-        return true;
     }
 }

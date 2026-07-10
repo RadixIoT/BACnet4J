@@ -48,6 +48,7 @@ import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class DiscoveryUtilsTest {
@@ -66,7 +67,7 @@ public class DiscoveryUtilsTest {
         remoteDevice.setDeviceProperty(PropertyIdentifier.protocolServicesSupported, new ServicesSupported());
         remoteDevice.setDeviceProperty(PropertyIdentifier.objectName, new CharacterString("name"));
         remoteDevice.setDeviceProperty(PropertyIdentifier.protocolVersion, new UnsignedInteger(1));
-        remoteDevice.setDeviceProperty(PropertyIdentifier.vendorIdentifier, new UnsignedInteger(165));
+        remoteDevice.setDeviceProperty(PropertyIdentifier.vendorIdentifier, new Unsigned16(165));
         remoteDevice.setDeviceProperty(PropertyIdentifier.modelName, new CharacterString("model"));
         remoteDevice.setDeviceProperty(PropertyIdentifier.maxSegmentsAccepted, new UnsignedInteger(500));
 

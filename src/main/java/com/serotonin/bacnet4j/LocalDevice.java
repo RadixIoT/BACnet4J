@@ -27,6 +27,7 @@
 
 package com.serotonin.bacnet4j;
 
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,7 +35,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -45,8 +45,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,12 +54,12 @@ import com.serotonin.bacnet4j.cache.RemoteEntityCache;
 import com.serotonin.bacnet4j.cache.RemoteEntityCachePolicy;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.event.DefaultReinitializeDeviceHandler;
-import com.serotonin.bacnet4j.event.DeviceEventAdapter;
 import com.serotonin.bacnet4j.event.DeviceEventHandler;
 import com.serotonin.bacnet4j.event.ExceptionDispatcher;
 import com.serotonin.bacnet4j.event.PrivateTransferHandler;
 import com.serotonin.bacnet4j.event.ReinitializeDeviceHandler;
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
 import com.serotonin.bacnet4j.npdu.Network;
@@ -71,13 +69,14 @@ import com.serotonin.bacnet4j.obj.DeviceObject;
 import com.serotonin.bacnet4j.obj.mixin.CovContext;
 import com.serotonin.bacnet4j.persistence.IPersistence;
 import com.serotonin.bacnet4j.persistence.NullPersistence;
+import com.serotonin.bacnet4j.service.Service;
 import com.serotonin.bacnet4j.service.VendorServiceKey;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedRequestService;
 import com.serotonin.bacnet4j.service.confirmed.DeviceCommunicationControlRequest.EnableDisable;
 import com.serotonin.bacnet4j.service.unconfirmed.IAmRequest;
 import com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedCovNotificationRequest;
 import com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedRequestService;
-import com.serotonin.bacnet4j.service.unconfirmed.WhoIsRequest;
+import com.serotonin.bacnet4j.service.unconfirmed.WhoAmIRequest;
 import com.serotonin.bacnet4j.transport.Transport;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.Address;
@@ -101,7 +100,6 @@ import com.serotonin.bacnet4j.util.RemoteDeviceFinder;
 import com.serotonin.bacnet4j.util.RemoteDeviceFinder.RemoteDeviceFuture;
 
 import lohbihler.warp.WarpScheduledExecutorService;
-import lohbihler.warp.WarpUtils;
 
 /**
  * Enhancements: - Optional persistence of COV subscriptions - default character string encoding - persistence of
@@ -111,6 +109,7 @@ public class LocalDevice implements AutoCloseable {
     static final Logger LOG = LoggerFactory.getLogger(LocalDevice.class);
     public static final String VERSION =
             Objects.requireNonNullElse(LocalDevice.class.getPackage().getImplementationVersion(), "unknown");
+    public static final SecureRandom RANDOM = new SecureRandom();
 
     private Transport transport;
 
@@ -199,7 +198,7 @@ public class LocalDevice implements AutoCloseable {
             addObject(new DeviceObject(this, deviceNumber));
         } catch (BACnetServiceException e) {
             // Should not happen
-            throw new RuntimeException(e);
+            throw new BACnetRuntimeException(e);
         }
     }
 
@@ -305,84 +304,51 @@ public class LocalDevice implements AutoCloseable {
         return transport.getBytesIn();
     }
 
-    public synchronized LocalDevice initialize() throws Exception {
+    public boolean isUnconfigured() {
+        return deviceObject.getId().isUninitialized();
+    }
+
+    public synchronized LocalDevice initialize() throws BACnetException {
         return initialize(RestartReason.unknown);
     }
 
-    public synchronized LocalDevice initialize(RestartReason lastRestartReason) throws Exception {
+    public synchronized LocalDevice initialize(RestartReason lastRestartReason) throws BACnetException {
         deviceObject.writePropertyInternal(PropertyIdentifier.lastRestartReason, lastRestartReason);
 
         timer = createScheduledExecutorService();
         transport.initialize();
         initialized = true;
 
-        // If the device id is uninitialized, try to find an available number to use.
-        if (getInstanceNumber() == ObjectIdentifier.UNINITIALIZED) {
-            int attempts = 10;
-            int rangeSize = 20;
-
-            Random random = new Random();
-            int remaining = attempts;
-            while (remaining > 0) {
-                int from = random.nextInt(ObjectIdentifier.UNINITIALIZED - rangeSize);
-                List<Integer> idList = IntStream.range(from, from + rangeSize).boxed().collect(Collectors.toList());
-
-                DeviceEventAdapter listener = new DeviceEventAdapter() {
-                    @Override
-                    public void iAmReceived(RemoteDevice d) {
-                        LOG.info("Device id {} is not available", d.getInstanceNumber());
-                        idList.remove(Integer.valueOf(d.getInstanceNumber()));
-                    }
-                };
-
-                getEventHandler().addListener(listener);
-                sendGlobalBroadcast(new WhoIsRequest(from, from + rangeSize - 1));
-
-                LOG.info("Waiting for incoming IAms");
-                WarpUtils.sleep(clock, 10, TimeUnit.SECONDS);
-                getEventHandler().removeListener(listener);
-
-                if (!idList.isEmpty()) {
-                    LOG.info("Found {} ids that are still available. Choosing {}", idList.size(), idList.get(0));
-                    deviceObject.writePropertyInternal(PropertyIdentifier.objectIdentifier,
-                            new ObjectIdentifier(ObjectType.device, idList.get(0)));
-                    break;
-                }
-
-                remaining--;
-            }
-
-            if (remaining == 0)
-                throw new Exception("Could not find an available device id after " + attempts + " attempts");
-        }
-
         // Notify objects.
         for (BACnetObject bo : localObjects) {
             bo.initialize();
         }
 
-        //
-        // Send restart notifications.
+        if (!isUnconfigured()) {
+            //
+            // Send restart notifications. Note an uninitialized device will not send these.
 
-        // The defaulting of the list of recipients is done here because sometimes the network has to be initialized
-        // before the local broadcast address is known.
-        SequenceOf<Recipient> restartNotificationRecipients = getPersistence().loadSequenceOf(
-                deviceObject.getPersistenceKey(PropertyIdentifier.restartNotificationRecipients), Recipient.class);
-        if (restartNotificationRecipients == null) {
-            restartNotificationRecipients = new SequenceOf<>(new Recipient(getLocalBroadcastAddress()));
-            deviceObject.writePropertyInternal(PropertyIdentifier.restartNotificationRecipients,
-                    restartNotificationRecipients);
-        }
-        UnconfirmedCovNotificationRequest restartNotif = new UnconfirmedCovNotificationRequest(
-                UnsignedInteger.ZERO, getId(), getId(), UnsignedInteger.ZERO, new SequenceOf<>(
-                new PropertyValue(PropertyIdentifier.systemStatus, deviceObject.get(PropertyIdentifier.systemStatus)),
-                new PropertyValue(PropertyIdentifier.timeOfDeviceRestart,
-                        deviceObject.get(PropertyIdentifier.timeOfDeviceRestart)),
-                new PropertyValue(PropertyIdentifier.lastRestartReason,
-                        deviceObject.get(PropertyIdentifier.lastRestartReason))));
-        for (Recipient recipient : restartNotificationRecipients) {
-            Address address = recipient.toAddress(this);
-            send(address, restartNotif);
+            // The defaulting of the list of recipients is done here because sometimes the network has to be initialized
+            // before the local broadcast address is known.
+            SequenceOf<Recipient> restartNotificationRecipients = getPersistence().loadSequenceOf(
+                    deviceObject.getPersistenceKey(PropertyIdentifier.restartNotificationRecipients), Recipient.class);
+            if (restartNotificationRecipients == null) {
+                restartNotificationRecipients = new SequenceOf<>(new Recipient(getLocalBroadcastAddress()));
+                deviceObject.writePropertyInternal(PropertyIdentifier.restartNotificationRecipients,
+                        restartNotificationRecipients);
+            }
+            UnconfirmedCovNotificationRequest restartNotif = new UnconfirmedCovNotificationRequest(
+                    UnsignedInteger.ZERO, getId(), getId(), UnsignedInteger.ZERO, new SequenceOf<>(
+                    new PropertyValue(PropertyIdentifier.systemStatus,
+                            deviceObject.get(PropertyIdentifier.systemStatus)),
+                    new PropertyValue(PropertyIdentifier.timeOfDeviceRestart,
+                            deviceObject.get(PropertyIdentifier.timeOfDeviceRestart)),
+                    new PropertyValue(PropertyIdentifier.lastRestartReason,
+                            deviceObject.get(PropertyIdentifier.lastRestartReason))));
+            for (Recipient recipient : restartNotificationRecipients) {
+                Address address = recipient.toAddress(this);
+                send(address, restartNotif);
+            }
         }
 
         return this;
@@ -392,7 +358,7 @@ public class LocalDevice implements AutoCloseable {
      * Allows updating the device's network while preserving local objects and other state. Note that network port
      * objects may also need to be recreated with the new network too.w
      */
-    public void replaceTransport(Transport newTransport) throws Exception {
+    public void replaceTransport(Transport newTransport) throws BACnetException {
         transport.terminate();
         transport = newTransport;
         transport.setLocalDevice(this);
@@ -1077,13 +1043,13 @@ public class LocalDevice implements AutoCloseable {
      -----------------------------------------------------------*/
 
     public ServiceFuture send(RemoteDevice d, ConfirmedRequestService serviceRequest) {
-        ensureInitialized();
+        ensureInitialized(serviceRequest);
         return transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(),
                 serviceRequest);
     }
 
     public ServiceFuture send(Address address, ConfirmedRequestService serviceRequest) {
-        ensureInitialized();
+        ensureInitialized(serviceRequest);
         RemoteDevice d = getCachedRemoteDevice(address);
         if (d == null) {
             // Just use some hopeful defaults.
@@ -1094,13 +1060,13 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public void send(RemoteDevice d, ConfirmedRequestService serviceRequest, ResponseConsumer consumer) {
-        ensureInitialized();
+        ensureInitialized(serviceRequest);
         transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(), serviceRequest,
                 consumer);
     }
 
     public void send(Address address, ConfirmedRequestService serviceRequest, ResponseConsumer consumer) {
-        ensureInitialized();
+        ensureInitialized(serviceRequest);
         RemoteDevice d = getCachedRemoteDevice(address);
         if (d == null) {
             // Just use some hopeful defaults.
@@ -1111,28 +1077,36 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public void send(RemoteDevice d, UnconfirmedRequestService serviceRequest) {
-        ensureInitialized();
+        ensureInitialized(serviceRequest);
         transport.send(d.getAddress(), serviceRequest);
     }
 
     public void send(Address address, UnconfirmedRequestService serviceRequest) {
-        ensureInitialized();
+        ensureInitialized(serviceRequest);
         transport.send(address, serviceRequest);
     }
 
     public void sendLocalBroadcast(UnconfirmedRequestService serviceRequest) {
-        ensureInitialized();
+        ensureInitialized(serviceRequest);
         transport.send(getLocalBroadcastAddress(), serviceRequest);
     }
 
     public void sendGlobalBroadcast(UnconfirmedRequestService serviceRequest) {
-        ensureInitialized();
+        ensureInitialized(serviceRequest);
         transport.send(Address.GLOBAL, serviceRequest);
     }
 
-    private void ensureInitialized() {
+    private void ensureInitialized(Service service) {
         if (!initialized) {
-            throw new RuntimeException("LocalDevice is not initialized");
+            throw new BACnetRuntimeException("LocalDevice is not initialized");
+        }
+
+        if (isUnconfigured() && !(service instanceof WhoAmIRequest)) {
+            // Per clause 19.7, an unconfigured device (Device Identifier 4194303) may only
+            // initiate Who-Am-I. Any other service initiation is a spec violation.
+            throw new BACnetRuntimeException(
+                    "Unconfigured device (Device Identifier 4194303) may only initiate Who-Am-I; "
+                            + "attempted to send " + service.getClass().getSimpleName());
         }
     }
 

@@ -35,6 +35,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.transport.Transport;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -151,7 +153,7 @@ public class ManagerNode extends MstpNode {
     }
 
     @Override
-    public void initialize(Transport transport) throws Exception {
+    public void initialize(Transport transport) throws BACnetException {
         super.initialize(transport);
 
         transport.getLocalDevice().getDeviceObject().writePropertyInternal(PropertyIdentifier.maxManager,
@@ -163,7 +165,7 @@ public class ManagerNode extends MstpNode {
     public void queueFrame(FrameType type, byte destination, byte[] data) {
         if (!type.oneOf(FrameType.bacnetDataExpectingReply, FrameType.bacnetDataNotExpectingReply,
                 FrameType.testRequest))
-            throw new RuntimeException("Cannot send frame of type: " + type);
+            throw new BACnetRuntimeException("Cannot send frame of type: " + type);
 
         Frame frame = new Frame(type, destination, thisStation, data);
         synchronized (framesToSend) {
@@ -304,7 +306,7 @@ public class ManagerNode extends MstpNode {
                 LOG.debug("useToken:SendAndWait ({})", frameToSend.getDestinationAddress());
                 state = ManagerNodeState.waitForReply;
             } else {
-                throw new RuntimeException("Unhandled frame type: " + frameToSend.getFrameType());
+                throw new BACnetRuntimeException("Unhandled frame type: " + frameToSend.getFrameType());
             }
 
             sendFrame(frameToSend);

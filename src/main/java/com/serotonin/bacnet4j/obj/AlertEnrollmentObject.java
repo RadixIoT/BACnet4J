@@ -41,16 +41,17 @@ import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.notificationParameters.ExtendedNotif.Parameter;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class AlertEnrollmentObject extends BACnetObject {
     static final Logger LOG = LoggerFactory.getLogger(AlertEnrollmentObject.class);
 
     private final AlertReportingMixin alertReporting;
-    private final UnsignedInteger defaultVendorId;
+    private final Unsigned16 defaultVendorId;
 
-    public AlertEnrollmentObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final int notificationClass, final NotifyType notifyType) {
+    public AlertEnrollmentObject(LocalDevice localDevice, int instanceNumber, String name, int notificationClass,
+            NotifyType notifyType) {
         super(localDevice, ObjectType.alertEnrollment, instanceNumber, name);
 
         defaultVendorId = localDevice.get(PropertyIdentifier.vendorIdentifier);
@@ -69,13 +70,12 @@ public class AlertEnrollmentObject extends BACnetObject {
         addMixin(alertReporting);
     }
 
-    public void issueAlert(final ObjectIdentifier alertSource, final int extendedEventType,
-            final Parameter... parameters) {
+    public void issueAlert(ObjectIdentifier alertSource, int extendedEventType, Parameter... parameters) {
         issueAlert(alertSource, defaultVendorId, extendedEventType, parameters);
     }
 
-    public void issueAlert(final ObjectIdentifier alertSource, final UnsignedInteger vendorId,
-            final int extendedEventType, final Parameter... parameters) {
+    public void issueAlert(ObjectIdentifier alertSource, Unsigned16 vendorId, int extendedEventType,
+            Parameter... parameters) {
         // Delegate to the mixin
         alertReporting.issueAlert(alertSource, vendorId, new UnsignedInteger(extendedEventType), parameters);
     }

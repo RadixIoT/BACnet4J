@@ -1148,7 +1148,7 @@ public class AnnexFEncodingTest {
     @Test
     public void e4_9b_and_e4_9fTest() {
         UnconfirmedRequestService service = new IAmRequest(new ObjectIdentifier(ObjectType.device, 3),
-                new UnsignedInteger(1024), Segmentation.noSegmentation, new UnsignedInteger(99));
+                new UnsignedInteger(1024), Segmentation.noSegmentation, new Unsigned16(99));
         APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "1000C40200000322040091032163");
     }
@@ -1163,7 +1163,7 @@ public class AnnexFEncodingTest {
     @Test
     public void e4_9dTest() {
         UnconfirmedRequestService service = new IAmRequest(new ObjectIdentifier(ObjectType.device, 1),
-                new UnsignedInteger(480), Segmentation.segmentedTransmit, new UnsignedInteger(99));
+                new UnsignedInteger(480), Segmentation.segmentedTransmit, new Unsigned16(99));
         APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "1000C4020000012201E091012163");
     }
@@ -1171,7 +1171,7 @@ public class AnnexFEncodingTest {
     @Test
     public void e4_9eTest() {
         UnconfirmedRequestService service = new IAmRequest(new ObjectIdentifier(ObjectType.device, 2),
-                new UnsignedInteger(206), Segmentation.segmentedReceive, new UnsignedInteger(33));
+                new UnsignedInteger(206), Segmentation.segmentedReceive, new Unsigned16(33));
         APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "1000C40200000221CE91022121");
     }
@@ -1179,7 +1179,7 @@ public class AnnexFEncodingTest {
     @Test
     public void e4_9gTest() {
         UnconfirmedRequestService service = new IAmRequest(new ObjectIdentifier(ObjectType.device, 4),
-                new UnsignedInteger(128), Segmentation.segmentedBoth, new UnsignedInteger(66));
+                new UnsignedInteger(128), Segmentation.segmentedBoth, new Unsigned16(66));
         APDU pdu = new UnconfirmedRequest(service);
         compare(pdu, "1000C402000004218091002142");
     }

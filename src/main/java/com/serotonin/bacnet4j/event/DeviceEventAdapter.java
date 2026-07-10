@@ -27,6 +27,9 @@
 
 package com.serotonin.bacnet4j.event;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.serotonin.bacnet4j.RemoteDevice;
 import com.serotonin.bacnet4j.RemoteObject;
 import com.serotonin.bacnet4j.obj.BACnetObject;
@@ -45,71 +48,83 @@ import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.OctetString;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
- * A default class for easy implementation of the DeviceEventListener interface. Instead of having to implement all of
+ * A default class for easy implementation of the DeviceEventListener interface. Instead of having to implement all
  * the defined methods, listener classes can override this and only implement the desired methods.
- *
- * @author Matthew Lohbihler
  */
 public class DeviceEventAdapter implements DeviceEventListener {
+    private static final Logger LOG = LoggerFactory.getLogger(DeviceEventAdapter.class);
+
     @Override
-    public void listenerException(final Throwable e) {
+    public void listenerException(Exception e) {
         // Override as required
-        e.printStackTrace();
+        LOG.error(e.getMessage(), e);
     }
 
     @Override
-    public boolean allowPropertyWrite(final Address from, final BACnetObject obj, final PropertyValue pv) {
+    public boolean allowPropertyWrite(Address from, BACnetObject obj, PropertyValue pv) {
         return true;
     }
 
     @Override
-    public void iAmReceived(final RemoteDevice d) {
+    public void iAmReceived(RemoteDevice d) {
         // Override as required
     }
 
     @Override
-    public void propertyWritten(final Address from, final BACnetObject obj, final PropertyValue pv) {
+    public void propertyWritten(Address from, BACnetObject obj, PropertyValue pv) {
         // Override as required
     }
 
     @Override
-    public void iHaveReceived(final RemoteDevice d, final RemoteObject o) {
+    public void iHaveReceived(RemoteDevice d, RemoteObject o) {
         // Override as required
     }
 
     @Override
-    public void covNotificationReceived(final UnsignedInteger subscriberProcessIdentifier,
-            final ObjectIdentifier initiatingDeviceIdentifier, final ObjectIdentifier monitoredObjectIdentifier,
-            final UnsignedInteger timeRemaining, final SequenceOf<PropertyValue> listOfValues) {
+    public void covNotificationReceived(UnsignedInteger subscriberProcessIdentifier,
+            ObjectIdentifier initiatingDeviceIdentifier, ObjectIdentifier monitoredObjectIdentifier,
+            UnsignedInteger timeRemaining, SequenceOf<PropertyValue> listOfValues) {
         // Override as required
     }
 
     @Override
-    public void eventNotificationReceived(final UnsignedInteger processIdentifier,
-            final ObjectIdentifier initiatingDeviceIdentifier, final ObjectIdentifier eventObjectIdentifier,
-            final TimeStamp timeStamp, final UnsignedInteger notificationClass, final UnsignedInteger priority,
-            final EventType eventType, final CharacterString messageText, final NotifyType notifyType,
-            final Boolean ackRequired, final EventState fromState, final EventState toState,
-            final NotificationParameters eventValues) {
+    public void eventNotificationReceived(UnsignedInteger processIdentifier,
+            ObjectIdentifier initiatingDeviceIdentifier, ObjectIdentifier eventObjectIdentifier, TimeStamp timeStamp,
+            UnsignedInteger notificationClass, UnsignedInteger priority, EventType eventType,
+            CharacterString messageText, NotifyType notifyType, Boolean ackRequired, EventState fromState,
+            EventState toState, NotificationParameters eventValues) {
         // Override as required
     }
 
     @Override
-    public void textMessageReceived(final ObjectIdentifier textMessageSourceDevice, final Choice messageClass,
-            final MessagePriority messagePriority, final CharacterString message) {
+    public void textMessageReceived(ObjectIdentifier textMessageSourceDevice, Choice messageClass,
+            MessagePriority messagePriority, CharacterString message) {
         // Override as required
     }
 
     @Override
-    public void synchronizeTime(final Address from, final DateTime dateTime, final boolean utc) {
+    public void synchronizeTime(Address from, DateTime dateTime, boolean utc) {
         // Override as required
     }
 
     @Override
-    public void requestReceived(final Address from, final Service service) {
+    public void requestReceived(Address from, Service service) {
         // Override as required
+    }
+
+    @Override
+    public void whoAmIReceived(Address from, Unsigned16 vendorId, CharacterString modelName,
+            CharacterString serialNumber) {
+        // Override as required
+    }
+
+    @Override
+    public void youAreReceived(Address from, ObjectIdentifier deviceIdentifier, OctetString deviceMacAddress) {
+        // Override as required. See 16.11.4
     }
 }

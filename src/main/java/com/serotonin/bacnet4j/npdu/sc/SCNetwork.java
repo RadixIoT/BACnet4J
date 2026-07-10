@@ -290,7 +290,7 @@ public class SCNetwork extends Network {
     }
 
     @Override
-    public void initialize(Transport transport) throws Exception {
+    public void initialize(Transport transport) throws BACnetException {
         super.initialize(transport);
 
         initializationError =
@@ -407,7 +407,7 @@ public class SCNetwork extends Network {
     }
 
     @Override
-    protected NPDU handleIncomingDataImpl(ByteQueue queue, OctetString linkService) throws Exception {
+    protected NPDU handleIncomingDataImpl(ByteQueue queue, OctetString linkService) throws BACnetException {
         return parseNpduData(queue, linkService);
     }
 }

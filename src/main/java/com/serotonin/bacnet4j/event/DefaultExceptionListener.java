@@ -34,21 +34,16 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class DefaultExceptionListener implements ExceptionListener {
-    static final Logger LOG = LoggerFactory.getLogger(DefaultExceptionListener.class);
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultExceptionListener.class);
 
     @Override
     public void unimplementedVendorService(UnsignedInteger vendorId, UnsignedInteger serviceNumber, ByteQueue queue) {
-        LOG.warn("Received unimplemented vendor service: vendor id={}, service number={}, bytes (with context id)=",
+        LOG.warn("Received unimplemented vendor service: vendor id={}, service number={}, bytes (with context id)={}",
                 vendorId, serviceNumber, queue);
     }
 
     @Override
     public void receivedException(Exception e) {
         LOG.error("", e);
-    }
-
-    @Override
-    public void receivedThrowable(Throwable t) {
-        LOG.error("", t);
     }
 }

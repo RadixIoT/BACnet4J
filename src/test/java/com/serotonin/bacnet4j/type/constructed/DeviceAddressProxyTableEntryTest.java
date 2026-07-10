@@ -41,6 +41,7 @@ import com.serotonin.bacnet4j.type.primitive.Date;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.type.primitive.Time;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
@@ -53,16 +54,16 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 public class DeviceAddressProxyTableEntryTest {
     @Test
     public void roundTrip() throws BACnetException {
-        final DeviceAddressProxyTableEntry entry = new DeviceAddressProxyTableEntry(
+        DeviceAddressProxyTableEntry entry = new DeviceAddressProxyTableEntry(
                 new Address(123, new OctetString(new byte[] {10, 0, 0, 1, (byte) 0xba, (byte) 0xc0})),
                 new IAmRequest(
                         new ObjectIdentifier(ObjectType.device, 555),
                         new UnsignedInteger(1476),
                         Segmentation.segmentedBoth,
-                        new UnsignedInteger(42)),
+                        new Unsigned16(42)),
                 new DateTime(new Date(2026, Month.JUNE, 12, DayOfWeek.FRIDAY), new Time(13, 0, 0, 0)));
 
-        final ByteQueue queue = new ByteQueue();
+        ByteQueue queue = new ByteQueue();
         entry.write(queue);
 
         assertEquals(entry, new DeviceAddressProxyTableEntry(queue));
