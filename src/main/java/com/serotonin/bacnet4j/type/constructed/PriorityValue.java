@@ -27,6 +27,8 @@
 
 package com.serotonin.bacnet4j.type.constructed;
 
+import java.util.Objects;
+
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.type.AmbiguousValue;
 import com.serotonin.bacnet4j.type.Encodable;
@@ -47,7 +49,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class PriorityValue extends BaseType {
-    private static ChoiceOptions choiceOptions = new ChoiceOptions();
+    private static final ChoiceOptions choiceOptions = new ChoiceOptions();
 
     static {
         choiceOptions.addPrimitive(Null.class);
@@ -66,15 +68,18 @@ public class PriorityValue extends BaseType {
 
         choiceOptions.addContextual(0, AmbiguousValue.class);
         choiceOptions.addContextual(1, DateTime.class);
+        choiceOptions.addContextual(2, XyColor.class);
     }
 
     private final Choice choice;
 
-    public PriorityValue(final Encodable value) {
+    public PriorityValue(Encodable value) {
         if (value instanceof Primitive)
             choice = new Choice(value, choiceOptions);
         else if (value instanceof DateTime)
             choice = new Choice(1, value, choiceOptions);
+        else if (value instanceof XyColor)
+            choice = new Choice(2, value, choiceOptions);
         else
             choice = new Choice(0, value, choiceOptions);
     }
@@ -143,7 +148,7 @@ public class PriorityValue extends BaseType {
         return choice.getDatum();
     }
 
-    public boolean isa(final Class<?> clazz) {
+    public boolean isa(Class<?> clazz) {
         return choice.isa(clazz);
     }
 
@@ -153,36 +158,24 @@ public class PriorityValue extends BaseType {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, choice);
     }
 
-    public PriorityValue(final ByteQueue queue) throws BACnetException {
+    public PriorityValue(ByteQueue queue) throws BACnetException {
         choice = readChoice(queue, choiceOptions);
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (choice == null ? 0 : choice.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        PriorityValue that = (PriorityValue) o;
+        return Objects.equals(choice, that.choice);
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final PriorityValue other = (PriorityValue) obj;
-        if (choice == null) {
-            if (other.choice != null)
-                return false;
-        } else if (!choice.equals(other.choice))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hashCode(choice);
     }
 }
