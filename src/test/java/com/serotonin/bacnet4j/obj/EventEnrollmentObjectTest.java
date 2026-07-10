@@ -91,31 +91,37 @@ public class EventEnrollmentObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReportingNoFault() throws Exception {
-        final DeviceObjectPropertyReference ref =
+        // Note: this test monitors the Units property (an EngineeringUnits enumeration) rather
+        // than the Reliability property, because addendum 135-2016bu-6 (Clause 12.12.21) requires
+        // that a non-noFaultDetected reliability on the monitored object drive the Event
+        // Enrollment's own Reliability to MONITORED_OBJECT_FAULT — preempting the ChangeOfState
+        // algorithm. Monitoring a non-Reliability enumerated property preserves this test's
+        // intent (exercising the ChangeOfState algorithm) under bu-6 semantics.
+        DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 0),
-                        PropertyIdentifier.reliability, null, new ObjectIdentifier(ObjectType.device, 3));
-        final SequenceOf<PropertyStates> alarmValues = new SequenceOf<>( //
-                new PropertyStates(Reliability.activationFailure), //
-                new PropertyStates(Reliability.communicationFailure), //
-                new PropertyStates(Reliability.configurationError));
-        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                        PropertyIdentifier.units, null, new ObjectIdentifier(ObjectType.device, 3));
+        SequenceOf<PropertyStates> alarmValues = new SequenceOf<>( //
+                new PropertyStates(EngineeringUnits.hertz), //
+                new PropertyStates(EngineeringUnits.kilohertz), //
+                new PropertyStates(EngineeringUnits.megahertz));
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
                 d1, 0, "ee0", ref, NotifyType.event,
                 new EventParameter(new ChangeOfState(new UnsignedInteger(1), alarmValues)),
                 new EventTransitionBits(true, true, true), 5, 100, null, null));
 
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
         assertEquals(0, listener.getNotifCount());
 
         // Write a different normal value.
-        av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.lampFailure);
+        av0.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.amperes);
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
         clock.plusMillis(1100);
         quiesce();
@@ -124,11 +130,11 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(0, listener.getNotifCount());
 
         // Set an offnormal value and then set back to normal before the time delay.
-        av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.activationFailure);
+        av0.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.hertz);
         clock.plusMillis(500);
         quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
-        av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.noFaultDetected);
+        av0.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.noUnits);
         // Allow the EE to poll
         clock.plusMillis(100);
         quiesce();
@@ -137,7 +143,7 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
 
         // Do a real state change. Write an offnormal value. After 1s the alarm will be raised.
-        av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.communicationFailure);
+        av0.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.kilohertz);
         clock.plusMillis(500);
         quiesce();
         assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState)); // Still normal at this point.
@@ -166,12 +172,12 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(EventState.normal, notif.fromState());
         assertEquals(EventState.offnormal, notif.toState());
         assertEquals(new NotificationParameters(
-                new ChangeOfStateNotif(new PropertyStates(Reliability.communicationFailure),
-                        new StatusFlags(false, true, false, false))), notif.eventValues());
+                new ChangeOfStateNotif(new PropertyStates(EngineeringUnits.kilohertz),
+                        new StatusFlags(false, false, false, false))), notif.eventValues());
 
         // Set to a different offnormal value. Ensure that no notification is send, because condition (3) in 13.3.2
         // is not supported.
-        av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.configurationError);
+        av0.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.megahertz);
         // Allow the EE to poll
         clock.plusMillis(100);
         quiesce();
@@ -198,11 +204,11 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(EventState.offnormal, notif.fromState());
         assertEquals(EventState.offnormal, notif.toState());
         assertEquals(new NotificationParameters(
-                new ChangeOfStateNotif(new PropertyStates(Reliability.configurationError),
-                        new StatusFlags(false, true, false, false))), notif.eventValues());
+                new ChangeOfStateNotif(new PropertyStates(EngineeringUnits.megahertz),
+                        new StatusFlags(false, false, false, false))), notif.eventValues());
 
         // Set a normal value and then set back to offnormal before the time delay.
-        av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.overRange);
+        av0.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.volts);
         // Allow the EE to poll
         clock.plusMillis(100);
         quiesce();
@@ -210,7 +216,7 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         quiesce();
         assertEquals(EventState.offnormal,
                 ee.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
-        av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.activationFailure);
+        av0.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.hertz);
         // Allow the EE to poll
         clock.plusMillis(100);
         quiesce();
@@ -220,7 +226,7 @@ public class EventEnrollmentObjectTest extends AbstractTest {
                 ee.readProperty(PropertyIdentifier.eventState)); // Still offnormal at this point.
 
         // Do a real state change. Write a normal value. After 1s the notification will be sent.
-        av0.writePropertyInternal(PropertyIdentifier.reliability, Reliability.tripped);
+        av0.writePropertyInternal(PropertyIdentifier.units, EngineeringUnits.watts);
         // Allow the EE to poll
         clock.plusMillis(100);
         quiesce();
@@ -251,28 +257,28 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(Boolean.FALSE, notif.ackRequired());
         assertEquals(EventState.offnormal, notif.fromState());
         assertEquals(EventState.normal, notif.toState());
-        assertEquals(new NotificationParameters(new ChangeOfStateNotif(new PropertyStates(Reliability.tripped),
-                new StatusFlags(false, true, false, false))), notif.eventValues());
+        assertEquals(new NotificationParameters(new ChangeOfStateNotif(new PropertyStates(EngineeringUnits.watts),
+                new StatusFlags(false, false, false, false))), notif.eventValues());
     }
 
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReportingWithFault() throws Exception {
-        final DeviceObjectPropertyReference ref =
+        DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
                         PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
-        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
                 d1, 0, "ee0", ref, NotifyType.alarm,
                 new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
                 new EventTransitionBits(true, true, true), 5, 100, null, new FaultParameter(
                 new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90))))));
 
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.
@@ -387,20 +393,20 @@ public class EventEnrollmentObjectTest extends AbstractTest {
     public void eventAcknowledgement() throws Exception {
         nc.writePropertyInternal(PropertyIdentifier.ackRequired, new EventTransitionBits(true, true, true));
 
-        final DeviceObjectPropertyReference ref =
+        DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
                         PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
-        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(d1, 0, "ee0", ref, NotifyType.alarm,
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(d1, 0, "ee0", ref, NotifyType.alarm,
                 new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
                 new EventTransitionBits(true, true, true), 5, 100, null, new FaultParameter(
                 new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90))))));
 
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Write a fault value. Alarm will be sent.
@@ -434,10 +440,10 @@ public class EventEnrollmentObjectTest extends AbstractTest {
 
     @Test
     public void configureEventEnrollment() throws Exception {
-        final DeviceObjectPropertyReference ref =
+        DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
                         PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
-        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
                 d1, 0, "ee0", ref, NotifyType.alarm,
                 new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
                 new EventTransitionBits(true, true, true), 5, 100, null, new FaultParameter(
@@ -456,5 +462,37 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(new Real(300), newOor.getLowLimit());
         assertEquals(new Real(700), newOor.getHighLimit());
         assertEquals(new Real(10), newOor.getDeadband());
+    }
+
+    /**
+     * Per addendum 135-2016bu-6 (Clause 12.12.21): once the Event Enrollment object's own
+     * reliability is NO_FAULT_DETECTED, if the monitored object's reliability is not
+     * NO_FAULT_DETECTED, the Event Enrollment's Reliability shall be MONITORED_OBJECT_FAULT.
+     */
+    @Test
+    public void bu6_monitoredObjectFaultPropagates() throws Exception {
+        DeviceObjectPropertyReference ref =
+                new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
+                        PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee0", ref, NotifyType.alarm,
+                new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
+                new EventTransitionBits(true, true, true), 5, 100, null, null));
+
+        // Initial state: monitored object reliability is noFaultDetected, EE reliability is
+        // noFaultDetected.
+        assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
+
+        // Non-noFaultDetected on monitored object → EE reliability shall be MONITORED_OBJECT_FAULT.
+        av1.writePropertyInternal(PropertyIdentifier.reliability, Reliability.communicationFailure);
+        clock.plusMillis(200);
+        quiesce();
+        assertEquals(Reliability.monitoredObjectFault, ee.readProperty(PropertyIdentifier.reliability));
+
+        // Monitored object recovers → EE reliability returns to noFaultDetected.
+        av1.writePropertyInternal(PropertyIdentifier.reliability, Reliability.noFaultDetected);
+        clock.plusMillis(200);
+        quiesce();
+        assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
     }
 }

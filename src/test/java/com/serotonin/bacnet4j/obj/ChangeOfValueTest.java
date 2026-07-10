@@ -77,19 +77,19 @@ public class ChangeOfValueTest extends AbstractTest {
                     new SubscribeCOVRequest(new UnsignedInteger(4), new ObjectIdentifier(ObjectType.analogValue, 0),
                             Boolean.TRUE, new UnsignedInteger(1000))).get();
             fail("Should have thrown an exception");
-        } catch (final ErrorAPDUException e) {
+        } catch (ErrorAPDUException e) {
             assertEquals(ErrorClass.object, e.getError().getErrorClass());
             assertEquals(ErrorCode.unknownObject, e.getError().getErrorCode());
         }
 
-        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+        AnalogValueObject av = d1.addObject(new AnalogValueObject(
                 d1, 0, "av0", 10, EngineeringUnits.amperes, false));
 
         try {
             d2.send(rd1, new SubscribeCOVRequest(new UnsignedInteger(4), av.getId(), Boolean.TRUE,
                     new UnsignedInteger(1000))).get();
             fail("Should have thrown an exception");
-        } catch (final ErrorAPDUException e) {
+        } catch (ErrorAPDUException e) {
             assertEquals(ErrorClass.object, e.getError().getErrorClass());
             assertEquals(ErrorCode.optionalFunctionalityNotSupported, e.getError().getErrorCode());
         }
@@ -108,12 +108,12 @@ public class ChangeOfValueTest extends AbstractTest {
                     new ObjectIdentifier(ObjectType.analogValue, 0), Boolean.TRUE, new UnsignedInteger(1000),
                     new PropertyReference(PropertyIdentifier.accessDoors), null)).get();
             fail("Should have thrown an exception");
-        } catch (final ErrorAPDUException e) {
+        } catch (ErrorAPDUException e) {
             assertEquals(ErrorClass.object, e.getError().getErrorClass());
             assertEquals(ErrorCode.unknownObject, e.getError().getErrorCode());
         }
 
-        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+        AnalogValueObject av = d1.addObject(new AnalogValueObject(
                 d1, 0, "av0", 10, EngineeringUnits.amperes, false));
 
         try {
@@ -121,7 +121,7 @@ public class ChangeOfValueTest extends AbstractTest {
                     new ObjectIdentifier(ObjectType.analogValue, 0), Boolean.TRUE, new UnsignedInteger(1000),
                     new PropertyReference(PropertyIdentifier.accessDoors), null)).get();
             fail("Should have thrown an exception");
-        } catch (final ErrorAPDUException e) {
+        } catch (ErrorAPDUException e) {
             assertEquals(ErrorClass.object, e.getError().getErrorClass());
             assertEquals(ErrorCode.optionalFunctionalityNotSupported, e.getError().getErrorCode());
         }
@@ -136,11 +136,11 @@ public class ChangeOfValueTest extends AbstractTest {
 
     @Test
     public void objectCov() throws Exception {
-        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+        AnalogValueObject av = d1.addObject(new AnalogValueObject(
                 d1, 0, "av0", 10, EngineeringUnits.amperes, false));
         av.supportCovReporting(4);
 
-        final CovNotifListener listener = new CovNotifListener();
+        CovNotifListener listener = new CovNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Subscribe to changes.
@@ -148,10 +148,10 @@ public class ChangeOfValueTest extends AbstractTest {
                 new UnsignedInteger(2))).get();
 
         // Ensure the subscription is in the device's list.
-        final SequenceOf<CovSubscription> deviceList =
+        SequenceOf<CovSubscription> deviceList =
                 d1.getDeviceObject().readProperty(PropertyIdentifier.activeCovSubscriptions);
         assertEquals(1, deviceList.getCount());
-        final CovSubscription subscription = deviceList.getBase1(1);
+        CovSubscription subscription = deviceList.getBase1(1);
         assertNull(subscription.getCovIncrement());
         assertEquals(Boolean.TRUE, subscription.getIssueConfirmedNotifications());
         assertEquals(new ObjectPropertyReference(av.getId(), PropertyIdentifier.presentValue),
@@ -220,13 +220,47 @@ public class ChangeOfValueTest extends AbstractTest {
         assertEquals(0, listener.getNotifCount());
     }
 
+    /**
+     * Per addendum 135-2016bu-3 Clause 13.1.2 case 1: a subscription-driven
+     * UnconfirmedCOVNotification shall be unicast to the subscriber. A non-subscribing device on
+     * the same network must not receive the notification.
+     */
     @Test
-    public void unsubscribe() throws Exception {
-        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+    public void bu3_subscriptionNotificationIsUnicastToSubscriber() throws Exception {
+        AnalogValueObject av = d1.addObject(new AnalogValueObject(
                 d1, 0, "av0", 10, EngineeringUnits.amperes, false));
         av.supportCovReporting(4);
 
-        final CovNotifListener listener = new CovNotifListener();
+        CovNotifListener subscriberListener = new CovNotifListener();
+        d2.getEventHandler().addListener(subscriberListener);
+        CovNotifListener bystanderListener = new CovNotifListener();
+        d3.getEventHandler().addListener(bystanderListener);
+
+        // d2 subscribes with issueConfirmedNotifications=FALSE so emitted notifications are
+        // unconfirmed. If d1 incorrectly broadcast them, d3 would also receive them.
+        d2.send(rd1, new SubscribeCOVRequest(new UnsignedInteger(4), av.getId(), Boolean.FALSE,
+                new UnsignedInteger(60))).get();
+
+        // Initial subscription-triggered notification is delivered only to the subscriber.
+        awaitEquals(1, subscriberListener::getNotifCount);
+        quiesce();
+        assertEquals(0, bystanderListener.getNotifCount());
+        subscriberListener.clearNotifs();
+
+        // A subsequent COV also goes only to the subscriber.
+        av.writePropertyInternal(PropertyIdentifier.presentValue, new Real(20));
+        awaitEquals(1, subscriberListener::getNotifCount);
+        quiesce();
+        assertEquals(0, bystanderListener.getNotifCount());
+    }
+
+    @Test
+    public void unsubscribe() throws Exception {
+        AnalogValueObject av = d1.addObject(new AnalogValueObject(
+                d1, 0, "av0", 10, EngineeringUnits.amperes, false));
+        av.supportCovReporting(4);
+
+        CovNotifListener listener = new CovNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Subscribe to changes.
@@ -237,7 +271,7 @@ public class ChangeOfValueTest extends AbstractTest {
         SequenceOf<CovSubscription> deviceList =
                 d1.getDeviceObject().readProperty(PropertyIdentifier.activeCovSubscriptions);
         assertEquals(1, deviceList.getCount());
-        final CovSubscription subscription = deviceList.getBase1(1);
+        CovSubscription subscription = deviceList.getBase1(1);
         assertNull(subscription.getCovIncrement());
         assertEquals(Boolean.TRUE, subscription.getIssueConfirmedNotifications());
         assertEquals(new ObjectPropertyReference(av.getId(), PropertyIdentifier.presentValue),
@@ -255,11 +289,11 @@ public class ChangeOfValueTest extends AbstractTest {
 
     @Test
     public void propertyCov() throws Exception {
-        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+        AnalogValueObject av = d1.addObject(new AnalogValueObject(
                 d1, 0, "av0", 10, EngineeringUnits.amperes, false));
         av.supportCovReporting(4);
 
-        final CovNotifListener listener = new CovNotifListener();
+        CovNotifListener listener = new CovNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Subscribe to changes.
@@ -267,10 +301,10 @@ public class ChangeOfValueTest extends AbstractTest {
                 new UnsignedInteger(2), new PropertyReference(PropertyIdentifier.statusFlags), null)).get();
 
         // Ensure the subscription is in the device's list.
-        final SequenceOf<CovSubscription> deviceList =
+        SequenceOf<CovSubscription> deviceList =
                 d1.getDeviceObject().readProperty(PropertyIdentifier.activeCovSubscriptions);
         assertEquals(1, deviceList.getCount());
-        final CovSubscription subscription = deviceList.getBase1(1);
+        CovSubscription subscription = deviceList.getBase1(1);
         assertNull(subscription.getCovIncrement());
         assertEquals(Boolean.FALSE, subscription.getIssueConfirmedNotifications());
         assertEquals(new ObjectPropertyReference(av.getId(), PropertyIdentifier.statusFlags),
@@ -322,15 +356,15 @@ public class ChangeOfValueTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void multipleClients() throws Exception {
-        final AnalogValueObject av0 = d1.addObject(new AnalogValueObject(
+        AnalogValueObject av0 = d1.addObject(new AnalogValueObject(
                 d1, 0, "av0", 10, EngineeringUnits.amperes, false).supportCovReporting(0));
-        final AnalogValueObject av1 = d1.addObject(new AnalogValueObject(
+        AnalogValueObject av1 = d1.addObject(new AnalogValueObject(
                 d1, 1, "av1", 10, EngineeringUnits.amperes, true).supportCovReporting(0));
 
-        final CovNotifListener listener2 = new CovNotifListener();
+        CovNotifListener listener2 = new CovNotifListener();
         d2.getEventHandler().addListener(listener2);
 
-        final CovNotifListener listener3 = new CovNotifListener();
+        CovNotifListener listener3 = new CovNotifListener();
         d3.getEventHandler().addListener(listener3);
 
         // Subscribe to changes.
@@ -354,7 +388,7 @@ public class ChangeOfValueTest extends AbstractTest {
         // Ensure the subscriptions are in the device's list.
         SequenceOf<CovSubscription> deviceList =
                 d1.getDeviceObject().readProperty(PropertyIdentifier.activeCovSubscriptions);
-        final List<CovSubscription> expectedList = Utils.toList(
+        List<CovSubscription> expectedList = Utils.toList(
                 new CovSubscription(new RecipientProcess(new Recipient(rd2.getAddress()), new UnsignedInteger(4)),
                         new ObjectPropertyReference(av0.getId(), PropertyIdentifier.statusFlags), Boolean.FALSE,
                         new UnsignedInteger(360), null),
@@ -518,10 +552,10 @@ public class ChangeOfValueTest extends AbstractTest {
 
     @Test
     public void nonStandardProperties() throws Exception {
-        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+        AnalogValueObject av = d1.addObject(new AnalogValueObject(
                 d1, 0, "av0", 10, EngineeringUnits.amperes, false).supportCovReporting(4));
 
-        final CovNotifListener listener = new CovNotifListener();
+        CovNotifListener listener = new CovNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Subscribe to changes.
@@ -548,18 +582,18 @@ public class ChangeOfValueTest extends AbstractTest {
 
     @Test
     public void valueSourceCommandable() throws Exception {
-        final AnalogValueObject av = d1.addObject(new AnalogValueObject(
+        AnalogValueObject av = d1.addObject(new AnalogValueObject(
                 d1, 0, "av0", 10, EngineeringUnits.amperes, false).supportCommandable(0) //
                 .supportValueSource() //
                 .supportCovReporting(4));
 
-        final CovNotifListener listener = new CovNotifListener();
+        CovNotifListener listener = new CovNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Write a new present value to set up all the commandable values.
-        final ValueSource vs = new ValueSource(new Address(new byte[] {2}));
+        ValueSource vs = new ValueSource(new Address(new byte[] {2}));
         av.writeProperty(vs, PropertyIdentifier.presentValue, new Real(11));
-        final TimeStamp setTime = new TimeStamp(new DateTime(d1));
+        TimeStamp setTime = new TimeStamp(new DateTime(d1));
 
         // Subscribe to changes.
         d2.send(rd1, new SubscribeCOVPropertyRequest(new UnsignedInteger(4), av.getId(), Boolean.FALSE, //

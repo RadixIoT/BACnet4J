@@ -3,7 +3,7 @@
  * GNU General Public License
  * ============================================================================
  *
- * Copyright (C) 2025 Radix IoT LLC. All rights reserved.
+ * Copyright (C) 2026 Radix IoT LLC. All rights reserved.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,47 +25,32 @@
  * See www.radixiot.com for commercial license options.
  */
 
-package com.serotonin.bacnet4j.obj.logBuffer;
+package com.serotonin.bacnet4j.type.constructed;
 
-import java.util.LinkedList;
+import static org.junit.Assert.assertEquals;
 
-import com.serotonin.bacnet4j.exception.BACnetServiceException;
+import org.junit.Test;
 
-public class LinkedListLogBuffer<T extends ILogRecord> extends LogBuffer<T> {
-    private final LinkedList<T> list = new LinkedList<>();
+import com.serotonin.bacnet4j.enums.DayOfWeek;
+import com.serotonin.bacnet4j.enums.Month;
+import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.type.primitive.Date;
+import com.serotonin.bacnet4j.type.primitive.Time;
+import com.serotonin.bacnet4j.type.primitive.Unsigned64;
+import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
-    @Override
-    public int size() {
-        return list.size();
-    }
+public class AuditLogRecordResultTest {
+    @Test
+    public void roundTrip() throws BACnetException {
+        AuditLogRecordResult r = new AuditLogRecordResult(
+                new Unsigned64(12345),
+                new AuditLogRecord(
+                        new DateTime(new Date(2026, Month.JUNE, 12, DayOfWeek.FRIDAY), new Time(9, 15, 30, 0)),
+                        new LogStatus(false, false, false)));
 
-    @Override
-    public void clear() {
-        list.clear();
-    }
+        ByteQueue queue = new ByteQueue();
+        r.write(queue);
 
-    @Override
-    public void add(final T rec) {
-        list.add(rec);
-    }
-
-    @Override
-    public void remove() {
-        list.removeFirst();
-    }
-
-    @Override
-    public T get(final int index) {
-        return list.get(index);
-    }
-
-    @Override
-    public String toString() {
-        return "LinkedListLogBuffer" + list;
-    }
-
-    @Override
-    public void validate() throws BACnetServiceException {
-        //Not written, validation not necessary
+        assertEquals(r, new AuditLogRecordResult(queue));
     }
 }

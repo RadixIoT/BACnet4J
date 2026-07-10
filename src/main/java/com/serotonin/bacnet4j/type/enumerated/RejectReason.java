@@ -47,6 +47,7 @@ public class RejectReason extends Enumerated {
     public static final RejectReason tooManyArguments = new RejectReason(7);
     public static final RejectReason undefinedEnumeration = new RejectReason(8);
     public static final RejectReason unrecognizedService = new RejectReason(9);
+    public static final RejectReason invalidDataEncoding = new RejectReason(10);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();
@@ -56,18 +57,18 @@ public class RejectReason extends Enumerated {
         Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
     }
 
-    public static RejectReason forId(final int id) {
+    public static RejectReason forId(int id) {
         RejectReason e = (RejectReason) idMap.get(id);
         if (e == null)
             e = new RejectReason(id);
         return e;
     }
 
-    public static String nameForId(final int id) {
+    public static String nameForId(int id) {
         return prettyMap.get(id);
     }
 
-    public static RejectReason forName(final String name) {
+    public static RejectReason forName(String name) {
         return (RejectReason) Enumerated.forName(nameMap, name);
     }
 
@@ -75,11 +76,11 @@ public class RejectReason extends Enumerated {
         return idMap.size();
     }
 
-    private RejectReason(final int value) {
+    private RejectReason(int value) {
         super(value);
     }
 
-    public RejectReason(final ByteQueue queue) throws BACnetErrorException {
+    public RejectReason(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
 

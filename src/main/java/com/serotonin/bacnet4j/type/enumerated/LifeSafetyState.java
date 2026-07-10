@@ -61,6 +61,17 @@ public class LifeSafetyState extends Enumerated {
     public static final LifeSafetyState generalAlarm = new LifeSafetyState(21);
     public static final LifeSafetyState supervisory = new LifeSafetyState(22);
     public static final LifeSafetyState testSupervisory = new LifeSafetyState(23);
+    public static final LifeSafetyState nonDefaultMode = new LifeSafetyState(24);
+    public static final LifeSafetyState oeoUnavailable = new LifeSafetyState(25);
+    public static final LifeSafetyState oeoAlarm = new LifeSafetyState(26);
+    public static final LifeSafetyState oeoPhase1Recall = new LifeSafetyState(27);
+    public static final LifeSafetyState oeoEvacuate = new LifeSafetyState(28);
+    public static final LifeSafetyState oeoUnaffected = new LifeSafetyState(29);
+    public static final LifeSafetyState testOeoUnavailable = new LifeSafetyState(30);
+    public static final LifeSafetyState testOeoAlarm = new LifeSafetyState(31);
+    public static final LifeSafetyState testOeoPhase1Recall = new LifeSafetyState(32);
+    public static final LifeSafetyState testOeoEvacuate = new LifeSafetyState(33);
+    public static final LifeSafetyState testOeoUnaffected = new LifeSafetyState(34);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();
@@ -70,18 +81,18 @@ public class LifeSafetyState extends Enumerated {
         Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
     }
 
-    public static LifeSafetyState forId(final int id) {
+    public static LifeSafetyState forId(int id) {
         LifeSafetyState e = (LifeSafetyState) idMap.get(id);
         if (e == null)
             e = new LifeSafetyState(id);
         return e;
     }
 
-    public static String nameForId(final int id) {
+    public static String nameForId(int id) {
         return prettyMap.get(id);
     }
 
-    public static LifeSafetyState forName(final String name) {
+    public static LifeSafetyState forName(String name) {
         return (LifeSafetyState) Enumerated.forName(nameMap, name);
     }
 
@@ -89,11 +100,11 @@ public class LifeSafetyState extends Enumerated {
         return idMap.size();
     }
 
-    private LifeSafetyState(final int value) {
+    private LifeSafetyState(int value) {
         super(value);
     }
 
-    public LifeSafetyState(final ByteQueue queue) throws BACnetErrorException {
+    public LifeSafetyState(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
 

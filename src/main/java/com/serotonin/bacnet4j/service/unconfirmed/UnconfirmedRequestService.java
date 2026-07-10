@@ -37,8 +37,8 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
-abstract public class UnconfirmedRequestService extends Service {
-    public static void checkUnconfirmedRequestService(final ServicesSupported services, final byte type)
+public abstract class UnconfirmedRequestService extends Service {
+    public static void checkUnconfirmedRequestService(ServicesSupported services, byte type)
             throws BACnetException {
         if (type == IAmRequest.TYPE_ID && services.isIAm()) // 0
             return;
@@ -65,39 +65,38 @@ abstract public class UnconfirmedRequestService extends Service {
         if (type == UnconfirmedCovNotificationMultipleRequest.TYPE_ID
                 && services.isUnconfirmedCovNotificationMultiple()) // 11
             return;
+        if (type == UnconfirmedAuditNotification.TYPE_ID && services.isUnconfirmedAuditNotification()) // 12
+            return;
+        if (type == WhoAmIRequest.TYPE_ID && services.isWhoAmI()) // 13
+            return;
+        if (type == YouAreRequest.TYPE_ID && services.isYouAre()) // 14
+            return;
 
         throw new BACnetErrorException(ErrorClass.device, ErrorCode.serviceRequestDenied);
     }
 
-    public static UnconfirmedRequestService createUnconfirmedRequestService(final byte type, final ByteQueue queue)
+    public static UnconfirmedRequestService createUnconfirmedRequestService(byte type, ByteQueue queue)
             throws BACnetException {
-        if (type == IAmRequest.TYPE_ID)
-            return new IAmRequest(queue);
-        if (type == IHaveRequest.TYPE_ID)
-            return new IHaveRequest(queue);
-        if (type == UnconfirmedCovNotificationRequest.TYPE_ID)
-            return new UnconfirmedCovNotificationRequest(queue);
-        if (type == UnconfirmedEventNotificationRequest.TYPE_ID)
-            return new UnconfirmedEventNotificationRequest(queue);
-        if (type == UnconfirmedPrivateTransferRequest.TYPE_ID)
-            return new UnconfirmedPrivateTransferRequest(queue);
-        if (type == UnconfirmedTextMessageRequest.TYPE_ID)
-            return new UnconfirmedTextMessageRequest(queue);
-        if (type == TimeSynchronizationRequest.TYPE_ID)
-            return new TimeSynchronizationRequest(queue);
-        if (type == WhoHasRequest.TYPE_ID)
-            return new WhoHasRequest(queue);
-        if (type == WhoIsRequest.TYPE_ID)
-            return new WhoIsRequest(queue);
-        if (type == UTCTimeSynchronizationRequest.TYPE_ID)
-            return new UTCTimeSynchronizationRequest(queue);
-        if (type == WriteGroupRequest.TYPE_ID)
-            return new WriteGroupRequest(queue);
-        if (type == UnconfirmedCovNotificationMultipleRequest.TYPE_ID)
-            return new UnconfirmedCovNotificationMultipleRequest(queue);
-
-        throw new BACnetException("Unsupported unconfirmed service: " + (type & 0xff));
+        return switch (type) {
+            case IAmRequest.TYPE_ID -> new IAmRequest(queue);
+            case IHaveRequest.TYPE_ID -> new IHaveRequest(queue);
+            case UnconfirmedCovNotificationRequest.TYPE_ID -> new UnconfirmedCovNotificationRequest(queue);
+            case UnconfirmedEventNotificationRequest.TYPE_ID -> new UnconfirmedEventNotificationRequest(queue);
+            case UnconfirmedPrivateTransferRequest.TYPE_ID -> new UnconfirmedPrivateTransferRequest(queue);
+            case UnconfirmedTextMessageRequest.TYPE_ID -> new UnconfirmedTextMessageRequest(queue);
+            case TimeSynchronizationRequest.TYPE_ID -> new TimeSynchronizationRequest(queue);
+            case WhoHasRequest.TYPE_ID -> new WhoHasRequest(queue);
+            case WhoIsRequest.TYPE_ID -> new WhoIsRequest(queue);
+            case UTCTimeSynchronizationRequest.TYPE_ID -> new UTCTimeSynchronizationRequest(queue);
+            case WriteGroupRequest.TYPE_ID -> new WriteGroupRequest(queue);
+            case UnconfirmedCovNotificationMultipleRequest.TYPE_ID ->
+                    new UnconfirmedCovNotificationMultipleRequest(queue);
+            case UnconfirmedAuditNotification.TYPE_ID -> new UnconfirmedAuditNotification(queue);
+            case WhoAmIRequest.TYPE_ID -> new WhoAmIRequest(queue);
+            case YouAreRequest.TYPE_ID -> new YouAreRequest(queue);
+            default -> throw new BACnetException("Unsupported unconfirmed service: " + (type & 0xff));
+        };
     }
 
-    abstract public void handle(LocalDevice localDevice, Address from) throws BACnetException;
+    public abstract void handle(LocalDevice localDevice, Address from) throws BACnetException;
 }

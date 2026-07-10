@@ -27,9 +27,13 @@
 
 package com.serotonin.bacnet4j.service.confirmed;
 
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
+
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.BACnetObject;
 import com.serotonin.bacnet4j.obj.logBuffer.LogBuffer;
@@ -51,16 +55,13 @@ import com.serotonin.bacnet4j.type.primitive.SignedInteger;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
-/**
- * @author Matthew
- */
 public class ReadRangeRequest extends ConfirmedRequestService {
     public static final byte TYPE_ID = 26;
 
-    // TODO make this configurable, say in LocalDevice.
+    // This could be configurable, say in LocalDevice.
     private static final int MAX_ITEMS_RETURNED = 200;
 
-    private static ChoiceOptions choiceOptions = new ChoiceOptions();
+    private static final ChoiceOptions choiceOptions = new ChoiceOptions();
 
     static {
         choiceOptions.addContextual(3, ByPosition.class);
@@ -73,28 +74,28 @@ public class ReadRangeRequest extends ConfirmedRequestService {
     private final UnsignedInteger propertyArrayIndex;
     private final Choice range;
 
-    public ReadRangeRequest(final ObjectIdentifier objectIdentifier, final PropertyIdentifier propertyIdentifier,
-            final UnsignedInteger propertyArrayIndex) {
+    public ReadRangeRequest(ObjectIdentifier objectIdentifier, PropertyIdentifier propertyIdentifier,
+            UnsignedInteger propertyArrayIndex) {
         this(objectIdentifier, propertyIdentifier, propertyArrayIndex, (Choice) null);
     }
 
-    public ReadRangeRequest(final ObjectIdentifier objectIdentifier, final PropertyIdentifier propertyIdentifier,
-            final UnsignedInteger propertyArrayIndex, final ByPosition range) {
+    public ReadRangeRequest(ObjectIdentifier objectIdentifier, PropertyIdentifier propertyIdentifier,
+            UnsignedInteger propertyArrayIndex, ByPosition range) {
         this(objectIdentifier, propertyIdentifier, propertyArrayIndex, new Choice(3, range, choiceOptions));
     }
 
-    public ReadRangeRequest(final ObjectIdentifier objectIdentifier, final PropertyIdentifier propertyIdentifier,
-            final UnsignedInteger propertyArrayIndex, final BySequenceNumber range) {
+    public ReadRangeRequest(ObjectIdentifier objectIdentifier, PropertyIdentifier propertyIdentifier,
+            UnsignedInteger propertyArrayIndex, BySequenceNumber range) {
         this(objectIdentifier, propertyIdentifier, propertyArrayIndex, new Choice(6, range, choiceOptions));
     }
 
-    public ReadRangeRequest(final ObjectIdentifier objectIdentifier, final PropertyIdentifier propertyIdentifier,
-            final UnsignedInteger propertyArrayIndex, final ByTime range) {
+    public ReadRangeRequest(ObjectIdentifier objectIdentifier, PropertyIdentifier propertyIdentifier,
+            UnsignedInteger propertyArrayIndex, ByTime range) {
         this(objectIdentifier, propertyIdentifier, propertyArrayIndex, new Choice(7, range, choiceOptions));
     }
 
-    private ReadRangeRequest(final ObjectIdentifier objectIdentifier, final PropertyIdentifier propertyIdentifier,
-            final UnsignedInteger propertyArrayIndex, final Choice range) {
+    private ReadRangeRequest(ObjectIdentifier objectIdentifier, PropertyIdentifier propertyIdentifier,
+            UnsignedInteger propertyArrayIndex, Choice range) {
         this.objectIdentifier = objectIdentifier;
         this.propertyIdentifier = propertyIdentifier;
         this.propertyArrayIndex = propertyArrayIndex;
@@ -102,14 +103,14 @@ public class ReadRangeRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, objectIdentifier, 0);
         write(queue, propertyIdentifier, 1);
         writeOptional(queue, propertyArrayIndex, 2);
         writeOptional(queue, range);
     }
 
-    public ReadRangeRequest(final ByteQueue queue) throws BACnetException {
+    public ReadRangeRequest(ByteQueue queue) throws BACnetException {
         objectIdentifier = read(queue, ObjectIdentifier.class, 0);
         propertyIdentifier = read(queue, PropertyIdentifier.class, 1);
         propertyArrayIndex = readOptional(queue, UnsignedInteger.class, 2);
@@ -158,7 +159,7 @@ public class ReadRangeRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public AcknowledgementService handle(final LocalDevice localDevice, final Address from) throws BACnetException {
+    public AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException {
         try {
             // Property identifier cannot be all, required, or optional.
             if (propertyIdentifier.isOneOf(PropertyIdentifier.all, PropertyIdentifier.required,
@@ -172,7 +173,7 @@ public class ReadRangeRequest extends ConfirmedRequestService {
                 throw new BACnetServiceException(ErrorClass.services, ErrorCode.parameterOutOfRange);
 
             // Find the object.
-            final BACnetObject obj = localDevice.getObjectRequired(objectIdentifier);
+            BACnetObject obj = localDevice.getObjectRequired(objectIdentifier);
 
             Encodable prop = obj.get(propertyIdentifier);
             if (prop == null)
@@ -198,48 +199,54 @@ public class ReadRangeRequest extends ConfirmedRequestService {
                         new ResultFlags(false, false, false), UnsignedInteger.ZERO, new SequenceOf<>(), null);
             }
             return ack;
-        } catch (final BACnetServiceException e) {
+        } catch (BACnetServiceException e) {
             throw new BACnetErrorException(getChoiceId(), e);
         }
     }
 
-    private ReadRangeAck readRange(final RangeReadable<?> list) throws BACnetServiceException {
+    private ReadRangeAck readRange(RangeReadable<?> list) throws BACnetServiceException {
         if (list.size() == 0) {
             return null;
         }
 
-        // Handle the choice
-        if (range == null)
-            return readRangeDefault(list);
-        if (isByPosition())
-            return readRangeByPosition(list, getByPosition());
-        if (isBySequenceNumber())
-            return readRangeBySequenceNumber(list, getBySequenceNumber());
-        if (isByTime())
-            return readRangeByTime(list, getByTime());
+        AtomicReference<ReadRangeAck> result = new AtomicReference<>();
+        list.inSynchronizedBlock(() -> {
+            // Handle the choice. The branches are mutually exclusive; a null result from a branch
+            // is legitimate (e.g. an out-of-range reference index) and is passed through to the
+            // caller as an empty ack.
+            if (range == null) {
+                result.set(readRangeDefault(list));
+            } else if (isByPosition()) {
+                result.set(readRangeByPosition(list, getByPosition()));
+            } else if (isBySequenceNumber()) {
+                result.set(readRangeBySequenceNumber(list, getBySequenceNumber()));
+            } else if (isByTime()) {
+                result.set(readRangeByTime(list, getByTime()));
+            } else {
+                // Should never happen — the Choice is validated at decode time.
+                throw new BACnetRuntimeException("No handling for choice: " + range);
+            }
+        });
 
-        // Should never happen.
-        throw new RuntimeException("No handing for choice: " + range);
+        return result.get();
     }
 
-    private ReadRangeAck readRangeDefault(final RangeReadable<?> list) {
-        final SequenceOf<Encodable> data;
-        final ResultFlags resultFlags;
+    private ReadRangeAck readRangeDefault(RangeReadable<?> list) {
+        SequenceOf<Encodable> data;
+        ResultFlags resultFlags;
 
-        synchronized (list) {
-            int readCount = list.size();
-            boolean readAll = true;
-            if (readCount > MAX_ITEMS_RETURNED) {
-                readCount = MAX_ITEMS_RETURNED;
-                readAll = false;
-            }
+        int readCount = list.size();
+        boolean readAll = true;
+        if (readCount > MAX_ITEMS_RETURNED) {
+            readCount = MAX_ITEMS_RETURNED;
+            readAll = false;
+        }
 
-            resultFlags = new ResultFlags(true, readAll, !readAll);
+        resultFlags = new ResultFlags(true, readAll, !readAll);
 
-            data = new SequenceOf<>(readCount);
-            for (int i = 0; i < readCount; i++) {
-                data.add((Encodable) list.get(i));
-            }
+        data = new SequenceOf<>(readCount);
+        for (int i = 0; i < readCount; i++) {
+            data.add((Encodable) list.get(i));
         }
 
         // Return the result.
@@ -247,111 +254,102 @@ public class ReadRangeRequest extends ConfirmedRequestService {
                 new UnsignedInteger(data.size()), data, null);
     }
 
-    private ReadRangeAck readRangeByPosition(final RangeReadable<?> list, final ByPosition position) {
-        synchronized (list) {
-            // Check if the reference index is in the range of the list.
-            final int pos = position.getReferenceIndex().intValue();
-            final int size = list.size();
-            if (pos < 1 || pos > size)
-                return null;
+    private ReadRangeAck readRangeByPosition(RangeReadable<?> list, ByPosition position) {
+        // Check if the reference index is in the range of the list.
+        int pos = position.getReferenceIndex().intValue();
+        int size = list.size();
+        if (pos < 1 || pos > size)
+            return null;
 
-            return readAroundIndex(list, pos - 1, position);
-        }
+        return readAroundIndex(list, pos - 1, position);
     }
 
-    private ReadRangeAck readRangeBySequenceNumber(final RangeReadable<?> list, final BySequenceNumber sequenceNumber)
+    private ReadRangeAck readRangeBySequenceNumber(RangeReadable<?> list, BySequenceNumber sequenceNumber)
             throws BACnetServiceException {
-        synchronized (list) {
-            // Check again that the list isn't empty. Shouldn't really happen. Just here because the list was only
-            // synchronized just now, and there is a very small possibility that it may have since changed.
-            if (list.size() == 0)
-                return null;
+        // Check again that the list isn't empty. Shouldn't really happen. Just here because the list was only
+        // synchronized just now, and there is a very small possibility that it may have since changed.
+        if (list.size() == 0)
+            return null;
 
-            // Ensure that this list contains Sequenced elements.
-            if (!(list.get(0) instanceof Sequenced))
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.datatypeNotSupported);
+        // Ensure that this list contains Sequenced elements. Per addendum 135-2016bu-1, a
+        // 'By Sequence Number' request against a list whose items are not sequence-numbered
+        // shall be reported with LIST_ITEM_NOT_NUMBERED.
+        if (!(list.get(0) instanceof Sequenced))
+            throw new BACnetServiceException(ErrorClass.property, ErrorCode.listItemNotNumbered);
 
-            // Use a binary search to find the index of the record we need.
-            @SuppressWarnings("unchecked") final int pos =
-                    binarySearch((RangeReadable<Sequenced>) list, new Sequenced() {
-                        @Override
-                        public long getSequenceNumber() {
-                            return sequenceNumber.getReferenceIndex().longValue();
-                        }
-                    });
+        // Use a binary search to find the index of the record we need.
+        @SuppressWarnings("unchecked") int pos = binarySearch((RangeReadable<Sequenced>) list,
+                (Sequenced) () -> sequenceNumber.getReferenceIndex().longValue());
 
-            // Check if the reference index is in the range of the list.
-            if (pos < 0)
-                return null;
+        // Check if the reference index is in the range of the list.
+        if (pos < 0)
+            return null;
 
-            return readAroundIndex(list, pos, sequenceNumber);
-        }
+        return readAroundIndex(list, pos, sequenceNumber);
     }
 
-    private ReadRangeAck readRangeByTime(final RangeReadable<?> list, final ByTime time) throws BACnetServiceException {
+    private ReadRangeAck readRangeByTime(RangeReadable<?> list, ByTime time) throws BACnetServiceException {
         // Make sure the given timestamp is fully specified.
         if (!time.getReferenceTime().isFullySpecified())
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.datatypeNotSupported);
 
-        synchronized (list) {
-            final int size = list.size();
+        int size = list.size();
 
-            // Check again that the list isn't empty. Shouldn't really happen. Just here because the list was only
-            // synchronized just now, and there is a very small possibility that it may have since changed.
-            if (size == 0)
-                return null;
+        // Check again that the list isn't empty. Shouldn't really happen. Just here because the list was only
+        // synchronized just now, and there is a very small possibility that it may have since changed.
+        if (size == 0)
+            return null;
 
-            // Ensure that this list contains Sequenced and Timestamped elements.
-            if (!(list.get(0) instanceof Sequenced))
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.datatypeNotSupported);
-            if (!(list.get(0) instanceof Timestamped))
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.datatypeNotSupported);
+        // Ensure that this list contains Sequenced and Timestamped elements. Per addendum
+        // 135-2016bu-1, a 'By Time' request against a list whose items are not timestamped
+        // shall be reported with LIST_ITEM_NOT_TIMESTAMPED. The Sequenced check is retained
+        // because the response's First Sequence Number field is populated from the item's
+        // sequence number; if the items aren't sequence-numbered we also can't honour the
+        // 'By Time' semantics.
+        if (!(list.get(0) instanceof Sequenced))
+            throw new BACnetServiceException(ErrorClass.property, ErrorCode.listItemNotTimestamped);
+        if (!(list.get(0) instanceof Timestamped))
+            throw new BACnetServiceException(ErrorClass.property, ErrorCode.listItemNotTimestamped);
 
-            // Use a binary search to find the index of the record we need.
-            @SuppressWarnings("unchecked")
-            int pos = binarySearch((RangeReadable<Timestamped>) list, new Timestamped() {
-                @Override
-                public DateTime getTimestamp() {
-                    return time.getReferenceTime();
-                }
-            });
+        // Use a binary search to find the index of the record we need.
+        @SuppressWarnings("unchecked")
+        int pos = binarySearch((RangeReadable<Timestamped>) list, (Timestamped) time::getReferenceTime);
 
-            // Check if the reference index is in the range of the list.
-            final int count = time.getCount().intValue();
-            if (pos >= 0) {
-                // Found the exact timestamp.
-                if (count > 0) {
-                    // We use the record with a timestamp newer than the time specified.
-                    pos++;
-                } else {
-                    // We use the newest record with timestamp older than the time specified.
-                    pos--;
-                }
+        // Check if the reference index is in the range of the list.
+        int count = time.getCount().intValue();
+        if (pos >= 0) {
+            // Found the exact timestamp.
+            if (count > 0) {
+                // We use the record with a timestamp newer than the time specified.
+                pos++;
             } else {
-                // Didn't find the exact timestamp. The -position-1 is the insertion point.
-                pos = -pos - 1;
-                if (count < 0)
-                    pos--;
+                // We use the newest record with timestamp older than the time specified.
+                pos--;
             }
-
-            // Make sure we're still in range.
-            if (pos < 0 || pos >= size)
-                return null;
-
-            return readAroundIndex(list, pos, time);
+        } else {
+            // Didn't find the exact timestamp. The -position-1 is the insertion point.
+            pos = -pos - 1;
+            if (count < 0)
+                pos--;
         }
+
+        // Make sure we're still in range.
+        if (pos < 0 || pos >= size)
+            return null;
+
+        return readAroundIndex(list, pos, time);
     }
 
     /**
      * The list should already be synchronized by now.
      *
-     * @param list
+     * @param list  the list
      * @param index the 0-based index
-     * @param range
-     * @return
+     * @param range the range
+     * @return the ack
      */
-    private ReadRangeAck readAroundIndex(final RangeReadable<?> list, final int index, final Range range) {
-        final int size = list.size();
+    private ReadRangeAck readAroundIndex(RangeReadable<?> list, int index, Range range) {
+        int size = list.size();
 
         // Start and end indices are both inclusive
         int startIndex;
@@ -388,16 +386,16 @@ public class ReadRangeRequest extends ConfirmedRequestService {
             }
         }
 
-        final ResultFlags resultFlags = new ResultFlags(startIndex == 0, endIndex == size - 1, moreItems);
+        ResultFlags resultFlags = new ResultFlags(startIndex == 0, endIndex == size - 1, moreItems);
 
-        final SequenceOf<Encodable> data = new SequenceOf<>(endIndex - startIndex + 1);
+        SequenceOf<Encodable> data = new SequenceOf<>(endIndex - startIndex + 1);
         for (int i = startIndex; i <= endIndex; i++) {
             data.add((Encodable) list.get(i));
         }
 
         UnsignedInteger firstSequenceNumber = null;
-        if (data.getBase1(1) instanceof Sequenced) {
-            firstSequenceNumber = new UnsignedInteger(((Sequenced) data.getBase1(1)).getSequenceNumber());
+        if (data.getBase1(1) instanceof Sequenced sequenced) {
+            firstSequenceNumber = new UnsignedInteger(sequenced.getSequenceNumber());
         }
 
         // Return the result.
@@ -405,21 +403,21 @@ public class ReadRangeRequest extends ConfirmedRequestService {
                 new UnsignedInteger(data.size()), data, firstSequenceNumber);
     }
 
-    private static <T> int binarySearch(final RangeReadable<? extends RangeComparable> list, final T key) {
+    private static <T> int binarySearch(RangeReadable<? extends RangeComparable> list, T key) {
         int low = 0;
         int high = list.size() - 1;
 
         while (low <= high) {
-            final int mid = low + high >>> 1;
-            final RangeComparable midVal = list.get(mid);
-            final int cmp;
-            if (key instanceof Timestamped) {
-                cmp = ((Timestamped) midVal).compareTimestamp((Timestamped) key);
-            } else if (key instanceof Sequenced) {
-                cmp = ((Sequenced) midVal).compareSequenceNumbero((Sequenced) key);
+            int mid = low + high >>> 1;
+            RangeComparable midVal = list.get(mid);
+            int cmp;
+            if (key instanceof Timestamped timestamped) {
+                cmp = ((Timestamped) midVal).compareTimestamp(timestamped);
+            } else if (key instanceof Sequenced sequenced) {
+                cmp = ((Sequenced) midVal).compareSequenceNumber(sequenced);
             } else {
                 // Should not happen.
-                throw new RuntimeException("Key is not a valid class: " + key.getClass());
+                throw new BACnetRuntimeException("Key is not a valid class: " + key.getClass());
             }
 
             if (cmp < 0)
@@ -437,17 +435,25 @@ public class ReadRangeRequest extends ConfirmedRequestService {
      * Interface that is applied to list types that are readable via this service. Currently implemented by LogBuffer
      * and SequenceOf
      */
-    public static interface RangeReadable<E> {
+    public interface RangeReadable<E> {
         int size();
 
         E get(int index);
+
+        void inSynchronizedBlock(BACnetServiceRunnable task) throws BACnetServiceException;
+    }
+
+
+    @FunctionalInterface
+    public interface BACnetServiceRunnable {
+        void run() throws BACnetServiceException;
     }
 
 
     /**
      * Allows Timestamped and Sequenced to be compared generically.
      */
-    static interface RangeComparable {
+    interface RangeComparable {
         // no op
     }
 
@@ -455,10 +461,10 @@ public class ReadRangeRequest extends ConfirmedRequestService {
     /**
      * Implemented by elements of RangeReadable that have timestamps. Currently implemented by ILogRecord.
      */
-    public static interface Timestamped extends RangeComparable {
+    public interface Timestamped extends RangeComparable {
         DateTime getTimestamp();
 
-        default int compareTimestamp(final Timestamped that) {
+        default int compareTimestamp(Timestamped that) {
             return getTimestamp().compareTo(that.getTimestamp());
         }
     }
@@ -467,10 +473,10 @@ public class ReadRangeRequest extends ConfirmedRequestService {
     /**
      * Implemented by elements of RangeReadable that have sequence numbers. Currently implemented by ILogRecord.
      */
-    public static interface Sequenced extends RangeComparable {
+    public interface Sequenced extends RangeComparable {
         long getSequenceNumber();
 
-        default int compareSequenceNumbero(final Sequenced that) {
+        default int compareSequenceNumber(Sequenced that) {
             return Long.compare(getSequenceNumber(), that.getSequenceNumber());
         }
 
@@ -480,52 +486,24 @@ public class ReadRangeRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (objectIdentifier == null ? 0 : objectIdentifier.hashCode());
-        result = PRIME * result + (propertyArrayIndex == null ? 0 : propertyArrayIndex.hashCode());
-        result = PRIME * result + (propertyIdentifier == null ? 0 : propertyIdentifier.hashCode());
-        result = PRIME * result + (range == null ? 0 : range.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (!(o instanceof ReadRangeRequest that))
+            return false;
+        return Objects.equals(objectIdentifier, that.objectIdentifier)
+                && Objects.equals(propertyIdentifier, that.propertyIdentifier)
+                && Objects.equals(propertyArrayIndex, that.propertyArrayIndex)
+                && Objects.equals(range, that.range);
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final ReadRangeRequest other = (ReadRangeRequest) obj;
-        if (objectIdentifier == null) {
-            if (other.objectIdentifier != null)
-                return false;
-        } else if (!objectIdentifier.equals(other.objectIdentifier))
-            return false;
-        if (propertyArrayIndex == null) {
-            if (other.propertyArrayIndex != null)
-                return false;
-        } else if (!propertyArrayIndex.equals(other.propertyArrayIndex))
-            return false;
-        if (propertyIdentifier == null) {
-            if (other.propertyIdentifier != null)
-                return false;
-        } else if (!propertyIdentifier.equals(other.propertyIdentifier))
-            return false;
-        if (range == null) {
-            if (other.range != null)
-                return false;
-        } else if (!range.equals(other.range))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(objectIdentifier, propertyIdentifier, propertyArrayIndex, range);
     }
 
-    abstract public static class Range extends BaseType {
+    public abstract static class Range extends BaseType {
         protected SignedInteger count;
 
-        public Range(final SignedInteger count) {
+        protected Range(SignedInteger count) {
             this.count = count;
         }
 
@@ -538,28 +516,16 @@ public class ReadRangeRequest extends ConfirmedRequestService {
         }
 
         @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + (count == null ? 0 : count.hashCode());
-            return result;
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass())
+                return false;
+            Range range = (Range) o;
+            return Objects.equals(count, range.count);
         }
 
         @Override
-        public boolean equals(final Object obj) {
-            if (this == obj)
-                return true;
-            if (obj == null)
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
-            final Range other = (Range) obj;
-            if (count == null) {
-                if (other.count != null)
-                    return false;
-            } else if (!count.equals(other.count))
-                return false;
-            return true;
+        public int hashCode() {
+            return Objects.hashCode(count);
         }
     }
 
@@ -567,22 +533,22 @@ public class ReadRangeRequest extends ConfirmedRequestService {
     public static class ByPosition extends Range {
         private final UnsignedInteger referenceIndex;
 
-        public ByPosition(final int referenceIndex, final int count) {
+        public ByPosition(int referenceIndex, int count) {
             this(new UnsignedInteger(referenceIndex), new SignedInteger(count));
         }
 
-        public ByPosition(final UnsignedInteger referenceIndex, final SignedInteger count) {
+        public ByPosition(UnsignedInteger referenceIndex, SignedInteger count) {
             super(count);
             this.referenceIndex = referenceIndex;
         }
 
         @Override
-        public void write(final ByteQueue queue) {
+        public void write(ByteQueue queue) {
             write(queue, referenceIndex);
             write(queue, count);
         }
 
-        public ByPosition(final ByteQueue queue) throws BACnetException {
+        public ByPosition(ByteQueue queue) throws BACnetException {
             referenceIndex = read(queue, UnsignedInteger.class);
             count = read(queue, SignedInteger.class);
         }
@@ -592,28 +558,17 @@ public class ReadRangeRequest extends ConfirmedRequestService {
         }
 
         @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = super.hashCode();
-            result = prime * result + (referenceIndex == null ? 0 : referenceIndex.hashCode());
-            return result;
+        public boolean equals(Object o) {
+            if (!(o instanceof ByPosition that))
+                return false;
+            if (!super.equals(o))
+                return false;
+            return Objects.equals(referenceIndex, that.referenceIndex);
         }
 
         @Override
-        public boolean equals(final Object obj) {
-            if (this == obj)
-                return true;
-            if (!super.equals(obj))
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
-            final ByPosition other = (ByPosition) obj;
-            if (referenceIndex == null) {
-                if (other.referenceIndex != null)
-                    return false;
-            } else if (!referenceIndex.equals(other.referenceIndex))
-                return false;
-            return true;
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), referenceIndex);
         }
     }
 
@@ -621,22 +576,22 @@ public class ReadRangeRequest extends ConfirmedRequestService {
     public static class BySequenceNumber extends Range {
         private final UnsignedInteger referenceIndex;
 
-        public BySequenceNumber(final long referenceIndex, final int count) {
+        public BySequenceNumber(long referenceIndex, int count) {
             this(new UnsignedInteger(referenceIndex), new SignedInteger(count));
         }
 
-        public BySequenceNumber(final UnsignedInteger referenceIndex, final SignedInteger count) {
+        public BySequenceNumber(UnsignedInteger referenceIndex, SignedInteger count) {
             super(count);
             this.referenceIndex = referenceIndex;
         }
 
         @Override
-        public void write(final ByteQueue queue) {
+        public void write(ByteQueue queue) {
             write(queue, referenceIndex);
             write(queue, count);
         }
 
-        public BySequenceNumber(final ByteQueue queue) throws BACnetException {
+        public BySequenceNumber(ByteQueue queue) throws BACnetException {
             referenceIndex = read(queue, UnsignedInteger.class);
             count = read(queue, SignedInteger.class);
         }
@@ -646,28 +601,17 @@ public class ReadRangeRequest extends ConfirmedRequestService {
         }
 
         @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = super.hashCode();
-            result = prime * result + (referenceIndex == null ? 0 : referenceIndex.hashCode());
-            return result;
+        public boolean equals(Object o) {
+            if (!(o instanceof BySequenceNumber that))
+                return false;
+            if (!super.equals(o))
+                return false;
+            return Objects.equals(referenceIndex, that.referenceIndex);
         }
 
         @Override
-        public boolean equals(final Object obj) {
-            if (this == obj)
-                return true;
-            if (!super.equals(obj))
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
-            final BySequenceNumber other = (BySequenceNumber) obj;
-            if (referenceIndex == null) {
-                if (other.referenceIndex != null)
-                    return false;
-            } else if (!referenceIndex.equals(other.referenceIndex))
-                return false;
-            return true;
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), referenceIndex);
         }
     }
 
@@ -675,22 +619,22 @@ public class ReadRangeRequest extends ConfirmedRequestService {
     public static class ByTime extends Range {
         private final DateTime referenceTime;
 
-        public ByTime(final DateTime referenceTime, final int count) {
+        public ByTime(DateTime referenceTime, int count) {
             this(referenceTime, new SignedInteger(count));
         }
 
-        public ByTime(final DateTime referenceTime, final SignedInteger count) {
+        public ByTime(DateTime referenceTime, SignedInteger count) {
             super(count);
             this.referenceTime = referenceTime;
         }
 
         @Override
-        public void write(final ByteQueue queue) {
+        public void write(ByteQueue queue) {
             write(queue, referenceTime);
             write(queue, count);
         }
 
-        public ByTime(final ByteQueue queue) throws BACnetException {
+        public ByTime(ByteQueue queue) throws BACnetException {
             referenceTime = read(queue, DateTime.class);
             count = read(queue, SignedInteger.class);
         }
@@ -700,28 +644,17 @@ public class ReadRangeRequest extends ConfirmedRequestService {
         }
 
         @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = super.hashCode();
-            result = prime * result + (referenceTime == null ? 0 : referenceTime.hashCode());
-            return result;
+        public boolean equals(Object o) {
+            if (!(o instanceof ByTime byTime))
+                return false;
+            if (!super.equals(o))
+                return false;
+            return Objects.equals(referenceTime, byTime.referenceTime);
         }
 
         @Override
-        public boolean equals(final Object obj) {
-            if (this == obj)
-                return true;
-            if (!super.equals(obj))
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
-            final ByTime other = (ByTime) obj;
-            if (referenceTime == null) {
-                if (other.referenceTime != null)
-                    return false;
-            } else if (!referenceTime.equals(other.referenceTime))
-                return false;
-            return true;
+        public int hashCode() {
+            return Objects.hash(super.hashCode(), referenceTime);
         }
     }
 }
