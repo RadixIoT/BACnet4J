@@ -264,6 +264,24 @@ public abstract class Encodable {
         return read(queue, clazz, contextId);
     }
 
+    /**
+     * Read an application-tagged optional primitive. Peeks the next tag and compares it against
+     * the class's {@code TYPE_ID} static field; if it matches (and is not a context tag), decodes
+     * the value, otherwise returns null. Symmetric with {@link #writeOptional(ByteQueue, Encodable)}
+     * for primitives, and complementary to the context-tagged {@link #readOptional(ByteQueue, Class, int)}.
+     */
+    protected static <T extends Primitive> T readOptional(ByteQueue queue, Class<T> clazz) throws BACnetException {
+        byte typeId;
+        try {
+            typeId = clazz.getField("TYPE_ID").getByte(null);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new ReflectionException(e);
+        }
+        if (isContextTag(queue) || peekTagNumber(queue) != (typeId & 0xff))
+            return null;
+        return read(queue, clazz);
+    }
+
     //
     // Read choices
     protected static Choice readChoice(ByteQueue queue, ChoiceOptions choiceOptions) throws BACnetException {

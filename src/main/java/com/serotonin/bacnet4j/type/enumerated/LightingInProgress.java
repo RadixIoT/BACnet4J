@@ -42,6 +42,7 @@ public class LightingInProgress extends Enumerated {
     public static final LightingInProgress rampActive = new LightingInProgress(2);
     public static final LightingInProgress notControlled = new LightingInProgress(3);
     public static final LightingInProgress other = new LightingInProgress(4);
+    public static final LightingInProgress trimActive = new LightingInProgress(5);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();
@@ -51,18 +52,18 @@ public class LightingInProgress extends Enumerated {
         Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
     }
 
-    public static LightingInProgress forId(final int id) {
+    public static LightingInProgress forId(int id) {
         LightingInProgress e = (LightingInProgress) idMap.get(id);
         if (e == null)
             e = new LightingInProgress(id);
         return e;
     }
 
-    public static String nameForId(final int id) {
+    public static String nameForId(int id) {
         return prettyMap.get(id);
     }
 
-    public static LightingInProgress forName(final String name) {
+    public static LightingInProgress forName(String name) {
         return (LightingInProgress) Enumerated.forName(nameMap, name);
     }
 
@@ -70,11 +71,11 @@ public class LightingInProgress extends Enumerated {
         return idMap.size();
     }
 
-    private LightingInProgress(final int value) {
+    private LightingInProgress(int value) {
         super(value);
     }
 
-    public LightingInProgress(final ByteQueue queue) throws BACnetErrorException {
+    public LightingInProgress(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
 

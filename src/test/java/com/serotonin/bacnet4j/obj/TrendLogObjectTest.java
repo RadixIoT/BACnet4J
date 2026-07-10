@@ -778,6 +778,30 @@ public class TrendLogObjectTest extends AbstractTest {
         assertEquals(new LogRecord(now, new LogStatus(false, true, false), null), tl.getRecord(0));
     }
 
+    /**
+     * Per addendum 135-2016bu-5 (Clause 12.25.5): a log-status record in which the BUFFER_PURGED
+     * flag is set to TRUE shall always be recorded, regardless of the Enable property.
+     */
+    @Test
+    public void bu5_purgeWhileDisabledStillRecordsBufferPurged() throws Exception {
+        final DateTime now = new DateTime(clock.millis());
+
+        final TrendLogObject tl = d1.addObject(new TrendLogObject(
+                d1, 0, "tl", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED,
+                new DeviceObjectPropertyReference(2, ai.getId(), PropertyIdentifier.presentValue), 0, true, 7));
+
+        // Disable logging. The Enable transition also records a log-disabled status record.
+        tl.writeProperty(null, new PropertyValue(PropertyIdentifier.enable, Boolean.FALSE));
+        assertEquals(1, tl.getRecordCount());
+        assertEquals(new LogRecord(now, new LogStatus(true, false, false), null), tl.getRecord(0));
+
+        // Purge while Enable=FALSE. Per bu-5, the BUFFER_PURGED record shall still appear.
+        tl.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, Unsigned32.ZERO));
+        assertEquals(1, tl.getRecordCount());
+        assertEquals(new LogRecord(now, new LogStatus(true, true, false), null), tl.getRecord(0));
+    }
+
     @Test
     public void writePropertyReference() throws Exception {
         DateTime now = new DateTime(clock.millis());

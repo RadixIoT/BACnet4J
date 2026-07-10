@@ -49,6 +49,7 @@ public class AbortReason extends Enumerated {
     public static final AbortReason outOfResources = new AbortReason(9);
     public static final AbortReason tsmTimeout = new AbortReason(10);
     public static final AbortReason apduTooLong = new AbortReason(11);
+    public static final AbortReason inconsistentAttributes = new AbortReason(12);
 
     private static final Map<Integer, Enumerated> idMap = new HashMap<>();
     private static final Map<String, Enumerated> nameMap = new HashMap<>();
@@ -58,18 +59,18 @@ public class AbortReason extends Enumerated {
         Enumerated.init(MethodHandles.lookup().lookupClass(), idMap, nameMap, prettyMap);
     }
 
-    public static AbortReason forId(final int id) {
+    public static AbortReason forId(int id) {
         AbortReason e = (AbortReason) idMap.get(id);
         if (e == null)
             e = new AbortReason(id);
         return e;
     }
 
-    public static String nameForId(final int id) {
+    public static String nameForId(int id) {
         return prettyMap.get(id);
     }
 
-    public static AbortReason forName(final String name) {
+    public static AbortReason forName(String name) {
         return (AbortReason) Enumerated.forName(nameMap, name);
     }
 
@@ -77,11 +78,11 @@ public class AbortReason extends Enumerated {
         return idMap.size();
     }
 
-    private AbortReason(final int value) {
+    private AbortReason(int value) {
         super(value);
     }
 
-    public AbortReason(final ByteQueue queue) throws BACnetErrorException {
+    public AbortReason(ByteQueue queue) throws BACnetErrorException {
         super(queue);
     }
 

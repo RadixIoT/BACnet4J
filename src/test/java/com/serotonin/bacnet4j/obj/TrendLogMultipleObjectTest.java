@@ -666,6 +666,27 @@ public class TrendLogMultipleObjectTest extends AbstractTest {
         assertEquals(new LogStatus(false, true, false), tl.getRecord(0).getLogData().getLogStatus());
     }
 
+    /**
+     * Per addendum 135-2016bu-5 (Clause 12.30.8): a log-status record in which the BUFFER_PURGED
+     * flag is set to TRUE shall always be recorded, regardless of the Enable property.
+     */
+    @Test
+    public void bu5_purgeWhileDisabledStillRecordsBufferPurged() throws Exception {
+        final TrendLogMultipleObject tl = d1.addObject(new TrendLogMultipleObject(
+                d1, 0, "tlm", new LinkedListLogBuffer<>(), true, DateTime.UNSPECIFIED,
+                DateTime.UNSPECIFIED, props, 0, true, 7));
+
+        // Disable logging. The Enable transition also records a log-disabled status record.
+        tl.writeProperty(null, new PropertyValue(PropertyIdentifier.enable, Boolean.FALSE));
+        assertEquals(1, tl.getRecordCount());
+        assertEquals(new LogStatus(true, false, false), tl.getRecord(0).getLogData().getLogStatus());
+
+        // Purge while Enable=FALSE. Per bu-5, the BUFFER_PURGED record shall still appear.
+        tl.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, Unsigned32.ZERO));
+        assertEquals(1, tl.getRecordCount());
+        assertEquals(new LogStatus(true, true, false), tl.getRecord(0).getLogData().getLogStatus());
+    }
+
     @Test
     public void writePropertyReference() throws Exception {
         ao.writePropertyInternal(PropertyIdentifier.presentValue, new Real(13));
