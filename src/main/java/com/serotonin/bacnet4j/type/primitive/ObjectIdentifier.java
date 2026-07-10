@@ -40,14 +40,14 @@ public class ObjectIdentifier extends Primitive {
     private final ObjectType objectType;
     private int instanceNumber;
 
-    public ObjectIdentifier(final int objectType, final int instanceNumber) {
+    public ObjectIdentifier(int objectType, int instanceNumber) {
         this(ObjectType.forId(objectType), instanceNumber);
     }
 
-    public ObjectIdentifier(final ObjectType objectType, final int instanceNumber) {
+    public ObjectIdentifier(ObjectType objectType, int instanceNumber) {
         Objects.requireNonNull(objectType);
 
-        if (instanceNumber < 0 || instanceNumber > 0x3FFFFF)
+        if (instanceNumber < 0 || instanceNumber > UNINITIALIZED)
             throw new IllegalArgumentException("Illegal instance number: " + instanceNumber);
 
         this.objectType = objectType;
@@ -74,11 +74,11 @@ public class ObjectIdentifier extends Primitive {
     //
     // Reading and writing
     //
-    public ObjectIdentifier(final ByteQueue queue) throws BACnetErrorException {
+    public ObjectIdentifier(ByteQueue queue) throws BACnetErrorException {
         readTag(queue, TYPE_ID);
 
         int objectType = queue.popU1B() << 2;
-        final int i = queue.popU1B();
+        int i = queue.popU1B();
         objectType |= i >> 6;
 
         this.objectType = ObjectType.forId(objectType);
@@ -89,8 +89,8 @@ public class ObjectIdentifier extends Primitive {
     }
 
     @Override
-    public void writeImpl(final ByteQueue queue) {
-        final int objectType = this.objectType.intValue();
+    public void writeImpl(ByteQueue queue) {
+        int objectType = this.objectType.intValue();
         queue.push(objectType >> 2);
         queue.push((objectType & 3) << 6 | instanceNumber >> 16);
         queue.push(instanceNumber >> 8);
@@ -108,30 +108,15 @@ public class ObjectIdentifier extends Primitive {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + instanceNumber;
-        result = PRIME * result + (objectType == null ? 0 : objectType.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        ObjectIdentifier that = (ObjectIdentifier) o;
+        return instanceNumber == that.instanceNumber && Objects.equals(objectType, that.objectType);
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final ObjectIdentifier other = (ObjectIdentifier) obj;
-        if (instanceNumber != other.instanceNumber)
-            return false;
-        if (objectType == null) {
-            if (other.objectType != null)
-                return false;
-        } else if (!objectType.equals(other.objectType))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(objectType, instanceNumber);
     }
 }

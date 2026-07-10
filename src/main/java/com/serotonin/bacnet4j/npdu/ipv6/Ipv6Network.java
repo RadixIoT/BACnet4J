@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.npdu.MessageValidationException;
 import com.serotonin.bacnet4j.npdu.NPDU;
 import com.serotonin.bacnet4j.npdu.Network;
@@ -81,20 +82,19 @@ public class Ipv6Network extends Network implements Runnable {
 
     private final List<PendingAddressResolution> pendingAddressResolutions = new CopyOnWriteArrayList<>();
 
-    public Ipv6Network(final String multicastAddress) {
+    public Ipv6Network(String multicastAddress) {
         this(multicastAddress, DEFAULT_PORT);
     }
 
-    public Ipv6Network(final String multicastAddress, final int port) {
+    public Ipv6Network(String multicastAddress, int port) {
         this(multicastAddress, port, DEFAULT_BIND_ADDRESS);
     }
 
-    public Ipv6Network(final String multicastAddress, final int port, final String localBindAddress) {
+    public Ipv6Network(String multicastAddress, int port, String localBindAddress) {
         this(multicastAddress, port, localBindAddress, 0);
     }
 
-    public Ipv6Network(final String multicastAddress, final int port, final String localBindAddress,
-            final int localNetworkNumber) {
+    public Ipv6Network(String multicastAddress, int port, String localBindAddress, int localNetworkNumber) {
         super(localNetworkNumber);
         this.multicastAddress = multicastAddress;
         this.port = port;
@@ -133,6 +133,7 @@ public class Ipv6Network extends Network implements Runnable {
         return bytesIn;
     }
 
+    @Override
     public boolean isInitialized() {
         return thisVMAC != null;
     }
@@ -150,15 +151,20 @@ public class Ipv6Network extends Network implements Runnable {
     }
 
     @Override
-    public void initialize(final Transport transport) throws Exception {
+    public void initialize(Transport transport) throws BACnetException {
         super.initialize(transport);
 
-        if (DEFAULT_BIND_ADDRESS.equals(localBindAddress))
-            socket = new MulticastSocket(port);
-        else
-            socket = new MulticastSocket(new InetSocketAddress(InetAddress.getByName(localBindAddress), port));
-        final InetAddress ia = InetAddress.getByName(multicastAddress);
-        socket.joinGroup(ia);
+        InetAddress ia;
+        try {
+            if (DEFAULT_BIND_ADDRESS.equals(localBindAddress))
+                socket = new MulticastSocket(port);
+            else
+                socket = new MulticastSocket(new InetSocketAddress(InetAddress.getByName(localBindAddress), port));
+            ia = InetAddress.getByName(multicastAddress);
+            socket.joinGroup(ia);
+        } catch (IOException e) {
+            throw new BACnetException("Failed to initialize Ipv6 network", e);
+        }
 
         broadcastMAC = Ipv6NetworkUtils.toOctetString(ia.getAddress(), port);
 
@@ -166,9 +172,9 @@ public class Ipv6Network extends Network implements Runnable {
 
         try {
             vmacTable.put(thisVMAC, Ipv6NetworkUtils.toOctetString(InetAddress.getByName("::1").getAddress(), port));
-        } catch (final UnknownHostException e) {
+        } catch (UnknownHostException e) {
             // Should never happen
-            throw new RuntimeException(e);
+            throw new BACnetRuntimeException(e);
         }
 
         new Thread(this, "BACnet4J IPv6 socket listener").start();
@@ -191,11 +197,10 @@ public class Ipv6Network extends Network implements Runnable {
      *
      * @param addr       The address of the device where our device wants to be registered as foreign device
      * @param timeToLive The time until we are automatically removed out of the FDT.
-     * @throws BACnetException
+     * @throws BACnetException if the packet can't be sent
      */
-    public void sendRegisterForeignDeviceMessage(final InetSocketAddress addr, final int timeToLive)
-            throws BACnetException {
-        final ByteQueue queue = new ByteQueue();
+    public void sendRegisterForeignDeviceMessage(InetSocketAddress addr, int timeToLive) throws BACnetException {
+        ByteQueue queue = new ByteQueue();
         queue.push(BVLC_TYPE);
         queue.push(0x09); // Register-Foreign-Device
         queue.pushU2B(9); // Length
@@ -205,11 +210,11 @@ public class Ipv6Network extends Network implements Runnable {
     }
 
     @Override
-    public void sendNPDU(final Address recipient, final OctetString router, final ByteQueue npdu,
-            final boolean broadcast, final boolean expectsReply) throws BACnetException {
+    public void sendNPDU(Address recipient, OctetString router, ByteQueue npdu, boolean broadcast, boolean expectsReply)
+            throws BACnetException {
         LOG.debug("Sending npdu: recipient={}, router={}, npdu={}, broadcast={}", recipient, router, npdu, broadcast);
 
-        final ByteQueue queue = new ByteQueue();
+        ByteQueue queue = new ByteQueue();
 
         // BACnet virtual link layer detail
         queue.push(BVLC_TYPE);
@@ -230,24 +235,24 @@ public class Ipv6Network extends Network implements Runnable {
         // Combine the queues
         queue.push(npdu);
 
-        final OctetString dest = getDestination(recipient, router);
+        OctetString dest = getDestination(recipient, router);
 
         // Get the IP address for this destination.
         if (broadcast)
             sendPacket(Ipv6NetworkUtils.getInetSocketAddress(dest), queue.popAll());
         else {
-            final OctetString ipAddr = vmacTable.get(dest);
+            OctetString ipAddr = vmacTable.get(dest);
             if (ipAddr == null) {
                 purgePendingAddressResolutions();
 
                 // The IP address for this destination is not known. Queue the message and send an address
                 // resolution request.
-                final PendingAddressResolution par = new PendingAddressResolution();
+                PendingAddressResolution par = new PendingAddressResolution();
                 par.destination = dest;
                 par.data = queue.popAll();
                 pendingAddressResolutions.add(par);
 
-                final ByteQueue req = new ByteQueue();
+                ByteQueue req = new ByteQueue();
                 req.push(BVLC_TYPE);
                 req.push(0x3); // Function
                 req.pushU2B(0xa); // Length
@@ -260,13 +265,15 @@ public class Ipv6Network extends Network implements Runnable {
         }
     }
 
-    private void sendPacket(final InetSocketAddress addr, final byte[] data) throws BACnetException {
+    private void sendPacket(InetSocketAddress addr, byte[] data) throws BACnetException {
         try {
-            LOG.debug("Sending datagram to {}: {}", addr, StreamUtils.dumpArrayHex(data));
-            final DatagramPacket packet = new DatagramPacket(data, data.length, addr);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Sending datagram to {}: {}", addr, StreamUtils.dumpArrayHex(data));
+            }
+            DatagramPacket packet = new DatagramPacket(data, data.length, addr);
             socket.send(packet);
             bytesOut += data.length;
-        } catch (final IOException e) {
+        } catch (IOException e) {
             throw new BACnetException(e);
         }
     }
@@ -275,16 +282,16 @@ public class Ipv6Network extends Network implements Runnable {
     // For receiving
     @Override
     public void run() {
-        final byte[] buffer = new byte[MESSAGE_LENGTH];
-        final DatagramPacket p = new DatagramPacket(buffer, buffer.length);
+        byte[] buffer = new byte[MESSAGE_LENGTH];
+        DatagramPacket p = new DatagramPacket(buffer, buffer.length);
 
         while (!socket.isClosed()) {
             try {
                 socket.receive(p);
 
                 bytesIn += p.getLength();
-                final ByteQueue queue = new ByteQueue(p.getData(), p.getOffset(), p.getLength());
-                final OctetString link = Ipv6NetworkUtils.toOctetString(p.getAddress().getAddress(), p.getPort());
+                ByteQueue queue = new ByteQueue(p.getData(), p.getOffset(), p.getLength());
+                OctetString link = Ipv6NetworkUtils.toOctetString(p.getAddress().getAddress(), p.getPort());
 
                 LOG.debug("Received datagram from {}: {}", link, queue);
 
@@ -292,14 +299,14 @@ public class Ipv6Network extends Network implements Runnable {
 
                 // Reset the packet.
                 p.setData(buffer);
-            } catch (@SuppressWarnings("unused") final IOException e) {
+            } catch (@SuppressWarnings("unused") IOException e) {
                 // no op. This happens if the socket gets closed by the destroy method.
             }
         }
     }
 
     @Override
-    protected NPDU handleIncomingDataImpl(final ByteQueue queue, final OctetString fromIpv6) throws Exception {
+    protected NPDU handleIncomingDataImpl(ByteQueue queue, OctetString fromIpv6) throws BACnetException {
         if (queue.size() < 4)
             throw new MessageValidationException("Message too short to be BACnet/IPv6: " + queue + " from " + fromIpv6);
 
@@ -308,14 +315,14 @@ public class Ipv6Network extends Network implements Runnable {
         if (queue.pop() != BVLC_TYPE)
             throw new MessageValidationException("Protocol id is not BACnet/IPv6 (0x82)");
 
-        final byte function = queue.pop();
+        byte function = queue.pop();
 
-        final int length = BACnetUtils.popShort(queue);
+        int length = BACnetUtils.popShort(queue);
         if (length != queue.size() + 4)
             throw new MessageValidationException(
                     "Length field does not match data: given=" + length + ", expected=" + (queue.size() + 4));
 
-        final OctetString sourceVMAC = BACnetUtils.popDeviceId(queue);
+        OctetString sourceVMAC = BACnetUtils.popDeviceId(queue);
 
         // Add the resolution to the table
         vmacTable.put(sourceVMAC, fromIpv6);
@@ -324,23 +331,21 @@ public class Ipv6Network extends Network implements Runnable {
 
         if (function == 0x0) {
             // BVLC-Result. Currently can only be the answer to the foreign device registration request.
-            final int result = BACnetUtils.popShort(queue);
+            int result = BACnetUtils.popShort(queue);
             if (result != 0)
                 // TODO need to do something better here.
-                System.out.println("Foreign device registration not successful! result: " + result);
+                LOG.warn("Foreign device registration not successful! result: {}", result);
         } else if (function == 0x1 || function == 0x2) {
             // Original-Unicast-NPDU or Original-Broadcast-NPDU
-            //OctetString destinationVMAC = null;
             if (function == 0x1) // Unicast only
-                //destinationVMAC = BACnetUtils.popDeviceId(queue);
                 BACnetUtils.popDeviceId(queue);
             npdu = parseNpduData(queue, sourceVMAC);
         } else if (function == 0x3 || function == 0x4) {
             // Address-Resolution or Forwarded-Address-Resolution
-            final OctetString targetVMAC = BACnetUtils.popDeviceId(queue);
+            OctetString targetVMAC = BACnetUtils.popDeviceId(queue);
 
             // How is this source address used?
-            byte[] sourceIpv6Address = null;
+            byte[] sourceIpv6Address;
             if (function == 0x4) {
                 sourceIpv6Address = new byte[18];
                 queue.pop(sourceIpv6Address);
@@ -348,7 +353,7 @@ public class Ipv6Network extends Network implements Runnable {
 
             if (thisVMAC.equals(targetVMAC)) {
                 // This is the device you are looking for. Reply with an Address-Resolution-Ack
-                final ByteQueue ack = new ByteQueue();
+                ByteQueue ack = new ByteQueue();
                 ack.push(BVLC_TYPE);
                 ack.push(0x5); // Function
                 ack.pushU2B(0xa); // Length
@@ -358,11 +363,10 @@ public class Ipv6Network extends Network implements Runnable {
             }
         } else if (function == 0x5) {
             // Address-Resolution-Ack. Check the pending list for matching requests.
-            //OctetString destinationVMAC = BACnetUtils.popDeviceId(queue);
             BACnetUtils.popDeviceId(queue);
 
             List<PendingAddressResolution> matched = null;
-            for (final PendingAddressResolution par : pendingAddressResolutions) {
+            for (PendingAddressResolution par : pendingAddressResolutions) {
                 if (par.destination.equals(sourceVMAC)) {
                     if (matched == null)
                         matched = new ArrayList<>();
@@ -374,7 +378,7 @@ public class Ipv6Network extends Network implements Runnable {
                 pendingAddressResolutions.removeAll(matched);
         } else if (function == 0x6) {
             // Virtual-Address-Resolution. Reply with a Virtual-Address-Resolution-Ack
-            final ByteQueue ack = new ByteQueue();
+            ByteQueue ack = new ByteQueue();
             ack.push(BVLC_TYPE);
             ack.push(0x7); // Function
             ack.pushU2B(0xa); // Length
@@ -383,11 +387,10 @@ public class Ipv6Network extends Network implements Runnable {
             sendPacket(Ipv6NetworkUtils.getInetSocketAddress(fromIpv6), queue.popAll());
         } else if (function == 0x7) {
             // Virtual-Address-Resolution-Ack.
-            //OctetString destinationVMAC = BACnetUtils.popDeviceId(queue);
             BACnetUtils.popDeviceId(queue);
         } else if (function == 0x8) {
             // Forwarded-NPDU. Use the address/port as the link service address.
-            final byte[] addr = new byte[18];
+            byte[] addr = new byte[18];
             queue.pop(addr);
             vmacTable.put(sourceVMAC, new OctetString(addr));
             npdu = parseNpduData(queue, sourceVMAC);
@@ -413,9 +416,9 @@ public class Ipv6Network extends Network implements Runnable {
     }
 
     private void purgePendingAddressResolutions() {
-        final long now = getTransport().getLocalDevice().getClock().millis();
+        long now = getTransport().getLocalDevice().getClock().millis();
         List<PendingAddressResolution> toRemove = null;
-        for (final PendingAddressResolution par : pendingAddressResolutions) {
+        for (PendingAddressResolution par : pendingAddressResolutions) {
             if (par.deadline < now) {
                 if (toRemove == null)
                     toRemove = new ArrayList<>();

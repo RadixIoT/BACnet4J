@@ -104,6 +104,10 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
 - Changes for compliance with addendum 135-2016bi-3 regarding extremely large logs
 - Time form construction of DateTime choice has been deprecated. They should no longer be created by client code
 - `LifeSafetyOperationRequest` returns error code specified in addendum bt-2
+- The method `ExceptionListener.receivedThrowable` has been removed
+- The method `DeviceEventListener.whoAmIReceived` has been added
+- The method `DeviceEventListener.youAreReceived` has been added
+- Code that allowed an unconfigured device to find an unused device id has been removed
 
 *Version 6.2.0*
 

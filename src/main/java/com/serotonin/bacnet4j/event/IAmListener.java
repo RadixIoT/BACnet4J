@@ -29,9 +29,6 @@ package com.serotonin.bacnet4j.event;
 
 import com.serotonin.bacnet4j.RemoteDevice;
 
-/**
- * @author Terry Packer
- */
 @FunctionalInterface
 public interface IAmListener extends DefaultDeviceEventListener {
     @Override

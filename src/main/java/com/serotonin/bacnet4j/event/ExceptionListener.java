@@ -34,6 +34,4 @@ public interface ExceptionListener {
     void unimplementedVendorService(UnsignedInteger vendorId, UnsignedInteger serviceNumber, ByteQueue queue);
 
     void receivedException(Exception e);
-
-    void receivedThrowable(Throwable t);
 }

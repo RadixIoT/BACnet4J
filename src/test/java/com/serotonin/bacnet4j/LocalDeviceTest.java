@@ -28,9 +28,7 @@
 package com.serotonin.bacnet4j;
 
 import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
-import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -67,7 +65,6 @@ import com.serotonin.bacnet4j.obj.DeviceObject;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.enumerated.EngineeringUnits;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
-import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.util.DiscoveryUtils;
 import com.serotonin.bacnet4j.util.RemoteDeviceDiscoverer;
 import com.serotonin.bacnet4j.util.RemoteDeviceFinder.RemoteDeviceFuture;
@@ -105,20 +102,20 @@ public class LocalDeviceTest {
         DiscoveryUtils.getExtendedDeviceInformation(d1, rd2);
 
         // Ask for device 2 in two different threads.
-        final MutableObject<RemoteDevice> rd21 = new MutableObject<>();
-        final MutableObject<RemoteDevice> rd22 = new MutableObject<>();
-        final Future<?> future1 = d1.submit(() -> {
+        MutableObject<RemoteDevice> rd21 = new MutableObject<>();
+        MutableObject<RemoteDevice> rd22 = new MutableObject<>();
+        Future<?> future1 = d1.submit(() -> {
             try {
                 rd21.setValue(d1.getRemoteDevice(2).get());
-            } catch (final BACnetException e) {
+            } catch (BACnetException e) {
                 fail(e.getMessage());
                 LOG.error("Should not have happened", e);
             }
         });
-        final Future<?> future2 = d1.submit(() -> {
+        Future<?> future2 = d1.submit(() -> {
             try {
                 rd22.setValue(d1.getRemoteDevice(2).get());
-            } catch (final BACnetException e) {
+            } catch (BACnetException e) {
                 LOG.error("Should not have happened", e);
             }
         });
@@ -134,7 +131,7 @@ public class LocalDeviceTest {
         assertNotNull(rd21.get().getDeviceProperty(PropertyIdentifier.modelName));
 
         // Ask for it again. Should be the same instance.
-        final RemoteDevice rd23 = d1.getRemoteDevice(2).get();
+        RemoteDevice rd23 = d1.getRemoteDevice(2).get();
 
         // Device is cached, so it will still be the same instance.
         assertSame(rd21.get(), rd23);
@@ -147,26 +144,9 @@ public class LocalDeviceTest {
 
     @Test(expected = CancellationException.class)
     public void cancelGetRemoteDevice() throws CancellationException, BACnetException {
-        final RemoteDeviceFuture future = d1.getRemoteDevice(3);
+        RemoteDeviceFuture future = d1.getRemoteDevice(3);
         future.cancel();
         future.get();
-    }
-
-    @Test
-    public void undefinedDeviceId() throws Exception {
-        try (final LocalDevice ld = new LocalDevice(ObjectIdentifier.UNINITIALIZED,
-                new DefaultTransport(new TestNetwork(map, 3, 10)))) {
-            ld.setClock(clock);
-            new Thread(() -> {
-                // After a quiet period advance the clock to allow the local device initialization to complete.
-                quiesce();
-                clock.plusSeconds(200);
-            }).start();
-            ld.initialize();
-
-            LOG.info("Local device initialized with device id {}", ld.getInstanceNumber());
-            assertNotEquals(ObjectIdentifier.UNINITIALIZED, ld.getInstanceNumber());
-        }
     }
 
     @Test
@@ -174,7 +154,7 @@ public class LocalDeviceTest {
         assertNull(d1.getCachedRemoteDevice(2));
 
         // Ask for device 2 in a different thread.
-        final MutableObject<RemoteDevice> rd21 = new MutableObject<>();
+        MutableObject<RemoteDevice> rd21 = new MutableObject<>();
         d1.getRemoteDevice(2, rd21::setValue, null, null, 1, TimeUnit.SECONDS);
 
         awaitTrue(() -> rd21.get() != null);
@@ -183,8 +163,8 @@ public class LocalDeviceTest {
 
     @Test
     public void createSecondDevice() {
-        final LocalDevice ld = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
-        final DeviceObject o = new DeviceObject(ld, 2);
+        LocalDevice ld = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
+        DeviceObject o = new DeviceObject(ld, 2);
 
         // Ensure the device object was not automatically added to the local device.
         assertEquals(1, ld.getLocalObjects().size());
@@ -206,14 +186,14 @@ public class LocalDeviceTest {
     @SuppressWarnings("unused")
     @Test
     public void getDeviceBlockingTimeout() throws Exception {
-        try (final LocalDevice d3 = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0))).withClock(
+        try (LocalDevice d3 = new LocalDevice(3, new DefaultTransport(new TestNetwork(map, 3, 0))).withClock(
                 clock).initialize()) {
-            final long start = Clock.systemUTC().millis();
+            long start = Clock.systemUTC().millis();
 
             try {
                 d3.getRemoteDeviceBlocking(4, 100);
                 fail();
-            } catch (final BACnetTimeoutException e) {
+            } catch (BACnetTimeoutException e) {
                 // Expected after 100ms.
                 assertTrue(Clock.systemUTC().millis() - start >= 100);
             }
@@ -221,7 +201,7 @@ public class LocalDeviceTest {
             try {
                 d3.getRemoteDeviceBlocking(4, 1000);
                 fail();
-            } catch (final BACnetTimeoutException e) {
+            } catch (BACnetTimeoutException e) {
                 // Expected immediately.
                 assertTrue(Clock.systemUTC().millis() - start < 1000);
             }
@@ -231,7 +211,7 @@ public class LocalDeviceTest {
             try {
                 d3.getRemoteDeviceBlocking(4, 100);
                 fail();
-            } catch (final BACnetTimeoutException e) {
+            } catch (BACnetTimeoutException e) {
                 // Expected after 100ms.
                 assertTrue(Clock.systemUTC().millis() - start >= 100);
             }

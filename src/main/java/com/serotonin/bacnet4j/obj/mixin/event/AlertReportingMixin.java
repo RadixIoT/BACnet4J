@@ -41,6 +41,7 @@ import com.serotonin.bacnet4j.type.notificationParameters.ExtendedNotif;
 import com.serotonin.bacnet4j.type.notificationParameters.ExtendedNotif.Parameter;
 import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
@@ -50,16 +51,16 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
  */
 public class AlertReportingMixin extends EventReportingMixin {
     private ObjectIdentifier alertSource;
-    private UnsignedInteger vendorId;
+    private Unsigned16 vendorId;
     private UnsignedInteger extendedEventType;
     private Parameter[] parameters;
 
-    public AlertReportingMixin(final BACnetObject bo) {
+    public AlertReportingMixin(BACnetObject bo) {
         super(bo, null, null);
     }
 
-    public void issueAlert(final ObjectIdentifier alertSource, final UnsignedInteger vendorId,
-            final UnsignedInteger extendedEventType, final Parameter[] parameters) {
+    public void issueAlert(ObjectIdentifier alertSource, Unsigned16 vendorId, UnsignedInteger extendedEventType,
+            Parameter[] parameters) {
         writePropertyInternal(PropertyIdentifier.presentValue, alertSource);
 
         this.alertSource = alertSource;
@@ -71,12 +72,12 @@ public class AlertReportingMixin extends EventReportingMixin {
     }
 
     @Override
-    protected StateTransition evaluateEventState(final BACnetObject bo, final EventAlgorithm eventAlgo) {
+    protected StateTransition evaluateEventState(BACnetObject bo, EventAlgorithm eventAlgo) {
         return null;
     }
 
     @Override
-    protected EventType getEventType(final EventAlgorithm eventAlgo) {
+    protected EventType getEventType(EventAlgorithm eventAlgo) {
         return EventType.extended;
     }
 
@@ -86,22 +87,22 @@ public class AlertReportingMixin extends EventReportingMixin {
     }
 
     @Override
-    protected NotificationParameters getNotificationParameters(final EventState fromState, final EventState toState,
-            final BACnetObject bo, final EventAlgorithm eventAlgo) {
-        final SequenceOf<Parameter> params = new SequenceOf<>(new Parameter(alertSource));
-        for (final Parameter p : parameters)
+    protected NotificationParameters getNotificationParameters(EventState fromState, EventState toState,
+            BACnetObject bo, EventAlgorithm eventAlgo) {
+        SequenceOf<Parameter> params = new SequenceOf<>(new Parameter(alertSource));
+        for (Parameter p : parameters)
             params.add(p);
         return new NotificationParameters(new ExtendedNotif(vendorId, extendedEventType, params));
     }
 
     @Override
-    protected Reliability evaluateFaultState(final Encodable oldMonitoredValue, final Encodable newMonitoredValue,
-            final BACnetObject bo, final FaultAlgorithm faultAlgo) {
+    protected Reliability evaluateFaultState(Encodable oldMonitoredValue, Encodable newMonitoredValue, BACnetObject bo,
+            FaultAlgorithm faultAlgo) {
         return null;
     }
 
     @Override
-    protected PropertyValue getEventEnrollmentMonitoredProperty(final PropertyIdentifier pid) {
+    protected PropertyValue getEventEnrollmentMonitoredProperty(PropertyIdentifier pid) {
         throw new RuntimeException("Should not be called because AlertEnrollment does not support intrinsic reporting");
     }
 }

@@ -31,8 +31,8 @@ import java.util.Objects;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetException;
-import com.serotonin.bacnet4j.exception.NotImplementedException;
 import com.serotonin.bacnet4j.type.constructed.Address;
+import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
@@ -88,7 +88,11 @@ public class YouAreRequest extends UnconfirmedRequestService {
 
     @Override
     public void handle(LocalDevice localDevice, Address from) throws BACnetException {
-        throw new NotImplementedException();
+        if (vendorId.equals(localDevice.get(PropertyIdentifier.vendorIdentifier))
+                && modelName.equals(localDevice.get(PropertyIdentifier.modelName))
+                && serialNumber.equals(localDevice.get(PropertyIdentifier.serialNumber))) {
+            localDevice.getEventHandler().fireYouAreReceived(from, deviceIdentifier, deviceMacAddress);
+        }
     }
 
     @Override

@@ -35,7 +35,7 @@ import com.serotonin.bacnet4j.apdu.ConfirmedRequest;
 import com.serotonin.bacnet4j.apdu.UnconfirmedRequest;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.enums.MaxSegments;
-import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedEventNotificationRequest;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedTextMessageRequest;
 import com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedEventNotificationRequest;
@@ -89,8 +89,8 @@ public class NetworkPriorityTest {
         Assert.assertEquals(0, getNetworkPriorityOther());
     }
 
-    private static int getNetworkPriorityCEN(final int eventPriority) throws Exception {
-        final ConfirmedEventNotificationRequest req = new ConfirmedEventNotificationRequest(new UnsignedInteger(2),
+    private static int getNetworkPriorityCEN(int eventPriority) throws Exception {
+        ConfirmedEventNotificationRequest req = new ConfirmedEventNotificationRequest(new UnsignedInteger(2),
                 new ObjectIdentifier(ObjectType.device, 8), new ObjectIdentifier(ObjectType.analogInput, 9),
                 new TimeStamp(new DateTime(123456789)), new UnsignedInteger(3), new UnsignedInteger(eventPriority),
                 EventType.changeOfBitstring, new CharacterString("hi"), NotifyType.event, Boolean.FALSE,
@@ -98,13 +98,13 @@ public class NetworkPriorityTest {
                 new NotificationParameters(
                         new ChangeOfBitStringNotif(new BitString(new boolean[] {false, true, false, true}),
                                 new StatusFlags(true, false, false, false))));
-        final ConfirmedRequest apdu = new ConfirmedRequest(false, false, true, MaxSegments.MORE_THAN_64,
+        ConfirmedRequest apdu = new ConfirmedRequest(false, false, true, MaxSegments.MORE_THAN_64,
                 MaxApduLength.UP_TO_1476, (byte) 45, 0, 5, req);
         return getNetworkPriority(apdu);
     }
 
-    private static int getNetworkPriorityUEN(final int eventPriority) throws Exception {
-        final UnconfirmedEventNotificationRequest req = new UnconfirmedEventNotificationRequest(new UnsignedInteger(2),
+    private static int getNetworkPriorityUEN(int eventPriority) throws Exception {
+        UnconfirmedEventNotificationRequest req = new UnconfirmedEventNotificationRequest(new UnsignedInteger(2),
                 new ObjectIdentifier(ObjectType.device, 8), new ObjectIdentifier(ObjectType.analogInput, 9),
                 new TimeStamp(new DateTime(123456789)), new UnsignedInteger(3), new UnsignedInteger(eventPriority),
                 EventType.changeOfBitstring, new CharacterString("hi"), NotifyType.event, Boolean.FALSE,
@@ -113,50 +113,49 @@ public class NetworkPriorityTest {
                         new ChangeOfBitStringNotif(new BitString(new boolean[] {false, true, false, true}),
                                 new StatusFlags(true, false, false, false))));
 
-        final UnconfirmedRequest apdu = new UnconfirmedRequest(req);
+        UnconfirmedRequest apdu = new UnconfirmedRequest(req);
 
         return getNetworkPriority(apdu);
     }
 
-    private static int getNetworkPriorityCTM(final MessagePriority priority) throws Exception {
-        final ConfirmedTextMessageRequest req = new ConfirmedTextMessageRequest(
+    private static int getNetworkPriorityCTM(MessagePriority priority) throws Exception {
+        ConfirmedTextMessageRequest req = new ConfirmedTextMessageRequest(
                 new ObjectIdentifier(ObjectType.device, 8), priority, new CharacterString("hi"));
-        final ConfirmedRequest apdu = new ConfirmedRequest(false, false, true, MaxSegments.MORE_THAN_64,
+        ConfirmedRequest apdu = new ConfirmedRequest(false, false, true, MaxSegments.MORE_THAN_64,
                 MaxApduLength.UP_TO_1476, (byte) 45, 0, 5, req);
         return getNetworkPriority(apdu);
     }
 
-    private static int getNetworkPriorityUTM(final MessagePriority priority) throws Exception {
-        final UnconfirmedTextMessageRequest req = new UnconfirmedTextMessageRequest(
+    private static int getNetworkPriorityUTM(MessagePriority priority) throws Exception {
+        UnconfirmedTextMessageRequest req = new UnconfirmedTextMessageRequest(
                 new ObjectIdentifier(ObjectType.device, 8), priority, new CharacterString("hi"));
-        final UnconfirmedRequest apdu = new UnconfirmedRequest(req);
+        UnconfirmedRequest apdu = new UnconfirmedRequest(req);
         return getNetworkPriority(apdu);
     }
 
     private static int getNetworkPriorityOther() throws Exception {
-        final UnconfirmedPrivateTransferRequest req = new UnconfirmedPrivateTransferRequest(11, 12, new Real(3.14F));
-        final UnconfirmedRequest apdu = new UnconfirmedRequest(req);
+        UnconfirmedPrivateTransferRequest req = new UnconfirmedPrivateTransferRequest(11, 12, new Real(3.14F));
+        UnconfirmedRequest apdu = new UnconfirmedRequest(req);
         return getNetworkPriority(apdu);
     }
 
-    private static int getNetworkPriority(final APDU apdu) throws Exception {
-        final ByteQueue queue = new ByteQueue();
-        final Network network = new Network() {
+    private static int getNetworkPriority(APDU apdu) throws Exception {
+        ByteQueue queue = new ByteQueue();
+        Network network = new Network() {
             @Override
             public void terminate() {
                 throw new RuntimeException();
             }
 
             @Override
-            public void sendNPDU(final Address recipient, final OctetString router, final ByteQueue npdu,
-                    final boolean broadcast, final boolean expectsReply) throws BACnetException {
+            public void sendNPDU(Address recipient, OctetString router, ByteQueue npdu, boolean broadcast,
+                    boolean expectsReply) {
                 queue.push(npdu);
             }
 
             @Override
-            protected NPDU handleIncomingDataImpl(final ByteQueue queue, final OctetString linkService)
-                    throws Exception {
-                throw new RuntimeException();
+            protected NPDU handleIncomingDataImpl(ByteQueue queue, OctetString linkService) {
+                throw new BACnetRuntimeException();
             }
 
             @Override
@@ -199,7 +198,7 @@ public class NetworkPriorityTest {
         network.sendAPDU(new Address(2, new byte[] {2}), new OctetString(new byte[] {5}), apdu, false);
 
         queue.pop();
-        final byte control = queue.pop();
+        byte control = queue.pop();
 
         return control & 0x3;
     }

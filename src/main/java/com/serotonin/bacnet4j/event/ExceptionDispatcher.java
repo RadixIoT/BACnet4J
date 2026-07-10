@@ -41,11 +41,11 @@ public class ExceptionDispatcher {
         listeners.add(defaultExceptionListener);
     }
 
-    public void addListener(final ExceptionListener l) {
+    public void addListener(ExceptionListener l) {
         listeners.add(l);
     }
 
-    public void removeListener(final ExceptionListener l) {
+    public void removeListener(ExceptionListener l) {
         listeners.remove(l);
     }
 
@@ -53,19 +53,15 @@ public class ExceptionDispatcher {
         listeners.remove(defaultExceptionListener);
     }
 
-    public void fireUnimplementedVendorService(final UnsignedInteger vendorId, final UnsignedInteger serviceNumber,
-            final ByteQueue queue) {
-        for (final ExceptionListener l : listeners)
+    public void fireUnimplementedVendorService(UnsignedInteger vendorId, UnsignedInteger serviceNumber,
+            ByteQueue queue) {
+        for (ExceptionListener l : listeners)
             l.unimplementedVendorService(vendorId, serviceNumber, queue);
     }
 
-    public void fireReceivedException(final Exception e) {
-        for (final ExceptionListener l : listeners)
+    public void fireReceivedException(Exception e) {
+        for (ExceptionListener l : listeners) {
             l.receivedException(e);
-    }
-
-    public void fireReceivedThrowable(final Throwable t) {
-        for (final ExceptionListener l : listeners)
-            l.receivedThrowable(t);
+        }
     }
 }

@@ -34,6 +34,7 @@ import java.io.IOException;
 
 import org.apache.commons.lang3.StringUtils;
 
+import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.npdu.mstp.realtime.RealtimeDriver;
 import com.serotonin.bacnet4j.transport.Transport;
 import com.serotonin.bacnet4j.util.sero.StreamUtils;
@@ -73,15 +74,19 @@ public class RealtimeManagerNode extends ManagerNode {
     }
 
     @Override
-    public void initialize(Transport transport) throws Exception {
-        //Setup I/O
-        File file = new File(portId);
-        in = new FileInputStream(file);
-        out = new FileOutputStream(file);
+    public void initialize(Transport transport) throws BACnetException {
+        try {
+            //Setup I/O
+            File file = new File(portId);
+            in = new FileInputStream(file);
+            out = new FileOutputStream(file);
 
-        //Configure Driver
-        this.driver.configure(portId, baud, thisStation, maxManager, maxInfoFrames, usageTimeout);
-        super.initialize(transport);
+            //Configure Driver
+            this.driver.configure(portId, baud, thisStation, maxManager, maxInfoFrames, usageTimeout);
+            super.initialize(transport);
+        } catch (Exception e) {
+            throw new BACnetException(e);
+        }
     }
 
     @Override
