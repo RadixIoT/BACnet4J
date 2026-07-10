@@ -186,7 +186,8 @@ public class ReadPropertyMultipleRequestTest {
         ReadPropertyMultipleAck ack = (ReadPropertyMultipleAck) new ReadPropertyMultipleRequest(listOfReadAccessSpecs)
                 .handle(localDevice, addr);
 
-        //The instance number of the localdevice must be sent if a request is made to the instance 0x3FFFFF (unitialized).
+        // The instance number of the local device must be sent if a request is made to the
+        // instance 0x3FFFFF (uninitialized).
         for (ReadAccessResult listOfReadAccessResult : ack.getListOfReadAccessResults()) {
             assertEquals(new ObjectIdentifier(ObjectType.device, localDevice.getInstanceNumber()),
                     listOfReadAccessResult.getObjectIdentifier());

@@ -27,13 +27,23 @@
 
 package com.serotonin.bacnet4j.service.unconfirmed;
 
+import java.util.Objects;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.type.constructed.Address;
+import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
+import com.serotonin.bacnet4j.type.primitive.CharacterString;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class WhoIsRequest extends UnconfirmedRequestService {
+    private static final Logger LOG = LoggerFactory.getLogger(WhoIsRequest.class);
+
     public static final byte TYPE_ID = 8;
 
     private UnsignedInteger deviceInstanceRangeLowLimit;
@@ -43,12 +53,11 @@ public class WhoIsRequest extends UnconfirmedRequestService {
         // no op
     }
 
-    public WhoIsRequest(final int deviceInstanceRangeLowLimit, final int deviceInstanceRangeHighLimit) {
+    public WhoIsRequest(int deviceInstanceRangeLowLimit, int deviceInstanceRangeHighLimit) {
         this(new UnsignedInteger(deviceInstanceRangeLowLimit), new UnsignedInteger(deviceInstanceRangeHighLimit));
     }
 
-    public WhoIsRequest(final UnsignedInteger deviceInstanceRangeLowLimit,
-            final UnsignedInteger deviceInstanceRangeHighLimit) {
+    public WhoIsRequest(UnsignedInteger deviceInstanceRangeLowLimit, UnsignedInteger deviceInstanceRangeHighLimit) {
         this.deviceInstanceRangeLowLimit = deviceInstanceRangeLowLimit;
         this.deviceInstanceRangeHighLimit = deviceInstanceRangeHighLimit;
     }
@@ -59,8 +68,8 @@ public class WhoIsRequest extends UnconfirmedRequestService {
     }
 
     @Override
-    public void handle(final LocalDevice localDevice, final Address from) throws BACnetException {
-        final int instanceId = localDevice.getInstanceNumber();
+    public void handle(LocalDevice localDevice, Address from) throws BACnetException {
+        int instanceId = localDevice.getInstanceNumber();
 
         // Check if we're in the device id range.
         if (deviceInstanceRangeLowLimit != null && instanceId < deviceInstanceRangeLowLimit.intValue())
@@ -69,50 +78,48 @@ public class WhoIsRequest extends UnconfirmedRequestService {
         if (deviceInstanceRangeHighLimit != null && instanceId > deviceInstanceRangeHighLimit.intValue())
             return;
 
-        // Return the result in a i am message.
-        final IAmRequest iam = localDevice.getIAm().withIsResponseToWhoIs(true);
-        localDevice.sendGlobalBroadcast(iam);
+        if (localDevice.isUnconfigured()) {
+            // All three properties must be defined to send WhoAmI.
+            Unsigned16 vendorId = localDevice.get(PropertyIdentifier.vendorIdentifier);
+            CharacterString modelName = localDevice.get(PropertyIdentifier.modelName);
+            CharacterString serialNumber = localDevice.get(PropertyIdentifier.serialNumber);
+            if (vendorId != null && modelName != null && serialNumber != null) {
+                var whoAmI = new WhoAmIRequest(vendorId, modelName, serialNumber);
+                localDevice.send(from, whoAmI);
+            } else {
+                LOG.warn("Not configured to send WhoAmI: vendorId={}, modelName={}, serialNumber={}",
+                        vendorId, modelName, serialNumber);
+            }
+        } else {
+            // Return the result in an iAm message.
+            IAmRequest iam = localDevice.getIAm().withIsResponseToWhoIs(true);
+            localDevice.sendGlobalBroadcast(iam);
+        }
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         writeOptional(queue, deviceInstanceRangeLowLimit, 0);
         writeOptional(queue, deviceInstanceRangeHighLimit, 1);
     }
 
-    WhoIsRequest(final ByteQueue queue) throws BACnetException {
+    WhoIsRequest(ByteQueue queue) throws BACnetException {
         deviceInstanceRangeLowLimit = readOptional(queue, UnsignedInteger.class, 0);
         deviceInstanceRangeHighLimit = readOptional(queue, UnsignedInteger.class, 1);
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (deviceInstanceRangeHighLimit == null ? 0 : deviceInstanceRangeHighLimit.hashCode());
-        result = PRIME * result + (deviceInstanceRangeLowLimit == null ? 0 : deviceInstanceRangeLowLimit.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        WhoIsRequest that = (WhoIsRequest) o;
+        return Objects.equals(deviceInstanceRangeLowLimit,
+                that.deviceInstanceRangeLowLimit) && Objects.equals(deviceInstanceRangeHighLimit,
+                that.deviceInstanceRangeHighLimit);
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final WhoIsRequest other = (WhoIsRequest) obj;
-        if (deviceInstanceRangeHighLimit == null) {
-            if (other.deviceInstanceRangeHighLimit != null)
-                return false;
-        } else if (!deviceInstanceRangeHighLimit.equals(other.deviceInstanceRangeHighLimit))
-            return false;
-        if (deviceInstanceRangeLowLimit == null) {
-            if (other.deviceInstanceRangeLowLimit != null)
-                return false;
-        } else if (!deviceInstanceRangeLowLimit.equals(other.deviceInstanceRangeLowLimit))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(deviceInstanceRangeLowLimit, deviceInstanceRangeHighLimit);
     }
 }

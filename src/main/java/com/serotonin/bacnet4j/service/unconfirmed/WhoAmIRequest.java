@@ -31,7 +31,6 @@ import java.util.Objects;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetException;
-import com.serotonin.bacnet4j.exception.NotImplementedException;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.Unsigned16;
@@ -69,7 +68,7 @@ public class WhoAmIRequest extends UnconfirmedRequestService {
 
     @Override
     public void handle(LocalDevice localDevice, Address from) throws BACnetException {
-        throw new NotImplementedException();
+        localDevice.getEventHandler().fireWhoAmIReceived(from, vendorId, modelName, serialNumber);
     }
 
     @Override

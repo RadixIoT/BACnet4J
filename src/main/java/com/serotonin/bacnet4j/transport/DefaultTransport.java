@@ -30,6 +30,7 @@ package com.serotonin.bacnet4j.transport;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -69,6 +70,8 @@ import com.serotonin.bacnet4j.service.confirmed.ConfirmedRequestService;
 import com.serotonin.bacnet4j.service.confirmed.DeviceCommunicationControlRequest.EnableDisable;
 import com.serotonin.bacnet4j.service.unconfirmed.IAmRequest;
 import com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedRequestService;
+import com.serotonin.bacnet4j.service.unconfirmed.WhoIsRequest;
+import com.serotonin.bacnet4j.service.unconfirmed.YouAreRequest;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
 import com.serotonin.bacnet4j.type.enumerated.AbortReason;
@@ -180,7 +183,7 @@ public class DefaultTransport implements Transport, Runnable {
     }
 
     @Override
-    public void initialize() throws Exception {
+    public void initialize() throws BACnetException {
         servicesSupported = localDevice.getServicesSupported();
 
         synchronized (runLock) {
@@ -661,6 +664,18 @@ public class DefaultTransport implements Transport, Runnable {
         }
 
         if (apdu instanceof ConfirmedRequest confAPDU) {
+            if (localDevice.isUnconfigured()) {
+                // Per clause 19.7, no confirmed service is permitted while unconfigured. Reject with
+                // unrecognizedService so the sender learns the request can't be handled here (rather than timing out).
+                try {
+                    network.sendAPDU(from, linkService,
+                            new Reject(confAPDU.getInvokeId(), RejectReason.unrecognizedService), false);
+                } catch (final BACnetException e) {
+                    LOG.warn("Error sending reject from unconfigured device", e);
+                }
+                return;
+            }
+
             // Received a request that must be handled and responded to.
             final byte invokeId = confAPDU.getInvokeId();
 
@@ -690,7 +705,7 @@ public class DefaultTransport implements Transport, Runnable {
                 }
 
                 try {
-                    segmentedIncoming(key, confAPDU, ctx);
+                    segmentedIncoming(key, confAPDU, Objects.requireNonNull(ctx));
                 } catch (final BACnetException e) {
                     LOG.warn("Error handling incoming request", e);
                     final com.serotonin.bacnet4j.apdu.Error error = new com.serotonin.bacnet4j.apdu.Error(
@@ -710,8 +725,17 @@ public class DefaultTransport implements Transport, Runnable {
             // Received a request that must be handled with no response.
             try {
                 ur.parseServiceData();
-                localDevice.getEventHandler().requestReceived(from, ur.getService());
-                ur.getService().handle(localDevice, from);
+                var service = ur.getService();
+
+                if (localDevice.isUnconfigured()
+                        && !(service instanceof WhoIsRequest || service instanceof YouAreRequest)) {
+                    // Per clause 19.7, the only unconfirmed services permitted while unconfigured are WhoIs and YouAre.
+                    // Silently drop everything else. Unconfirmed services have no reply mechanism.
+                    LOG.debug("Unconfigured device dropping unconfirmed choice {}", service.getClass());
+                } else {
+                    localDevice.getEventHandler().requestReceived(from, service);
+                    ur.getService().handle(localDevice, from);
+                }
             } catch (@SuppressWarnings("unused") final BACnetRejectException e) {
                 // Ignore
             } catch (final BACnetException e) {
@@ -837,7 +861,7 @@ public class DefaultTransport implements Transport, Runnable {
     /**
      * The first part of the segmented message has already been sent. This is called each time a segment ack is
      * received.
-     *
+     * <p>
      * This method handles outgoing segmented requests and responses.
      */
     private void segmentedOutgoing(final UnackedMessageKey key, final UnackedMessageContext ctx, final SegmentACK ack) {
@@ -1044,30 +1068,5 @@ public class DefaultTransport implements Transport, Runnable {
             unackedMessages.remove(key);
             ctx.useConsumer(consumer -> consumer.ex(e));
         }
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (network == null ? 0 : network.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final DefaultTransport other = (DefaultTransport) obj;
-        if (network == null) {
-            if (other.network != null)
-                return false;
-        } else if (!network.equals(other.network))
-            return false;
-        return true;
     }
 }

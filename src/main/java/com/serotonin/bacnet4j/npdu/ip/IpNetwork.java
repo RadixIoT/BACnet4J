@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.npdu.MessageValidationException;
 import com.serotonin.bacnet4j.npdu.NPDU;
 import com.serotonin.bacnet4j.npdu.Network;
@@ -114,8 +115,8 @@ public class IpNetwork extends Network {
     /**
      * Use an IpNetworkBuilder to create instances.
      */
-    IpNetwork(final int port, final String localBindAddress, final String broadcastAddress, final String subnetMask,
-            final int localNetworkNumber, final boolean reuseAddress) {
+    IpNetwork(int port, String localBindAddress, String broadcastAddress, String subnetMask, int localNetworkNumber,
+            boolean reuseAddress) {
         super(localNetworkNumber);
         this.port = port;
         this.localBindAddressStr = localBindAddress;
@@ -172,6 +173,7 @@ public class IpNetwork extends Network {
         return IPMode.normal;
     }
 
+    @Override
     public boolean isInitialized() {
         return localAddress != null;
     }
@@ -225,11 +227,15 @@ public class IpNetwork extends Network {
     }
 
     @Override
-    public void initialize(final Transport transport) throws Exception {
+    public void initialize(Transport transport) throws BACnetException {
         super.initialize(transport);
 
         localBindAddress = InetAddrCache.get(localBindAddressStr, port);
-        unicastSocket = createSocket(localBindAddress);
+        try {
+            unicastSocket = createSocket(localBindAddress);
+        } catch (SocketException e) {
+            throw new BACnetException(e);
+        }
 
         broadcastMAC = IpNetworkUtils.toOctetString(broadcastAddressStr, port);
         subnetMask = BACnetUtils.dottedStringToBytes(subnetMaskStr);
@@ -241,9 +247,9 @@ public class IpNetwork extends Network {
             try {
                 InetSocketAddress broadcastAddress = InetAddrCache.get(broadcastAddressStr, port);
                 broadcastSocket = createSocket(broadcastAddress);
-            } catch (final SocketException e) {
+            } catch (SocketException e) {
                 unicastSocket.close();
-                throw e;
+                throw new BACnetException(e);
             }
         }
 
@@ -264,9 +270,9 @@ public class IpNetwork extends Network {
         initializeBBMD();
     }
 
-    protected DatagramSocket createSocket(final InetSocketAddress bindAddress) throws SocketException {
+    protected DatagramSocket createSocket(InetSocketAddress bindAddress) throws SocketException {
         LOG.info("Binding to address {}", bindAddress);
-        final DatagramSocket socket;
+        DatagramSocket socket;
         if (reuseAddress) {
             socket = new DatagramSocket(null);
             socket.setReuseAddress(true);
@@ -296,7 +302,7 @@ public class IpNetwork extends Network {
         return broadcastMAC;
     }
 
-    public Address getBroadcastAddress(final int port) {
+    public Address getBroadcastAddress(int port) {
         return IpNetworkUtils.toAddress(broadcastAddressStr, port);
     }
 
@@ -405,7 +411,7 @@ public class IpNetwork extends Network {
                         interval = 15;
                     }
                     delay = interval;
-                } catch (final BACnetException e) {
+                } catch (BACnetException e) {
                     LOG.warn("Failed to register foreign device", e);
                     fdRegistered = false;
                     // Failure. Ask the retry provider what to do.
@@ -430,7 +436,7 @@ public class IpNetwork extends Network {
             if (fDRegistrant != null) {
                 try {
                     deleteForeignDeviceTableEntry(foreignBBMD, localAddress);
-                } catch (final BACnetException e) {
+                } catch (BACnetException e) {
                     LOG.info("Device de-registration failed", e);
                 }
             }
@@ -444,9 +450,9 @@ public class IpNetwork extends Network {
     }
 
     @Override
-    public void sendNPDU(final Address recipient, final OctetString router, final ByteQueue npdu,
-            final boolean broadcast, final boolean expectsReply) throws BACnetException {
-        final ByteQueue queue = new ByteQueue();
+    public void sendNPDU(Address recipient, OctetString router, ByteQueue npdu, boolean broadcast, boolean expectsReply)
+            throws BACnetException {
+        ByteQueue queue = new ByteQueue();
 
         // BACnet virtual link layer detail
         queue.push(BVLC_TYPE);
@@ -460,7 +466,7 @@ public class IpNetwork extends Network {
             // Original-Unicast-NPDU, or Original-Broadcast-NPDU
             queue.push(broadcast ? 0xb : 0xa);
 
-            final OctetString dest = getDestination(recipient, router);
+            OctetString dest = getDestination(recipient, router);
             addr = IpNetworkUtils.getInetSocketAddress(dest);
         }
 
@@ -472,21 +478,21 @@ public class IpNetwork extends Network {
         sendPacket(addr, queue.popAll());
     }
 
-    protected void sendPacket(final InetSocketAddress addr, final byte[] data) throws BACnetException {
+    protected void sendPacket(InetSocketAddress addr, byte[] data) throws BACnetException {
         try {
-            final DatagramPacket packet = new DatagramPacket(data, data.length, addr);
+            DatagramPacket packet = new DatagramPacket(data, data.length, addr);
             unicastSocket.send(packet);
             bytesOut += data.length;
-        } catch (final Exception e) {
+        } catch (Exception e) {
             throw new BACnetException(e);
         }
     }
 
     //
     // For receiving
-    protected void listen(final DatagramSocket socket) {
-        final byte[] buffer = new byte[MESSAGE_LENGTH];
-        final DatagramPacket p = new DatagramPacket(buffer, buffer.length);
+    protected void listen(DatagramSocket socket) {
+        byte[] buffer = new byte[MESSAGE_LENGTH];
+        DatagramPacket p = new DatagramPacket(buffer, buffer.length);
 
         while (!socket.isClosed()) {
             try {
@@ -495,22 +501,21 @@ public class IpNetwork extends Network {
                 bytesIn += p.getLength();
                 // Create a new byte queue for the message, because the queue will probably be processed in the
                 // transport thread.
-                final ByteQueue queue = new ByteQueue(p.getData(), 0, p.getLength());
-                final OctetString link = IpNetworkUtils.toOctetString(p.getAddress().getAddress(), p.getPort());
+                ByteQueue queue = new ByteQueue(p.getData(), 0, p.getLength());
+                OctetString link = IpNetworkUtils.toOctetString(p.getAddress().getAddress(), p.getPort());
 
                 handleIncomingData(queue, link);
 
                 // Reset the packet.
                 p.setData(buffer);
-            } catch (@SuppressWarnings("unused") final IOException e) {
+            } catch (@SuppressWarnings("unused") IOException e) {
                 // no op. This happens if the socket gets closed by the destroy method.
             }
         }
     }
 
     @Override
-    protected NPDU handleIncomingDataImpl(final ByteQueue queue, final OctetString linkService)
-            throws Exception {
+    protected NPDU handleIncomingDataImpl(ByteQueue queue, OctetString linkService) throws BACnetException {
         LOG.trace("Received request from {}", linkService);
 
         // Initial parsing of IP message.
@@ -518,16 +523,16 @@ public class IpNetwork extends Network {
         if (queue.pop() != BVLC_TYPE)
             throw new MessageValidationException("Protocol id is not BACnet/IP (0x81)");
 
-        final byte function = queue.pop();
+        byte function = queue.pop();
 
-        final int length = BACnetUtils.popShort(queue);
+        int length = BACnetUtils.popShort(queue);
         if (length != queue.size() + 4)
             throw new MessageValidationException(
                     "Length field does not match data: given=" + length + ", expected=" + (queue.size() + 4));
 
         NPDU npdu = null;
         if (function == 0x0) {
-            final int result = BACnetUtils.popShort(queue);
+            int result = BACnetUtils.popShort(queue);
 
             if (result == 0x10)
                 LOG.error("Write-Broadcast-Distribution-Table failed!");
@@ -546,7 +551,7 @@ public class IpNetwork extends Network {
 
             // Response management.
             bbmdResponse = result;
-            final InetSocketAddress addr = foreignBBMD;
+            InetSocketAddress addr = foreignBBMD;
             if (addr != null) {
                 synchronized (addr) {
                     addr.notifyAll();
@@ -570,9 +575,9 @@ public class IpNetwork extends Network {
                 forwardNPDU(queue, linkService);
 
                 // Process the NPDU locally
-                final byte[] address = new byte[6];
+                byte[] address = new byte[6];
                 queue.pop(address);
-                final OctetString origin = new OctetString(address);
+                OctetString origin = new OctetString(address);
                 npdu = parseNpduData(queue, origin);
             }
         } else if (function == 0x5)
@@ -590,7 +595,7 @@ public class IpNetwork extends Network {
             deleteFDT(queue, linkService);
         else if (function == 0x9) {
             // Distribute-Broadcast-To-Network
-            final boolean ok = distributeBroadcastToNetwork(queue, linkService);
+            boolean ok = distributeBroadcastToNetwork(queue, linkService);
             if (ok)
                 // Only process locally if the foreign device is valid.
                 npdu = parseNpduData(queue, linkService);
@@ -613,18 +618,18 @@ public class IpNetwork extends Network {
     //
     // Convenience methods
     //
-    public Address getAddress(final InetAddress inetAddress) {
+    public Address getAddress(InetAddress inetAddress) {
         try {
             return IpNetworkUtils.toAddress(getLocalNetworkNumber(), inetAddress.getAddress(), port);
-        } catch (final Exception e) {
+        } catch (Exception e) {
             // Should never happen, so just wrap in a RuntimeException
-            throw new RuntimeException(e);
+            throw new BACnetRuntimeException(e);
         }
     }
 
     public static InetAddress getDefaultLocalInetAddress() throws UnknownHostException, SocketException {
-        for (final NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
-            for (final InetAddress addr : Collections.list(iface.getInetAddresses())) {
+        for (NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+            for (InetAddress addr : Collections.list(iface.getInetAddresses())) {
                 if (!addr.isLoopbackAddress())
                     return addr;
             }
@@ -635,9 +640,9 @@ public class IpNetwork extends Network {
 
     protected List<Address> getLocalAddressList() {
         try {
-            final ArrayList<Address> result = new ArrayList<>();
-            for (final NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
-                for (final InetAddress addr : Collections.list(iface.getInetAddresses())) {
+            ArrayList<Address> result = new ArrayList<>();
+            for (NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                for (InetAddress addr : Collections.list(iface.getInetAddresses())) {
                     if (!addr.isLoopbackAddress() && addr instanceof Inet4Address)
                         result.add(getAddress(addr));
                 }
@@ -645,9 +650,9 @@ public class IpNetwork extends Network {
 
             // Check if the configured local bind address is one of the addresses. If not, add it. This is
             // necessary if the local bind address is a loopback.
-            final Address config = IpNetworkUtils.toAddress(localBindAddress);
+            Address config = IpNetworkUtils.toAddress(localBindAddress);
             boolean found = false;
-            for (final Address addr : result) {
+            for (Address addr : result) {
                 if (addr.equals(config)) {
                     found = true;
                     break;
@@ -657,9 +662,9 @@ public class IpNetwork extends Network {
                 result.add(config);
 
             return result;
-        } catch (final Exception e) {
+        } catch (Exception e) {
             // Should never happen, so just wrap in a RuntimeException
-            throw new RuntimeException(e);
+            throw new BACnetRuntimeException(e);
         }
     }
 
@@ -688,46 +693,12 @@ public class IpNetwork extends Network {
         return IpNetworkUtils.toAddress("127.0.0.1", DEFAULT_PORT);
     }
 
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = super.hashCode();
-        result = prime * result + (broadcastAddressStr == null ? 0 : broadcastAddressStr.hashCode());
-        result = prime * result + (localBindAddressStr == null ? 0 : localBindAddressStr.hashCode());
-        result = prime * result + port;
-        return result;
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (!super.equals(obj))
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final IpNetwork other = (IpNetwork) obj;
-        if (broadcastAddressStr == null) {
-            if (other.broadcastAddressStr != null)
-                return false;
-        } else if (!broadcastAddressStr.equals(other.broadcastAddressStr))
-            return false;
-        if (localBindAddressStr == null) {
-            if (other.localBindAddressStr != null)
-                return false;
-        } else if (!localBindAddressStr.equals(other.localBindAddressStr))
-            return false;
-        if (port != other.port)
-            return false;
-        return true;
-    }
-
     //
     //
     // BBMD
     //
     public static class BDTEntry {
-        public static final byte[] DEFAULT_DISTRIBUTION_MASK =
+        protected static final byte[] DEFAULT_DISTRIBUTION_MASK =
                 new byte[] {(byte) 255, (byte) 255, (byte) 255, (byte) 255};
 
         // The IP address of the other BBMD
@@ -788,15 +759,15 @@ public class IpNetwork extends Network {
         }
     }
 
-    protected void writeBDT(final ByteQueue queue, final OctetString origin) throws BACnetException {
-        final ByteQueue response = new ByteQueue();
+    protected void writeBDT(ByteQueue queue, OctetString origin) throws BACnetException {
+        ByteQueue response = new ByteQueue();
         response.push(BVLC_TYPE);
         response.push(0); // Result
         response.pushU2B(6); // Length
 
         if (bbmdEnabled.get()) {
             try {
-                final List<BDTEntry> list = new ArrayList<>();
+                List<BDTEntry> list = new ArrayList<>();
 
                 while (queue.size() > 0) {
                     var address = new byte[4];
@@ -811,7 +782,7 @@ public class IpNetwork extends Network {
                 broadcastDistributionTable = list;
 
                 response.pushU2B(0); // Ok
-            } catch (final Exception e) {
+            } catch (Exception e) {
                 LOG.error("BDT write failed", e);
                 response.pushU2B(0x10); // NAK
             }
@@ -821,14 +792,14 @@ public class IpNetwork extends Network {
         sendPacket(IpNetworkUtils.getInetSocketAddress(origin), response.popAll());
     }
 
-    private void readBDT(final OctetString origin) throws BACnetException {
-        final ByteQueue response = new ByteQueue();
+    private void readBDT(OctetString origin) throws BACnetException {
+        ByteQueue response = new ByteQueue();
         response.push(BVLC_TYPE);
         if (bbmdEnabled.get()) {
             try {
-                final ByteQueue list = new ByteQueue();
+                ByteQueue list = new ByteQueue();
 
-                for (final BDTEntry e : broadcastDistributionTable) {
+                for (BDTEntry e : broadcastDistributionTable) {
                     list.push(e.address);
                     list.pushU2B(e.port);
                     list.push(e.distributionMask);
@@ -838,7 +809,7 @@ public class IpNetwork extends Network {
                 response.push(3); // Read-Broadcast-Distribution-Table-Ack
                 response.pushU2B(4 + list.size()); // Length
                 response.push(list); // List
-            } catch (final Exception e) {
+            } catch (Exception e) {
                 LOG.error("BDT read failed", e);
                 response.push(0); // Result
                 response.pushU2B(6); // Length
@@ -852,7 +823,7 @@ public class IpNetwork extends Network {
         sendPacket(IpNetworkUtils.getInetSocketAddress(origin), response.popAll());
     }
 
-    protected void forwardNPDU(final ByteQueue partial, final OctetString origin) throws BACnetException {
+    protected void forwardNPDU(ByteQueue partial, OctetString origin) throws BACnetException {
         // Determine whether to the message should be broadcast locally.
         boolean doLocalBroadcast = !broadcastDistributionTable.isEmpty();
 
@@ -864,7 +835,7 @@ public class IpNetwork extends Network {
 
         if (doLocalBroadcast) {
             // 2) If the mask of the BDT entry for this BBMD is not all 1s, do not broadcast locally.
-            final byte[] myAddress = localAddress.getAddress().getAddress();
+            byte[] myAddress = localAddress.getAddress().getAddress();
             // Find the BDT entry matching this.
             BDTEntry thisEntry = broadcastDistributionTable.stream()
                     .filter(e -> Arrays.equals(e.address, myAddress) && e.port == port)
@@ -885,40 +856,40 @@ public class IpNetwork extends Network {
             return;
 
         // The BVLC type, function and length were removed from this queue, so recreate.
-        final ByteQueue fwd = new ByteQueue();
+        ByteQueue fwd = new ByteQueue();
         fwd.push(BVLC_TYPE);
         fwd.push(4); // Forward
         fwd.pushU2B(4 + partial.size()); // Length
         fwd.push(partial);
-        final byte[] toSend = fwd.popAll();
+        byte[] toSend = fwd.popAll();
 
         if (doLocalBroadcast) {
             sendPacket(InetAddrCache.get(broadcastAddressStr, port), toSend);
         }
 
         // Forward to all foreign devices.
-        for (final FDTEntry fd : foreignDeviceTable)
+        for (FDTEntry fd : foreignDeviceTable)
             sendPacket(fd.address, toSend);
     }
 
-    protected void originalBroadcast(final ByteQueue partial, final OctetString originStr) throws BACnetException {
+    protected void originalBroadcast(ByteQueue partial, OctetString originStr) throws BACnetException {
         // Check if anything needs to be done.
         if (foreignDeviceTable.isEmpty() && broadcastDistributionTable.isEmpty())
             return;
 
-        final ByteQueue fwd = new ByteQueue();
+        ByteQueue fwd = new ByteQueue();
         fwd.push(BVLC_TYPE);
         fwd.push(4); // Forward
         fwd.pushU2B(10 + partial.size()); // Length
         fwd.push(originStr.getBytes()); // Origin
         fwd.push(partial);
-        final byte[] toSend = fwd.popAll();
+        byte[] toSend = fwd.popAll();
 
         try {
-            final byte[] myAddress = localAddress.getAddress().getAddress();
+            byte[] myAddress = localAddress.getAddress().getAddress();
 
             // Send to all subnets except own
-            for (final BDTEntry e : broadcastDistributionTable) {
+            for (BDTEntry e : broadcastDistributionTable) {
                 if (Arrays.equals(e.address, myAddress) && e.port == port) {
                     continue;
                 }
@@ -926,31 +897,31 @@ public class IpNetwork extends Network {
             }
 
             // Forward to all foreign devices.
-            for (final FDTEntry fd : foreignDeviceTable)
+            for (FDTEntry fd : foreignDeviceTable)
                 sendPacket(fd.address, toSend);
-        } catch (final UnknownHostException e) {
+        } catch (UnknownHostException e) {
             throw new BACnetException(e);
         }
     }
 
-    private void registerForeignDevice(final ByteQueue queue, final OctetString originStr) throws BACnetException {
-        final InetSocketAddress origin = IpNetworkUtils.getInetSocketAddress(originStr);
+    private void registerForeignDevice(ByteQueue queue, OctetString originStr) throws BACnetException {
+        InetSocketAddress origin = IpNetworkUtils.getInetSocketAddress(originStr);
         LOG.debug("Received registerForeignDevice request from {}", origin);
 
-        final ByteQueue response = new ByteQueue();
+        ByteQueue response = new ByteQueue();
         response.push(BVLC_TYPE);
         response.push(0); // Response type
         response.pushU2B(6); // Length
 
         if (bbmdEnabled.get()) {
-            final int timeToLive = queue.popU2B();
+            int timeToLive = queue.popU2B();
             if (timeToLive < 1) {
                 response.pushU2B(0x30); // NAK
             } else {
                 // Check if the device is already in the list. If so, update its start time. Otherwise, add it.
                 FDTEntry fd = null;
                 synchronized (foreignDeviceTable) {
-                    for (final FDTEntry e : foreignDeviceTable) {
+                    for (FDTEntry e : foreignDeviceTable) {
                         if (e.address.equals(origin)) {
                             fd = e;
                             break;
@@ -973,16 +944,16 @@ public class IpNetwork extends Network {
         sendPacket(origin, response.popAll());
     }
 
-    private void readFDT(final OctetString origin) throws BACnetException {
-        final ByteQueue response = new ByteQueue();
+    private void readFDT(OctetString origin) throws BACnetException {
+        ByteQueue response = new ByteQueue();
         response.push(BVLC_TYPE);
 
         if (bbmdEnabled.get()) {
-            final long now = getTransport().getLocalDevice().getClock().millis();
+            long now = getTransport().getLocalDevice().getClock().millis();
             try {
-                final ByteQueue list = new ByteQueue();
+                ByteQueue list = new ByteQueue();
 
-                for (final FDTEntry e : foreignDeviceTable) {
+                for (FDTEntry e : foreignDeviceTable) {
                     pushISA(list, e.address);
                     list.pushU2B(e.timeToLive);
 
@@ -1000,7 +971,7 @@ public class IpNetwork extends Network {
                 response.push(7); // Read-Foreign-Device-Table-Ack
                 response.pushU2B(4 + list.size()); // Length
                 response.push(list); // List
-            } catch (final Exception e) {
+            } catch (Exception e) {
                 LOG.error("FDT read failed", e);
                 response.push(0); // Result
                 response.pushU2B(6); // Length
@@ -1015,19 +986,19 @@ public class IpNetwork extends Network {
         sendPacket(IpNetworkUtils.getInetSocketAddress(origin), response.popAll());
     }
 
-    private void deleteFDT(final ByteQueue queue, final OctetString origin) throws BACnetException {
-        final byte[] addr = new byte[4];
+    private void deleteFDT(ByteQueue queue, OctetString origin) throws BACnetException {
+        byte[] addr = new byte[4];
         queue.pop(addr);
-        final int fdtPort = queue.popU2B();
+        int fdtPort = queue.popU2B();
 
-        final ByteQueue response = new ByteQueue();
+        ByteQueue response = new ByteQueue();
         response.push(BVLC_TYPE);
         response.push(0); // Response type
         response.pushU2B(6); // Length
 
         synchronized (foreignDeviceTable) {
             FDTEntry toDelete = null;
-            for (final FDTEntry fd : foreignDeviceTable) {
+            for (FDTEntry fd : foreignDeviceTable) {
                 if (Arrays.equals(fd.address.getAddress().getAddress(), addr) && fd.address.getPort() == fdtPort) {
                     toDelete = fd;
                     break;
@@ -1044,14 +1015,13 @@ public class IpNetwork extends Network {
         sendPacket(IpNetworkUtils.getInetSocketAddress(origin), response.popAll());
     }
 
-    protected boolean distributeBroadcastToNetwork(final ByteQueue queue, final OctetString originStr)
-            throws BACnetException {
-        final InetSocketAddress origin = IpNetworkUtils.getInetSocketAddress(originStr);
+    protected boolean distributeBroadcastToNetwork(ByteQueue queue, OctetString originStr) throws BACnetException {
+        InetSocketAddress origin = IpNetworkUtils.getInetSocketAddress(originStr);
 
         // Find the foreign device.
         FDTEntry originFDT = foreignDeviceTable.stream().filter(e -> e.address.equals(origin)).findFirst().orElse(null);
 
-        final ByteQueue response = new ByteQueue();
+        ByteQueue response = new ByteQueue();
         response.push(BVLC_TYPE);
         response.push(0); // Response type
         response.pushU2B(6); // Length
@@ -1064,32 +1034,32 @@ public class IpNetwork extends Network {
         }
 
         // The FDT was found. Forward the message around.
-        final ByteQueue fwd = new ByteQueue();
+        ByteQueue fwd = new ByteQueue();
         fwd.push(BVLC_TYPE);
         fwd.push(4); // Forward
         fwd.pushU2B(10 + queue.size()); // Length
         fwd.push(originStr.getBytes()); // Origin
         fwd.push(queue);
-        final byte[] toSend = fwd.popAll();
+        byte[] toSend = fwd.popAll();
 
         // Send locally
         sendPacket(InetAddrCache.get(broadcastAddressStr, port), toSend);
 
         try {
             // Send to all BDTs except own
-            final byte[] myAddress = localAddress.getAddress().getAddress();
-            for (final BDTEntry e : broadcastDistributionTable) {
+            byte[] myAddress = localAddress.getAddress().getAddress();
+            for (BDTEntry e : broadcastDistributionTable) {
                 if (Arrays.equals(e.address, myAddress) && e.port == port) {
                     continue;
                 }
                 sendToBDT(e, toSend);
             }
-        } catch (final UnknownHostException e1) {
+        } catch (UnknownHostException e1) {
             LOG.warn("Error forwarding to BDT", e1);
         }
 
         // Forward to all foreign devices except the origin.
-        for (final FDTEntry fd : foreignDeviceTable) {
+        for (FDTEntry fd : foreignDeviceTable) {
             if (fd != originFDT)
                 sendPacket(fd.address, toSend);
         }
@@ -1099,18 +1069,18 @@ public class IpNetwork extends Network {
         return true;
     }
 
-    protected void sendToBDT(final BDTEntry e, final byte[] toSend) throws UnknownHostException, BACnetException {
+    protected void sendToBDT(BDTEntry e, byte[] toSend) throws UnknownHostException, BACnetException {
         // J.4.5: The B/IP address to which the Forwarded-NPDU message is sent is formed by inverting the broadcast
         // distribution mask in the BDT entry and logically ORing it with the BBMD address of the same entry.
-        final byte[] target = new byte[4];
+        byte[] target = new byte[4];
         for (int i = 0; i < 4; i++)
             target[i] = (byte) (e.address[i] | ~e.distributionMask[i]);
 
-        final InetSocketAddress to = InetAddrCache.get(InetAddress.getByAddress(target), e.port);
+        InetSocketAddress to = InetAddrCache.get(InetAddress.getByAddress(target), e.port);
         sendPacket(to, toSend);
     }
 
-    private static void pushISA(final ByteQueue queue, final InetSocketAddress isa) {
+    private static void pushISA(ByteQueue queue, InetSocketAddress isa) {
         queue.push(isa.getAddress().getAddress());
         queue.pushU2B(isa.getPort());
     }
@@ -1120,11 +1090,11 @@ public class IpNetwork extends Network {
     // Foreign device registration (of this local device in a foreign BBMD)
     //
     public void sendForeignDeviceRegistration() throws BACnetException {
-        final InetSocketAddress addr = foreignBBMD;
+        InetSocketAddress addr = foreignBBMD;
         if (addr == null)
             return;
 
-        final ByteQueue queue = new ByteQueue();
+        ByteQueue queue = new ByteQueue();
         queue.push(BVLC_TYPE);
         queue.push(0x05); // Register foreign device
         queue.pushU2B(6); // Length
@@ -1136,7 +1106,7 @@ public class IpNetwork extends Network {
             sendPacket(addr, queue.popAll());
             try {
                 addr.wait(5000); // Wait up to 5 seconds.
-            } catch (@SuppressWarnings("unused") final InterruptedException e) {
+            } catch (@SuppressWarnings("unused") InterruptedException e) {
                 // no op
             }
 
@@ -1155,9 +1125,9 @@ public class IpNetwork extends Network {
      * @param fdtEntry the entry to remove
      * @throws BACnetException if something goes wrong
      */
-    public void deleteForeignDeviceTableEntry(final InetSocketAddress addr, final InetSocketAddress fdtEntry)
+    public void deleteForeignDeviceTableEntry(InetSocketAddress addr, InetSocketAddress fdtEntry)
             throws BACnetException {
-        final ByteQueue queue = new ByteQueue();
+        ByteQueue queue = new ByteQueue();
         queue.push(BVLC_TYPE);
         queue.push(0x08); // Delete foreign device table entry
         queue.pushU2B(0xA); // Length
@@ -1186,12 +1156,12 @@ public class IpNetwork extends Network {
 
             // Add a job to expire foreign device registrations.
             ftdMaintenance = getTransport().getLocalDevice().scheduleAtFixedRate(() -> {
-                final long now = getTransport().getLocalDevice().getClock().millis();
+                long now = getTransport().getLocalDevice().getClock().millis();
 
                 synchronized (foreignDeviceTable) {
-                    final List<FDTEntry> toRemove = new ArrayList<>();
+                    List<FDTEntry> toRemove = new ArrayList<>();
 
-                    for (final FDTEntry e : foreignDeviceTable) {
+                    for (FDTEntry e : foreignDeviceTable) {
                         if (e.endTime < now) {
                             LOG.debug("Removing expired foreign device: {}", e);
                             toRemove.add(e);

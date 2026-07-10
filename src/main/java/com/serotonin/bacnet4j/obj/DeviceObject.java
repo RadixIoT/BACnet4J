@@ -86,7 +86,7 @@ public class DeviceObject extends BACnetObject {
 
         writePropertyInternal(PropertyIdentifier.maxApduLengthAccepted,
                 new UnsignedInteger(MaxApduLength.UP_TO_1476.getMaxLengthInt()));
-        writePropertyInternal(PropertyIdentifier.vendorIdentifier, new UnsignedInteger(VENDOR_ID));
+        writePropertyInternal(PropertyIdentifier.vendorIdentifier, new Unsigned16(VENDOR_ID));
         writePropertyInternal(PropertyIdentifier.vendorName, new CharacterString("Radix IoT LLC"));
         writePropertyInternal(PropertyIdentifier.segmentationSupported, Segmentation.segmentedBoth);
         writePropertyInternal(PropertyIdentifier.maxSegmentsAccepted, new UnsignedInteger(Integer.MAX_VALUE));
@@ -142,8 +142,8 @@ public class DeviceObject extends BACnetObject {
         //        servicesSupported.setConfirmedAuditNotification(true);
         //        servicesSupported.setAuditLogQuery(true);
         //        servicesSupported.setUnconfirmedAuditNotification(true);
-        //        servicesSupported.setWhoAmI(true);
-        //        servicesSupported.setYouAre(true);
+        servicesSupported.setWhoAmI(true);
+        servicesSupported.setYouAre(true);
         //        servicesSupported.setAuthRequest(true);
 
         writePropertyInternal(PropertyIdentifier.protocolServicesSupported, servicesSupported);
@@ -223,7 +223,7 @@ public class DeviceObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.firmwareRevision, new CharacterString("not set"));
         writePropertyInternal(PropertyIdentifier.applicationSoftwareVersion, new CharacterString(LocalDevice.VERSION));
         writePropertyInternal(PropertyIdentifier.protocolVersion, new UnsignedInteger(1));
-        writePropertyInternal(PropertyIdentifier.protocolRevision, new UnsignedInteger(21));
+        writePropertyInternal(PropertyIdentifier.protocolRevision, new UnsignedInteger(23));
 
         UnsignedInteger databaseRevision = getLocalDevice().getPersistence()
                 .loadEncodable(getPersistenceKey(PropertyIdentifier.databaseRevision), UnsignedInteger.class);

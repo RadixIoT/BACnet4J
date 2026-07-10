@@ -49,7 +49,7 @@ import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 
 /**
  * A network that is useful for unit tests as it simulates a BACnet network within
- * a single process. The static <code>instances</code> field keeps track of all of
+ * a single process. The static <code>instances</code> field keeps track of all
  * the currently available networks,
  */
 public class TestNetwork extends Network implements Runnable {
@@ -71,26 +71,24 @@ public class TestNetwork extends Network implements Runnable {
      * This is the list of outgoing messages queued up for sending.
      */
     private final Queue<SendData> queue = new ConcurrentLinkedQueue<>();
-    private long bytesOut;
-    private long bytesIn;
 
-    public TestNetwork(final TestNetworkMap map, final int address, final int sendDelay) {
+    public TestNetwork(TestNetworkMap map, int address, int sendDelay) {
         this(map, new NetworkSourceAddress(Address.LOCAL_NETWORK, new byte[] {(byte) address}), sendDelay);
     }
 
-    public TestNetwork(final TestNetworkMap map, final Address address, final int sendDelay) {
+    public TestNetwork(TestNetworkMap map, Address address, int sendDelay) {
         super(0);
         this.networkMap = map;
         this.address = address;
         this.sendDelay = sendDelay;
     }
 
-    public TestNetwork withTimeout(final int timeout) {
+    public TestNetwork withTimeout(int timeout) {
         this.timeout = timeout;
         return this;
     }
 
-    public TestNetwork withSegTimeout(final int segTimeout) {
+    public TestNetwork withSegTimeout(int segTimeout) {
         this.segTimeout = segTimeout;
         return this;
     }
@@ -107,16 +105,16 @@ public class TestNetwork extends Network implements Runnable {
 
     @Override
     public long getBytesOut() {
-        return bytesOut;
+        return 0;
     }
 
     @Override
     public long getBytesIn() {
-        return bytesIn;
+        return 0;
     }
 
     @Override
-    public void initialize(final Transport transport) throws Exception {
+    public void initialize(Transport transport) throws BACnetException {
         super.initialize(transport);
 
         running = true;
@@ -157,14 +155,14 @@ public class TestNetwork extends Network implements Runnable {
     }
 
     @Override
-    public Address getSourceAddress(final APDU apdu) {
+    public Address getSourceAddress(APDU apdu) {
         return address;
     }
 
     @Override
-    public void sendNPDU(final Address recipient, final OctetString router, final ByteQueue npdu,
-            final boolean broadcast, final boolean expectsReply) throws BACnetException {
-        final SendData d = new SendData();
+    public void sendNPDU(Address recipient, OctetString router, ByteQueue npdu, boolean broadcast, boolean expectsReply)
+            throws BACnetException {
+        SendData d = new SendData();
         d.recipient = recipient;
         d.data = npdu.popAll();
 
@@ -176,7 +174,7 @@ public class TestNetwork extends Network implements Runnable {
     public void run() {
         while (running) {
             // Check for a message to send.
-            final SendData d = queue.poll();
+            SendData d = queue.poll();
 
             if (d == null)
                 ThreadUtils.waitSync(queue, 2);
@@ -186,11 +184,11 @@ public class TestNetwork extends Network implements Runnable {
 
                 if (d.recipient.equals(getLocalBroadcastAddress()) || d.recipient.equals(Address.GLOBAL)) {
                     // A broadcast. Send to everyone.
-                    for (final TestNetwork network : networkMap)
+                    for (TestNetwork network : networkMap)
                         receive(network, d.data);
                 } else {
                     // A directed message. Find the network to pass it to.
-                    final TestNetwork network = networkMap.get(d.recipient);
+                    TestNetwork network = networkMap.get(d.recipient);
                     if (network != null)
                         receive(network, d.data);
                 }
@@ -200,17 +198,14 @@ public class TestNetwork extends Network implements Runnable {
 
     /**
      * Passes the the data over to the given network instance.
-     *
-     * @param recipient
-     * @param data
      */
-    private void receive(final TestNetwork recipient, final byte[] data) {
+    private void receive(TestNetwork recipient, byte[] data) {
         LOG.debug("Sending data from {} to {}", address, recipient.address);
         recipient.handleIncomingData(new ByteQueue(data), address.getMacAddress());
     }
 
     @Override
-    protected NPDU handleIncomingDataImpl(final ByteQueue queue, final OctetString linkService)
+    protected NPDU handleIncomingDataImpl(ByteQueue queue, OctetString linkService)
             throws MessageValidationException {
         return parseNpduData(queue, linkService);
     }
