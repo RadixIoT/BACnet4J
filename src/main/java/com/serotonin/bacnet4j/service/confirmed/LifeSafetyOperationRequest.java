@@ -27,6 +27,8 @@
 
 package com.serotonin.bacnet4j.service.confirmed;
 
+import java.util.Objects;
+
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
@@ -51,9 +53,8 @@ public class LifeSafetyOperationRequest extends ConfirmedRequestService {
     private final LifeSafetyOperation request;
     private final ObjectIdentifier objectIdentifier;
 
-    public LifeSafetyOperationRequest(final UnsignedInteger requestingProcessIdentifier,
-            final CharacterString requestingSource, final LifeSafetyOperation request,
-            final ObjectIdentifier objectIdentifier) {
+    public LifeSafetyOperationRequest(UnsignedInteger requestingProcessIdentifier, CharacterString requestingSource,
+            LifeSafetyOperation request, ObjectIdentifier objectIdentifier) {
         this.requestingProcessIdentifier = requestingProcessIdentifier;
         this.requestingSource = requestingSource;
         this.request = request;
@@ -66,40 +67,39 @@ public class LifeSafetyOperationRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public AcknowledgementService handle(final LocalDevice localDevice, final Address from) throws BACnetException {
+    public AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException {
         try {
             if (objectIdentifier != null) {
-                final BACnetObject bo = localDevice.getObjectRequired(objectIdentifier);
+                BACnetObject bo = localDevice.getObjectRequired(objectIdentifier);
                 handleForObject(from, bo, true);
             } else {
-                for (final BACnetObject bo : localDevice.getLocalObjects()) {
+                for (BACnetObject bo : localDevice.getLocalObjects()) {
                     handleForObject(from, bo, false);
                 }
             }
-        } catch (final BACnetServiceException e) {
+        } catch (BACnetServiceException e) {
             throw new BACnetErrorException(getChoiceId(), e.getErrorClass(), e.getErrorCode());
         }
         return null;
     }
 
-    private void handleForObject(final Address from, final BACnetObject bo, final boolean throwOnBadType)
-            throws BACnetServiceException {
-        if (bo instanceof LifeSafety) {
-            ((LifeSafety) bo).handleLifeSafetyOperation(from, requestingProcessIdentifier, requestingSource, request);
+    private void handleForObject(Address from, BACnetObject bo, boolean throwOnBadType) throws BACnetServiceException {
+        if (bo instanceof LifeSafety ls) {
+            ls.handleLifeSafetyOperation(from, requestingProcessIdentifier, requestingSource, request);
         } else if (throwOnBadType) {
-            throw new BACnetServiceException(ErrorClass.object, ErrorCode.unsupportedObjectType);
+            throw new BACnetServiceException(ErrorClass.object, ErrorCode.optionalFunctionalityNotSupported);
         }
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, requestingProcessIdentifier, 0);
         write(queue, requestingSource, 1);
         write(queue, request, 2);
         writeOptional(queue, objectIdentifier, 3);
     }
 
-    LifeSafetyOperationRequest(final ByteQueue queue) throws BACnetException {
+    LifeSafetyOperationRequest(ByteQueue queue) throws BACnetException {
         requestingProcessIdentifier = read(queue, UnsignedInteger.class, 0);
         requestingSource = read(queue, CharacterString.class, 1);
         request = read(queue, LifeSafetyOperation.class, 2);
@@ -107,45 +107,18 @@ public class LifeSafetyOperationRequest extends ConfirmedRequestService {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (objectIdentifier == null ? 0 : objectIdentifier.hashCode());
-        result = PRIME * result + (request == null ? 0 : request.hashCode());
-        result = PRIME * result + (requestingProcessIdentifier == null ? 0 : requestingProcessIdentifier.hashCode());
-        result = PRIME * result + (requestingSource == null ? 0 : requestingSource.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        LifeSafetyOperationRequest that = (LifeSafetyOperationRequest) o;
+        return Objects.equals(requestingProcessIdentifier,
+                that.requestingProcessIdentifier) && Objects.equals(requestingSource,
+                that.requestingSource) && Objects.equals(request, that.request) && Objects.equals(
+                objectIdentifier, that.objectIdentifier);
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final LifeSafetyOperationRequest other = (LifeSafetyOperationRequest) obj;
-        if (objectIdentifier == null) {
-            if (other.objectIdentifier != null)
-                return false;
-        } else if (!objectIdentifier.equals(other.objectIdentifier))
-            return false;
-        if (request == null) {
-            if (other.request != null)
-                return false;
-        } else if (!request.equals(other.request))
-            return false;
-        if (requestingProcessIdentifier == null) {
-            if (other.requestingProcessIdentifier != null)
-                return false;
-        } else if (!requestingProcessIdentifier.equals(other.requestingProcessIdentifier))
-            return false;
-        if (requestingSource == null) {
-            if (other.requestingSource != null)
-                return false;
-        } else if (!requestingSource.equals(other.requestingSource))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(requestingProcessIdentifier, requestingSource, request, objectIdentifier);
     }
 }
