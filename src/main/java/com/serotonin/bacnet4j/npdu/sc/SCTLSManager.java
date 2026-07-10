@@ -60,11 +60,7 @@ public class SCTLSManager {
     private static final Logger LOG = LoggerFactory.getLogger(SCTLSManager.class);
     private static final String TLS_VERSION = "TLSv1.3";
 
-    // Clause AB.7.4 — TLS V1.3 Cipher Suite Application Profile for BACnet/SC (135-2020cd-1).
-    // The profile mandates support of TLS_AES_128_GCM_SHA256 with ecdsa_secp256r1_sha256 signatures
-    // and secp256r1 key exchange. The named group and signature scheme are enabled by default in
-    // Java's TLS 1.3 provider whenever the cipher suite is present, so verifying cipher-suite
-    // availability at startup is sufficient to detect a JVM whose crypto has been restricted.
+    // AB.7.4
     static final String REQUIRED_CIPHER_SUITE = "TLS_AES_128_GCM_SHA256";
 
     protected final PrivateKey privateKey;
