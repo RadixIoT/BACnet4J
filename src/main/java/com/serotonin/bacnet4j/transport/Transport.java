@@ -32,6 +32,7 @@ import java.util.Map;
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.ResponseConsumer;
 import com.serotonin.bacnet4j.ServiceFuture;
+import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.npdu.NPDU;
 import com.serotonin.bacnet4j.npdu.Network;
 import com.serotonin.bacnet4j.npdu.NetworkIdentifier;
@@ -43,14 +44,12 @@ import com.serotonin.bacnet4j.type.primitive.OctetString;
 
 /**
  * Provides segmentation support for all data link types.
- *
- * @author Matthew
  */
 public interface Transport {
-    public static final int DEFAULT_TIMEOUT = 6000;
-    public static final int DEFAULT_SEG_TIMEOUT = 5000;
-    public static final int DEFAULT_SEG_WINDOW = 5;
-    public static final int DEFAULT_RETRIES = 2;
+    int DEFAULT_TIMEOUT = 6000;
+    int DEFAULT_SEG_TIMEOUT = 5000;
+    int DEFAULT_SEG_WINDOW = 5;
+    int DEFAULT_RETRIES = 2;
 
     NetworkIdentifier getNetworkIdentifier();
 
@@ -60,23 +59,23 @@ public interface Transport {
 
     void setLocalDevice(LocalDevice localDevice);
 
-    public void setTimeout(int timeout);
+    void setTimeout(int timeout);
 
-    public int getTimeout();
+    int getTimeout();
 
-    public void setSegTimeout(int segTimeout);
+    void setSegTimeout(int segTimeout);
 
-    public int getSegTimeout();
+    int getSegTimeout();
 
-    public void setRetries(int retries);
+    void setRetries(int retries);
 
-    public int getRetries();
+    int getRetries();
 
-    public void setSegWindow(int segWindow);
+    void setSegWindow(int segWindow);
 
-    public int getSegWindow();
+    int getSegWindow();
 
-    void initialize() throws Exception;
+    void initialize() throws BACnetException;
 
     void terminate();
 

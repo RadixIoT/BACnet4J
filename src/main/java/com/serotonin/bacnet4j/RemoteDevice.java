@@ -29,6 +29,7 @@ package com.serotonin.bacnet4j;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Objects;
 
 import com.serotonin.bacnet4j.cache.RemoteEntityCache;
 import com.serotonin.bacnet4j.type.Encodable;
@@ -54,7 +55,7 @@ public class RemoteDevice implements Serializable {
     private int maxReadMultipleReferences = -1;
     private final transient RemoteEntityCache<ObjectIdentifier, RemoteObject> remoteObjectCache;
 
-    public RemoteDevice(final LocalDevice localDevice, final int instanceNumber) {
+    public RemoteDevice(LocalDevice localDevice, int instanceNumber) {
         this.localDevice = localDevice;
 
         // Create the remote cache.
@@ -66,7 +67,7 @@ public class RemoteDevice implements Serializable {
                 localDevice.getCachePolicies().getObjectPolicy(instanceNumber, deviceOid));
     }
 
-    public RemoteDevice(final LocalDevice localDevice, final int instanceNumber, final Address address) {
+    public RemoteDevice(LocalDevice localDevice, int instanceNumber, Address address) {
         this(localDevice, instanceNumber);
         this.address = address;
     }
@@ -79,35 +80,35 @@ public class RemoteDevice implements Serializable {
         return deviceOid;
     }
 
-    public void setObject(final RemoteObject remoteObject) {
+    public void setObject(RemoteObject remoteObject) {
         remoteObjectCache.putEntity(remoteObject.getObjectIdentifier(), remoteObject, //
                 localDevice.getCachePolicies().getObjectPolicy( //
                         deviceOid.getInstanceNumber(), //
                         remoteObject.getObjectIdentifier()));
     }
 
-    public RemoteObject getObject(final ObjectIdentifier oid) {
+    public RemoteObject getObject(ObjectIdentifier oid) {
         return remoteObjectCache.getCachedEntity(oid);
     }
 
     //
     // Get properties
     //
-    public <T extends Encodable> T getDeviceProperty(final PropertyIdentifier pid) {
+    public <T extends Encodable> T getDeviceProperty(PropertyIdentifier pid) {
         return getObjectProperty(deviceOid, pid, null);
     }
 
-    public <T extends Encodable> T getDeviceProperty(final PropertyIdentifier pid, final UnsignedInteger pin) {
+    public <T extends Encodable> T getDeviceProperty(PropertyIdentifier pid, UnsignedInteger pin) {
         return getObjectProperty(deviceOid, pid, pin);
     }
 
-    public <T extends Encodable> T getObjectProperty(final ObjectIdentifier oid, final PropertyIdentifier pid) {
+    public <T extends Encodable> T getObjectProperty(ObjectIdentifier oid, PropertyIdentifier pid) {
         return getObjectProperty(oid, pid, null);
     }
 
-    public <T extends Encodable> T getObjectProperty(final ObjectIdentifier oid, final PropertyIdentifier pid,
-            final UnsignedInteger pin) {
-        final RemoteObject ro = getObject(oid);
+    public <T extends Encodable> T getObjectProperty(ObjectIdentifier oid, PropertyIdentifier pid,
+            UnsignedInteger pin) {
+        RemoteObject ro = getObject(oid);
         if (ro == null)
             return null;
         return ro.getProperty(pid, pin);
@@ -117,20 +118,19 @@ public class RemoteDevice implements Serializable {
     // Set properties
     //
 
-    public void setDeviceProperty(final PropertyIdentifier pid, final Encodable value) {
+    public void setDeviceProperty(PropertyIdentifier pid, Encodable value) {
         setObjectProperty(deviceOid, pid, null, value);
     }
 
-    public void setDeviceProperty(final PropertyIdentifier pid, final UnsignedInteger pin, final Encodable value) {
+    public void setDeviceProperty(PropertyIdentifier pid, UnsignedInteger pin, Encodable value) {
         setObjectProperty(deviceOid, pid, pin, value);
     }
 
-    public void setObjectProperty(final ObjectIdentifier oid, final PropertyIdentifier pid, final Encodable value) {
+    public void setObjectProperty(ObjectIdentifier oid, PropertyIdentifier pid, Encodable value) {
         setObjectProperty(oid, pid, null, value);
     }
 
-    public void setObjectProperty(final ObjectIdentifier oid, final PropertyIdentifier pid, final UnsignedInteger pin,
-            final Encodable value) {
+    public void setObjectProperty(ObjectIdentifier oid, PropertyIdentifier pid, UnsignedInteger pin, Encodable value) {
         if (value instanceof ErrorClassAndCode e && ErrorClass.object.equals(e.getErrorClass())) {
             // Don't create objects if the error is about the object.
             // But don't remove the object because it is possible to get error responses on objects that
@@ -156,21 +156,21 @@ public class RemoteDevice implements Serializable {
     // Remove properties
     //
 
-    public <T extends Encodable> T removeDeviceProperty(final PropertyIdentifier pid) {
+    public <T extends Encodable> T removeDeviceProperty(PropertyIdentifier pid) {
         return removeObjectProperty(deviceOid, pid, null);
     }
 
-    public <T extends Encodable> T removeDeviceProperty(final PropertyIdentifier pid, final UnsignedInteger pin) {
+    public <T extends Encodable> T removeDeviceProperty(PropertyIdentifier pid, UnsignedInteger pin) {
         return removeObjectProperty(deviceOid, pid, pin);
     }
 
-    public <T extends Encodable> T removeObjectProperty(final ObjectIdentifier oid, final PropertyIdentifier pid) {
+    public <T extends Encodable> T removeObjectProperty(ObjectIdentifier oid, PropertyIdentifier pid) {
         return removeObjectProperty(oid, pid, null);
     }
 
-    public <T extends Encodable> T removeObjectProperty(final ObjectIdentifier oid, final PropertyIdentifier pid,
-            final UnsignedInteger pin) {
-        final RemoteObject ro = remoteObjectCache.getCachedEntity(oid);
+    public <T extends Encodable> T removeObjectProperty(ObjectIdentifier oid, PropertyIdentifier pid,
+            UnsignedInteger pin) {
+        RemoteObject ro = remoteObjectCache.getCachedEntity(oid);
         if (ro == null)
             return null;
         return ro.removeProperty(pid, pin);
@@ -180,7 +180,7 @@ public class RemoteDevice implements Serializable {
         return address;
     }
 
-    public void setAddress(final Address address) {
+    public void setAddress(Address address) {
         this.address = address;
     }
 
@@ -193,6 +193,7 @@ public class RemoteDevice implements Serializable {
     }
 
     public int getVendorIdentifier() {
+        // This is actually an Unsigned16, but it will work anyway.
         return getUnsignedIntegerProperty(PropertyIdentifier.vendorIdentifier);
     }
 
@@ -212,15 +213,15 @@ public class RemoteDevice implements Serializable {
         return getDeviceProperty(PropertyIdentifier.protocolServicesSupported);
     }
 
-    public int getUnsignedIntegerProperty(final PropertyIdentifier pid) {
-        final UnsignedInteger p = getDeviceProperty(pid);
+    public int getUnsignedIntegerProperty(PropertyIdentifier pid) {
+        UnsignedInteger p = getDeviceProperty(pid);
         if (p == null)
             return -1;
         return p.intValue();
     }
 
-    public String getCharacterStringProperty(final PropertyIdentifier pid) {
-        final CharacterString p = getDeviceProperty(pid);
+    public String getCharacterStringProperty(PropertyIdentifier pid) {
+        CharacterString p = getDeviceProperty(pid);
         if (p == null)
             return null;
         return p.getValue();
@@ -242,11 +243,11 @@ public class RemoteDevice implements Serializable {
         return userData;
     }
 
-    public void setUserData(final Object userData) {
+    public void setUserData(Object userData) {
         this.userData = userData;
     }
 
-    public void setMaxReadMultipleReferences(final int maxReadMultipleReferences) {
+    public void setMaxReadMultipleReferences(int maxReadMultipleReferences) {
         this.maxReadMultipleReferences = maxReadMultipleReferences;
     }
 
@@ -256,7 +257,7 @@ public class RemoteDevice implements Serializable {
         return maxReadMultipleReferences;
     }
 
-    public void reduceMaxReadMultipleReferences(final int from) {
+    public void reduceMaxReadMultipleReferences(int from) {
         int current = getMaxReadMultipleReferences();
         if (current > from)
             current = from;
@@ -266,27 +267,18 @@ public class RemoteDevice implements Serializable {
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (deviceOid == null ? 0 : deviceOid.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        RemoteDevice that = (RemoteDevice) o;
+        return maxReadMultipleReferences == that.maxReadMultipleReferences && Objects.equals(localDevice,
+                that.localDevice) && Objects.equals(deviceOid, that.deviceOid) && Objects.equals(
+                address, that.address) && Objects.equals(userData, that.userData) && Objects.equals(
+                remoteObjectCache, that.remoteObjectCache);
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final RemoteDevice other = (RemoteDevice) obj;
-        if (deviceOid == null) {
-            if (other.deviceOid != null)
-                return false;
-        } else if (!deviceOid.equals(other.deviceOid))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(localDevice, deviceOid, address, userData, maxReadMultipleReferences, remoteObjectCache);
     }
 }

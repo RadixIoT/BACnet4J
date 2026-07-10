@@ -45,17 +45,17 @@ import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.OctetString;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
  * Default implementation for all methods is to do nothing
  * useful to create functional interfaces that extend this
- *
- * @author Terry Packer
  */
 public interface DefaultDeviceEventListener extends DeviceEventListener {
     @Override
-    default void listenerException(Throwable e) {
+    default void listenerException(Exception e) {
     }
 
     @Override
@@ -83,10 +83,10 @@ public interface DefaultDeviceEventListener extends DeviceEventListener {
 
     @Override
     default void eventNotificationReceived(UnsignedInteger processIdentifier,
-            ObjectIdentifier initiatingDeviceIdentifier,
-            ObjectIdentifier eventObjectIdentifier, TimeStamp timeStamp, UnsignedInteger notificationClass,
-            UnsignedInteger priority, EventType eventType, CharacterString messageText, NotifyType notifyType,
-            Boolean ackRequired, EventState fromState, EventState toState, NotificationParameters eventValues) {
+            ObjectIdentifier initiatingDeviceIdentifier, ObjectIdentifier eventObjectIdentifier, TimeStamp timeStamp,
+            UnsignedInteger notificationClass, UnsignedInteger priority, EventType eventType,
+            CharacterString messageText, NotifyType notifyType, Boolean ackRequired, EventState fromState,
+            EventState toState, NotificationParameters eventValues) {
     }
 
     @Override
@@ -100,5 +100,14 @@ public interface DefaultDeviceEventListener extends DeviceEventListener {
 
     @Override
     default void requestReceived(Address from, Service service) {
+    }
+
+    @Override
+    default void whoAmIReceived(Address from, Unsigned16 vendorId, CharacterString modelName,
+            CharacterString serialNumber) {
+    }
+
+    @Override
+    default void youAreReceived(Address from, ObjectIdentifier deviceIdentifier, OctetString deviceMacAddress) {
     }
 }

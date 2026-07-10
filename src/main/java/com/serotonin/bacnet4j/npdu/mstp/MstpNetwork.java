@@ -29,6 +29,7 @@ package com.serotonin.bacnet4j.npdu.mstp;
 
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.npdu.MessageValidationException;
 import com.serotonin.bacnet4j.npdu.NPDU;
 import com.serotonin.bacnet4j.npdu.Network;
@@ -61,7 +62,7 @@ public class MstpNetwork extends Network {
     }
 
     @Override
-    public void initialize(Transport transport) throws Exception {
+    public void initialize(Transport transport) throws BACnetException {
         super.initialize(transport);
         node.initialize(transport);
     }
@@ -111,7 +112,7 @@ public class MstpNetwork extends Network {
 
         if (expectsReply) {
             if (node instanceof SubordinateNode)
-                throw new RuntimeException("Cannot originate a request from a subordinate node");
+                throw new BACnetRuntimeException("Cannot originate a request from a subordinate node");
 
             ((ManagerNode) node).queueFrame(FrameType.bacnetDataExpectingReply, mstpAddress, data);
         } else
@@ -119,9 +120,9 @@ public class MstpNetwork extends Network {
     }
 
     public void sendTestRequest(byte destination) {
-        if (!(node instanceof ManagerNode))
-            throw new RuntimeException("Only manager nodes can send test requests");
-        ((ManagerNode) node).queueFrame(FrameType.testRequest, destination, null);
+        if (!(node instanceof ManagerNode mNode))
+            throw new BACnetRuntimeException("Only manager nodes can send test requests");
+        mNode.queueFrame(FrameType.testRequest, destination, null);
     }
 
     //
@@ -144,30 +145,5 @@ public class MstpNetwork extends Network {
     //
     public Address getAddress(byte station) {
         return MstpNetworkUtils.toAddress(getLocalNetworkNumber(), station);
-    }
-
-    @Override
-    public int hashCode() {
-        int prime = 31;
-        int result = super.hashCode();
-        result = prime * result + (node == null ? 0 : node.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (!super.equals(obj))
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        MstpNetwork other = (MstpNetwork) obj;
-        if (node == null) {
-            if (other.node != null)
-                return false;
-        } else if (!node.equals(other.node))
-            return false;
-        return true;
     }
 }

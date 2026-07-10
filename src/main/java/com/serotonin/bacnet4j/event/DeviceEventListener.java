@@ -45,6 +45,8 @@ import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.OctetString;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
@@ -57,7 +59,7 @@ public interface DeviceEventListener {
     /**
      * Notification of an exception while calling a listener method.
      */
-    void listenerException(Throwable e);
+    void listenerException(Exception e);
 
     /**
      * Notification of receipt of an IAm message.
@@ -159,4 +161,16 @@ public interface DeviceEventListener {
      * @param service the service received
      */
     void requestReceived(Address from, Service service);
+
+    /**
+     * Notification of receipt of a WhoAmI message.
+     */
+    void whoAmIReceived(Address from, Unsigned16 vendorId, CharacterString modelName, CharacterString serialNumber);
+
+    /**
+     * Notification of receipt of a YouAre message. The MAC address has not been validated at this point. See 16.11.4.
+     * "After accepting the 'Device Identifier' or 'Device MAC Address' if provided, the device shall subsequently
+     * generate an I-Am, except when the receiving BACnet-user is an MS/TP subordinate node."
+     */
+    void youAreReceived(Address from, ObjectIdentifier deviceIdentifier, OctetString deviceMacAddress);
 }

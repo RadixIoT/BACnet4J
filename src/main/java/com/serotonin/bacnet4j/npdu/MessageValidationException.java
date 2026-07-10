@@ -27,7 +27,12 @@
 
 package com.serotonin.bacnet4j.npdu;
 
-public class MessageValidationException extends Exception {
+import java.io.Serial;
+
+import com.serotonin.bacnet4j.exception.BACnetException;
+
+public class MessageValidationException extends BACnetException {
+    @Serial
     private static final long serialVersionUID = -1;
 
     public MessageValidationException(String message) {

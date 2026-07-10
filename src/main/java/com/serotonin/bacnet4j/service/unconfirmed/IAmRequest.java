@@ -27,6 +27,8 @@
 
 package com.serotonin.bacnet4j.service.unconfirmed;
 
+import java.util.Objects;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +40,7 @@ import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
@@ -49,22 +52,22 @@ public class IAmRequest extends UnconfirmedRequestService {
     private final ObjectIdentifier iAmDeviceIdentifier;
     private final UnsignedInteger maxAPDULengthAccepted;
     private final Segmentation segmentationSupported;
-    private final UnsignedInteger vendorId;
+    private final Unsigned16 vendorId;
 
     /**
      * This field allows us to properly implement 16.1.2.
      */
     private boolean isResponseToWhoIs;
 
-    public IAmRequest(final ObjectIdentifier iamDeviceIdentifier, final UnsignedInteger maxAPDULengthAccepted,
-            final Segmentation segmentationSupported, final UnsignedInteger vendorId) {
+    public IAmRequest(ObjectIdentifier iamDeviceIdentifier, UnsignedInteger maxAPDULengthAccepted,
+            Segmentation segmentationSupported, Unsigned16 vendorId) {
         this.iAmDeviceIdentifier = iamDeviceIdentifier;
         this.maxAPDULengthAccepted = maxAPDULengthAccepted;
         this.segmentationSupported = segmentationSupported;
         this.vendorId = vendorId;
     }
 
-    public IAmRequest withIsResponseToWhoIs(final boolean isResponseToWhoIs) {
+    public IAmRequest withIsResponseToWhoIs(boolean isResponseToWhoIs) {
         this.isResponseToWhoIs = isResponseToWhoIs;
         return this;
     }
@@ -79,18 +82,18 @@ public class IAmRequest extends UnconfirmedRequestService {
     }
 
     @Override
-    public void handle(final LocalDevice localDevice, final Address from) {
+    public void handle(LocalDevice localDevice, Address from) {
         if (!ObjectType.device.equals(iAmDeviceIdentifier.getObjectType())) {
             LOG.warn("Received IAm from an object that is not a device from {}", from);
             return;
         }
 
         // Make sure we're not hearing from ourselves.
-        final int myDoi = localDevice.getInstanceNumber();
-        final int remoteDoi = iAmDeviceIdentifier.getInstanceNumber();
+        int myDoi = localDevice.getInstanceNumber();
+        int remoteDoi = iAmDeviceIdentifier.getInstanceNumber();
         if (remoteDoi == myDoi) {
             // Get my bacnet address and compare the addresses
-            for (final Address addr : localDevice.getAllLocalAddresses()) {
+            for (Address addr : localDevice.getAllLocalAddresses()) {
                 if (addr.getMacAddress().equals(from.getMacAddress()))
                     // This is a local address, so ignore.
                     return;
@@ -113,60 +116,34 @@ public class IAmRequest extends UnconfirmedRequestService {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, iAmDeviceIdentifier);
         write(queue, maxAPDULengthAccepted);
         write(queue, segmentationSupported);
         write(queue, vendorId);
     }
 
-    public IAmRequest(final ByteQueue queue) throws BACnetException {
+    public IAmRequest(ByteQueue queue) throws BACnetException {
         iAmDeviceIdentifier = read(queue, ObjectIdentifier.class);
         maxAPDULengthAccepted = read(queue, UnsignedInteger.class);
         segmentationSupported = read(queue, Segmentation.class);
-        vendorId = read(queue, UnsignedInteger.class);
+        vendorId = read(queue, Unsigned16.class);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        IAmRequest that = (IAmRequest) o;
+        return isResponseToWhoIs == that.isResponseToWhoIs && Objects.equals(iAmDeviceIdentifier,
+                that.iAmDeviceIdentifier) && Objects.equals(maxAPDULengthAccepted,
+                that.maxAPDULengthAccepted) && Objects.equals(segmentationSupported,
+                that.segmentationSupported) && Objects.equals(vendorId, that.vendorId);
     }
 
     @Override
     public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (iAmDeviceIdentifier == null ? 0 : iAmDeviceIdentifier.hashCode());
-        result = PRIME * result + (maxAPDULengthAccepted == null ? 0 : maxAPDULengthAccepted.hashCode());
-        result = PRIME * result + (segmentationSupported == null ? 0 : segmentationSupported.hashCode());
-        result = PRIME * result + (vendorId == null ? 0 : vendorId.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final IAmRequest other = (IAmRequest) obj;
-        if (iAmDeviceIdentifier == null) {
-            if (other.iAmDeviceIdentifier != null)
-                return false;
-        } else if (!iAmDeviceIdentifier.equals(other.iAmDeviceIdentifier))
-            return false;
-        if (maxAPDULengthAccepted == null) {
-            if (other.maxAPDULengthAccepted != null)
-                return false;
-        } else if (!maxAPDULengthAccepted.equals(other.maxAPDULengthAccepted))
-            return false;
-        if (segmentationSupported == null) {
-            if (other.segmentationSupported != null)
-                return false;
-        } else if (!segmentationSupported.equals(other.segmentationSupported))
-            return false;
-        if (vendorId == null) {
-            if (other.vendorId != null)
-                return false;
-        } else if (!vendorId.equals(other.vendorId))
-            return false;
-        return true;
+        return Objects.hash(iAmDeviceIdentifier, maxAPDULengthAccepted, segmentationSupported, vendorId,
+                isResponseToWhoIs);
     }
 }
