@@ -84,6 +84,10 @@ public abstract class Network {
         return null;
     }
 
+    /**
+     * @param transport the transport to use
+     * @throws BACnetException subclasses may throw
+     */
     public void initialize(Transport transport) throws BACnetException {
         this.transport = transport;
     }

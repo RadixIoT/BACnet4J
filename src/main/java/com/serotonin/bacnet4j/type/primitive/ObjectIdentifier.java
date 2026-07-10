@@ -77,11 +77,11 @@ public class ObjectIdentifier extends Primitive {
     public ObjectIdentifier(ByteQueue queue) throws BACnetErrorException {
         readTag(queue, TYPE_ID);
 
-        int objectType = queue.popU1B() << 2;
+        int type = queue.popU1B() << 2;
         int i = queue.popU1B();
-        objectType |= i >> 6;
+        type |= i >> 6;
 
-        this.objectType = ObjectType.forId(objectType);
+        this.objectType = ObjectType.forId(type);
 
         instanceNumber = (i & 0x3f) << 16;
         instanceNumber |= queue.popU1B() << 8;
