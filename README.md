@@ -103,6 +103,7 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
   rules.
 - Changes for compliance with addendum 135-2016bi-3 regarding extremely large logs
 - Time form construction of DateTime choice has been deprecated. They should no longer be created by client code
+- `LifeSafetyOperationRequest` returns error code specified in addendum bt-2
 
 *Version 6.2.0*
 

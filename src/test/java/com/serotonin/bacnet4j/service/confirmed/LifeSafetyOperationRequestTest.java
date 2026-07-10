@@ -92,11 +92,20 @@ public class LifeSafetyOperationRequestTest {
                         .handle(localDevice, addr),
                 ErrorClass.object, ErrorCode.unknownObject);
 
-        // Bad object type
+        // Per addendum 135-2016bt-2 (Clause 13.13.1.3.1): a request against an object that does
+        // not support LifeSafetyOperation is rejected with OPTIONAL_FUNCTIONALITY_NOT_SUPPORTED.
         TestUtils.assertRequestHandleException(
                 () -> new LifeSafetyOperationRequest(new UnsignedInteger(12), new CharacterString("test"),
                         LifeSafetyOperation.none, ai.getId()).handle(localDevice, addr),
-                ErrorClass.object, ErrorCode.unsupportedObjectType);
+                ErrorClass.object, ErrorCode.optionalFunctionalityNotSupported);
+
+        // Per addendum 135-2016bt-2: an operation the object does not support is rejected with
+        // VALUE_OUT_OF_RANGE. The default LifeSafety implementation handles silence/unsilence
+        // variants only; reset variants are unsupported.
+        TestUtils.assertRequestHandleException(
+                () -> new LifeSafetyOperationRequest(new UnsignedInteger(12), new CharacterString("test"),
+                        LifeSafetyOperation.reset, lsp.getId()).handle(localDevice, addr),
+                ErrorClass.object, ErrorCode.valueOutOfRange);
     }
 
     @Test
