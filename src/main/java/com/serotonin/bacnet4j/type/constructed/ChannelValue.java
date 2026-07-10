@@ -27,6 +27,8 @@
 
 package com.serotonin.bacnet4j.type.constructed;
 
+import java.util.Objects;
+
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.primitive.BitString;
@@ -45,7 +47,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class ChannelValue extends BaseType {
-    private static ChoiceOptions choiceOptions = new ChoiceOptions();
+    private static final ChoiceOptions choiceOptions = new ChoiceOptions();
 
     static {
         choiceOptions.addPrimitive(Null.class);
@@ -62,64 +64,74 @@ public class ChannelValue extends BaseType {
         choiceOptions.addPrimitive(Date.class);
         choiceOptions.addPrimitive(ObjectIdentifier.class);
         choiceOptions.addContextual(0, LightingCommand.class);
+        choiceOptions.addContextual(1, XyColor.class);
+        choiceOptions.addContextual(2, ColorCommand.class);
     }
 
     private final Choice choice;
 
-    public ChannelValue(final Null nullValue) {
+    public ChannelValue(Null nullValue) {
         this.choice = new Choice(nullValue, choiceOptions);
     }
 
-    public ChannelValue(final Real realValue) {
+    public ChannelValue(Real realValue) {
         this.choice = new Choice(realValue, choiceOptions);
     }
 
-    public ChannelValue(final Enumerated enumeratedValue) {
+    public ChannelValue(Enumerated enumeratedValue) {
         this.choice = new Choice(enumeratedValue, choiceOptions);
     }
 
-    public ChannelValue(final UnsignedInteger unsignedValue) {
+    public ChannelValue(UnsignedInteger unsignedValue) {
         this.choice = new Choice(unsignedValue, choiceOptions);
     }
 
-    public ChannelValue(final Boolean booleanValue) {
+    public ChannelValue(Boolean booleanValue) {
         this.choice = new Choice(booleanValue, choiceOptions);
     }
 
-    public ChannelValue(final SignedInteger integerValue) {
+    public ChannelValue(SignedInteger integerValue) {
         this.choice = new Choice(integerValue, choiceOptions);
     }
 
-    public ChannelValue(final Double doubleValue) {
+    public ChannelValue(Double doubleValue) {
         this.choice = new Choice(doubleValue, choiceOptions);
     }
 
-    public ChannelValue(final Time timeValue) {
+    public ChannelValue(Time timeValue) {
         this.choice = new Choice(timeValue, choiceOptions);
     }
 
-    public ChannelValue(final CharacterString characterStringValue) {
+    public ChannelValue(CharacterString characterStringValue) {
         this.choice = new Choice(characterStringValue, choiceOptions);
     }
 
-    public ChannelValue(final OctetString octetStringValue) {
+    public ChannelValue(OctetString octetStringValue) {
         this.choice = new Choice(octetStringValue, choiceOptions);
     }
 
-    public ChannelValue(final BitString bitStringValue) {
+    public ChannelValue(BitString bitStringValue) {
         this.choice = new Choice(bitStringValue, choiceOptions);
     }
 
-    public ChannelValue(final Date dateValue) {
+    public ChannelValue(Date dateValue) {
         this.choice = new Choice(dateValue, choiceOptions);
     }
 
-    public ChannelValue(final ObjectIdentifier objectIdentifierValue) {
+    public ChannelValue(ObjectIdentifier objectIdentifierValue) {
         this.choice = new Choice(objectIdentifierValue, choiceOptions);
     }
 
-    public ChannelValue(final LightingCommand lightingCommandValue) {
+    public ChannelValue(LightingCommand lightingCommandValue) {
         this.choice = new Choice(0, lightingCommandValue, choiceOptions);
+    }
+
+    public ChannelValue(XyColor xyColor) {
+        this.choice = new Choice(1, xyColor, choiceOptions);
+    }
+
+    public ChannelValue(ColorCommand colorCommand) {
+        this.choice = new Choice(2, colorCommand, choiceOptions);
     }
 
     public Choice getChoice() {
@@ -131,41 +143,24 @@ public class ChannelValue extends BaseType {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         write(queue, choice);
     }
 
-    public ChannelValue(final ByteQueue queue) throws BACnetException {
+    public ChannelValue(ByteQueue queue) throws BACnetException {
         choice = readChoice(queue, choiceOptions);
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        ChannelValue that = (ChannelValue) o;
+        return Objects.equals(choice, that.choice);
+    }
+
+    @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (choice == null ? 0 : choice.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final ChannelValue other = (ChannelValue) obj;
-        if (choice == null) {
-            if (other.choice != null)
-                return false;
-        } else if (!choice.equals(other.choice))
-            return false;
-        return true;
-    }
-
-    @Override
-    public String toString() {
-        return "ChannelValue [choice=" + choice + ']';
+        return Objects.hashCode(choice);
     }
 }
