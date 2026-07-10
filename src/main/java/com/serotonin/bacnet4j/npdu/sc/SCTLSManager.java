@@ -39,6 +39,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -58,6 +59,9 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 public class SCTLSManager {
     private static final Logger LOG = LoggerFactory.getLogger(SCTLSManager.class);
     private static final String TLS_VERSION = "TLSv1.3";
+
+    // AB.7.4
+    static final String REQUIRED_CIPHER_SUITE = "TLS_AES_128_GCM_SHA256";
 
     protected final PrivateKey privateKey;
     protected final byte[] operationalCertificateBytes;
@@ -114,6 +118,7 @@ public class SCTLSManager {
 
             SSLContext ctx = SSLContext.getInstance(TLS_VERSION);
             ctx.init(keyManagers, trustManagers, null);
+            assertProfileSupported(ctx);
             return ctx;
         } catch (KeyStoreException e) {
             throw new TLSException(ErrorClass.device, ErrorCode.internalError, "Keystore error: %s", e);
@@ -126,6 +131,15 @@ public class SCTLSManager {
                     e);
         } catch (NoSuchAlgorithmException e) {
             throw new TLSException(ErrorClass.device, ErrorCode.internalError, "Algorithm not available: %s", e);
+        }
+    }
+
+    static void assertProfileSupported(SSLContext ctx) throws TLSException {
+        String[] supported = ctx.getSupportedSSLParameters().getCipherSuites();
+        if (Arrays.stream(supported).noneMatch(REQUIRED_CIPHER_SUITE::equals)) {
+            throw new TLSException(ErrorClass.device, ErrorCode.internalError,
+                    "Required BACnet/SC TLS 1.3 cipher suite " + REQUIRED_CIPHER_SUITE
+                            + " is not available in this JVM. Check jdk.tls.disabledAlgorithms.", null);
         }
     }
 
@@ -174,7 +188,7 @@ public class SCTLSManager {
         private final transient ErrorCode errorCode;
 
         public TLSException(ErrorClass errorClass, ErrorCode errorCode, String message, Exception cause) {
-            super(message.formatted(cause.getMessage()), cause);
+            super(cause == null ? message : message.formatted(cause.getMessage()), cause);
             this.errorClass = errorClass;
             this.errorCode = errorCode;
         }
