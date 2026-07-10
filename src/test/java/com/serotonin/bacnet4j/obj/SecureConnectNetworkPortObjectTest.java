@@ -529,6 +529,7 @@ public class SecureConnectNetworkPortObjectTest {
         withLocalDevice(localDevice -> {
             Files.write(pathFor(OP_CERT_ID), "original".getBytes());
 
+            // Note: the content actually becomes "changedl". Would need to write a file size change too.
             atomicWriteFile(localDevice, OP_CERT_ID, "changed".getBytes());
             assertEquals(Boolean.TRUE, npo.readProperty(PropertyIdentifier.changesPending));
 
