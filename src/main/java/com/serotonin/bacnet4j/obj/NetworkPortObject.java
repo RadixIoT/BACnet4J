@@ -226,6 +226,16 @@ public class NetworkPortObject extends BACnetObject {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
             }
         }
+        if (command == NetworkPortCommand.restartSubordinateDiscovery) {
+            // Per 12.56.14, writing this value to a non-MS/TP port returns VALUE_OUT_OF_RANGE, while an
+            // MS/TP port without subordinate proxy support returns OPTIONAL_FUNCTIONALITY_NOT_SUPPORTED.
+            // Subclasses that support subordinate proxying override this method. The non-MS/TP case falls
+            // through to the VALUE_OUT_OF_RANGE below.
+            NetworkType networkType = get(PropertyIdentifier.networkType);
+            if (networkType == NetworkType.mstp) {
+                throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
+            }
+        }
         if (command.isOneOf(NetworkPortCommand.restartAutonegotiation, NetworkPortCommand.restartPort,
                 NetworkPortCommand.restartDeviceDiscovery, NetworkPortCommand.generateCsrFile)) {
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
