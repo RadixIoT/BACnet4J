@@ -75,7 +75,7 @@ import com.serotonin.bacnet4j.type.primitive.Date;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
-import com.serotonin.bacnet4j.type.primitive.SignedInteger;
+import com.serotonin.bacnet4j.type.primitive.SignedInteger16;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -86,7 +86,7 @@ public class ReadRangeRequestTest {
     private final TestNetworkMap map = new TestNetworkMap();
     final PropertyIdentifier pid = PropertyIdentifier.forId(9999);
     private final LocalDevice d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
-    final DateTime localNow = new DateTime(d1);
+    final DateTime now = new DateTime(d1);
 
     @Before
     public void before() throws Exception {
@@ -250,7 +250,7 @@ public class ReadRangeRequestTest {
     public void sequencePositiveCount() throws BACnetException {
         SequenceOf<LogRecord> data = new SequenceOf<>(1000);
         for (int i = 0; i < 1000; i++)
-            data.add(createLogRecord(localNow, 2001 + i));
+            data.add(createLogRecord(now, 2001 + i));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
         ReadRangeAck ack =
@@ -259,7 +259,7 @@ public class ReadRangeRequestTest {
 
         data = new SequenceOf<>(200);
         for (int i = 0; i < 200; i++)
-            data.add(createLogRecord(localNow, i + 2800));
+            data.add(createLogRecord(now, i + 2800));
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
         assertEquals(pid, ack.getPropertyIdentifier());
@@ -277,7 +277,7 @@ public class ReadRangeRequestTest {
     public void sequenceNegativeCount() throws BACnetException {
         SequenceOf<LogRecord> data = new SequenceOf<>(1000);
         for (int i = 0; i < 1000; i++)
-            data.add(createLogRecord(localNow, 2001 + i));
+            data.add(createLogRecord(now, 2001 + i));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
         ReadRangeAck ack =
@@ -286,7 +286,7 @@ public class ReadRangeRequestTest {
 
         data = new SequenceOf<>(200);
         for (int i = 0; i < 200; i++)
-            data.add(createLogRecord(localNow, i + 2801));
+            data.add(createLogRecord(now, i + 2801));
 
         assertEquals(d1.getId(), ack.getObjectIdentifier());
         assertEquals(pid, ack.getPropertyIdentifier());
@@ -597,7 +597,7 @@ public class ReadRangeRequestTest {
     public void sequenceOutOfRange() throws BACnetException {
         SequenceOf<LogRecord> data = new SequenceOf<>(1000);
         for (int i = 0; i < 1000; i++)
-            data.add(createLogRecord(localNow, 2001 + i));
+            data.add(createLogRecord(now, 2001 + i));
         d1.getObject(d1.getId()).writePropertyInternal(pid, data);
 
         // Too low
@@ -756,7 +756,7 @@ public class ReadRangeRequestTest {
     public void bi3_byPosition_referenceIndexOverUnsigned32_roundTrip() throws Exception {
         UnsignedInteger big = new UnsignedInteger(0x100000000L);
         ReadRangeRequest req = new ReadRangeRequest(
-                d1.getId(), pid, null, new ByPosition(big, new SignedInteger(1)));
+                d1.getId(), pid, null, new ByPosition(big, new SignedInteger16(1)));
 
         ByteQueue queue = new ByteQueue();
         req.write(queue);
@@ -772,7 +772,7 @@ public class ReadRangeRequestTest {
     public void bi3_bySequenceNumber_referenceIndexOverUnsigned32_roundTrip() throws Exception {
         UnsignedInteger big = new UnsignedInteger(0x123456789L);
         ReadRangeRequest req = new ReadRangeRequest(
-                d1.getId(), pid, null, new BySequenceNumber(big, new SignedInteger(-5)));
+                d1.getId(), pid, null, new BySequenceNumber(big, new SignedInteger16(-5)));
 
         ByteQueue queue = new ByteQueue();
         req.write(queue);

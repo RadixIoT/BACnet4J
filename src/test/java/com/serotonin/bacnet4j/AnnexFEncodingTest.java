@@ -158,6 +158,7 @@ import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.SignedInteger;
+import com.serotonin.bacnet4j.type.primitive.SignedInteger16;
 import com.serotonin.bacnet4j.type.primitive.Time;
 import com.serotonin.bacnet4j.type.primitive.Unsigned16;
 import com.serotonin.bacnet4j.type.primitive.Unsigned32;
@@ -913,7 +914,7 @@ public class AnnexFEncodingTest {
         ReadRangeRequest req = new ReadRangeRequest(new ObjectIdentifier(ObjectType.trendLog, 1),
                 PropertyIdentifier.logBuffer, null,
                 new ByTime(new DateTime(new Date(1998, Month.MARCH, 23, DayOfWeek.MONDAY), new Time(19, 52, 34, 0)),
-                        new SignedInteger(4)));
+                        new SignedInteger16(4)));
         APDU pdu = new ConfirmedRequest(false, false, true, MaxSegments.UNSPECIFIED, MaxApduLength.UP_TO_206,
                 (byte) 1, (byte) 0, 0, req);
         compare(pdu, "0202011a0c0500000119837ea462031701b41334220031047f");
