@@ -302,6 +302,41 @@ public class NetworkPortObjectTest {
     }
 
     @Test
+    public void commands_restartSubordinateDiscovery() throws Exception {
+        withLocalDevice(localDevice -> {
+            // A non-MS/TP port rejects the command as out of range.
+            var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
+            var thrown = assertThrows(BACnetServiceException.class, () -> npo.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.restartSubordinateDiscovery));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.valueOutOfRange, thrown.getErrorCode());
+
+            // An MS/TP port without subordinate proxy support rejects it as unsupported functionality.
+            var mstp = localDevice.addObject(new NetworkPortObject(localDevice, 13, "NetworkPortMstp",
+                    false, NetworkType.mstp, ProtocolLevel.bacnetApplication, Set.of()));
+            thrown = assertThrows(BACnetServiceException.class, () -> mstp.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.restartSubordinateDiscovery));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.optionalFunctionalityNotSupported, thrown.getErrorCode());
+        });
+    }
+
+    @Test
+    public void commands_restartDeviceDiscovery() throws Exception {
+        withLocalDevice(localDevice -> {
+            // A port that does not support device address proxying rejects the command as unsupported
+            // functionality per 12.56.14.
+            var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
+            var thrown = assertThrows(BACnetServiceException.class, () -> npo.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.restartDeviceDiscovery));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.optionalFunctionalityNotSupported, thrown.getErrorCode());
+        });
+    }
+
+    @Test
     public void commands() throws Exception {
         withLocalDevice(localDevice -> {
             var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",

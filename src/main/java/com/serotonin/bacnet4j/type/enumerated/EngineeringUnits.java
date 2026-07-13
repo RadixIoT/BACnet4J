@@ -107,9 +107,9 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits voltAmpereHours = new EngineeringUnits(239);
     public static final EngineeringUnits kilovoltAmpereHours = new EngineeringUnits(240);
     public static final EngineeringUnits megavoltAmpereHours = new EngineeringUnits(241);
-    public static final EngineeringUnits voltAmpereHoursReactive = new EngineeringUnits(242);
-    public static final EngineeringUnits kilovoltAmpereHoursReactive = new EngineeringUnits(243);
-    public static final EngineeringUnits megavoltAmpereHoursReactive = new EngineeringUnits(244);
+    public static final EngineeringUnits voltAmpereReactiveHours = new EngineeringUnits(242);
+    public static final EngineeringUnits kilovoltAmpereReactiveHours = new EngineeringUnits(243);
+    public static final EngineeringUnits megavoltAmpereReactiveHours = new EngineeringUnits(244);
     public static final EngineeringUnits voltSquareHours = new EngineeringUnits(245);
     public static final EngineeringUnits ampereSquareHours = new EngineeringUnits(246);
     public static final EngineeringUnits joules = new EngineeringUnits(16);
@@ -119,9 +119,9 @@ public class EngineeringUnits extends Enumerated {
     public static final EngineeringUnits wattHours = new EngineeringUnits(18);
     public static final EngineeringUnits kilowattHours = new EngineeringUnits(19);
     public static final EngineeringUnits megawattHours = new EngineeringUnits(146);
-    public static final EngineeringUnits wattHoursReactive = new EngineeringUnits(203);
-    public static final EngineeringUnits kilowattHoursReactive = new EngineeringUnits(204);
-    public static final EngineeringUnits megawattHoursReactive = new EngineeringUnits(205);
+    public static final EngineeringUnits wattReactiveHours = new EngineeringUnits(203);
+    public static final EngineeringUnits kilowattReactiveHours = new EngineeringUnits(204);
+    public static final EngineeringUnits megawattReactiveHours = new EngineeringUnits(205);
     public static final EngineeringUnits btus = new EngineeringUnits(20);
     public static final EngineeringUnits kiloBtus = new EngineeringUnits(147);
     public static final EngineeringUnits megaBtus = new EngineeringUnits(148);
