@@ -244,9 +244,6 @@ public class NetworkPortObject extends BACnetObject {
             }
             // Only an MS/TP port can perform subordinate proxying.
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
-        } else if (command.isOneOf(NetworkPortCommand.restartAutonegotiation, NetworkPortCommand.restartPort,
-                NetworkPortCommand.restartDeviceDiscovery, NetworkPortCommand.generateCsrFile)) {
-            throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
         } else if (command == NetworkPortCommand.renewDhcp) {
             // Only an IPv4/IPv6 port can renew a DHCP lease.
             if (!networkType.isOneOf(NetworkType.ipv4, NetworkType.ipv6)) {
