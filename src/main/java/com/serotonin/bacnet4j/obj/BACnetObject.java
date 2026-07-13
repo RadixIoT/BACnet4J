@@ -74,9 +74,6 @@ import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
-/**
- * @author Matthew
- */
 public class BACnetObject {
     static final Logger LOG = LoggerFactory.getLogger(BACnetObject.class);
 
