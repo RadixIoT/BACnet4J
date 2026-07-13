@@ -54,6 +54,7 @@ import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.constructed.ValueSource;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
+import com.serotonin.bacnet4j.type.enumerated.IPMode;
 import com.serotonin.bacnet4j.type.enumerated.NetworkNumberQuality;
 import com.serotonin.bacnet4j.type.enumerated.NetworkPortCommand;
 import com.serotonin.bacnet4j.type.enumerated.NetworkType;
@@ -296,6 +297,132 @@ public class NetworkPortObjectTest {
             npo.writeProperty(new ValueSource(), PropertyIdentifier.networkType, NetworkType.ipv6);
             thrown = assertThrows(BACnetServiceException.class, () -> npo.writeProperty(
                     new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.renewDhcp));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.optionalFunctionalityNotSupported, thrown.getErrorCode());
+        });
+    }
+
+    /**
+     * Per 12.56.14 as revised by addendum 135-2020ci-3, a command that the object does not support,
+     * including proprietary values, returns OPTIONAL_FUNCTIONALITY_NOT_SUPPORTED.
+     */
+    @Test
+    public void commands_unsupported() throws Exception {
+        withLocalDevice(localDevice -> {
+            var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
+
+            for (NetworkPortCommand command : new NetworkPortCommand[] {
+                    NetworkPortCommand.restartPort,
+                    NetworkPortCommand.restartDeviceDiscovery,
+                    NetworkPortCommand.generateCsrFile,
+                    NetworkPortCommand.forId(200)}) {
+                var thrown = assertThrows(BACnetServiceException.class, () -> npo.writeProperty(
+                        new ValueSource(), PropertyIdentifier.command, command));
+                assertEquals(ErrorClass.property, thrown.getErrorClass());
+                assertEquals(ErrorCode.optionalFunctionalityNotSupported, thrown.getErrorCode());
+            }
+        });
+    }
+
+    @Test
+    public void commands_renewFdRegistration() throws Exception {
+        withLocalDevice(localDevice -> {
+            // A non-IP port rejects the command as out of range.
+            var virtual = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
+            var thrown = assertThrows(BACnetServiceException.class, () -> virtual.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.renewFdRegistration));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.valueOutOfRange, thrown.getErrorCode());
+
+            // An IPv4 port not in foreign mode rejects the command as out of range. Note that
+            // bacnetIpMode is a changes-pending property, and so must be set before the object is
+            // added, or the command write is rejected with INVALID_VALUE_IN_THIS_STATE instead.
+            var normal = new NetworkPortObject(localDevice, 13, "NetworkPortNormal",
+                    false, NetworkType.ipv4, ProtocolLevel.bacnetApplication, Set.of());
+            normal.writePropertyInternal(PropertyIdentifier.bacnetIpMode, IPMode.normal);
+            localDevice.addObject(normal);
+            thrown = assertThrows(BACnetServiceException.class, () -> normal.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.renewFdRegistration));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.valueOutOfRange, thrown.getErrorCode());
+
+            // An IPv4 port in foreign mode without renewal support rejects it as unsupported functionality.
+            var foreign = new NetworkPortObject(localDevice, 14, "NetworkPortForeign",
+                    false, NetworkType.ipv4, ProtocolLevel.bacnetApplication, Set.of());
+            foreign.writePropertyInternal(PropertyIdentifier.bacnetIpMode, IPMode.foreign);
+            localDevice.addObject(foreign);
+            thrown = assertThrows(BACnetServiceException.class, () -> foreign.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.renewFdRegistration));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.optionalFunctionalityNotSupported, thrown.getErrorCode());
+        });
+    }
+
+    @Test
+    public void commands_restartSubordinateDiscovery() throws Exception {
+        withLocalDevice(localDevice -> {
+            // A non-MS/TP port rejects the command as out of range.
+            var virtual = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
+            var thrown = assertThrows(BACnetServiceException.class, () -> virtual.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.restartSubordinateDiscovery));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.valueOutOfRange, thrown.getErrorCode());
+
+            // An MS/TP port without subordinate proxy support rejects it as unsupported functionality.
+            var mstp = localDevice.addObject(new NetworkPortObject(localDevice, 13, "NetworkPortMstp",
+                    false, NetworkType.mstp, ProtocolLevel.bacnetApplication, Set.of()));
+            thrown = assertThrows(BACnetServiceException.class, () -> mstp.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.restartSubordinateDiscovery));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.optionalFunctionalityNotSupported, thrown.getErrorCode());
+        });
+    }
+
+    @Test
+    public void commands_restartAutonegotiation() throws Exception {
+        withLocalDevice(localDevice -> {
+            // A port without autonegotiation support rejects the command as unsupported functionality.
+            var npo = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
+            var thrown = assertThrows(BACnetServiceException.class, () -> npo.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.restartAutonegotiation));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.optionalFunctionalityNotSupported, thrown.getErrorCode());
+
+            // A port with autonegotiation disabled rejects it as out of range. Note that
+            // linkSpeedAutonegotiate is a changes-pending property, and so must be set before the
+            // object is added, or the command write is rejected with INVALID_VALUE_IN_THIS_STATE
+            // instead.
+            var noAutonegotiate = new NetworkPortObject(localDevice, 13, "NetworkPortNoAuto",
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of());
+            noAutonegotiate.writePropertyInternal(PropertyIdentifier.linkSpeedAutonegotiate, Boolean.FALSE);
+            localDevice.addObject(noAutonegotiate);
+            thrown = assertThrows(BACnetServiceException.class, () -> noAutonegotiate.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.restartAutonegotiation));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.valueOutOfRange, thrown.getErrorCode());
+        });
+    }
+
+    @Test
+    public void commands_disconnect() throws Exception {
+        withLocalDevice(localDevice -> {
+            // A non-PTP port rejects the command as out of range.
+            var virtual = localDevice.addObject(new NetworkPortObject(localDevice, 12, "NetworkPort",
+                    false, NetworkType.virtual, ProtocolLevel.bacnetApplication, Set.of()));
+            var thrown = assertThrows(BACnetServiceException.class, () -> virtual.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.disconnect));
+            assertEquals(ErrorClass.property, thrown.getErrorClass());
+            assertEquals(ErrorCode.valueOutOfRange, thrown.getErrorCode());
+
+            // A PTP port without disconnect support rejects it as unsupported functionality.
+            var ptp = localDevice.addObject(new NetworkPortObject(localDevice, 13, "NetworkPortPtp",
+                    false, NetworkType.ptp, ProtocolLevel.bacnetApplication, Set.of()));
+            thrown = assertThrows(BACnetServiceException.class, () -> ptp.writeProperty(
+                    new ValueSource(), PropertyIdentifier.command, NetworkPortCommand.disconnect));
             assertEquals(ErrorClass.property, thrown.getErrorClass());
             assertEquals(ErrorCode.optionalFunctionalityNotSupported, thrown.getErrorCode());
         });
