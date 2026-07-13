@@ -51,7 +51,7 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
-import com.serotonin.bacnet4j.type.primitive.SignedInteger;
+import com.serotonin.bacnet4j.type.primitive.SignedInteger16;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
@@ -501,9 +501,9 @@ public class ReadRangeRequest extends ConfirmedRequestService {
     }
 
     public abstract static class Range extends BaseType {
-        protected SignedInteger count;
+        protected SignedInteger16 count;
 
-        protected Range(SignedInteger count) {
+        protected Range(SignedInteger16 count) {
             this.count = count;
         }
 
@@ -511,7 +511,7 @@ public class ReadRangeRequest extends ConfirmedRequestService {
             // no op
         }
 
-        public SignedInteger getCount() {
+        public SignedInteger16 getCount() {
             return count;
         }
 
@@ -534,10 +534,10 @@ public class ReadRangeRequest extends ConfirmedRequestService {
         private final UnsignedInteger referenceIndex;
 
         public ByPosition(int referenceIndex, int count) {
-            this(new UnsignedInteger(referenceIndex), new SignedInteger(count));
+            this(new UnsignedInteger(referenceIndex), new SignedInteger16(count));
         }
 
-        public ByPosition(UnsignedInteger referenceIndex, SignedInteger count) {
+        public ByPosition(UnsignedInteger referenceIndex, SignedInteger16 count) {
             super(count);
             this.referenceIndex = referenceIndex;
         }
@@ -550,7 +550,7 @@ public class ReadRangeRequest extends ConfirmedRequestService {
 
         public ByPosition(ByteQueue queue) throws BACnetException {
             referenceIndex = read(queue, UnsignedInteger.class);
-            count = read(queue, SignedInteger.class);
+            count = read(queue, SignedInteger16.class);
         }
 
         public UnsignedInteger getReferenceIndex() {
@@ -577,10 +577,10 @@ public class ReadRangeRequest extends ConfirmedRequestService {
         private final UnsignedInteger referenceIndex;
 
         public BySequenceNumber(long referenceIndex, int count) {
-            this(new UnsignedInteger(referenceIndex), new SignedInteger(count));
+            this(new UnsignedInteger(referenceIndex), new SignedInteger16(count));
         }
 
-        public BySequenceNumber(UnsignedInteger referenceIndex, SignedInteger count) {
+        public BySequenceNumber(UnsignedInteger referenceIndex, SignedInteger16 count) {
             super(count);
             this.referenceIndex = referenceIndex;
         }
@@ -593,7 +593,7 @@ public class ReadRangeRequest extends ConfirmedRequestService {
 
         public BySequenceNumber(ByteQueue queue) throws BACnetException {
             referenceIndex = read(queue, UnsignedInteger.class);
-            count = read(queue, SignedInteger.class);
+            count = read(queue, SignedInteger16.class);
         }
 
         public UnsignedInteger getReferenceIndex() {
@@ -620,10 +620,10 @@ public class ReadRangeRequest extends ConfirmedRequestService {
         private final DateTime referenceTime;
 
         public ByTime(DateTime referenceTime, int count) {
-            this(referenceTime, new SignedInteger(count));
+            this(referenceTime, new SignedInteger16(count));
         }
 
-        public ByTime(DateTime referenceTime, SignedInteger count) {
+        public ByTime(DateTime referenceTime, SignedInteger16 count) {
             super(count);
             this.referenceTime = referenceTime;
         }
@@ -636,7 +636,7 @@ public class ReadRangeRequest extends ConfirmedRequestService {
 
         public ByTime(ByteQueue queue) throws BACnetException {
             referenceTime = read(queue, DateTime.class);
-            count = read(queue, SignedInteger.class);
+            count = read(queue, SignedInteger16.class);
         }
 
         public DateTime getReferenceTime() {
