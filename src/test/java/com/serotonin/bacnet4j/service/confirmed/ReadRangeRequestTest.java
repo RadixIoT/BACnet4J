@@ -409,9 +409,10 @@ public class ReadRangeRequestTest {
                 () -> new ReadRangeRequest(d1.getId(), PropertyIdentifier.all, null).handle(d1, null),
                 ErrorClass.services, ErrorCode.parameterOutOfRange);
 
+        // Per 15.8.1.3.1 (addendum 135-2020ci-6), an array index of 0 returns INVALID_ARRAY_INDEX.
         TestUtils.assertRequestHandleException(
-                () -> new ReadRangeRequest(d1.getId(), pid, UnsignedInteger.ZERO).handle(d1, null), ErrorClass.services,
-                ErrorCode.parameterOutOfRange);
+                () -> new ReadRangeRequest(d1.getId(), pid, UnsignedInteger.ZERO).handle(d1, null), ErrorClass.property,
+                ErrorCode.invalidArrayIndex);
 
         TestUtils.assertRequestHandleException(
                 () -> new ReadRangeRequest(d1.getId(), pid, new UnsignedInteger(1), new ByPosition(1, 0)).handle(d1,

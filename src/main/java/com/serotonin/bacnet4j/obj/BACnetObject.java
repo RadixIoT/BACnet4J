@@ -554,10 +554,11 @@ public class BACnetObject {
 
                 if (pin.intValue() == 0) {
                     if (value.getValue() instanceof UnsignedInteger) {
-                        // Writing the size of the array is not allowed here because specific cases need to define what
-                        // value to use as a default when an array is being expanded. This condition therefore needs to
-                        // be handled in mixins or objects.
-                        throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
+                        // Resizing the array is not handled here because specific cases need to define what value to
+                        // use as a default when an array is being expanded. Objects or mixins that support resizing
+                        // handle the write before this. Per 15.9.1.3.1 (addendum 135-2020ci-6), a write that would
+                        // resize the array to a size that is not supported returns INVALID_ARRAY_SIZE.
+                        throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidArraySize);
                     }
                     // Can only write an unsigned integer to the zero-index.
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidArrayIndex);
@@ -666,29 +667,15 @@ public class BACnetObject {
     //
 
     @Override
-    public int hashCode() {
-        ObjectIdentifier id = getId();
-        int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (id == null ? 0 : id.hashCode());
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        BACnetObject that = (BACnetObject) o;
+        return Objects.equals(getId(), that.getId());
     }
 
     @Override
-    public boolean equals(Object obj) {
-        ObjectIdentifier id = getId();
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        BACnetObject other = (BACnetObject) obj;
-        if (id == null) {
-            if (other.getId() != null)
-                return false;
-        } else if (!id.equals(other.getId()))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(getId());
     }
 }
