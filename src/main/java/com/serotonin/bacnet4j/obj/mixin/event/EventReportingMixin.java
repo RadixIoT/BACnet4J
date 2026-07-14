@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.AbstractMixin;
 import com.serotonin.bacnet4j.obj.BACnetObject;
@@ -91,6 +92,10 @@ public abstract class EventReportingMixin extends AbstractMixin {
 
     // Runtime
     private Delayer delayer;
+    // Per 13.2.2.3 (addendum 135-2020co-1), a direct write of Reliability while Out_Of_Service is
+    // TRUE simulates an internal fault, and blocks the object from updating the Reliability property
+    // until Out_Of_Service is written to FALSE.
+    private boolean reliabilityWriteBlock;
 
     protected EventReportingMixin(BACnetObject bo, EventAlgorithm eventAlgo, FaultAlgorithm faultAlgo) {
         super(bo);
@@ -99,12 +104,6 @@ public abstract class EventReportingMixin extends AbstractMixin {
         this.eventAlgo = eventAlgo;
         this.faultAlgo = faultAlgo;
         changeOfReliabilityProperties = getCORProperties(bo.getId().getObjectType());
-
-        // Check that the notification object with the given instance number exists.
-        //         UnsignedInteger ncId = bo.get(PropertyIdentifier.notificationClass);
-        //         ObjectIdentifier ncOid = new ObjectIdentifier(ObjectType.notificationClass, ncId.intValue());
-        //        if (getLocalDevice().getObject(ncOid) == null)
-        //            throw new BACnetRuntimeException("Notification class with id " + ncId + " does not exist");
 
         // Defaulted properties
         bo.writePropertyInternal(PropertyIdentifier.ackedTransitions, new EventTransitionBits(true, true, true));
@@ -147,6 +146,22 @@ public abstract class EventReportingMixin extends AbstractMixin {
     }
 
     @Override
+    protected synchronized boolean writeProperty(ValueSource valueSource, PropertyValue value)
+            throws BACnetServiceException {
+        if (PropertyIdentifier.reliability.equals(value.getPropertyIdentifier())) {
+            // Per 13.2.2.3 (addendum 135-2020co-1), a direct write of Reliability while Out_Of_Service
+            // is TRUE simulates an internal fault and blocks the object from updating the Reliability
+            // property. Only external writes pass through this hook; internal updates use
+            // writePropertyInternal.
+            Boolean oos = get(PropertyIdentifier.outOfService);
+            if (Boolean.TRUE.equals(oos)) {
+                reliabilityWriteBlock = true;
+            }
+        }
+        return super.writeProperty(valueSource, value);
+    }
+
+    @Override
     protected synchronized void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         if (PropertyIdentifier.reliability.equals(pid)) {
             // Is reliability evaluation inhibited?
@@ -176,6 +191,16 @@ public abstract class EventReportingMixin extends AbstractMixin {
                 else
                     // Uninhibited.
                     executeEventAlgo();
+            }
+        } else if (PropertyIdentifier.outOfService.equals(pid) && Boolean.FALSE.equals(newValue)) {
+            if (reliabilityWriteBlock) {
+                // Per 13.2.2.3 (addendum 135-2020co-1), writing Out_Of_Service to FALSE removes the
+                // block, allowing the object to update the Reliability property. The simulated internal
+                // fault was never real, and the first stage of reliability-evaluation in this object
+                // detects no internal faults, so the reliability returns to no-fault-detected. The
+                // fault algorithm, if any, re-derives its own reliability on the next evaluation.
+                reliabilityWriteBlock = false;
+                writePropertyInternal(PropertyIdentifier.reliability, Reliability.noFaultDetected);
             }
         }
     }
@@ -213,10 +238,17 @@ public abstract class EventReportingMixin extends AbstractMixin {
         }
     }
 
-    protected boolean executeFaultAlgo(Encodable oldValue, Encodable newValue) {
+    protected synchronized boolean executeFaultAlgo(Encodable oldValue, Encodable newValue) {
         if (faultAlgo != null) {
             Reliability newReli = evaluateFaultState(oldValue, newValue, bo, faultAlgo);
             if (newReli != null) {
+                if (reliabilityWriteBlock) {
+                    // Per 13.2.2.3 (addendum 135-2020co-1), a simulated internal fault is in effect
+                    // and the object must not update the Reliability property. The fault algorithm is
+                    // still evaluated, but its result is discarded, and the caller evaluates the event
+                    // state from the simulated reliability.
+                    return false;
+                }
                 // After setting this value there is nothing else that need be done since this method will be
                 // called again due to the property change, and the reliability code above will handle it.
                 writePropertyInternal(PropertyIdentifier.reliability, newReli);
@@ -489,7 +521,6 @@ public abstract class EventReportingMixin extends AbstractMixin {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     public EventSummary getEventSummary() {
         Boolean eventDetectionEnable = get(PropertyIdentifier.eventDetectionEnable);
         if (eventDetectionEnable != null && eventDetectionEnable.booleanValue()) {
@@ -671,7 +702,7 @@ public abstract class EventReportingMixin extends AbstractMixin {
 
         @Override
         PropertyValue get(EventReportingMixin mixin) {
-            throw new RuntimeException("Not implemented: " + pid);
+            throw new BACnetRuntimeException("Not implemented: " + pid);
         }
     }
 
