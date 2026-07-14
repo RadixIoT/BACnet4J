@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.SystemUtils;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -85,7 +86,7 @@ public class NetworkPortObjectTest {
                 canRun = false;
             }
         }
-        //        Assume.assumeTrue(canRun);
+        Assume.assumeTrue(canRun);
     }
 
     @Test
