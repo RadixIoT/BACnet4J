@@ -165,9 +165,11 @@ public class ReadRangeRequest extends ConfirmedRequestService {
             if (propertyIdentifier.isOneOf(PropertyIdentifier.all, PropertyIdentifier.required,
                     PropertyIdentifier.optional))
                 throw new BACnetServiceException(ErrorClass.services, ErrorCode.parameterOutOfRange);
-            // Property array index, if provided, cannot be 0.
+            // Per 15.8.1.3.1 (addendum 135-2020ci-6), an array index that is 0 or greater than the
+            // current length of the array returns INVALID_ARRAY_INDEX. The greater-than case is
+            // handled by the indexed property read below.
             if (propertyArrayIndex != null && propertyArrayIndex.intValue() == 0)
-                throw new BACnetServiceException(ErrorClass.services, ErrorCode.parameterOutOfRange);
+                throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidArrayIndex);
             // Count, if provided, cannot be zero.
             if (range != null && ((Range) range.getDatum()).getCount().intValue() == 0)
                 throw new BACnetServiceException(ErrorClass.services, ErrorCode.parameterOutOfRange);
