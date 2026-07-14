@@ -259,6 +259,67 @@ public class AnalogInputObjectTest extends AbstractTest {
                 notif.eventValues());
     }
 
+    /**
+     * Per 13.2.2.3 (addendum 135-2020co-1): while Out_Of_Service is TRUE, writing a fault-range
+     * value to the monitored value simulates a fault, and the application of the fault algorithm
+     * also results in a change to the Reliability property.
+     */
+    @Test
+    public void monitoredValueWriteWhileOutOfServiceUpdatesReliability() throws Exception {
+        ai.supportIntrinsicReporting(1, 17, 100, 20, 5, 120, 0, new LimitEnable(true, true),
+                new EventTransitionBits(true, true, true), NotifyType.alarm, 2);
+
+        ai.writeProperty(null, PropertyIdentifier.outOfService, Boolean.TRUE);
+
+        // Write a fault-range value to the monitored value. The fault algorithm updates Reliability.
+        ai.writeProperty(null, new PropertyValue(PropertyIdentifier.presentValue, null, new Real(-5), null));
+        assertEquals(Reliability.underRange, ai.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.fault, ai.readProperty(PropertyIdentifier.eventState));
+
+        // Writing a normal value clears the fault, because no direct write of Reliability has
+        // occurred, and so the object is not blocked from updating the Reliability property.
+        ai.writeProperty(null, new PropertyValue(PropertyIdentifier.presentValue, null, new Real(50), null));
+        assertEquals(Reliability.noFaultDetected, ai.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState));
+    }
+
+    /**
+     * Per 13.2.2.3 (addendum 135-2020co-1): while Out_Of_Service is TRUE, a direct write of
+     * Reliability simulates an internal fault, causes the event state to be evaluated, and blocks
+     * the object from updating the Reliability property. Writing Out_Of_Service to FALSE removes
+     * the block.
+     */
+    @Test
+    public void reliabilityWriteWhileOutOfServiceBlocksUpdates() throws Exception {
+        ai.supportIntrinsicReporting(1, 17, 100, 20, 5, 120, 0, new LimitEnable(true, true),
+                new EventTransitionBits(true, true, true), NotifyType.alarm, 2);
+
+        // Take the object out of service and simulate an internal fault.
+        ai.writeProperty(null, PropertyIdentifier.outOfService, Boolean.TRUE);
+        ai.writeProperty(null,
+                new PropertyValue(PropertyIdentifier.reliability, null, Reliability.unreliableOther, null));
+
+        // The write causes the event state to be evaluated.
+        assertEquals(EventState.fault, ai.readProperty(PropertyIdentifier.eventState));
+
+        // A monitored value write that would otherwise clear the fault must not update the simulated
+        // reliability.
+        ai.writeProperty(null, new PropertyValue(PropertyIdentifier.presentValue, null, new Real(50), null));
+        assertEquals(Reliability.unreliableOther, ai.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.fault, ai.readProperty(PropertyIdentifier.eventState));
+
+        // Writing Out_Of_Service to FALSE removes the block. The simulated internal fault clears
+        // because the first stage of reliability-evaluation in this object detects no internal
+        // faults, and the fault algorithm re-derives its own reliability on the next evaluation.
+        ai.writeProperty(null, PropertyIdentifier.outOfService, Boolean.FALSE);
+        assertEquals(Reliability.noFaultDetected, ai.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState));
+
+        // The fault algorithm updates the reliability again.
+        ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(-5));
+        assertEquals(Reliability.underRange, ai.readProperty(PropertyIdentifier.reliability));
+    }
+
     @Test
     public void propertyConformanceRequired() throws Exception {
         assertNotNull(ai.readProperty(PropertyIdentifier.objectIdentifier));
