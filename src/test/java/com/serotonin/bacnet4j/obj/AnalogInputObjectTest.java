@@ -292,7 +292,7 @@ public class AnalogInputObjectTest extends AbstractTest {
         ai.writePropertyInternal(PropertyIdentifier.faultLowLimit, new Real(0));
         assertEquals(Reliability.noFaultDetected, ai.readProperty(PropertyIdentifier.reliability));
     }
-  
+
     /**
      * Per 13.2.2.3 (addendum 135-2020co-1): while Out_Of_Service is TRUE, writing a fault-range
      * value to the monitored value simulates a fault, and the application of the fault algorithm
