@@ -83,12 +83,12 @@ public class AnalogOutputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void intrinsicReporting() throws Exception {
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         ao.supportIntrinsicReporting(60, 17, 100, 20, 5, new LimitEnable(true, true),
@@ -243,20 +243,20 @@ public class AnalogOutputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReporting() throws Exception {
-        final DeviceObjectPropertyReference ref =
+        DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(1, ao.getId(), PropertyIdentifier.presentValue);
-        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
                 d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(new OutOfRange(new UnsignedInteger(30), new Real(40), new Real(60), new Real(2))),
                 new EventTransitionBits(true, true, true), 17, 1000, null, null));
 
         // Set up the notification destination
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.

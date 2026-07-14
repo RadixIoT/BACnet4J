@@ -51,8 +51,8 @@ import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class AnalogValueObject extends BACnetObject {
-    public AnalogValueObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final float presentValue, final EngineeringUnits units, final boolean outOfService) {
+    public AnalogValueObject(LocalDevice localDevice, int instanceNumber, String name, float presentValue,
+            EngineeringUnits units, boolean outOfService) {
         super(localDevice, ObjectType.analogValue, instanceNumber, name);
 
         Objects.requireNonNull(units);
@@ -73,15 +73,14 @@ public class AnalogValueObject extends BACnetObject {
                         PropertyIdentifier.eventMessageTexts, PropertyIdentifier.resolution));
     }
 
-    public AnalogValueObject supportIntrinsicReporting(final int timeDelay, final int notificationClass,
-            final float highLimit, final float lowLimit, final float deadband, final float faultHighLimit,
-            final float faultLowLimit, final LimitEnable limitEnable, final EventTransitionBits eventEnable,
-            final NotifyType notifyType, final int timeDelayNormal) {
+    public AnalogValueObject supportIntrinsicReporting(int timeDelay, int notificationClass, float highLimit,
+            float lowLimit, float deadband, float faultHighLimit, float faultLowLimit, LimitEnable limitEnable,
+            EventTransitionBits eventEnable, NotifyType notifyType, int timeDelayNormal) {
         Objects.requireNonNull(limitEnable);
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
 
-        // Prepare the object with all of the properties that intrinsic reporting will need.
+        // Prepare the object with all the properties that intrinsic reporting will need.
         writePropertyInternal(PropertyIdentifier.timeDelay, new UnsignedInteger(timeDelay));
         writePropertyInternal(PropertyIdentifier.notificationClass, new UnsignedInteger(notificationClass));
         writePropertyInternal(PropertyIdentifier.highLimit, new Real(highLimit));
@@ -108,12 +107,12 @@ public class AnalogValueObject extends BACnetObject {
         return this;
     }
 
-    public AnalogValueObject supportCovReporting(final float covIncrement) {
+    public AnalogValueObject supportCovReporting(float covIncrement) {
         _supportCovReporting(new Real(covIncrement), null);
         return this;
     }
 
-    public AnalogValueObject supportCommandable(final float relinquishDefault) {
+    public AnalogValueObject supportCommandable(float relinquishDefault) {
         _supportCommandable(new Real(relinquishDefault));
         return this;
     }

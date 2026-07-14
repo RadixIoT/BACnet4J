@@ -137,7 +137,7 @@ public class LifeSafetyPointObject extends BACnetObject implements LifeSafety {
         return this;
     }
 
-    public LifeSafetyPointObject supportDirectReading(final Real directReading, final EngineeringUnits units) {
+    public LifeSafetyPointObject supportDirectReading(Real directReading, EngineeringUnits units) {
         Objects.requireNonNull(directReading);
         Objects.requireNonNull(units);
 

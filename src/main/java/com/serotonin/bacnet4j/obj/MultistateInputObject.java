@@ -52,9 +52,9 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class MultistateInputObject extends BACnetObject {
-    public MultistateInputObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final int numberOfStates, final BACnetArray<CharacterString> stateText, final int presentValueBase1,
-            final boolean outOfService) throws BACnetServiceException {
+    public MultistateInputObject(LocalDevice localDevice, int instanceNumber, String name, int numberOfStates,
+            BACnetArray<CharacterString> stateText, int presentValueBase1, boolean outOfService)
+            throws BACnetServiceException {
         super(localDevice, ObjectType.multiStateInput, instanceNumber, name);
 
         if (numberOfStates < 1) {
@@ -95,9 +95,9 @@ public class MultistateInputObject extends BACnetObject {
         return this;
     }
 
-    public MultistateInputObject supportIntrinsicReporting(final int timeDelay, final int notificationClass,
-            final BACnetArray<UnsignedInteger> alarmValues, final BACnetArray<UnsignedInteger> faultValues,
-            final EventTransitionBits eventEnable, final NotifyType notifyType, final UnsignedInteger timeDelayNormal) {
+    public MultistateInputObject supportIntrinsicReporting(int timeDelay, int notificationClass,
+            BACnetArray<UnsignedInteger> alarmValues, BACnetArray<UnsignedInteger> faultValues,
+            EventTransitionBits eventEnable, NotifyType notifyType, UnsignedInteger timeDelayNormal) {
         Objects.requireNonNull(alarmValues);
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
@@ -114,7 +114,7 @@ public class MultistateInputObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.eventDetectionEnable, Boolean.TRUE);
 
         // Now add the mixin.
-        final ChangeOfStateAlgo eventAlgo = new ChangeOfStateAlgo(PropertyIdentifier.presentValue,
+        ChangeOfStateAlgo eventAlgo = new ChangeOfStateAlgo(PropertyIdentifier.presentValue,
                 PropertyIdentifier.alarmValues);
         FaultStateAlgo faultAlgo = null;
         if (faultValues != null) {

@@ -51,9 +51,8 @@ import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class AnalogOutputObject extends BACnetObject {
-    public AnalogOutputObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final float presentValue, final EngineeringUnits units, final boolean outOfService,
-            final float relinquishDefault) {
+    public AnalogOutputObject(LocalDevice localDevice, int instanceNumber, String name, float presentValue,
+            EngineeringUnits units, boolean outOfService, float relinquishDefault) {
         super(localDevice, ObjectType.analogOutput, instanceNumber, name);
 
         Objects.requireNonNull(units);
@@ -78,19 +77,19 @@ public class AnalogOutputObject extends BACnetObject {
         _supportValueSource();
     }
 
-    public AnalogOutputObject supportCovReporting(final float covIncrement) {
+    public AnalogOutputObject supportCovReporting(float covIncrement) {
         _supportCovReporting(new Real(covIncrement), null);
         return this;
     }
 
-    public AnalogOutputObject supportIntrinsicReporting(final int timeDelay, final int notificationClass,
-            final float highLimit, final float lowLimit, final float deadband, final LimitEnable limitEnable,
-            final EventTransitionBits eventEnable, final NotifyType notifyType, final int timeDelayNormal) {
+    public AnalogOutputObject supportIntrinsicReporting(int timeDelay, int notificationClass, float highLimit,
+            float lowLimit, float deadband, LimitEnable limitEnable, EventTransitionBits eventEnable,
+            NotifyType notifyType, int timeDelayNormal) {
         Objects.requireNonNull(limitEnable);
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
 
-        // Prepare the object with all of the properties that intrinsic reporting will need.
+        // Prepare the object with all the properties that intrinsic reporting will need.
         writePropertyInternal(PropertyIdentifier.timeDelay, new UnsignedInteger(timeDelay));
         writePropertyInternal(PropertyIdentifier.notificationClass, new UnsignedInteger(notificationClass));
         writePropertyInternal(PropertyIdentifier.highLimit, new Real(highLimit));

@@ -75,8 +75,8 @@ public class PulseConverterObject extends BACnetObject {
     private String lastPollingError;
     private long lastPollingValue = Long.MAX_VALUE;
 
-    public PulseConverterObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final long count, final float scaleFactor, final EngineeringUnits units, final boolean outOfService) {
+    public PulseConverterObject(LocalDevice localDevice, int instanceNumber, String name, long count, float scaleFactor,
+            EngineeringUnits units, boolean outOfService) {
         super(localDevice, ObjectType.pulseConverter, instanceNumber, name);
 
         Objects.requireNonNull(units);
@@ -100,11 +100,9 @@ public class PulseConverterObject extends BACnetObject {
                 PropertyIdentifier.ackedTransitions, PropertyIdentifier.eventMessageTexts));
     }
 
-    public PulseConverterObject supportIntrinsicReporting(final float highLimit, final float lowLimit,
-            final float deadband, final int timeDelay, final UnsignedInteger timeDelayNormal,
-            final int notificationClass, final LimitEnable limitEnable, final EventTransitionBits eventEnable,
-            final NotifyType notifyType) {
-
+    public PulseConverterObject supportIntrinsicReporting(float highLimit, float lowLimit, float deadband,
+            int timeDelay, UnsignedInteger timeDelayNormal, int notificationClass, LimitEnable limitEnable,
+            EventTransitionBits eventEnable, NotifyType notifyType) {
         Objects.requireNonNull(limitEnable);
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
@@ -131,32 +129,31 @@ public class PulseConverterObject extends BACnetObject {
         return this;
     }
 
-    public PulseConverterObject supportCovReporting(final float covIncrement, final int covPeriod) {
+    public PulseConverterObject supportCovReporting(float covIncrement, int covPeriod) {
         _supportCovReporting(new Real(covIncrement), new UnsignedInteger(covPeriod));
         return this;
     }
 
-    public PulseConverterObject supportInputReference(final ObjectPropertyReference inputReference,
-            final long pollingMillis) {
+    public PulseConverterObject supportInputReference(ObjectPropertyReference inputReference, long pollingMillis) {
         Objects.requireNonNull(inputReference);
         writePropertyInternal(PropertyIdentifier.inputReference, inputReference);
 
         inputMonitoringFuture = getLocalDevice().scheduleWithFixedDelay(() -> {
-            final Boolean outOfService = get(PropertyIdentifier.outOfService);
+            Boolean outOfService = get(PropertyIdentifier.outOfService);
             if (outOfService.booleanValue()) {
                 // Do no track changes to the input when the value of out-of-service is true.
                 return;
             }
 
-            final ObjectPropertyReference ref = get(PropertyIdentifier.inputReference);
+            ObjectPropertyReference ref = get(PropertyIdentifier.inputReference);
 
-            final BACnetObject that = getLocalDevice().getObject(ref.getObjectIdentifier());
+            BACnetObject that = getLocalDevice().getObject(ref.getObjectIdentifier());
             String pollingError = null;
             if (that == null) {
                 pollingError = "Unknown object " + ref.getObjectIdentifier();
             } else {
                 try {
-                    final Encodable value = that.readProperty(ref.getPropertyIdentifier(), ref.getPropertyArrayIndex());
+                    Encodable value = that.readProperty(ref.getPropertyIdentifier(), ref.getPropertyArrayIndex());
                     long newValue = 0;
                     if (value == null) {
                         pollingError = "Unknown property " + ref;
@@ -176,7 +173,7 @@ public class PulseConverterObject extends BACnetObject {
                         }
                         lastPollingValue = newValue;
                     }
-                } catch (final BACnetServiceException e) {
+                } catch (BACnetServiceException e) {
                     pollingError = "Error reading property " + ref + ": " + e.getMessage();
                 }
             }
@@ -202,53 +199,50 @@ public class PulseConverterObject extends BACnetObject {
         pulses(1);
     }
 
-    public void pulses(final long pulsesToAdd) {
+    public void pulses(long pulsesToAdd) {
         if (get(PropertyIdentifier.inputReference) != null) {
             throw new IllegalStateException("Cannot set pulses directly while using an input reference");
         }
         addPulses(pulsesToAdd);
     }
 
-    private void addPulses(final long pulsesToAdd) {
+    private void addPulses(long pulsesToAdd) {
         synchronized (lock) {
-            final UnsignedInteger count = get(PropertyIdentifier.count);
+            UnsignedInteger count = get(PropertyIdentifier.count);
             writePropertyInternal(PropertyIdentifier.count, new UnsignedInteger(count.longValue() + pulsesToAdd));
         }
     }
 
     @Override
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
-            throws BACnetServiceException {
-        if (value.getPropertyIdentifier().equals(PropertyIdentifier.inputReference)) {
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
+        if (value.getPropertyIdentifier().equals(PropertyIdentifier.inputReference)
+                && inputMonitoringFuture == null) {
             // The object needs to support input references.
-            if (inputMonitoringFuture == null) {
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
-            }
+            throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
         }
         return false;
     }
 
     @Override
-    protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
-            final Encodable newValue) {
+    protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         if (pid.isOneOf(PropertyIdentifier.count, PropertyIdentifier.scaleFactor)) {
             synchronized (lock) {
                 if (pid.equals(PropertyIdentifier.count)) {
                     writePropertyInternal(PropertyIdentifier.updateTime, new DateTime(getLocalDevice()));
                 }
-                final UnsignedInteger count = get(PropertyIdentifier.count);
-                final Real scaleFactor = get(PropertyIdentifier.scaleFactor);
+                UnsignedInteger count = get(PropertyIdentifier.count);
+                Real scaleFactor = get(PropertyIdentifier.scaleFactor);
                 writePropertyInternal(PropertyIdentifier.presentValue,
                         new Real(scaleFactor.floatValue() * count.longValue()));
             }
         } else if (pid.equals(PropertyIdentifier.adjustValue)) {
             synchronized (lock) {
-                final Real adjustValue = (Real) newValue;
-                final UnsignedInteger count = get(PropertyIdentifier.count);
-                final Real scaleFactor = get(PropertyIdentifier.scaleFactor);
+                Real adjustValue = (Real) newValue;
+                UnsignedInteger count = get(PropertyIdentifier.count);
+                Real scaleFactor = get(PropertyIdentifier.scaleFactor);
 
                 writePropertyInternal(PropertyIdentifier.countBeforeChange, count);
-                final long diff = (long) (adjustValue.floatValue() / scaleFactor.floatValue());
+                long diff = (long) (adjustValue.floatValue() / scaleFactor.floatValue());
                 writePropertyInternal(PropertyIdentifier.count, new UnsignedInteger(count.longValue() - diff));
                 writePropertyInternal(PropertyIdentifier.countChangeTime, new DateTime(getLocalDevice()));
             }

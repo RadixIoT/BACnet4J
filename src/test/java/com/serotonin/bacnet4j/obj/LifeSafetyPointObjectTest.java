@@ -114,6 +114,7 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         assertEquals(EventState.normal, lsp.readProperty(PropertyIdentifier.eventState));
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void intrinsicReporting() throws Exception {
         lsp.supportIntrinsicReporting(5, 17, new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory),

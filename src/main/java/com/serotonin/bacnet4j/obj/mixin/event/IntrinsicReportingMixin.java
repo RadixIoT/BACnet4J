@@ -30,6 +30,7 @@ package com.serotonin.bacnet4j.obj.mixin.event;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.obj.BACnetObject;
 import com.serotonin.bacnet4j.obj.mixin.event.eventAlgo.EventAlgorithm;
 import com.serotonin.bacnet4j.obj.mixin.event.faultAlgo.FaultAlgorithm;
@@ -50,8 +51,6 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
  * Mixin class for intrinsic reporting.
- *
- * @author Matthew
  */
 public class IntrinsicReportingMixin extends EventReportingMixin {
     // Configuration
@@ -63,9 +62,8 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
     // Runtime
     private boolean configurationConflict;
 
-    public IntrinsicReportingMixin(final BACnetObject bo, final EventAlgorithm eventAlgo,
-            final FaultAlgorithm faultAlgo, final PropertyIdentifier monitoredProperty,
-            final PropertyIdentifier[] triggerProperties) {
+    public IntrinsicReportingMixin(BACnetObject bo, EventAlgorithm eventAlgo, FaultAlgorithm faultAlgo,
+            PropertyIdentifier monitoredProperty, PropertyIdentifier[] triggerProperties) {
         super(bo, eventAlgo, faultAlgo);
 
         bo.writePropertyInternal(PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.FALSE);
@@ -74,12 +72,11 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
         this.triggerProperties = triggerProperties;
 
         // Update the state with the current values in the object.
-        for (final PropertyIdentifier pid : triggerProperties)
+        for (PropertyIdentifier pid : triggerProperties)
             afterWriteProperty(pid, null, get(pid));
     }
 
-    public IntrinsicReportingMixin withPostNotificationAction(
-            final Consumer<NotificationParameters> postNotificationAction) {
+    public IntrinsicReportingMixin withPostNotificationAction(Consumer<NotificationParameters> postNotificationAction) {
         setPostNotificationAction(postNotificationAction);
         return this;
     }
@@ -90,8 +87,8 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
      * which inhibits the execution of the event algorithm. The predicate is evaluated at registration
      * and after every write of one of the given properties.
      */
-    public IntrinsicReportingMixin withConfigurationConflictCheck(final Predicate<BACnetObject> check,
-            final PropertyIdentifier... configurationProperties) {
+    public IntrinsicReportingMixin withConfigurationConflictCheck(Predicate<BACnetObject> check,
+            PropertyIdentifier... configurationProperties) {
         this.configurationConflictCheck = check;
         this.configurationProperties = configurationProperties;
         evaluateConfigurationConflict();
@@ -177,7 +174,7 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
     private synchronized void evaluateConfigurationConflict() {
         if (configurationConflictCheck == null)
             return;
-        final boolean conflict = configurationConflictCheck.test(getBo());
+        boolean conflict = configurationConflictCheck.test(getBo());
         if (conflict) {
             configurationConflict = true;
             if (!Reliability.configurationError.equals(get(PropertyIdentifier.reliability))) {
@@ -194,8 +191,7 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
     }
 
     @Override
-    protected synchronized void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
-            final Encodable newValue) {
+    protected synchronized void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         super.afterWriteProperty(pid, oldValue, newValue);
 
         if (pid.isOneOf(configurationProperties)) {
@@ -210,7 +206,8 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
 
         if (pid.isOneOf(triggerProperties)) {
             // Get the monitored value, in case this isn't it.
-            final Encodable prev, curr;
+            Encodable prev;
+            Encodable curr;
             if (pid.equals(monitoredProperty)) {
                 prev = oldValue;
                 curr = newValue;
@@ -220,10 +217,10 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
             }
 
             // Check if there was a fault state transition.
-            final boolean fault = executeFaultAlgo(prev, curr);
+            boolean fault = executeFaultAlgo(prev, curr);
             if (!fault) {
                 // Ensure there is no current fault.
-                final Reliability reli = get(PropertyIdentifier.reliability);
+                Reliability reli = get(PropertyIdentifier.reliability);
                 if (reli == null || reli.equals(Reliability.noFaultDetected))
                     // No fault detected. Run the event algorithm
                     executeEventAlgo();
@@ -232,12 +229,12 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
     }
 
     @Override
-    protected StateTransition evaluateEventState(final BACnetObject bo, final EventAlgorithm eventAlgo) {
+    protected StateTransition evaluateEventState(BACnetObject bo, EventAlgorithm eventAlgo) {
         return eventAlgo.evaluateIntrinsicEventState(bo);
     }
 
     @Override
-    protected EventType getEventType(final EventAlgorithm eventAlgo) {
+    protected EventType getEventType(EventAlgorithm eventAlgo) {
         return eventAlgo.getEventType();
     }
 
@@ -247,19 +244,20 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
     }
 
     @Override
-    protected NotificationParameters getNotificationParameters(final EventState fromState, final EventState toState,
-            final BACnetObject bo, final EventAlgorithm eventAlgo) {
+    protected NotificationParameters getNotificationParameters(EventState fromState, EventState toState,
+            BACnetObject bo, EventAlgorithm eventAlgo) {
         return eventAlgo.getIntrinsicNotificationParameters(fromState, toState, bo);
     }
 
     @Override
-    protected Reliability evaluateFaultState(final Encodable oldMonitoredValue, final Encodable newMonitoredValue,
-            final BACnetObject bo, final FaultAlgorithm faultAlgo) {
+    protected Reliability evaluateFaultState(Encodable oldMonitoredValue, Encodable newMonitoredValue, BACnetObject bo,
+            FaultAlgorithm faultAlgo) {
         return faultAlgo.evaluateIntrinsic(oldMonitoredValue, newMonitoredValue, bo);
     }
 
     @Override
-    protected PropertyValue getEventEnrollmentMonitoredProperty(final PropertyIdentifier pid) {
-        throw new RuntimeException("Should not be called because EventEnrollment does not support intrinsic reporting");
+    protected PropertyValue getEventEnrollmentMonitoredProperty(PropertyIdentifier pid) {
+        throw new BACnetRuntimeException(
+                "Should not be called because EventEnrollment does not support intrinsic reporting");
     }
 }

@@ -52,8 +52,6 @@ import com.serotonin.bacnet4j.type.primitive.Boolean;
 
 /**
  * Provides support for algorithmic reporting, particularly for the EventEnrollment object.
- *
- * @author Matthew
  */
 public class AlgoReportingMixin extends EventReportingMixin {
     static final Logger LOG = LoggerFactory.getLogger(AlgoReportingMixin.class);
@@ -65,9 +63,9 @@ public class AlgoReportingMixin extends EventReportingMixin {
     private Encodable monitoredPropertyValue;
     private Map<ObjectPropertyReference, Encodable> additionalValues = Collections.emptyMap();
 
-    public AlgoReportingMixin(final EventEnrollmentObject ee, final EventAlgorithm eventAlgo,
-            final AbstractEventParameter eventParameter, final FaultAlgorithm faultAlgo,
-            final AbstractFaultParameter faultParameter, final DeviceObjectPropertyReference objectPropertyReference) {
+    public AlgoReportingMixin(EventEnrollmentObject ee, EventAlgorithm eventAlgo, AbstractEventParameter eventParameter,
+            FaultAlgorithm faultAlgo, AbstractFaultParameter faultParameter,
+            DeviceObjectPropertyReference objectPropertyReference) {
         super(ee, eventAlgo, faultAlgo);
 
         ee.writePropertyInternal(PropertyIdentifier.reliabilityEvaluationInhibit, Boolean.FALSE);
@@ -76,31 +74,28 @@ public class AlgoReportingMixin extends EventReportingMixin {
         this.faultParameter = faultParameter;
         this.objectPropertyReference = objectPropertyReference;
 
-        setPostNotificationAction((notifParams) -> {
-            eventParameter.postNotification(notifParams);
-        });
+        setPostNotificationAction(eventParameter::postNotification);
     }
 
-    public synchronized void updateValue(final Encodable newValue,
-            final Map<ObjectPropertyReference, Encodable> additionalValues) {
-        final Encodable oldValue = monitoredPropertyValue;
+    public synchronized void updateValue(Encodable newValue, Map<ObjectPropertyReference, Encodable> additionalValues) {
+        Encodable oldValue = monitoredPropertyValue;
         monitoredPropertyValue = newValue;
         this.additionalValues = additionalValues;
 
         // Check if the value has changed to a fault value.
-        final boolean fault = executeFaultAlgo(oldValue, monitoredPropertyValue);
+        boolean fault = executeFaultAlgo(oldValue, monitoredPropertyValue);
 
         if (!fault) {
             // Ensure there is no current fault.
-            final Reliability reli = get(PropertyIdentifier.reliability);
-            if (reli == null || reli.equals(Reliability.noFaultDetected))
+            Reliability reliability = get(PropertyIdentifier.reliability);
+            if (reliability == null || reliability.equals(Reliability.noFaultDetected))
                 // No fault detected. Run the event algorithm
                 executeEventAlgo();
         }
     }
 
     @Override
-    protected StateTransition evaluateEventState(final BACnetObject bo, final EventAlgorithm eventAlgo) {
+    protected StateTransition evaluateEventState(BACnetObject bo, EventAlgorithm eventAlgo) {
         if (monitoredPropertyValue == null) {
             // The monitored value has not yet been polled, so there is nothing to evaluate.
             return null;
@@ -110,7 +105,7 @@ public class AlgoReportingMixin extends EventReportingMixin {
     }
 
     @Override
-    protected EventType getEventType(final EventAlgorithm eventAlgo) {
+    protected EventType getEventType(EventAlgorithm eventAlgo) {
         return eventAlgo.getEventType();
     }
 
@@ -120,22 +115,22 @@ public class AlgoReportingMixin extends EventReportingMixin {
     }
 
     @Override
-    protected NotificationParameters getNotificationParameters(final EventState fromState, final EventState toState,
-            final BACnetObject bo, final EventAlgorithm eventAlgo) {
+    protected NotificationParameters getNotificationParameters(EventState fromState, EventState toState,
+            BACnetObject bo, EventAlgorithm eventAlgo) {
         return eventAlgo.getAlgorithmicNotificationParameters(bo, fromState, toState, monitoredPropertyValue,
                 objectPropertyReference.getObjectIdentifier(), additionalValues, eventParameter);
     }
 
     @Override
-    protected Reliability evaluateFaultState(final Encodable oldMonitoredValue, final Encodable newMonitoredValue,
-            final BACnetObject bo, final FaultAlgorithm faultAlgo) {
+    protected Reliability evaluateFaultState(Encodable oldMonitoredValue, Encodable newMonitoredValue, BACnetObject bo,
+            FaultAlgorithm faultAlgo) {
         return faultAlgo.evaluateAlgorithmic(oldMonitoredValue, newMonitoredValue,
                 bo.get(PropertyIdentifier.reliability), objectPropertyReference.getObjectIdentifier(), additionalValues,
                 faultParameter);
     }
 
     @Override
-    protected PropertyValue getEventEnrollmentMonitoredProperty(final PropertyIdentifier pid) {
+    protected PropertyValue getEventEnrollmentMonitoredProperty(PropertyIdentifier pid) {
         // Have to do this while the monitored property is not in the additional values.
         if (pid.equals(objectPropertyReference.getPropertyIdentifier())) {
             if (monitoredPropertyValue == null) {
@@ -146,7 +141,7 @@ public class AlgoReportingMixin extends EventReportingMixin {
                     objectPropertyReference.getPropertyArrayIndex(), monitoredPropertyValue, null);
         }
 
-        final Encodable value = additionalValues
+        Encodable value = additionalValues
                 .get(new ObjectPropertyReference(objectPropertyReference.getObjectIdentifier(), pid));
         if (value == null) {
             LOG.debug("Could not find property {} in additional polled properties", pid);

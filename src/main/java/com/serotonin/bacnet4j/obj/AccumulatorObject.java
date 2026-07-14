@@ -66,7 +66,7 @@ public class AccumulatorObject extends BACnetObject {
     static final Logger LOG = LoggerFactory.getLogger(AccumulatorObject.class);
 
 
-    public static enum ValueSetWrite {
+    public enum ValueSetWrite {
         // Neither valueBeforeChange nor valueSet are writable.
         readOnly,
         // Only valueBeforeChange is writable
@@ -82,9 +82,9 @@ public class AccumulatorObject extends BACnetObject {
     private ValueSetWrite valueSetWrite = ValueSetWrite.readOnly;
     private final ScheduledFuture<?> limitMonitoringFuture;
 
-    public AccumulatorObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final long presentValue, final long accumulation, final EngineeringUnits units, final boolean outOfService,
-            final Scale scale, final Prescale prescale, final long maxPresValue, final int limitMonitoringInterval) {
+    public AccumulatorObject(LocalDevice localDevice, int instanceNumber, String name, long presentValue,
+            long accumulation, EngineeringUnits units, boolean outOfService, Scale scale, Prescale prescale,
+            long maxPresValue, int limitMonitoringInterval) {
         super(localDevice, ObjectType.accumulator, instanceNumber, name);
 
         Objects.requireNonNull(units);
@@ -125,16 +125,14 @@ public class AccumulatorObject extends BACnetObject {
         }, limitMonitoringInterval, limitMonitoringInterval, TimeUnit.SECONDS);
     }
 
-    public AccumulatorObject supportIntrinsicReporting(final int highLimit, final int lowLimit,
-            final int faultHighLimit, final int faultLowLimit, final int timeDelay,
-            final UnsignedInteger timeDelayNormal, final int notificationClass, final LimitEnable limitEnable,
-            final EventTransitionBits eventEnable, final NotifyType notifyType) {
-
+    public AccumulatorObject supportIntrinsicReporting(int highLimit, int lowLimit, int faultHighLimit,
+            int faultLowLimit, int timeDelay, UnsignedInteger timeDelayNormal, int notificationClass,
+            LimitEnable limitEnable, EventTransitionBits eventEnable, NotifyType notifyType) {
         Objects.requireNonNull(limitEnable);
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
 
-        // Prepare the object with all of the properties that intrinsic reporting will need.
+        // Prepare the object with all the properties that intrinsic reporting will need.
         writePropertyInternal(PropertyIdentifier.reliability, Reliability.noFaultDetected);
         writePropertyInternal(PropertyIdentifier.timeDelay, new UnsignedInteger(timeDelay));
         writePropertyInternal(PropertyIdentifier.notificationClass, new UnsignedInteger(notificationClass));
@@ -162,7 +160,7 @@ public class AccumulatorObject extends BACnetObject {
         return this;
     }
 
-    public AccumulatorObject supportValueWrite(final ValueSetWrite valueSetWrite) {
+    public AccumulatorObject supportValueWrite(ValueSetWrite valueSetWrite) {
         this.valueSetWrite = valueSetWrite;
         return this;
     }
@@ -175,16 +173,16 @@ public class AccumulatorObject extends BACnetObject {
         pulses(1);
     }
 
-    public void pulses(final long count) {
+    public void pulses(long count) {
         synchronized (lock) {
             if (count < 1)
                 throw new IllegalArgumentException("count cannot be < 1");
 
             pulseCount += count;
 
-            final UnsignedInteger presentValue = get(PropertyIdentifier.presentValue);
-            final Prescale prescale = get(PropertyIdentifier.prescale);
-            final UnsignedInteger maxPresValue = get(PropertyIdentifier.maxPresValue);
+            UnsignedInteger presentValue = get(PropertyIdentifier.presentValue);
+            Prescale prescale = get(PropertyIdentifier.prescale);
+            UnsignedInteger maxPresValue = get(PropertyIdentifier.maxPresValue);
 
             long newPresentValue = presentValue.longValue();
             if (prescale == null) {
@@ -203,11 +201,10 @@ public class AccumulatorObject extends BACnetObject {
     }
 
     @Override
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
-            throws BACnetServiceException {
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
         if (PropertyIdentifier.presentValue.equals(value.getPropertyIdentifier())) {
-            final UnsignedInteger presentValue = value.getValue();
-            final UnsignedInteger maxPresValue = get(PropertyIdentifier.maxPresValue);
+            UnsignedInteger presentValue = value.getValue();
+            UnsignedInteger maxPresValue = get(PropertyIdentifier.maxPresValue);
             if (presentValue.longValue() > maxPresValue.longValue()) {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
             }
@@ -219,8 +216,8 @@ public class AccumulatorObject extends BACnetObject {
             if (valueSetWrite != ValueSetWrite.valueSet) {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
             }
-            final UnsignedInteger valueSet = value.getValue();
-            final UnsignedInteger maxPresValue = get(PropertyIdentifier.maxPresValue);
+            UnsignedInteger valueSet = value.getValue();
+            UnsignedInteger maxPresValue = get(PropertyIdentifier.maxPresValue);
             if (valueSet.longValue() > maxPresValue.longValue()) {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
             }
@@ -229,12 +226,11 @@ public class AccumulatorObject extends BACnetObject {
     }
 
     @Override
-    protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
-            final Encodable newValue) {
+    protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         if (PropertyIdentifier.valueBeforeChange.equals(pid)) {
             synchronized (lock) {
                 // 12.61.16
-                final UnsignedInteger presentValue = get(PropertyIdentifier.presentValue);
+                UnsignedInteger presentValue = get(PropertyIdentifier.presentValue);
                 // Cannot call writePropertyInternal here because then the code below will be run.
                 set(PropertyIdentifier.valueSet, presentValue);
                 writePropertyInternal(PropertyIdentifier.valueChangeTime, new DateTime(getLocalDevice()));
@@ -242,7 +238,7 @@ public class AccumulatorObject extends BACnetObject {
         } else if (PropertyIdentifier.valueSet.equals(pid)) {
             synchronized (lock) {
                 // 12.61.17
-                final UnsignedInteger presentValue = get(PropertyIdentifier.presentValue);
+                UnsignedInteger presentValue = get(PropertyIdentifier.presentValue);
                 // Cannot call writePropertyInternal here because then the code above will be run.
                 set(PropertyIdentifier.valueBeforeChange, presentValue);
                 set(PropertyIdentifier.presentValue, newValue);

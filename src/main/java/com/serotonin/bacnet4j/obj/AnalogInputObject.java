@@ -48,8 +48,8 @@ import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class AnalogInputObject extends BACnetObject {
-    public AnalogInputObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final float presentValue, final EngineeringUnits units, final boolean outOfService) {
+    public AnalogInputObject(LocalDevice localDevice, int instanceNumber, String name, float presentValue,
+            EngineeringUnits units, boolean outOfService) {
         super(localDevice, ObjectType.analogInput, instanceNumber, name);
 
         writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);
@@ -68,12 +68,11 @@ public class AnalogInputObject extends BACnetObject {
                 PropertyIdentifier.interfaceValue));
     }
 
-    public AnalogInputObject supportIntrinsicReporting(final int timeDelay, final int notificationClass,
-            final float highLimit, final float lowLimit, final float deadband, final float faultHighLimit,
-            final float faultLowLimit, final LimitEnable limitEnable, final EventTransitionBits eventEnable,
-            final NotifyType notifyType, final int timeDelayNormal) {
+    public AnalogInputObject supportIntrinsicReporting(int timeDelay, int notificationClass, float highLimit,
+            float lowLimit, float deadband, float faultHighLimit, float faultLowLimit, LimitEnable limitEnable,
+            EventTransitionBits eventEnable, NotifyType notifyType, int timeDelayNormal) {
 
-        // Prepare the object with all of the properties that intrinsic reporting will need.
+        // Prepare the object with all the properties that intrinsic reporting will need.
         // User-defined properties
         writePropertyInternal(PropertyIdentifier.timeDelay, new UnsignedInteger(timeDelay));
         writePropertyInternal(PropertyIdentifier.notificationClass, new UnsignedInteger(notificationClass));
@@ -100,7 +99,7 @@ public class AnalogInputObject extends BACnetObject {
         return this;
     }
 
-    public AnalogInputObject supportCovReporting(final float covIncrement) {
+    public AnalogInputObject supportCovReporting(float covIncrement) {
         _supportCovReporting(new Real(covIncrement), null);
         return this;
     }
