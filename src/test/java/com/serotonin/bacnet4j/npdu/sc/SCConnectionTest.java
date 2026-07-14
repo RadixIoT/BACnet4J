@@ -1575,6 +1575,60 @@ public class SCConnectionTest {
     }
 
     /**
+     * Per AB.3.1.5 (addendum 135-2020ci-9a): a BVLC message that does not contain a Message ID (fewer
+     * than the 4 header octets) is discarded without a NAK. The 3-octet message here starts with the
+     * ENCAPSULATED_NPDU function, which would be NAK-eligible if the truncation were handled as
+     * MESSAGE_INCOMPLETE.
+     */
+    @Test
+    public void connected_messageWithoutMessageId_isDiscardedWithoutNak() {
+        enterConnected();
+        clearInvocations(client);
+
+        connection.onWebsocketMessage(new ByteQueue(new byte[] {SCBVLC.ENCAPSULATED_NPDU, 0x00, 0x00}));
+
+        assertEquals(SCConnection.State.CONNECTED, connection.getState());
+        verify(client, never()).send(any(byte[].class));
+    }
+
+    /**
+     * Per AB.3.1.5 (addendum 135-2020ci-9a): a BVLC message that is longer than expected is discarded
+     * and not processed. The oversized CONNECT_ACCEPT would otherwise parse successfully and move the
+     * state machine to CONNECTED. No NAK because CONNECT_ACCEPT is not a unicast request.
+     */
+    @Test
+    public void awaitingAccept_oversizedConnectAcceptPayload_isDiscarded() {
+        int connectId = enterAwaitingAccept();
+        clearInvocations(client);
+
+        // A valid, otherwise accepted, CONNECT_ACCEPT payload (fixed 26 bytes) with one trailing byte.
+        byte[] valid = new SCPayloadConnectAccept(new SCVmac(PEER_VMAC), new SCUuid(PEER_UUID), 1500, 1497).write();
+        byte[] oversized = new byte[valid.length + 1];
+        System.arraycopy(valid, 0, oversized, 0, valid.length);
+        feedMessage(new SCBVLC(null, null, SCBVLC.CONNECT_ACCEPT, oversized, connectId));
+
+        assertEquals(SCConnection.State.AWAITING_ACCEPT, connection.getState());
+        verify(client, never()).send(any(byte[].class));
+    }
+
+    /**
+     * Per AB.3.1.5 (addendum 135-2020ci-9a): an oversized ADVERTISEMENT is discarded and not
+     * processed. No NAK because ADVERTISEMENT is not a unicast request.
+     */
+    @Test
+    public void connected_oversizedAdvertisementPayload_isDiscarded() {
+        enterConnected();
+        clearInvocations(client);
+
+        // ADVERTISEMENT payload is fixed 6 bytes. Send 7.
+        var oversized = new SCBVLC(PEER_ORIGIN, null, SCBVLC.ADVERTISEMENT, new byte[7], 0);
+        feedMessage(oversized);
+
+        assertEquals(SCConnection.State.CONNECTED, connection.getState());
+        verify(client, never()).send(any(byte[].class));
+    }
+
+    /**
      * A CONNECTED-state peer BVLC-Result with truncated payload must not throw. BVLC_RESULT
      * is a response so no NAK is emitted; the state stays CONNECTED.
      */

@@ -58,7 +58,11 @@ import com.serotonin.bacnet4j.type.constructed.FaultParameter.FaultState;
 import com.serotonin.bacnet4j.type.constructed.ObjectPropertyReference;
 import com.serotonin.bacnet4j.type.constructed.PropertyReference;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
+import com.serotonin.bacnet4j.type.constructed.PropertyValue;
 import com.serotonin.bacnet4j.type.constructed.StatusFlags;
+import com.serotonin.bacnet4j.type.constructed.ValueSource;
+import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
+import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.EventState;
 import com.serotonin.bacnet4j.type.enumerated.FaultType;
 import com.serotonin.bacnet4j.type.enumerated.LifeSafetyState;
@@ -291,6 +295,31 @@ public class EventEnrollmentObject extends BACnetObject {
                 && pid.isOneOf(PropertyIdentifier.eventParameters, PropertyIdentifier.faultParameters)) {
             updateParameterConflict();
         }
+    }
+
+    @Override
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
+        if (PropertyIdentifier.eventParameters.equals(value.getPropertyIdentifier())
+                && value.getValue() instanceof EventParameter eventParameter) {
+            // Per 12.12.7 (addendum 135-2020ci-1), an attempt to write parameters for an unsupported
+            // event algorithm returns OPTIONAL_FUNCTIONALITY_NOT_SUPPORTED.
+            AbstractEventParameter aep = eventParameter.getChoice().getDatum();
+            if (aep.createEventAlgorithm() == null) {
+                throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
+            }
+        } else if (PropertyIdentifier.faultParameters.equals(value.getPropertyIdentifier())
+                && value.getValue() instanceof FaultParameter faultParameter) {
+            // Per 12.12.23 (addendum 135-2020ci-1), an attempt to write parameters for an unsupported
+            // fault algorithm returns OPTIONAL_FUNCTIONALITY_NOT_SUPPORTED. The Null choice is valid
+            // and means that no fault algorithm is in use.
+            if (!faultParameter.isNull()) {
+                AbstractFaultParameter afp = faultParameter.getEntry().getDatum();
+                if (afp.createFaultAlgorithm() == null) {
+                    throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
+                }
+            }
+        }
+        return false;
     }
 
     @Override

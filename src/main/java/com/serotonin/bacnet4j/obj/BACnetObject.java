@@ -561,10 +561,11 @@ public class BACnetObject {
 
                 if (pin.intValue() == 0) {
                     if (value.getValue() instanceof UnsignedInteger) {
-                        // Writing the size of the array is not allowed here because specific cases need to define what
-                        // value to use as a default when an array is being expanded. This condition therefore needs to
-                        // be handled in mixins or objects.
-                        throw new BACnetServiceException(ErrorClass.property, ErrorCode.writeAccessDenied);
+                        // Resizing the array is not handled here because specific cases need to define what value to
+                        // use as a default when an array is being expanded. Objects or mixins that support resizing
+                        // handle the write before this. Per 15.9.1.3.1 (addendum 135-2020ci-6), a write that would
+                        // resize the array to a size that is not supported returns INVALID_ARRAY_SIZE.
+                        throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidArraySize);
                     }
                     // Can only write an unsigned integer to the zero-index.
                     throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidArrayIndex);
