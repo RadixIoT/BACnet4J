@@ -27,10 +27,12 @@
 
 package com.serotonin.bacnet4j.obj;
 
+import static com.serotonin.bacnet4j.TestUtils.assertErrorAPDUException;
 import static com.serotonin.bacnet4j.TestUtils.awaitEquals;
 import static com.serotonin.bacnet4j.TestUtils.quiesce;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -46,6 +48,7 @@ import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
 import com.serotonin.bacnet4j.type.constructed.FaultParameter;
 import com.serotonin.bacnet4j.type.constructed.FaultParameter.FaultOutOfRange;
 import com.serotonin.bacnet4j.type.constructed.FaultParameter.FaultOutOfRange.FaultNormalValue;
+import com.serotonin.bacnet4j.type.constructed.FaultParameter.FaultStatusFlags;
 import com.serotonin.bacnet4j.type.constructed.PropertyStates;
 import com.serotonin.bacnet4j.type.constructed.PropertyValue;
 import com.serotonin.bacnet4j.type.constructed.Recipient;
@@ -53,6 +56,8 @@ import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.TimeStamp;
 import com.serotonin.bacnet4j.type.enumerated.EngineeringUnits;
+import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
+import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.EventState;
 import com.serotonin.bacnet4j.type.enumerated.EventType;
 import com.serotonin.bacnet4j.type.enumerated.NotifyType;
@@ -60,6 +65,7 @@ import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.eventParameter.ChangeOfState;
+import com.serotonin.bacnet4j.type.eventParameter.ChangeOfValue;
 import com.serotonin.bacnet4j.type.eventParameter.EventParameter;
 import com.serotonin.bacnet4j.type.eventParameter.OutOfRange;
 import com.serotonin.bacnet4j.type.notificationParameters.ChangeOfReliabilityNotif;
@@ -67,6 +73,7 @@ import com.serotonin.bacnet4j.type.notificationParameters.ChangeOfStateNotif;
 import com.serotonin.bacnet4j.type.notificationParameters.NotificationParameters;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
+import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -462,6 +469,64 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         assertEquals(new Real(300), newOor.getLowLimit());
         assertEquals(new Real(700), newOor.getHighLimit());
         assertEquals(new Real(10), newOor.getDeadband());
+    }
+
+    /**
+     * Per addendum 135-2020ci-1 (Clauses 12.12.7 and 12.12.23): an attempt to write parameters for an
+     * unsupported event or fault algorithm returns a Result(-) with an error class of PROPERTY and an
+     * error code of OPTIONAL_FUNCTIONALITY_NOT_SUPPORTED.
+     */
+    @Test
+    public void unsupportedAlgorithmWrites() throws Exception {
+        DeviceObjectPropertyReference ref =
+                new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
+                        PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee0", ref, NotifyType.alarm,
+                new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
+                new EventTransitionBits(true, true, true), 5, 100, null, new FaultParameter(
+                new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90))))));
+
+        // The change-of-value event algorithm is not implemented.
+        assertErrorAPDUException(() -> d2.send(rd1, new WritePropertyRequest(
+                        ee.getId(), PropertyIdentifier.eventParameters, null,
+                        new EventParameter(new ChangeOfValue(new UnsignedInteger(1), new Real(10))), null)).get(),
+                ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
+
+        // The fault-status-flags fault algorithm is not implemented.
+        assertErrorAPDUException(() -> d2.send(rd1, new WritePropertyRequest(
+                        ee.getId(), PropertyIdentifier.faultParameters, null,
+                        new FaultParameter(new FaultStatusFlags(ref)), null)).get(),
+                ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
+
+        // The properties are unchanged.
+        EventParameter eventParams = ee.get(PropertyIdentifier.eventParameters);
+        assertEquals(EventType.outOfRange, eventParams.getEventType());
+        FaultParameter faultParams = ee.get(PropertyIdentifier.faultParameters);
+        assertTrue(faultParams.getEntry().getDatum() instanceof FaultOutOfRange);
+    }
+
+    /**
+     * The Null choice of Fault_Parameters means that no fault algorithm is in use, and so is not an
+     * unsupported algorithm. A write of it succeeds.
+     */
+    @Test
+    public void nullFaultParametersWrite() throws Exception {
+        DeviceObjectPropertyReference ref =
+                new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
+                        PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee0", ref, NotifyType.alarm,
+                new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
+                new EventTransitionBits(true, true, true), 5, 100, null, new FaultParameter(
+                new FaultOutOfRange(new FaultNormalValue(new Real(10)), new FaultNormalValue(new Real(90))))));
+
+        var response = d2.send(rd1, new WritePropertyRequest(ee.getId(), PropertyIdentifier.faultParameters, null,
+                new FaultParameter(Null.instance), null)).get();
+        assertNull(response);
+
+        FaultParameter faultParams = ee.get(PropertyIdentifier.faultParameters);
+        assertTrue(faultParams.isNull());
     }
 
     /**
