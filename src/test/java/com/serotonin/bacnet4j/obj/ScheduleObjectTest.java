@@ -48,6 +48,7 @@ import com.serotonin.bacnet4j.obj.ObjectTestUtils.ObjectWriteNotifier;
 import com.serotonin.bacnet4j.service.confirmed.AddListElementRequest;
 import com.serotonin.bacnet4j.service.confirmed.RemoveListElementRequest;
 import com.serotonin.bacnet4j.service.confirmed.WritePropertyMultipleRequest;
+import com.serotonin.bacnet4j.service.confirmed.WritePropertyRequest;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.constructed.CalendarEntry;
@@ -566,6 +567,30 @@ public class ScheduleObjectTest extends AbstractTest {
         return d1.addObject(new CountingScheduleObject(
                 d1, 0, "sch-wesa", new DateRange(Date.UNSPECIFIED, Date.UNSPECIFIED), weeklySchedule,
                 new SequenceOf<>(), new Real(999), refs, 12, false));
+    }
+
+    /**
+     * Per BIBB SCHED-WS-I-B (K.3.8) as revised by addendum 135-2020ci-4: if the
+     * List_Of_Object_Property_References property is capable of referencing a commandable property,
+     * then the Priority_For_Writing property shall be writable. This schedule references commandable
+     * analog values, so the condition applies.
+     */
+    @Test
+    public void priorityForWritingIsWritable() throws Exception {
+        clock.set(2115, java.time.Month.MAY, 1, 12, 0, 0);
+
+        AnalogValueObject av0 = d2.addObject(new AnalogValueObject(
+                d2, 0, "av0", 98, EngineeringUnits.amperes, false).supportCommandable(-2));
+        AnalogValueObject av1 = d1.addObject(new AnalogValueObject(
+                d1, 1, "av1", 99, EngineeringUnits.amperesPerMeter, false).supportCommandable(-1));
+        ScheduleObject so = createScheduleObject(av0, av1, new Real(999));
+
+        assertEquals(new UnsignedInteger(12), so.readProperty(PropertyIdentifier.priorityForWriting));
+
+        var response = d2.send(rd1, new WritePropertyRequest(so.getId(), PropertyIdentifier.priorityForWriting, null,
+                new UnsignedInteger(9), null)).get();
+        assertNull(response);
+        assertEquals(new UnsignedInteger(9), so.readProperty(PropertyIdentifier.priorityForWriting));
     }
 
     private ScheduleObject createScheduleObject(AnalogValueObject av0, AnalogValueObject av1, Primitive scheduleDefault)

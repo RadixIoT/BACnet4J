@@ -46,6 +46,7 @@ import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.ValueSource;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
+import com.serotonin.bacnet4j.type.enumerated.IPMode;
 import com.serotonin.bacnet4j.type.enumerated.NetworkNumberQuality;
 import com.serotonin.bacnet4j.type.enumerated.NetworkPortCommand;
 import com.serotonin.bacnet4j.type.enumerated.NetworkType;
@@ -215,35 +216,59 @@ public class NetworkPortObject extends BACnetObject {
     }
 
     /**
-     * Subclasses should implement as required.
+     * Validates a command against the functionality this object supports. Per 12.56.14 (addendum
+     * 135-2020ci-3), writing a command that the object does not support returns
+     * OPTIONAL_FUNCTIONALITY_NOT_SUPPORTED, except where the command's own clause specifies
+     * VALUE_OUT_OF_RANGE for ports of an inapplicable type or configuration. Subclasses that implement
+     * a command's functionality override this method, returning normally to accept the command, or
+     * throwing NOT_ENABLED when the functionality is supported but currently disabled.
      *
      * @param command the given command.
      */
     protected void validateCommandInternal(NetworkPortCommand command) throws BACnetServiceException {
-        if (command == NetworkPortCommand.renewDhcp) {
-            NetworkType networkType = get(PropertyIdentifier.networkType);
-            if (networkType == NetworkType.ipv4 || networkType == NetworkType.ipv6) {
-                throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
+        NetworkType networkType = get(PropertyIdentifier.networkType);
+        if (command == NetworkPortCommand.renewFdRegistration) {
+            // Only an IPv4/IPv6 port in foreign mode can renew a foreign device registration.
+            IPMode ipMode = get(PropertyIdentifier.bacnetIpMode);
+            if (!networkType.isOneOf(NetworkType.ipv4, NetworkType.ipv6) || ipMode != IPMode.foreign) {
+                throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
             }
-        }
-        if (command == NetworkPortCommand.restartSubordinateDiscovery) {
+            throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
+        } else if (command == NetworkPortCommand.restartSubordinateDiscovery) {
             // Per 12.56.14, writing this value to a non-MS/TP port returns VALUE_OUT_OF_RANGE, while an
             // MS/TP port without subordinate proxy support returns OPTIONAL_FUNCTIONALITY_NOT_SUPPORTED.
             // Subclasses that support subordinate proxying override this method. The non-MS/TP case falls
             // through to the VALUE_OUT_OF_RANGE below.
-            NetworkType networkType = get(PropertyIdentifier.networkType);
             if (networkType == NetworkType.mstp) {
                 throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
             }
-        }
-        if (command.isOneOf(NetworkPortCommand.restartAutonegotiation, NetworkPortCommand.restartPort,
-                NetworkPortCommand.restartDeviceDiscovery, NetworkPortCommand.generateCsrFile)) {
+            // Only an MS/TP port can perform subordinate proxying.
+            throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
+        } else if (command == NetworkPortCommand.renewDhcp) {
+            // Only an IPv4/IPv6 port can renew a DHCP lease.
+            if (!networkType.isOneOf(NetworkType.ipv4, NetworkType.ipv6)) {
+                throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
+            }
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
-        }
-        if (command.isOneOf(NetworkPortCommand.discardChanges, NetworkPortCommand.validateChanges)) {
+        } else if (command == NetworkPortCommand.disconnect) {
+            // Only a PTP port can disconnect.
+            if (networkType != NetworkType.ptp) {
+                throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
+            }
+            throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
+        } else if (command == NetworkPortCommand.restartAutonegotiation) {
+            // A port with autonegotiation disabled returns VALUE_OUT_OF_RANGE.
+            Boolean autonegotiate = get(PropertyIdentifier.linkSpeedAutonegotiate);
+            if (autonegotiate != null && !autonegotiate.booleanValue()) {
+                throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
+            }
+            throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
+        } else if (command.isOneOf(NetworkPortCommand.discardChanges, NetworkPortCommand.validateChanges)) {
             return;
         }
-        throw new BACnetServiceException(ErrorClass.property, ErrorCode.valueOutOfRange);
+        // All other commands this object does not support, including proprietary values, return
+        // OPTIONAL_FUNCTIONALITY_NOT_SUPPORTED.
+        throw new BACnetServiceException(ErrorClass.property, ErrorCode.optionalFunctionalityNotSupported);
     }
 
     /**

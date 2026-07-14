@@ -36,6 +36,9 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
  * This includes methods to parse from, and generate to, byte buffers.
  */
 public class SCPayloadConnectAccept implements SCPayload {
+    // VMAC (6) + UUID (16) + Maximum BVLC Length (2) + Maximum NPDU Length (2)
+    public static final int FIXED_LENGTH = 26;
+
     public final SCUuid uuid;
     public final SCVmac vmac;
     public final int maximumBVLCLength;

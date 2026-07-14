@@ -214,6 +214,10 @@ public class SCConnection {
                 // Centralize the parsing of payload here so that parsing issues can be handled.
                 try {
                     payload = parsePayload(message);
+                } catch (UnexpectedDataException e) {
+                    // AB.3.1.5 "If a BVLC message is received that is longer than expected..."
+                    protocolViolationLogAndSend(message, ErrorCode.unexpectedData, e.getMessage());
+                    return;
                 } catch (ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
                     // AB.3.1.5 "If a BVLC message is received that is truncated..."
                     protocolViolationLogAndSend(message, ErrorCode.messageIncomplete,
@@ -615,6 +619,14 @@ public class SCConnection {
     }
 
     private SCBVLC parseMessage(ByteQueue queue) {
+        if (queue.size() < 4) {
+            // AB.3.1.5 (addendum 135-2020ci-9a): a BVLC message that does not contain a Message ID is
+            // discarded without returning a BVLC-Result NAK. The header is 4 octets: function, control,
+            // and the 2-octet Message ID.
+            LOG.error("{} protocol violation: BVLC message too short to contain a Message ID ({} octets); discarded",
+                    name, queue.size());
+            return null;
+        }
         if (queue.size() > network.getMaxBvlcLengthAccepted().intValue()) {
             // AB.7.5.3 discard
             LOG.error("{} protocol violation: length of BVLC message ({}) exceeds max accepted size ({})",
@@ -741,11 +753,35 @@ public class SCConnection {
 
     private SCPayload parsePayload(SCBVLC message) {
         return switch (message.getFunction()) {
-            case SCBVLC.CONNECT_ACCEPT -> new SCPayloadConnectAccept(message.getPayload());
+            case SCBVLC.CONNECT_ACCEPT -> {
+                checkFixedPayloadLength(message, SCPayloadConnectAccept.FIXED_LENGTH);
+                yield new SCPayloadConnectAccept(message.getPayload());
+            }
             case SCBVLC.BVLC_RESULT -> new SCPayloadBVLCResult(message.getPayload());
-            case SCBVLC.ADVERTISEMENT -> new SCPayloadAdvertisement(message.getPayload());
+            case SCBVLC.ADVERTISEMENT -> {
+                checkFixedPayloadLength(message, SCPayloadAdvertisement.FIXED_LENGTH);
+                yield new SCPayloadAdvertisement(message.getPayload());
+            }
             default -> null;
         };
+    }
+
+    /**
+     * Per AB.3.1.5 (addendum 135-2020ci-9a), a BVLC message that is longer than expected is discarded,
+     * with a NAK of COMMUNICATION/UNEXPECTED_DATA if it was a unicast request. A payload that is too
+     * short throws from the payload parser and is handled as MESSAGE_INCOMPLETE.
+     */
+    private static void checkFixedPayloadLength(SCBVLC message, int fixedLength) {
+        if (message.getPayload() != null && message.getPayload().length > fixedLength) {
+            throw new UnexpectedDataException(
+                    "payload is longer than expected: " + message.getPayload().length + " > " + fixedLength);
+        }
+    }
+
+    private static class UnexpectedDataException extends RuntimeException {
+        public UnexpectedDataException(String message) {
+            super(message);
+        }
     }
 
     private void protocolViolationLogOnly(ErrorCode errorCode, String errorDetails) {
