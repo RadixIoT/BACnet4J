@@ -92,7 +92,28 @@ public class LifeSafetyPointObjectTest extends AbstractTest {
         d2.getEventHandler().addListener(listener);
     }
 
-    @SuppressWarnings("unchecked")
+    /**
+     * Per 12.15.10 (addendum 135-2020co-2): the Reliability property takes on CONFIGURATION_ERROR
+     * while a value is found in more than one of the Fault_Values, Alarm_Values, or
+     * Life_Safety_Alarm_Values properties.
+     */
+    @Test
+    public void configurationConflict() throws Exception {
+        // Construct with tamper present in both Life_Safety_Alarm_Values and Alarm_Values.
+        lsp.supportIntrinsicReporting(5, 17,
+                new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory),
+                new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testAlarm), null,
+                new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
+        assertEquals(Reliability.configurationError, lsp.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.fault, lsp.readProperty(PropertyIdentifier.eventState));
+
+        // Removing the overlap resolves the conflict.
+        lsp.writePropertyInternal(PropertyIdentifier.alarmValues,
+                new BACnetArray<>(LifeSafetyState.testActive, LifeSafetyState.testAlarm));
+        assertEquals(Reliability.noFaultDetected, lsp.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.normal, lsp.readProperty(PropertyIdentifier.eventState));
+    }
+
     @Test
     public void intrinsicReporting() throws Exception {
         lsp.supportIntrinsicReporting(5, 17, new BACnetArray<>(LifeSafetyState.tamper, LifeSafetyState.testSupervisory),

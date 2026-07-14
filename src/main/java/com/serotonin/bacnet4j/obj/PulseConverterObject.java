@@ -123,9 +123,10 @@ public class PulseConverterObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.eventDetectionEnable, Boolean.TRUE);
 
         // Now add the mixin.
-        addMixin(new IntrinsicReportingMixin(this, new OutOfRangeAlgo(), null, PropertyIdentifier.presentValue, //
+        addMixin(new IntrinsicReportingMixin(this, new OutOfRangeAlgo(), null, PropertyIdentifier.presentValue,
                 new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.highLimit,
-                        PropertyIdentifier.lowLimit, PropertyIdentifier.deadband, PropertyIdentifier.limitEnable}));
+                        PropertyIdentifier.lowLimit, PropertyIdentifier.deadband, PropertyIdentifier.limitEnable}))
+                .withHighLimitBelowLowLimitConflictCheck();
 
         return this;
     }

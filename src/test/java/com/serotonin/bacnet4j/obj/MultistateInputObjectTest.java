@@ -76,6 +76,26 @@ public class MultistateInputObjectTest extends AbstractTest {
                 d1, 17, "nc17", 100, 5, 200, new EventTransitionBits(false, false, false)));
     }
 
+    /**
+     * Per 12.18.9 (addendum 135-2020co-2): the Reliability property takes on CONFIGURATION_ERROR
+     * while a value is present in both the Alarm_Values property and the Fault_Values property.
+     */
+    @Test
+    public void configurationConflict() throws Exception {
+        // Construct with the value 5 present in both Alarm_Values and Fault_Values.
+        mi.supportIntrinsicReporting(5, 17,
+                new BACnetArray<>(new UnsignedInteger(4), new UnsignedInteger(5)),
+                new BACnetArray<>(new UnsignedInteger(5)),
+                new EventTransitionBits(true, true, true), NotifyType.alarm, new UnsignedInteger(12));
+        assertEquals(Reliability.configurationError, mi.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.fault, mi.readProperty(PropertyIdentifier.eventState));
+
+        // Removing the overlap resolves the conflict.
+        mi.writePropertyInternal(PropertyIdentifier.faultValues, new BACnetArray<>(new UnsignedInteger(3)));
+        assertEquals(Reliability.noFaultDetected, mi.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.normal, mi.readProperty(PropertyIdentifier.eventState));
+    }
+
     @Test
     public void initialization() throws Exception {
         new MultistateInputObject(d1, 1, "mi1", 7, null, 1, false);

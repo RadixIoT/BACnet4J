@@ -110,7 +110,8 @@ public class MultistateValueObject extends BACnetObject {
             faultAlgo = new FaultStateAlgo(PropertyIdentifier.reliability, PropertyIdentifier.faultValues);
         }
         addMixin(new IntrinsicReportingMixin(this, eventAlgo, faultAlgo, PropertyIdentifier.presentValue,
-                new PropertyIdentifier[] {PropertyIdentifier.presentValue}));
+                new PropertyIdentifier[] {PropertyIdentifier.presentValue}))
+                .withAlarmFaultCommonPropertyConflictCheck();
 
         return this;
     }

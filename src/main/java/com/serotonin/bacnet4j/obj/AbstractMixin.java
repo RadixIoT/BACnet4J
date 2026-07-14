@@ -40,14 +40,16 @@ import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 /**
  * Mixins allow different objects to share functionality that is otherwise common between them. Functionality that is
  * specific to a given object type should still be coded into the class for the type itself.
- *
- * @author Matthew
  */
 public class AbstractMixin {
     private final BACnetObject bo;
 
     public AbstractMixin(final BACnetObject bo) {
         this.bo = bo;
+    }
+
+    protected final BACnetObject getBo() {
+        return bo;
     }
 
     //

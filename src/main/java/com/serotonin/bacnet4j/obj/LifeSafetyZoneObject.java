@@ -127,7 +127,8 @@ public class LifeSafetyZoneObject extends BACnetObject implements LifeSafety {
         addMixin(new IntrinsicReportingMixin(this, new ChangeOfLifeSafetyAlgo(), faultAlgo,
                 PropertyIdentifier.presentValue,
                 new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.mode,
-                        PropertyIdentifier.lifeSafetyAlarmValues, PropertyIdentifier.alarmValues}));
+                        PropertyIdentifier.lifeSafetyAlarmValues, PropertyIdentifier.alarmValues}))
+                .withLifeSafetyCommonPropertyConflictCheck();
 
         return this;
     }

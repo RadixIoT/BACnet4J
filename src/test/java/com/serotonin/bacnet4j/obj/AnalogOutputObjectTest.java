@@ -146,6 +146,26 @@ public class AnalogOutputObjectTest extends AbstractTest {
                         new Real(100))), notif.eventValues());
     }
 
+    /**
+     * Per 12.3.9 (addendum 135-2020co-2): the Reliability property takes on CONFIGURATION_ERROR
+     * while both limits are enabled and High_Limit is less than Low_Limit.
+     */
+    @Test
+    public void configurationConflict() throws Exception {
+        ao.supportIntrinsicReporting(60, 17, 100, 20, 5, new LimitEnable(true, true),
+                new EventTransitionBits(true, true, true), NotifyType.alarm, 180);
+
+        // High_Limit less than Low_Limit with both limits enabled.
+        ao.writePropertyInternal(PropertyIdentifier.highLimit, new Real(10));
+        assertEquals(Reliability.configurationError, ao.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.fault, ao.readProperty(PropertyIdentifier.eventState));
+
+        // Disabling one of the limits resolves the conflict.
+        ao.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(true, false));
+        assertEquals(Reliability.noFaultDetected, ao.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.normal, ao.readProperty(PropertyIdentifier.eventState));
+    }
+
     @Test
     public void propertyConformanceRequired() throws Exception {
         assertNotNull(ao.readProperty(PropertyIdentifier.objectIdentifier));

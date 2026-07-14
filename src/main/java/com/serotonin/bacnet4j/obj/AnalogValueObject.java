@@ -96,12 +96,14 @@ public class AnalogValueObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.eventDetectionEnable, Boolean.TRUE);
 
         // Now add the mixin.
-        addMixin(new IntrinsicReportingMixin(this, new OutOfRangeAlgo(),
+        addMixin(new IntrinsicReportingMixin(
+                this, new OutOfRangeAlgo(),
                 new FaultOutOfRangeAlgo(PropertyIdentifier.faultLowLimit, PropertyIdentifier.faultHighLimit,
                         PropertyIdentifier.reliability),
-                PropertyIdentifier.presentValue, //
+                PropertyIdentifier.presentValue,
                 new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.highLimit,
-                        PropertyIdentifier.lowLimit, PropertyIdentifier.deadband, PropertyIdentifier.limitEnable}));
+                        PropertyIdentifier.lowLimit, PropertyIdentifier.deadband, PropertyIdentifier.limitEnable}))
+                .withHighLimitBelowLowLimitFaultRealConflictCheck();
 
         return this;
     }

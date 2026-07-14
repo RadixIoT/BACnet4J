@@ -27,6 +27,7 @@
 
 package com.serotonin.bacnet4j.obj.mixin.event;
 
+import java.util.Collections;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -62,7 +63,7 @@ public class AlgoReportingMixin extends EventReportingMixin {
     private final DeviceObjectPropertyReference objectPropertyReference;
 
     private Encodable monitoredPropertyValue;
-    private Map<ObjectPropertyReference, Encodable> additionalValues;
+    private Map<ObjectPropertyReference, Encodable> additionalValues = Collections.emptyMap();
 
     public AlgoReportingMixin(final EventEnrollmentObject ee, final EventAlgorithm eventAlgo,
             final AbstractEventParameter eventParameter, final FaultAlgorithm faultAlgo,
@@ -100,6 +101,10 @@ public class AlgoReportingMixin extends EventReportingMixin {
 
     @Override
     protected StateTransition evaluateEventState(final BACnetObject bo, final EventAlgorithm eventAlgo) {
+        if (monitoredPropertyValue == null) {
+            // The monitored value has not yet been polled, so there is nothing to evaluate.
+            return null;
+        }
         return eventAlgo.evaluateAlgorithmicEventState(bo, monitoredPropertyValue,
                 objectPropertyReference.getObjectIdentifier(), additionalValues, eventParameter);
     }
@@ -133,6 +138,10 @@ public class AlgoReportingMixin extends EventReportingMixin {
     protected PropertyValue getEventEnrollmentMonitoredProperty(final PropertyIdentifier pid) {
         // Have to do this while the monitored property is not in the additional values.
         if (pid.equals(objectPropertyReference.getPropertyIdentifier())) {
+            if (monitoredPropertyValue == null) {
+                // The monitored value has not yet been polled.
+                return null;
+            }
             return new PropertyValue(objectPropertyReference.getPropertyIdentifier(),
                     objectPropertyReference.getPropertyArrayIndex(), monitoredPropertyValue, null);
         }

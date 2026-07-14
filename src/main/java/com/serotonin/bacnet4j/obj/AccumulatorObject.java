@@ -150,12 +150,14 @@ public class AccumulatorObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.faultLowLimit, new UnsignedInteger(faultLowLimit));
 
         // Now add the mixin.
-        addMixin(new IntrinsicReportingMixin(this, new UnsignedRangeAlgo(PropertyIdentifier.pulseRate),
+        addMixin(new IntrinsicReportingMixin(this,
+                new UnsignedRangeAlgo(PropertyIdentifier.pulseRate),
                 new FaultOutOfRangeAlgo(PropertyIdentifier.faultLowLimit, PropertyIdentifier.faultHighLimit,
-                        PropertyIdentifier.reliability), //
-                PropertyIdentifier.pulseRate, //
+                        PropertyIdentifier.reliability),
+                PropertyIdentifier.pulseRate,
                 new PropertyIdentifier[] {PropertyIdentifier.pulseRate, PropertyIdentifier.highLimit,
-                        PropertyIdentifier.lowLimit, PropertyIdentifier.limitEnable}));
+                        PropertyIdentifier.lowLimit, PropertyIdentifier.limitEnable}))
+                .withHighLimitBelowLowLimitFaultUnsignedConflictCheck();
 
         return this;
     }
