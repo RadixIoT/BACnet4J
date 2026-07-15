@@ -108,7 +108,7 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
 - The method `DeviceEventListener.whoAmIReceived` has been added
 - The method `DeviceEventListener.youAreReceived` has been added
 - Code that allowed an unconfigured device to find an unused device id has been removed
-- Many non-breaking changes that bring BACnet4J up to compliance with protocol revision 24
+- Many non-breaking changes that bring BACnet4J up to compliance with protocol revision 30
 
 *Version 6.2.0*
 
