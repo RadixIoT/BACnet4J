@@ -126,7 +126,8 @@ public class LifeSafetyPointObject extends BACnetObject implements LifeSafety {
         addMixin(new IntrinsicReportingMixin(this, new ChangeOfLifeSafetyAlgo(), faultAlgo,
                 PropertyIdentifier.presentValue,
                 new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.mode,
-                        PropertyIdentifier.lifeSafetyAlarmValues, PropertyIdentifier.alarmValues}));
+                        PropertyIdentifier.lifeSafetyAlarmValues, PropertyIdentifier.alarmValues}))
+                .withLifeSafetyCommonPropertyConflictCheck();
 
         return this;
     }
@@ -136,7 +137,7 @@ public class LifeSafetyPointObject extends BACnetObject implements LifeSafety {
         return this;
     }
 
-    public LifeSafetyPointObject supportDirectReading(final Real directReading, final EngineeringUnits units) {
+    public LifeSafetyPointObject supportDirectReading(Real directReading, EngineeringUnits units) {
         Objects.requireNonNull(directReading);
         Objects.requireNonNull(units);
 

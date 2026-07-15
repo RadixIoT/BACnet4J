@@ -53,22 +53,30 @@ import com.serotonin.bacnet4j.type.constructed.DeviceObjectPropertyReference;
 import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
 import com.serotonin.bacnet4j.type.constructed.FaultParameter;
 import com.serotonin.bacnet4j.type.constructed.FaultParameter.AbstractFaultParameter;
+import com.serotonin.bacnet4j.type.constructed.FaultParameter.FaultLifeSafety;
+import com.serotonin.bacnet4j.type.constructed.FaultParameter.FaultState;
 import com.serotonin.bacnet4j.type.constructed.ObjectPropertyReference;
 import com.serotonin.bacnet4j.type.constructed.PropertyReference;
 import com.serotonin.bacnet4j.type.constructed.PropertyValue;
+import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.ValueSource;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.EventState;
 import com.serotonin.bacnet4j.type.enumerated.FaultType;
+import com.serotonin.bacnet4j.type.enumerated.LifeSafetyState;
 import com.serotonin.bacnet4j.type.enumerated.NotifyType;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.eventParameter.AbstractEventParameter;
+import com.serotonin.bacnet4j.type.eventParameter.ChangeOfLifeSafety;
+import com.serotonin.bacnet4j.type.eventParameter.ChangeOfState;
 import com.serotonin.bacnet4j.type.eventParameter.EventParameter;
+import com.serotonin.bacnet4j.type.eventParameter.OutOfRange;
+import com.serotonin.bacnet4j.type.eventParameter.UnsignedRange;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
@@ -88,6 +96,10 @@ public class EventEnrollmentObject extends BACnetObject {
     private final PropertyReferences monitoredPropertyReferences;
     private boolean configurationError;
     private boolean monitoredObjectFault;
+    // Per 12.12.21 (addendum 135-2020co-2), true while the event and fault parameters are in
+    // conflict, in which case the Reliability property is CONFIGURATION_ERROR and the algorithms
+    // are not executed.
+    private boolean parameterConflict;
 
     public EventEnrollmentObject(LocalDevice localDevice, int instanceNumber, String name,
             DeviceObjectPropertyReference objectPropertyReference, NotifyType notifyType, EventParameter eventParameter,
@@ -209,10 +221,80 @@ public class EventEnrollmentObject extends BACnetObject {
                     faultRef.getPropertyArrayIndex());
         }
 
+        // Check for conflicting event and fault parameters.
+        updateParameterConflict();
+
         //
         // Start polling
         pollingFuture = localDevice.scheduleWithFixedDelay(this::doPoll, pollDelayMillis, pollDelayMillis,
                 TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Per 12.12.21 (addendum 135-2020co-2), the Reliability property takes on CONFIGURATION_ERROR
+     * while the event and fault parameters are in conflict. Evaluated at construction and after
+     * writes of the Event_Parameters and Fault_Parameters properties.
+     */
+    private synchronized void updateParameterConflict() {
+        EventParameter eventParameter = get(PropertyIdentifier.eventParameters);
+        FaultParameter faultParameter = get(PropertyIdentifier.faultParameters);
+        boolean conflict = hasParameterConflict(eventParameter, faultParameter);
+        if (conflict) {
+            parameterConflict = true;
+            writePropertyInternal(PropertyIdentifier.reliability, Reliability.configurationError);
+        } else if (parameterConflict) {
+            // The conflict has been resolved. Only restore the reliability that this check set, so
+            // that reliabilities from other sources are not clobbered.
+            parameterConflict = false;
+            writePropertyInternal(PropertyIdentifier.reliability, Reliability.noFaultDetected);
+        }
+    }
+
+    private static boolean hasParameterConflict(EventParameter eventParameter, FaultParameter faultParameter) {
+        AbstractEventParameter aep = eventParameter.getChoice().getDatum();
+        AbstractFaultParameter afp = null;
+        if (faultParameter != null && !faultParameter.isNull()) {
+            afp = faultParameter.getEntry().getDatum();
+        }
+
+        if (aep instanceof ChangeOfState changeOfState && afp instanceof FaultState faultState) {
+            // A value present in both the List_Of_Values and the List_Of_Fault_Values parameters.
+            return SequenceOf.intersection(changeOfState.getListOfValues(), faultState.getListOfFaultValues());
+        }
+        if (aep instanceof ChangeOfLifeSafety changeOfLifeSafety) {
+            SequenceOf<LifeSafetyState> alarmValues = changeOfLifeSafety.getListOfAlarmValues();
+            SequenceOf<LifeSafetyState> lifeSafetyAlarmValues = changeOfLifeSafety.getListOfLifeSafetyAlarmValues();
+            // A value present in more than one of the List_Of_Alarm_Values or the
+            // List_Of_Life_Safety_Alarm_Values parameters and the List_Of_Fault_Values parameter.
+            if (SequenceOf.intersection(alarmValues, lifeSafetyAlarmValues)) {
+                return true;
+            }
+            if (afp instanceof FaultLifeSafety faultLifeSafety) {
+                return SequenceOf.intersection(alarmValues, faultLifeSafety.getListOfFaultValues())
+                        || SequenceOf.intersection(lifeSafetyAlarmValues, faultLifeSafety.getListOfFaultValues());
+            }
+            return false;
+        }
+        if (aep instanceof OutOfRange outOfRange) {
+            // The Low_Limit parameter is greater than the High_Limit parameter.
+            return outOfRange.getLowLimit().floatValue() > outOfRange.getHighLimit().floatValue();
+        }
+        if (aep instanceof UnsignedRange unsignedRange) {
+            // The Low_Limit parameter is greater than the High_Limit parameter.
+            return unsignedRange.getLowLimit().longValue() > unsignedRange.getHighLimit().longValue();
+        }
+        return false;
+    }
+
+    @Override
+    protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
+        // The initialized check prevents the conflict check from running against the partially
+        // written properties during construction, before the mixins that react to reliability
+        // changes exist.
+        if (isInitialized()
+                && pid.isOneOf(PropertyIdentifier.eventParameters, PropertyIdentifier.faultParameters)) {
+            updateParameterConflict();
+        }
     }
 
     @Override
@@ -273,6 +355,13 @@ public class EventEnrollmentObject extends BACnetObject {
     }
 
     private void doPollThrow() throws PollException {
+        if (parameterConflict) {
+            // Per 12.12.21 (addendum 135-2020co-2), a conflicting configuration keeps the Reliability
+            // property at CONFIGURATION_ERROR and inhibits the execution of the event and fault
+            // algorithms.
+            return;
+        }
+
         DeviceObjectPropertyReference ref = get(PropertyIdentifier.objectPropertyReference);
 
         Encodable value;

@@ -208,4 +208,14 @@ public class SequenceOf<E extends Encodable> extends BaseType implements Iterabl
     public int hashCode() {
         return Objects.hashCode(values);
     }
+
+    /**
+     * Returns true if any value appears in both of the given lists. Used by configuration conflict
+     * checks per addendum 135-2020co-2. Either list may be null, meaning no overlap.
+     */
+    public static boolean intersection(SequenceOf<? extends Encodable> a, SequenceOf<? extends Encodable> b) {
+        if (a == null || b == null)
+            return false;
+        return !Collections.disjoint(a.values, b.values);
+    }
 }

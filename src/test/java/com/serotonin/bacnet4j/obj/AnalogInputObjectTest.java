@@ -260,6 +260,40 @@ public class AnalogInputObjectTest extends AbstractTest {
     }
 
     /**
+     * Per 12.2.9 (addendum 135-2020co-2): the Reliability property takes on CONFIGURATION_ERROR
+     * while the limits or the fault limits are configured in conflict, and the algorithms are
+     * inhibited.
+     */
+    @Test
+    public void configurationConflict() throws Exception {
+        ai.supportIntrinsicReporting(1, 17, 100, 20, 5, 120, 0, new LimitEnable(true, true),
+                new EventTransitionBits(true, true, true), NotifyType.alarm, 2);
+
+        // High_Limit less than Low_Limit with both limits enabled.
+        ai.writePropertyInternal(PropertyIdentifier.highLimit, new Real(10));
+        assertEquals(Reliability.configurationError, ai.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.fault, ai.readProperty(PropertyIdentifier.eventState));
+
+        // The event algorithm is inhibited: an out of range value does not change the event state.
+        ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(115));
+        clock.plusMillis(1100);
+        quiesce();
+        assertEquals(EventState.fault, ai.readProperty(PropertyIdentifier.eventState));
+        ai.writePropertyInternal(PropertyIdentifier.presentValue, new Real(50));
+
+        // Resolving the conflict restores the reliability.
+        ai.writePropertyInternal(PropertyIdentifier.highLimit, new Real(100));
+        assertEquals(Reliability.noFaultDetected, ai.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.normal, ai.readProperty(PropertyIdentifier.eventState));
+
+        // Fault_High_Limit less than Fault_Low_Limit.
+        ai.writePropertyInternal(PropertyIdentifier.faultLowLimit, new Real(130));
+        assertEquals(Reliability.configurationError, ai.readProperty(PropertyIdentifier.reliability));
+        ai.writePropertyInternal(PropertyIdentifier.faultLowLimit, new Real(0));
+        assertEquals(Reliability.noFaultDetected, ai.readProperty(PropertyIdentifier.reliability));
+    }
+
+    /**
      * Per 13.2.2.3 (addendum 135-2020co-1): while Out_Of_Service is TRUE, writing a fault-range
      * value to the monitored value simulates a fault, and the application of the fault algorithm
      * also results in a change to the Reliability property.

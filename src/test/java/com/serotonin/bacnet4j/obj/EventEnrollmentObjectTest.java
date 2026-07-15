@@ -48,6 +48,7 @@ import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
 import com.serotonin.bacnet4j.type.constructed.FaultParameter;
 import com.serotonin.bacnet4j.type.constructed.FaultParameter.FaultOutOfRange;
 import com.serotonin.bacnet4j.type.constructed.FaultParameter.FaultOutOfRange.FaultNormalValue;
+import com.serotonin.bacnet4j.type.constructed.FaultParameter.FaultState;
 import com.serotonin.bacnet4j.type.constructed.FaultParameter.FaultStatusFlags;
 import com.serotonin.bacnet4j.type.constructed.PropertyStates;
 import com.serotonin.bacnet4j.type.constructed.PropertyValue;
@@ -559,5 +560,60 @@ public class EventEnrollmentObjectTest extends AbstractTest {
         clock.plusMillis(200);
         quiesce();
         assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
+    }
+
+    /**
+     * Per 12.12.21 (addendum 135-2020co-2): the Reliability property takes on CONFIGURATION_ERROR
+     * while the Low_Limit parameter is greater than the High_Limit parameter.
+     */
+    @Test
+    public void parameterConflictRange() throws Exception {
+        DeviceObjectPropertyReference ref =
+                new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 1),
+                        PropertyIdentifier.minPresValue, null, new ObjectIdentifier(ObjectType.device, 3));
+        // Low_Limit 70 is greater than High_Limit 30.
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee0", ref, NotifyType.alarm,
+                new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(70), new Real(30), new Real(0))),
+                new EventTransitionBits(true, true, true), 5, 100, null, null));
+
+        assertEquals(Reliability.configurationError, ee.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.fault, ee.readProperty(PropertyIdentifier.eventState));
+
+        // Writing consistent parameters resolves the conflict.
+        ee.writeProperty(null, new PropertyValue(PropertyIdentifier.eventParameters, null,
+                new EventParameter(new OutOfRange(new UnsignedInteger(1), new Real(30), new Real(70), new Real(0))),
+                null));
+        assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
+    }
+
+    /**
+     * Per 12.12.21 (addendum 135-2020co-2): the Reliability property takes on CONFIGURATION_ERROR
+     * while a value is present in both the List_Of_Values parameter in the Event_Parameters property
+     * and the List_Of_Fault_Values parameter in the Fault_Parameters property.
+     */
+    @Test
+    public void parameterConflictLists() throws Exception {
+        DeviceObjectPropertyReference ref =
+                new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 0),
+                        PropertyIdentifier.units, null, new ObjectIdentifier(ObjectType.device, 3));
+        // hertz is present in both the List_Of_Values and the List_Of_Fault_Values.
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+                d1, 0, "ee0", ref, NotifyType.alarm,
+                new EventParameter(new ChangeOfState(new UnsignedInteger(1),
+                        new SequenceOf<>(new PropertyStates(EngineeringUnits.hertz)))),
+                new EventTransitionBits(true, true, true), 5, 100, null,
+                new FaultParameter(new FaultState(new SequenceOf<>(new PropertyStates(EngineeringUnits.hertz))))));
+
+        assertEquals(Reliability.configurationError, ee.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.fault, ee.readProperty(PropertyIdentifier.eventState));
+
+        // Removing the overlap resolves the conflict.
+        ee.writeProperty(null, new PropertyValue(PropertyIdentifier.faultParameters, null,
+                new FaultParameter(new FaultState(new SequenceOf<>(new PropertyStates(EngineeringUnits.kilohertz)))),
+                null));
+        assertEquals(Reliability.noFaultDetected, ee.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.normal, ee.readProperty(PropertyIdentifier.eventState));
     }
 }

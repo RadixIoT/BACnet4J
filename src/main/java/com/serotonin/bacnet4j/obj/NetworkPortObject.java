@@ -70,10 +70,9 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
  * this class is left to product builders.
  */
 public class NetworkPortObject extends BACnetObject {
+    // Note: before the object is initialized, all written properties will be set in the object. After, all changes
+    // pending properties will be written to the pending changes map.
     private final Map<PropertyIdentifier, Encodable> pendingChanges = new ConcurrentHashMap<>();
-    // Before the object is initialized, all written properties will be set in the object. After, all changes pending
-    // properties will be written to the pending changes map.
-    private volatile boolean initialized = false;
 
     public NetworkPortObject(LocalDevice localDevice, int instanceNumber, String name, boolean outOfService,
             NetworkType networkType, ProtocolLevel protocolLevel, Set<PropertyIdentifier> readOnlyProperties) {
@@ -131,11 +130,6 @@ public class NetworkPortObject extends BACnetObject {
                 PropertyIdentifier.certificateSigningRequestFile
         ));
         addMixin(new ReadOnlyPropertyMixin(this, readOnly.toArray(new PropertyIdentifier[0])));
-    }
-
-    @Override
-    protected void initializeImpl() {
-        initialized = true;
     }
 
     public Map<PropertyIdentifier, Encodable> getPendingChanges() {
@@ -325,7 +319,7 @@ public class NetworkPortObject extends BACnetObject {
      */
     @Override
     protected void set(PropertyIdentifier pid, Encodable value) {
-        if (initialized && CHANGES_PENDING_PROPERTIES.contains(pid)) {
+        if (isInitialized() && CHANGES_PENDING_PROPERTIES.contains(pid)) {
             var existing = properties.get(pid);
             if (Objects.equals(existing, value)) {
                 // Writing the currently active value. Remove the pending change if it exists.

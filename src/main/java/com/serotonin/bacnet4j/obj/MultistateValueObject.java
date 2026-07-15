@@ -51,16 +51,16 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class MultistateValueObject extends BACnetObject {
-    public MultistateValueObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final int numberOfStates, final BACnetArray<CharacterString> stateText, final int presentValueBase1,
-            final boolean outOfService) throws BACnetServiceException {
+    public MultistateValueObject(LocalDevice localDevice, int instanceNumber, String name, int numberOfStates,
+            BACnetArray<CharacterString> stateText, int presentValueBase1, boolean outOfService)
+            throws BACnetServiceException {
         super(localDevice, ObjectType.multiStateValue, instanceNumber, name);
 
         if (numberOfStates < 1) {
             throw new IllegalArgumentException("numberOfStates cannot be less than 1");
         }
 
-        final ValueSource valueSource = new ValueSource(new DeviceObjectReference(localDevice.getId(), getId()));
+        ValueSource valueSource = new ValueSource(new DeviceObjectReference(localDevice.getId(), getId()));
 
         writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);
         writeProperty(valueSource, PropertyIdentifier.presentValue, new UnsignedInteger(presentValueBase1));
@@ -87,9 +87,9 @@ public class MultistateValueObject extends BACnetObject {
         }
     }
 
-    public MultistateValueObject supportIntrinsicReporting(final int timeDelay, final int notificationClass,
-            final BACnetArray<UnsignedInteger> alarmValues, final BACnetArray<UnsignedInteger> faultValues,
-            final EventTransitionBits eventEnable, final NotifyType notifyType, final int timeDelayNormal) {
+    public MultistateValueObject supportIntrinsicReporting(int timeDelay, int notificationClass,
+            BACnetArray<UnsignedInteger> alarmValues, BACnetArray<UnsignedInteger> faultValues,
+            EventTransitionBits eventEnable, NotifyType notifyType, int timeDelayNormal) {
         // Prepare the object with all the properties that intrinsic reporting will need.
         // User-defined properties
         writePropertyInternal(PropertyIdentifier.timeDelay, new UnsignedInteger(timeDelay));
@@ -103,14 +103,15 @@ public class MultistateValueObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.eventDetectionEnable, Boolean.TRUE);
 
         // Now add the mixin.
-        final ChangeOfStateAlgo eventAlgo = new ChangeOfStateAlgo(PropertyIdentifier.presentValue,
+        ChangeOfStateAlgo eventAlgo = new ChangeOfStateAlgo(PropertyIdentifier.presentValue,
                 PropertyIdentifier.alarmValues);
         FaultStateAlgo faultAlgo = null;
         if (faultValues != null) {
             faultAlgo = new FaultStateAlgo(PropertyIdentifier.reliability, PropertyIdentifier.faultValues);
         }
         addMixin(new IntrinsicReportingMixin(this, eventAlgo, faultAlgo, PropertyIdentifier.presentValue,
-                new PropertyIdentifier[] {PropertyIdentifier.presentValue}));
+                new PropertyIdentifier[] {PropertyIdentifier.presentValue}))
+                .withAlarmFaultCommonPropertyConflictCheck();
 
         return this;
     }
@@ -120,7 +121,7 @@ public class MultistateValueObject extends BACnetObject {
         return this;
     }
 
-    public MultistateValueObject supportCommandable(final UnsignedInteger relinquishDefault) {
+    public MultistateValueObject supportCommandable(UnsignedInteger relinquishDefault) {
         _supportCommandable(relinquishDefault);
         return this;
     }

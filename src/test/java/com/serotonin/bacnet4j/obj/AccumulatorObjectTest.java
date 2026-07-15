@@ -89,6 +89,39 @@ public class AccumulatorObjectTest extends AbstractTest {
                 d1, 54, "nc54", 100, 5, 200, new EventTransitionBits(true, true, true)));
     }
 
+    /**
+     * Per 12.61.9 (addendum 135-2020co-2): the Reliability property takes on CONFIGURATION_ERROR
+     * while the limits or the fault limits are configured in conflict. The Accumulator limits are
+     * of type Unsigned, unlike the Real limits of the analog objects.
+     */
+    @Test
+    public void configurationConflict() throws Exception {
+        // Default the pulse rate to a value within the limits.
+        a.set(PropertyIdentifier.pulseRate, new UnsignedInteger(40));
+
+        a.supportIntrinsicReporting(50, 30, 60, 20, 3, new UnsignedInteger(5), 54, new LimitEnable(true, true),
+                new EventTransitionBits(true, true, true), NotifyType.event);
+        assertEquals(Reliability.noFaultDetected, a.readProperty(PropertyIdentifier.reliability));
+
+        // High_Limit less than Low_Limit with both limits enabled.
+        a.writePropertyInternal(PropertyIdentifier.highLimit, new UnsignedInteger(10));
+        assertEquals(Reliability.configurationError, a.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.fault, a.readProperty(PropertyIdentifier.eventState));
+
+        // Resolving the conflict restores the reliability.
+        a.writePropertyInternal(PropertyIdentifier.highLimit, new UnsignedInteger(50));
+        assertEquals(Reliability.noFaultDetected, a.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState));
+
+        // Fault_High_Limit less than Fault_Low_Limit.
+        a.writePropertyInternal(PropertyIdentifier.faultLowLimit, new UnsignedInteger(70));
+        assertEquals(Reliability.configurationError, a.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.fault, a.readProperty(PropertyIdentifier.eventState));
+        a.writePropertyInternal(PropertyIdentifier.faultLowLimit, new UnsignedInteger(20));
+        assertEquals(Reliability.noFaultDetected, a.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.normal, a.readProperty(PropertyIdentifier.eventState));
+    }
+
     @SuppressWarnings("unchecked")
     @Test
     public void intrinsicReporting() throws Exception {

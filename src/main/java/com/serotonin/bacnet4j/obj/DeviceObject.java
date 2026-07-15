@@ -223,7 +223,7 @@ public class DeviceObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.firmwareRevision, new CharacterString("not set"));
         writePropertyInternal(PropertyIdentifier.applicationSoftwareVersion, new CharacterString(LocalDevice.VERSION));
         writePropertyInternal(PropertyIdentifier.protocolVersion, new UnsignedInteger(1));
-        writePropertyInternal(PropertyIdentifier.protocolRevision, new UnsignedInteger(27));
+        writePropertyInternal(PropertyIdentifier.protocolRevision, new UnsignedInteger(30));
 
         UnsignedInteger databaseRevision = getLocalDevice().getPersistence()
                 .loadEncodable(getPersistenceKey(PropertyIdentifier.databaseRevision), UnsignedInteger.class);

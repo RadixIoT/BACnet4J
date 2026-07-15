@@ -83,12 +83,12 @@ public class AnalogOutputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void intrinsicReporting() throws Exception {
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         ao.supportIntrinsicReporting(60, 17, 100, 20, 5, new LimitEnable(true, true),
@@ -144,6 +144,26 @@ public class AnalogOutputObjectTest extends AbstractTest {
         assertEquals(new NotificationParameters(
                 new OutOfRangeNotif(new Real(94), new StatusFlags(false, false, false, false), new Real(5),
                         new Real(100))), notif.eventValues());
+    }
+
+    /**
+     * Per 12.3.9 (addendum 135-2020co-2): the Reliability property takes on CONFIGURATION_ERROR
+     * while both limits are enabled and High_Limit is less than Low_Limit.
+     */
+    @Test
+    public void configurationConflict() throws Exception {
+        ao.supportIntrinsicReporting(60, 17, 100, 20, 5, new LimitEnable(true, true),
+                new EventTransitionBits(true, true, true), NotifyType.alarm, 180);
+
+        // High_Limit less than Low_Limit with both limits enabled.
+        ao.writePropertyInternal(PropertyIdentifier.highLimit, new Real(10));
+        assertEquals(Reliability.configurationError, ao.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.fault, ao.readProperty(PropertyIdentifier.eventState));
+
+        // Disabling one of the limits resolves the conflict.
+        ao.writePropertyInternal(PropertyIdentifier.limitEnable, new LimitEnable(true, false));
+        assertEquals(Reliability.noFaultDetected, ao.readProperty(PropertyIdentifier.reliability));
+        assertEquals(EventState.normal, ao.readProperty(PropertyIdentifier.eventState));
     }
 
     @Test
@@ -223,20 +243,20 @@ public class AnalogOutputObjectTest extends AbstractTest {
     @SuppressWarnings("unchecked")
     @Test
     public void algorithmicReporting() throws Exception {
-        final DeviceObjectPropertyReference ref =
+        DeviceObjectPropertyReference ref =
                 new DeviceObjectPropertyReference(1, ao.getId(), PropertyIdentifier.presentValue);
-        final EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
+        EventEnrollmentObject ee = d1.addObject(new EventEnrollmentObject(
                 d1, 0, "ee", ref, NotifyType.alarm,
                 new EventParameter(new OutOfRange(new UnsignedInteger(30), new Real(40), new Real(60), new Real(2))),
                 new EventTransitionBits(true, true, true), 17, 1000, null, null));
 
         // Set up the notification destination
-        final SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
+        SequenceOf<Destination> recipients = nc.get(PropertyIdentifier.recipientList);
         recipients.add(new Destination(new Recipient(rd2.getAddress()), new UnsignedInteger(10), Boolean.TRUE,
                 new EventTransitionBits(true, true, true)));
 
         // Create an event listener on d2 to catch the event notifications.
-        final EventNotifListener listener = new EventNotifListener();
+        EventNotifListener listener = new EventNotifListener();
         d2.getEventHandler().addListener(listener);
 
         // Ensure that initializing the event enrollment object didn't fire any notifications.

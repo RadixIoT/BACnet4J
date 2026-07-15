@@ -92,6 +92,9 @@ public class BACnetObject {
     // Configuration
     private boolean deletable;
 
+    // Runtime
+    private volatile boolean initialized;
+
     public BACnetObject(LocalDevice localDevice, ObjectType type, int instanceNumber) {
         this(localDevice, type, instanceNumber, null);
     }
@@ -161,6 +164,11 @@ public class BACnetObject {
             mixin.initialize();
         }
         initializeImpl();
+        initialized = true;
+    }
+
+    public final boolean isInitialized() {
+        return initialized;
     }
 
     protected void initializeImpl() {
@@ -198,11 +206,12 @@ public class BACnetObject {
     //
     // Mixins
     //
-    protected final void addMixin(AbstractMixin mixin) {
+    protected final <T extends AbstractMixin> T addMixin(T mixin) {
         addMixin(mixins.size(), mixin);
+        return mixin;
     }
 
-    protected final void addMixin(int index, AbstractMixin mixin) {
+    protected final <T extends AbstractMixin> T addMixin(int index, T mixin) {
         mixins.add(index, mixin);
 
         if (mixin instanceof HasStatusFlagsMixin m)
@@ -213,6 +222,8 @@ public class BACnetObject {
             eventReportingMixin = m;
         else if (mixin instanceof CovReportingMixin m)
             changeOfValueMixin = m;
+
+        return mixin;
     }
 
     public void setOverridden(boolean b) {
@@ -346,14 +357,13 @@ public class BACnetObject {
      *
      * @throws BACnetServiceException if the object objected to the read
      */
-    @SuppressWarnings("unchecked")
     public final <T extends Encodable> T readProperty(PropertyIdentifier pid) throws BACnetServiceException {
         // Give the mixins notice that the property is being read.
         for (AbstractMixin mixin : mixins)
             mixin.beforeReadProperty(pid);
         beforeReadProperty(pid);
 
-        return (T) get(pid);
+        return get(pid);
     }
 
     /**
@@ -658,11 +668,6 @@ public class BACnetObject {
         // no op
     }
 
-    //
-    //
-    // Other
-    //
-
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass())
@@ -673,6 +678,6 @@ public class BACnetObject {
 
     @Override
     public int hashCode() {
-        return Objects.hash(getId());
+        return Objects.hashCode(getId());
     }
 }

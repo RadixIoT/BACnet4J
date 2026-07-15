@@ -40,14 +40,16 @@ import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 /**
  * Mixins allow different objects to share functionality that is otherwise common between them. Functionality that is
  * specific to a given object type should still be coded into the class for the type itself.
- *
- * @author Matthew
  */
 public class AbstractMixin {
     private final BACnetObject bo;
 
-    public AbstractMixin(final BACnetObject bo) {
+    public AbstractMixin(BACnetObject bo) {
         this.bo = bo;
+    }
+
+    protected final BACnetObject getBo() {
+        return bo;
     }
 
     //
@@ -59,26 +61,26 @@ public class AbstractMixin {
     }
 
     // Adds the property to the properties map, and updates the property list as required.
-    protected final void addProperty(final PropertyIdentifier pid, final Encodable value, final boolean overwrite) {
+    protected final void addProperty(PropertyIdentifier pid, Encodable value, boolean overwrite) {
         if (overwrite || !properties().containsKey(pid)) {
             properties().put(pid, value);
         }
     }
 
-    protected final void writePropertyInternal(final PropertyIdentifier pid, final Encodable value) {
+    protected final void writePropertyInternal(PropertyIdentifier pid, Encodable value) {
         bo.writePropertyInternal(pid, value);
     }
 
-    protected final void set(final PropertyIdentifier pid, final Encodable value) {
+    protected final void set(PropertyIdentifier pid, Encodable value) {
         bo.set(pid, value);
     }
 
-    protected final <T extends Encodable> T get(final PropertyIdentifier pid) {
+    protected final <T extends Encodable> T get(PropertyIdentifier pid) {
         return bo.get(pid);
     }
 
-    protected final <T extends Encodable> T get(final PropertyIdentifier pid, final T defaultValue) {
-        final T value = get(pid);
+    protected final <T extends Encodable> T get(PropertyIdentifier pid, T defaultValue) {
+        T value = get(pid);
         return value == null ? defaultValue : value;
     }
 
@@ -98,46 +100,43 @@ public class AbstractMixin {
     /**
      * Allow the mixin a chance to perform actions before the property is read.
      *
-     * @param pid
+     * @param pid the property being read
      * @throws BACnetServiceException if for some reason the read should be prevented.
      */
-    protected void beforeReadProperty(final PropertyIdentifier pid) throws BACnetServiceException {
+    protected void beforeReadProperty(PropertyIdentifier pid) throws BACnetServiceException {
         // no op
     }
 
     /**
      * Allow the mixin to override the property validation.
      *
-     * @param valueSource
-     * @param value
+     * @param valueSource the source of the new value
+     * @param value       the new value
      * @return true if the validation was handled, false otherwise.
      * @throws BACnetServiceException if the property was so bad that an exception had to be thrown
      */
-    protected boolean validateProperty(final ValueSource valueSource, final PropertyValue value)
-            throws BACnetServiceException {
+    protected boolean validateProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
         return false;
     }
 
     /**
      * Allow the mixin to override the property write.
      *
-     * @param valueSource
-     * @param value
+     * @param valueSource the source of the new value
+     * @param value       the new value
      * @return true if the write was handled, false otherwise.
-     * @throws BACnetServiceException
+     * @throws BACnetServiceException if there was a problem writing the value
      */
-    protected boolean writeProperty(final ValueSource valueSource, final PropertyValue value)
-            throws BACnetServiceException {
+    protected boolean writeProperty(ValueSource valueSource, PropertyValue value) throws BACnetServiceException {
         return false;
     }
 
     /**
-     * @param pid
-     * @param oldValue
-     * @param newValue
+     * @param pid      the property that was written
+     * @param oldValue the old value
+     * @param newValue the new value
      */
-    protected void afterWriteProperty(final PropertyIdentifier pid, final Encodable oldValue,
-            final Encodable newValue) {
+    protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         // no op
     }
 
