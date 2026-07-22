@@ -33,10 +33,14 @@ import java.security.PrivateKey;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.net.ssl.SSLContext;
 
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
@@ -72,6 +76,8 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
  * 3) Provide a mechanism for generating a CSR. See SCCsrGenerationTest.
  */
 public class SCNetwork extends Network {
+    private static final Logger LOG = LoggerFactory.getLogger(SCNetwork.class);
+
     // Configuration
     private OctetString vmac;
     private final OctetString uuid;
@@ -102,6 +108,7 @@ public class SCNetwork extends Network {
     private SCHubConnection initializationError =
             new SCHubConnection(SCConnectionState.notConnected, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED);
     private SCNode node;
+    private final CopyOnWriteArrayList<SCHubConnectionListener> hubConnectionListeners = new CopyOnWriteArrayList<>();
 
     private long bytesOut;
     private long bytesIn;
@@ -304,6 +311,70 @@ public class SCNetwork extends Network {
 
     public SCHubConnection getFailoverHubConnectionStatus() {
         return node == null ? initializationError : node.getFailoverHubConnectionStatus();
+    }
+
+    /**
+     * Adds a listener that is notified when the hub connector state changes. Unlike other network types,
+     * an SC network is not usable when {@code LocalDevice.initialize()} returns: the hub connection is
+     * established asynchronously, and until then outgoing messages are dropped. See
+     * {@link SCHubConnectionListener} for the threading contract.
+     */
+    public void addHubConnectionListener(SCHubConnectionListener listener) {
+        hubConnectionListeners.add(listener);
+    }
+
+    public void removeHubConnectionListener(SCHubConnectionListener listener) {
+        hubConnectionListeners.remove(listener);
+    }
+
+    /**
+     * Returns true if the hub connector is connected to the primary or the failover hub, i.e. the network
+     * can currently send and receive messages.
+     */
+    public boolean isHubConnected() {
+        return getHubConnectorState() != SCHubConnectorState.noHubConnection;
+    }
+
+    /**
+     * Returns a future that completes with the hub connector state when a hub connection is established,
+     * or immediately if one already is. Intended for startup sequencing: initialize the local device, then
+     * wait on this future before starting operations that require the network.
+     * <p>
+     * The future completes on the local device's executor thread; chain substantial work with the async
+     * continuation methods. It never completes exceptionally and does not time out by itself — callers that
+     * cannot wait indefinitely (e.g. because the hub may be unreachable) should apply
+     * {@link CompletableFuture#orTimeout}. Termination of the network does not complete the future.
+     */
+    public CompletableFuture<SCHubConnectorState> whenHubConnected() {
+        CompletableFuture<SCHubConnectorState> future = new CompletableFuture<>();
+        SCHubConnectionListener listener = (oldState, newState) -> {
+            if (newState != SCHubConnectorState.noHubConnection) {
+                future.complete(newState);
+            }
+        };
+        addHubConnectionListener(listener);
+        // Check the current state after registering the listener so that a connection established between
+        // the check and the registration cannot be missed.
+        SCHubConnectorState state = getHubConnectorState();
+        if (state != SCHubConnectorState.noHubConnection) {
+            future.complete(state);
+        }
+        future.whenComplete((s, e) -> removeHubConnectionListener(listener));
+        return future;
+    }
+
+    /**
+     * Called by the hub connector when its state changes. Listener exceptions are logged and do not
+     * affect other listeners or the connector.
+     */
+    void fireHubConnectionStateChanged(SCHubConnectorState oldState, SCHubConnectorState newState) {
+        for (SCHubConnectionListener listener : hubConnectionListeners) {
+            try {
+                listener.hubConnectionStateChanged(oldState, newState);
+            } catch (Exception e) {
+                LOG.error("Error in hub connection listener", e);
+            }
+        }
     }
 
     /**

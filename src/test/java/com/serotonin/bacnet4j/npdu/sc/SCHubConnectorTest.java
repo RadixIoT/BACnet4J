@@ -1107,4 +1107,94 @@ public class SCHubConnectorTest {
         verify(failoverConn).terminate();
         verify(primaryConn, never()).terminate();
     }
+
+    // ======================================================================================
+    // Hub connection state change notifications. The connector notifies through
+    // network.fireHubConnectionStateChanged whenever the externally visible
+    // SCHubConnectorState changes; internal transitions that map to the same value are silent.
+    // ======================================================================================
+
+    @Test
+    public void notify_connectToPrimary_firesNoConnectionToPrimary() {
+        enterConnectedPrimary();
+
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.noHubConnection, SCHubConnectorState.connectedToPrimary);
+        verify(network, times(1)).fireHubConnectionStateChanged(any(), any());
+    }
+
+    @Test
+    public void notify_connectToFailover_firesNoConnectionToFailover() {
+        enterConnectedFailover();
+
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.noHubConnection, SCHubConnectorState.connectedToFailover);
+        verify(network, times(1)).fireHubConnectionStateChanged(any(), any());
+    }
+
+    /**
+     * CONNECTED_FAILOVER to REWAIT_PRIMARY maps to the same external state (connectedToFailover),
+     * so retrying the primary while connected to the failover must not produce a notification.
+     */
+    @Test
+    public void notify_failoverToRewaitPrimary_isSilent() {
+        enterRewaitPrimary();
+
+        verify(network, times(1)).fireHubConnectionStateChanged(any(), any());
+    }
+
+    /**
+     * Recovery from the failover to the primary changes the external state without passing through
+     * a disconnected state, and must be notified as failover to primary.
+     */
+    @Test
+    public void notify_recoveryToPrimary_firesFailoverToPrimary() {
+        enterRewaitPrimary();
+
+        connector.onConnectionEstablished(primaryConn);
+
+        assertEquals(SCHubConnector.State.CONNECTED_PRIMARY, connector.getState());
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.connectedToFailover, SCHubConnectorState.connectedToPrimary);
+    }
+
+    @Test
+    public void notify_connectionLost_firesPrimaryToNoConnection() {
+        enterConnectedPrimary();
+        clearInvocations(network);
+
+        connector.onConnectionIdle(primaryConn, true);
+
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.connectedToPrimary, SCHubConnectorState.noHubConnection);
+    }
+
+    @Test
+    public void notify_stopWhileConnected_firesPrimaryToNoConnection() {
+        enterConnectedPrimary();
+        clearInvocations(network);
+
+        connector.terminate();
+
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.connectedToPrimary, SCHubConnectorState.noHubConnection);
+    }
+
+    @Test
+    public void notify_hardTerminateWhileConnected_firesPrimaryToNoConnection() {
+        enterConnectedPrimary();
+        clearInvocations(network);
+
+        connector.hardTerminate();
+
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.connectedToPrimary, SCHubConnectorState.noHubConnection);
+    }
+
+    @Test
+    public void notify_hardTerminateWhileIdle_isSilent() {
+        connector.hardTerminate();
+
+        verify(network, never()).fireHubConnectionStateChanged(any(), any());
+    }
 }

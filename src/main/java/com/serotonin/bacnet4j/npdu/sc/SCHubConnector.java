@@ -125,6 +125,7 @@ public class SCHubConnector {
     }
 
     public synchronized void hardTerminate() {
+        SCHubConnectorState before = getHubConnectorState();
         cancelTimeout();
         if (primaryConnection != null) {
             primaryConnection.hardTerminate();
@@ -133,6 +134,7 @@ public class SCHubConnector {
             failoverConnection.hardTerminate();
         }
         state = State.IDLE;
+        notifyIfStateChanged(before);
     }
 
     public SCHubConnectorState getHubConnectorState() {
@@ -170,6 +172,15 @@ public class SCHubConnector {
     }
 
     protected synchronized void handleEvent(Event event, Object... args) {
+        SCHubConnectorState before = getHubConnectorState();
+        try {
+            handleEventInternal(event, args);
+        } finally {
+            notifyIfStateChanged(before);
+        }
+    }
+
+    private void handleEventInternal(Event event, Object... args) {
         LOG.debug("handleEvent start: {}, event={}, args={}", state, event, args);
 
         if (event == Event.STOP) {
@@ -324,6 +335,18 @@ public class SCHubConnector {
         }
 
         LOG.debug("handleEvent end: {}", state);
+    }
+
+    /**
+     * Notifies the network's hub connection listeners if the externally visible connector state differs
+     * from the given prior state. Internal state transitions that map to the same BACnetSCHubConnectorState
+     * value (e.g. CONNECTED_FAILOVER to REWAIT_PRIMARY) do not produce notifications.
+     */
+    private void notifyIfStateChanged(SCHubConnectorState before) {
+        SCHubConnectorState after = getHubConnectorState();
+        if (before != after) {
+            network.fireHubConnectionStateChanged(before, after);
+        }
     }
 
     private void raiseChange(State newState) {
