@@ -185,9 +185,20 @@ public class NetworkPortObject extends BACnetObject {
                 null, null);
     }
 
+    /**
+     * Commits the pending changes so that they are no longer pending. Intended to be called by the product's
+     * reinitialize device handling upon receipt of ACTIVATE_CHANGES or WARMSTART, before the restart is performed.
+     * See 12.56.15.
+     * <p>
+     * BACnet4J does not know where the product persists its port configuration, and so it cannot store the new
+     * property values itself. Before calling this method, the caller must read the values in
+     * {@link #getPendingChanges()} and write them to the product's configuration store, so that the port is
+     * reconstructed with the new values after the restart. This method then clears the pending changes map.
+     * Subclasses override to commit any additional pending state they track (e.g. the certificate file backups
+     * kept by {@link SecureConnectNetworkPortObject}).
+     */
     public void applyPendingChanges() {
-        // See the pending changes map. To be implemented by subclasses. Can be called by a reinitialize device
-        // listener.
+        pendingChanges.clear();
     }
 
     private void validateCommand(NetworkPortCommand command) throws BACnetServiceException {
