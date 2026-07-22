@@ -379,6 +379,10 @@ public class LocalDevice implements AutoCloseable {
     }
 
     public synchronized void terminate(long timeout, TimeUnit timeoutUnit) {
+        // Terminate the transport before shutting down the timer: network shutdown - in particular
+        // the SC state machines - dispatches events and timeouts through the timer, so it must
+        // still be operational while the transport closes its connections.
+        transport.terminate();
         if (timer != null) {
             timer.shutdown();
             try {
@@ -389,7 +393,6 @@ public class LocalDevice implements AutoCloseable {
                 LOG.warn("Interrupted while waiting for shutdown of executors", e);
             }
         }
-        transport.terminate();
         initialized = false;
     }
 
