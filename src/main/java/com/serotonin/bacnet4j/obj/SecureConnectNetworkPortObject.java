@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
+import com.serotonin.bacnet4j.npdu.sc.SCKeyPairHandler;
 import com.serotonin.bacnet4j.npdu.sc.SCNetwork;
 import com.serotonin.bacnet4j.npdu.sc.SCNetworkUtils;
 import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
@@ -90,8 +91,10 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
     static final Logger LOG = LoggerFactory.getLogger(SecureConnectNetworkPortObject.class);
 
     private final SCNetwork network;
+    private final SCKeyPairHandler keyPairHandler;
 
-    public SecureConnectNetworkPortObject(LocalDevice localDevice, SCNetwork network, int instanceNumber) {
+    public SecureConnectNetworkPortObject(LocalDevice localDevice, SCNetwork network,
+            SCKeyPairHandler keyPairHandler, int instanceNumber) {
         super(localDevice, instanceNumber, network.getNetworkIdentifier().getIdString(),
                 false, NetworkType.secureConnect, ProtocolLevel.bacnetApplication, Set.of(
                         PropertyIdentifier.scHubFunctionEnable,
@@ -108,6 +111,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
             throw new IllegalStateException("Network port object already initialized");
         }
         this.network = network;
+        this.keyPairHandler = Objects.requireNonNull(keyPairHandler, "keyPairHandler is required");
 
         writePropertyInternal(PropertyIdentifier.apduLength, network.getApduLength());
         writePropertyInternal(PropertyIdentifier.macAddress, network.getVmac());
@@ -178,13 +182,25 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
 
     /**
      * Dispatches the GENERATE_CSR_FILE command to the {@link #generateCsrFile()} hook. Other
-     * commands fall through to the base class handling.
+     * commands fall through to the base class handling. Writes to the SC timing properties are
+     * propagated to the running network: they are configurable per 12.56 but are not part of the
+     * pending changes mechanism, so they take effect immediately.
      */
     @Override
     protected void afterWriteProperty(PropertyIdentifier pid, Encodable oldValue, Encodable newValue) {
         super.afterWriteProperty(pid, oldValue, newValue);
         if (pid.equals(PropertyIdentifier.command) && newValue == NetworkPortCommand.generateCsrFile) {
             executeCommand(this::generateCsrFile);
+        } else if (pid.equals(PropertyIdentifier.scMinimumReconnectTime)) {
+            network.setMinimumReconnectTime(((UnsignedInteger) newValue).intValue());
+        } else if (pid.equals(PropertyIdentifier.scMaximumReconnectTime)) {
+            network.setMaximumReconnectTime(((UnsignedInteger) newValue).intValue());
+        } else if (pid.equals(PropertyIdentifier.scConnectWaitTimeout)) {
+            network.setConnectWaitTimeout(((UnsignedInteger) newValue).intValue());
+        } else if (pid.equals(PropertyIdentifier.scDisconnectWaitTimeout)) {
+            network.setDisconnectWaitTimeout(((UnsignedInteger) newValue).intValue());
+        } else if (pid.equals(PropertyIdentifier.scHeartbeatTimeout)) {
+            network.setHeartbeatTimeout(((UnsignedInteger) newValue).intValue());
         }
     }
 
@@ -193,7 +209,11 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
      * writes GENERATE_CSR_FILE to the Command property. The default implementation does nothing;
      * product developers subclass this class and override this method to:
      * <ol>
-     *   <li>Generate and save a new private/public key pair if necessary.</li>
+     *   <li>Generate a new private/public key pair and register it with
+     *       {@code getKeyPairHandler().setPendingKeyPair(keyPair)}. The handler retains it (alongside the
+     *       active pair, which stays in use) until the operational certificate created from the CSR is
+     *       written and activated, at which point {@link #applyPendingChanges()} notifies the handler and
+     *       the pending pair is promoted to active.</li>
      *   <li>Build a PKCS #10 certificate signing request (RFC 5967) signed by the new private key.</li>
      *   <li>Write the PEM-encoded CSR into the File object referenced by
      *       {@code Certificate_Signing_Request_File}.</li>
@@ -206,6 +226,14 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         // Default no-op — subclasses override with their CSR generation logic.
     }
 
+    /**
+     * The handler that manages this port's active and pending key pairs. Subclasses use this in their
+     * {@link #generateCsrFile()} implementation to register the newly generated pending pair.
+     */
+    protected SCKeyPairHandler getKeyPairHandler() {
+        return keyPairHandler;
+    }
+
     protected void validateUnsignedRange(UnsignedInteger value, int min, int max) throws BACnetServiceException {
         var i = value.intValue();
         if (i < min || i > max) {
@@ -213,12 +241,14 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         }
     }
 
+    private DeviceEventAdapter certFileChangeListener;
+
     @Override
     protected void initializeImpl() {
         super.initializeImpl();
 
-        getLocalDevice().getEventHandler().addListener(new DeviceEventAdapter() {
-            List<ObjectIdentifier> certIds;
+        certFileChangeListener = new DeviceEventAdapter() {
+            final List<ObjectIdentifier> certIds;
 
             {
                 var issuerCerts = network.getIssuerCertificateFileIds();
@@ -252,8 +282,8 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
              *   its file size property will not remove that mark.
              * - if pending changes are discarded, we restore the backup file to be the current file and clear the
              *   pending changes markers.
-             * - if the changes are to be applied with the suitable "reinitialize device" request, the backup files are
-             *   deleted.
+             * - if the changes are to be applied with the suitable "reinitialize device" request, the product's
+             *   reinitialize device handling calls applyPendingChanges(), which deletes the backup files.
              * - if the device is restarted while the changes are still pending, the initialization needs to restore
              *   the backup files to be the current files. This is why the backup files can't just be temp files; we
              *   need to be able to find them at initialization.
@@ -308,10 +338,19 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
                     ).forEach(opv -> handleFileSizeChange(opv.getObjectIdentifier()));
                 }
             }
-        });
+        };
+        getLocalDevice().getEventHandler().addListener(certFileChangeListener);
 
         // Check if there are backup versions of the cert files, and if so make them the current files.
         reinstateBackupFiles();
+    }
+
+    @Override
+    protected void terminateImpl() {
+        if (certFileChangeListener != null) {
+            getLocalDevice().getEventHandler().removeListener(certFileChangeListener);
+        }
+        super.terminateImpl();
     }
 
     protected static final String BACKUP_EXTENSION = ".pendingChangesBackup";
@@ -320,7 +359,54 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
     protected void discardChanges() {
         super.discardChanges();
         // No need to remove markers because the super class clears the pending changes. Just reinstate the backup files.
+        // The pending key pair in the key pair handler is deliberately left alone: GENERATE_CSR_FILE does not
+        // affect Changes_Pending (12.56.16), and the CSR created with that pair may still be at the signing CA.
         reinstateBackupFiles();
+    }
+
+    /**
+     * Commits pending certificate file changes by deleting the backup files, so that the initialization after the
+     * coming restart does not revert the certificate files to their original content. The new certificate content
+     * is already in the files referenced by the File objects, so unlike ordinary pending property values it does
+     * not need to be copied to the product's configuration store. The note on the base method about storing the
+     * other pending property values still applies.
+     */
+    @Override
+    public void applyPendingChanges() {
+        super.applyPendingChanges();
+        deleteBackupFile(network.getOperationalCertificateFileId());
+        deleteBackupFile(network.getIssuerCertificateFileIds().get(0));
+        deleteBackupFile(network.getIssuerCertificateFileIds().get(1));
+        notifyCertificateActivated();
+    }
+
+    /**
+     * Notifies the key pair handler of the operational certificate that is now effective, so that it can
+     * promote the pending key pair when the certificate matches it. Skipped when the operational certificate
+     * file is empty (credential erasure) or unparseable.
+     */
+    private void notifyCertificateActivated() {
+        try {
+            byte[] data = fileContent(network.getOperationalCertificateFileId());
+            if (data.length == 0) {
+                return;
+            }
+            CertificateFactory cf = CertificateFactory.getInstance(SCNetworkUtils.DEFAULT_CERTIFICATE_TYPE);
+            keyPairHandler.certificateActivated(SCNetworkUtils.generateCertificate(cf, data));
+        } catch (IOException | CertificateException e) {
+            LOG.warn("Failed to notify the key pair handler of the activated operational certificate", e);
+        }
+    }
+
+    private void deleteBackupFile(ObjectIdentifier fileId) {
+        FileObject fileObject = getLocalDevice().getObject(fileId);
+        var fileAccess = (StreamAccess) fileObject.getFileAccess();
+        var filePath = fileAccess.getFile().toPath();
+        try {
+            Files.deleteIfExists(getBackupPath(filePath));
+        } catch (IOException e) {
+            LOG.error("Failed to delete cert backup file for {}", fileId, e);
+        }
     }
 
     private byte[] fileContent(ObjectIdentifier fileId) throws IOException {
@@ -479,7 +565,6 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected void validateCerts() throws CertException { // 12.56.100
         CertificateFactory cf = loadCertificateFactory();
 
@@ -487,43 +572,44 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         var issuer1FileId = network.getIssuerCertificateFileIds().get(0);
         var issuer2FileId = network.getIssuerCertificateFileIds().get(1);
 
-        // Load the certs. Some validation is done here regardless of whether the file has changed or not.
+        // Load the certs. Malformed content is detected here regardless of whether the file has changed or not.
         var opCert = loadCertificate(cf, opFileId, PropertyIdentifier.operationalCertificateFile);
         var caCerts = new X509Certificate[] {
                 loadCertificate(cf, issuer1FileId, PropertyIdentifier.issuerCertificateFiles),
                 loadCertificate(cf, issuer2FileId, PropertyIdentifier.issuerCertificateFiles),
         };
 
-        if (getPendingChanges().containsKey(PropertyIdentifier.operationalCertificateFile)) {
-            // Validate the operational certificate.
-            if (opCert == null) {
-                throw new CertException(PropertyIdentifier.operationalCertificateFile, ErrorCode.certificateMalformed,
-                        "Certificate file is empty");
-            }
-            checkCertValidity(opCert, opFileId, PropertyIdentifier.operationalCertificateFile);
-
-            if (!network.matchesPublicKey(opCert)) {
-                throw new CertException(PropertyIdentifier.operationalCertificateFile, ErrorCode.unknownCertificateKey,
-                        "Operational certificate does not match the internal private key");
-            }
-
-
-            if (!verifyAgainstAnyIssuer(opCert, caCerts)) {
-                throw new CertException(PropertyIdentifier.operationalCertificateFile, ErrorCode.certificateInvalid,
-                        "Operational certificate cannot be validated by any issuer certificate");
-            }
+        // The operational certificate is validated whenever any certificate file has a pending change, because a
+        // change to an issuer certificate can invalidate the operational certificate's chain. The issuer
+        // certificates themselves are not validated beyond the parsing above: 12.56.101 defines no required
+        // validations for them, and AB.7.4 does not check issuer expiry at connection time either.
+        if (!getPendingChanges().containsKey(PropertyIdentifier.operationalCertificateFile)
+                && !getPendingChanges().containsKey(PropertyIdentifier.issuerCertificateFiles)) {
+            return;
         }
 
-        var flags = (BACnetArray<Boolean>) getPendingChanges().get(PropertyIdentifier.issuerCertificateFiles);
-        if (flags != null) {
-            // Validate the issuer certificates.
-            if (Boolean.TRUE.equals(flags.get(0)) && caCerts[0] != null) {
-                checkCertValidity(caCerts[0], issuer1FileId, PropertyIdentifier.issuerCertificateFiles);
+        if (opCert == null) {
+            // An empty operational certificate file is acceptable only as part of a full credential erasure,
+            // i.e. when both issuer certificate files are also empty.
+            if (caCerts[0] != null || caCerts[1] != null) {
+                throw new CertException(PropertyIdentifier.operationalCertificateFile, ErrorCode.certificateInvalid,
+                        "Operational certificate file is empty while issuer certificates are configured");
             }
+            return;
+        }
 
-            if (Boolean.TRUE.equals(flags.get(1)) && caCerts[1] != null) {
-                checkCertValidity(caCerts[1], issuer2FileId, PropertyIdentifier.issuerCertificateFiles);
-            }
+        checkCertValidity(opCert, opFileId, PropertyIdentifier.operationalCertificateFile);
+
+        // 12.56.100 requires the certificate to validate against "an internal private key", i.e. either the
+        // active pair or the pending pair from an outstanding GENERATE_CSR_FILE.
+        if (!keyPairHandler.matches(opCert)) {
+            throw new CertException(PropertyIdentifier.operationalCertificateFile, ErrorCode.unknownCertificateKey,
+                    "Operational certificate does not match an internal private key");
+        }
+
+        if (!verifyAgainstAnyIssuer(opCert, caCerts)) {
+            throw new CertException(PropertyIdentifier.operationalCertificateFile, ErrorCode.certificateInvalid,
+                    "Operational certificate cannot be validated by any issuer certificate");
         }
     }
 
@@ -564,10 +650,9 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
     }
 
     /**
-     * Loads and parses an issuer certificate for use in operational-certificate chain validation.
-     * Returns null on any error — the caller treats a null issuer the same as an issuer that
-     * failed to verify, so unusable issuer files fall through to a CERTIFICATE_INVALID result on
-     * the operational certificate.
+     * Loads and parses a certificate file. Returns null when the file is empty, which per 12.56.100/101
+     * means no certificate is configured. Throws with CERTIFICATE_MALFORMED when the content cannot be
+     * read or parsed.
      */
     private X509Certificate loadCertificate(CertificateFactory cf, ObjectIdentifier fileId,
             PropertyIdentifier pid) throws CertException {

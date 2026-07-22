@@ -38,8 +38,6 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.security.Security;
 import java.security.spec.ECGenParameterSpec;
 
@@ -62,6 +60,7 @@ import org.junit.rules.TemporaryFolder;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.TestUtils;
+import com.serotonin.bacnet4j.npdu.sc.InMemoryKeyPairHandler;
 import com.serotonin.bacnet4j.npdu.sc.SCNetwork;
 import com.serotonin.bacnet4j.npdu.sc.SCNetworkBuilder;
 import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
@@ -96,6 +95,7 @@ public class SCCsrGenerationTest {
     public TemporaryFolder tempFolder = new TemporaryFolder();
 
     LocalDevice localDevice;
+    InMemoryKeyPairHandler keyPairHandler;
     CsrGeneratingSCNetworkPortObject npo;
 
     /**
@@ -125,12 +125,15 @@ public class SCCsrGenerationTest {
             Files.write(new File(tempFolder.getRoot(), name).toPath(), new byte[0]);
         }
 
+        // A real active key is not needed; the CSR flow generates its own pair and registers it
+        // as the handler's pending pair.
+        keyPairHandler = new InMemoryKeyPairHandler(mock(KeyPair.class));
         var network = new SCNetworkBuilder()
                 .vmac(VMAC)
                 .uuid(UUID)
                 .localNetworkNumber(123)
                 .primaryHubUri("wss://hub.example.com:4443")
-                .keyPair(mock(KeyPair.class))  // Real key not needed; CSR flow generates its own.
+                .keyPairHandler(keyPairHandler)
                 .operationalCertificateFileId(OPERATIONAL_CERT)
                 .issuerCertificateFile1Id(ISSUER_CERT_1)
                 .issuerCertificateFile2Id(ISSUER_CERT_2)
@@ -147,7 +150,7 @@ public class SCCsrGenerationTest {
         localDevice.addObject(new FileObject(localDevice, CSR_FILE, "pem",
                 new StreamAccess(new File(tempFolder.getRoot(), "csr.pem"))));
         npo = localDevice.addObject(new CsrGeneratingSCNetworkPortObject(
-                localDevice, (SCNetwork) localDevice.getNetwork(), NETWORK_PORT_INSTANCE));
+                localDevice, (SCNetwork) localDevice.getNetwork(), keyPairHandler, NETWORK_PORT_INSTANCE));
         localDevice.initialize();
     }
 
@@ -156,9 +159,9 @@ public class SCCsrGenerationTest {
      * hook runs, produces a new key pair, builds a PKCS #10 CSR signed by the new private key,
      * and writes the PEM-encoded CSR into the file referenced by Certificate_Signing_Request_File.
      * <p>
-     * The Command property returns to IDLE when the work completes. The new private key is
-     * retained by the product implementation until a matching operational certificate is
-     * written and activated via ReinitializeDevice.
+     * The Command property returns to IDLE when the work completes. The new key pair is
+     * retained by the key pair handler as the pending pair until a matching operational
+     * certificate is written and activated via ReinitializeDevice.
      */
     @Test
     public void generateCsrFile_producesValidPkcs10() throws Exception {
@@ -183,12 +186,13 @@ public class SCCsrGenerationTest {
                         .setProvider(BouncyCastleProvider.PROVIDER_NAME)
                         .build(csr.getSubjectPublicKeyInfo())));
 
-        // Product implementation retained the new key pair for later activation.
-        assertNotNull("Product should retain the new private key", npo.pendingPrivateKey);
-        assertNotNull("Product should retain the new public key", npo.pendingPublicKey);
+        // The new key pair was registered with the key pair handler as the pending pair, where it
+        // waits for the operational certificate that the signing CA creates from the CSR.
+        var pending = keyPairHandler.getPendingKeyPair();
+        assertNotNull("The handler should retain the new key pair as pending", pending);
         assertEquals("CSR public key must match the retained pending public key",
                 csr.getSubjectPublicKeyInfo(),
-                SubjectPublicKeyInfo.getInstance(npo.pendingPublicKey.getEncoded()));
+                SubjectPublicKeyInfo.getInstance(pending.getPublic().getEncoded()));
     }
 
     /**
@@ -210,31 +214,25 @@ public class SCCsrGenerationTest {
 
     /**
      * Example product subclass that plugs in a real CSR builder using BouncyCastle. A shipping
-     * product would additionally:
-     * <ul>
-     *   <li>Persist the new private key durably (encrypted at rest).</li>
-     *   <li>Restore it on device restart until the matching operational certificate is activated.</li>
-     *   <li>Wire the new key pair into the SC network at ReinitializeDevice(ACTIVATE_CHANGES) time.</li>
-     * </ul>
+     * product would additionally provide a persistent {@code SCKeyPairHandler} implementation
+     * (instead of {@code InMemoryKeyPairHandler}) that stores both pairs encrypted at rest and
+     * restores them on device restart.
      */
     static class CsrGeneratingSCNetworkPortObject extends SecureConnectNetworkPortObject {
-        /** Retained until ACTIVATE_CHANGES swaps this pair into the running SC network. */
-        PrivateKey pendingPrivateKey;
-        PublicKey pendingPublicKey;
-
-        CsrGeneratingSCNetworkPortObject(LocalDevice localDevice, SCNetwork network, int instanceNumber) {
-            super(localDevice, network, instanceNumber);
+        CsrGeneratingSCNetworkPortObject(LocalDevice localDevice, SCNetwork network,
+                InMemoryKeyPairHandler keyPairHandler, int instanceNumber) {
+            super(localDevice, network, keyPairHandler, instanceNumber);
         }
 
         @Override
         protected void generateCsrFile() {
             try {
-                // 1. Generate a fresh key pair.
+                // 1. Generate a fresh key pair and register it as the pending pair. The handler
+                //    retains it until the matching operational certificate is activated.
                 var kpg = KeyPairGenerator.getInstance("EC");
                 kpg.initialize(new ECGenParameterSpec("secp256r1"));
                 var kp = kpg.generateKeyPair();
-                pendingPrivateKey = kp.getPrivate();
-                pendingPublicKey = kp.getPublic();
+                getKeyPairHandler().setPendingKeyPair(kp);
 
                 // 2. Build a PKCS #10 CSR. The subject name identifies this device; a real
                 //    product would include vendor-specific fields, device UUID, etc.

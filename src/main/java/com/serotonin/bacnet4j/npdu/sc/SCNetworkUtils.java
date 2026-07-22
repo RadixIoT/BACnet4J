@@ -28,9 +28,11 @@
 package com.serotonin.bacnet4j.npdu.sc;
 
 import java.io.ByteArrayInputStream;
+import java.security.KeyPair;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.regex.Pattern;
 
@@ -62,5 +64,16 @@ public class SCNetworkUtils {
             return null;
         }
         return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(bytes));
+    }
+
+    /**
+     * Returns true if the certificate's public key equals the key pair's public key. Null-safe on both
+     * arguments and on the pair's public key.
+     */
+    public static boolean publicKeyMatches(X509Certificate certificate, KeyPair keyPair) {
+        if (certificate == null || keyPair == null || keyPair.getPublic() == null) {
+            return false;
+        }
+        return Arrays.equals(certificate.getPublicKey().getEncoded(), keyPair.getPublic().getEncoded());
     }
 }

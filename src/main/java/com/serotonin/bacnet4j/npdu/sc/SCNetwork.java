@@ -29,9 +29,10 @@ package com.serotonin.bacnet4j.npdu.sc;
 
 import java.io.IOException;
 import java.net.URI;
-import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
 
 import javax.net.ssl.SSLContext;
 
@@ -79,13 +80,15 @@ public class SCNetwork extends Network {
     private final int maxNpduLengthAccepted;
     private final String primaryHubUri;
     private final String failoverHubUri;
-    private final int minimumReconnectTime;
-    private final int maximumReconnectTime;
-    private final int connectWaitTimeout;
-    private final int disconnectWaitTimeout;
-    private final int heartbeatTimeout;
+    // The SC timing properties are configurable at runtime (12.56): they are read from here at
+    // each use, so writes to the network port object take effect immediately.
+    private volatile int minimumReconnectTime;
+    private volatile int maximumReconnectTime;
+    private volatile int connectWaitTimeout;
+    private volatile int disconnectWaitTimeout;
+    private volatile int heartbeatTimeout;
     private final int heartbeatAckTimeout;
-    private final KeyPair keyPair;
+    private final SCKeyPairHandler keyPairHandler;
     private final ObjectIdentifier operationalCertificateFileId;
     private final ObjectIdentifier issuerCertificateFile1Id;
     private final ObjectIdentifier issuerCertificateFile2Id;
@@ -118,7 +121,7 @@ public class SCNetwork extends Network {
             int disconnectWaitTimeout,
             int heartbeatTimeout,
             int heartbeatAckTimeout,
-            KeyPair keyPair,
+            SCKeyPairHandler keyPairHandler,
             Integer operationalCertificateFileId,
             Integer issuerCertificateFile1Id,
             Integer issuerCertificateFile2Id,
@@ -139,7 +142,7 @@ public class SCNetwork extends Network {
         this.disconnectWaitTimeout = disconnectWaitTimeout;
         this.heartbeatTimeout = heartbeatTimeout;
         this.heartbeatAckTimeout = heartbeatAckTimeout;
-        this.keyPair = keyPair;
+        this.keyPairHandler = keyPairHandler;
         this.operationalCertificateFileId = new ObjectIdentifier(ObjectType.file, operationalCertificateFileId);
         this.issuerCertificateFile1Id = new ObjectIdentifier(ObjectType.file, issuerCertificateFile1Id);
         this.issuerCertificateFile2Id = new ObjectIdentifier(ObjectType.file, issuerCertificateFile2Id);
@@ -161,7 +164,7 @@ public class SCNetwork extends Network {
 
     @Override
     public NetworkIdentifier getNetworkIdentifier() {
-        return new SCNetworkIdentifier(vmac);
+        return new SCNetworkIdentifier(uuid);
     }
 
     @Override
@@ -220,20 +223,42 @@ public class SCNetwork extends Network {
         return new UnsignedInteger(minimumReconnectTime);
     }
 
+    public void setMinimumReconnectTime(int minimumReconnectTime) {
+        this.minimumReconnectTime = minimumReconnectTime;
+        backoffPolicy.configure(minimumReconnectTime, maximumReconnectTime);
+    }
+
     public UnsignedInteger getMaximumReconnectTime() {
         return new UnsignedInteger(maximumReconnectTime);
+    }
+
+    public void setMaximumReconnectTime(int maximumReconnectTime) {
+        this.maximumReconnectTime = maximumReconnectTime;
+        backoffPolicy.configure(minimumReconnectTime, maximumReconnectTime);
     }
 
     public UnsignedInteger getConnectWaitTimeout() {
         return new UnsignedInteger(connectWaitTimeout);
     }
 
+    public void setConnectWaitTimeout(int connectWaitTimeout) {
+        this.connectWaitTimeout = connectWaitTimeout;
+    }
+
     public UnsignedInteger getDisconnectWaitTimeout() {
         return new UnsignedInteger(disconnectWaitTimeout);
     }
 
+    public void setDisconnectWaitTimeout(int disconnectWaitTimeout) {
+        this.disconnectWaitTimeout = disconnectWaitTimeout;
+    }
+
     public UnsignedInteger getHeartbeatTimeout() {
         return new UnsignedInteger(heartbeatTimeout);
+    }
+
+    public void setHeartbeatTimeout(int heartbeatTimeout) {
+        this.heartbeatTimeout = heartbeatTimeout;
     }
 
     // Not a spec value; does not appear in the network port object.
@@ -282,11 +307,12 @@ public class SCNetwork extends Network {
     }
 
     /**
-     * Returns true if the public key in the given certificate equals that in the key pair held by this network. Used
-     * for clause 12.56.100's "operational certificate failed to validate against an internal private key" check.
+     * Returns the connection status describing why this network failed to initialize, or null if it initialized
+     * successfully. Initialization failures - e.g. TLS configuration problems or invalid hub URIs - are recorded
+     * here rather than thrown from {@link #initialize(Transport)}. Only meaningful after initialization.
      */
-    public boolean matchesPublicKey(X509Certificate cert) {
-        return Arrays.equals(cert.getPublicKey().getEncoded(), keyPair.getPublic().getEncoded());
+    public SCHubConnection getInitializationError() {
+        return node == null ? initializationError : null;
     }
 
     @Override
@@ -357,8 +383,24 @@ public class SCNetwork extends Network {
             throw new IllegalArgumentException("Both issuer certificates file objects cannot be empty");
         }
 
-        var tls = new SCTLSManager(keyPair.getPrivate(), operationalCertificate, issuerCertificate1,
-                issuerCertificate2);
+        // Select the internal private key that matches the operational certificate. The handler may hold a
+        // pending pair from an outstanding CSR in addition to the active pair; the certificate determines
+        // which pair is effective for the port.
+        X509Certificate opCert;
+        try {
+            CertificateFactory cf = CertificateFactory.getInstance(SCNetworkUtils.DEFAULT_CERTIFICATE_TYPE);
+            opCert = SCNetworkUtils.generateCertificate(cf, operationalCertificate);
+        } catch (CertificateException e) {
+            throw new SCTLSManager.TLSException(ErrorClass.security, ErrorCode.certificateMalformed,
+                    "Operational certificate encoding error: %s", e);
+        }
+        PrivateKey privateKey = keyPairHandler.privateKeyFor(opCert);
+        if (privateKey == null) {
+            throw new SCTLSManager.TLSException(ErrorClass.security, ErrorCode.unknownCertificateKey,
+                    "Operational certificate does not match a private key", null);
+        }
+
+        var tls = new SCTLSManager(privateKey, operationalCertificate, issuerCertificate1, issuerCertificate2);
         sslContext = tls.getSSLContext();
     }
 

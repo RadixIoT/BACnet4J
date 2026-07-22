@@ -27,7 +27,6 @@
 
 package com.serotonin.bacnet4j.npdu.sc;
 
-import java.security.KeyPair;
 import java.util.UUID;
 
 import com.serotonin.bacnet4j.type.constructed.Address;
@@ -56,7 +55,7 @@ public class SCNetworkBuilder {
     // a dead connection to be closed. The value below defaults to the heartbeat timeout, but can be overridden as
     // needed to provide greater responsiveness.
     private int heartbeatAckTimeout = heartbeatTimeout;
-    private KeyPair keyPair;
+    private SCKeyPairHandler keyPairHandler;
     private Integer operationalCertificateFileId;
     private Integer issuerCertificateFile1Id;
     private Integer issuerCertificateFile2Id;
@@ -145,8 +144,8 @@ public class SCNetworkBuilder {
         return this;
     }
 
-    public SCNetworkBuilder keyPair(KeyPair keyPair) {
-        this.keyPair = keyPair;
+    public SCNetworkBuilder keyPairHandler(SCKeyPairHandler keyPairHandler) {
+        this.keyPairHandler = keyPairHandler;
         return this;
     }
 
@@ -214,11 +213,11 @@ public class SCNetworkBuilder {
             throw new IllegalArgumentException("invalid disconnect wait timeout");
         }
         if (heartbeatTimeout < 3 || heartbeatTimeout > 300) {
-            throw new IllegalArgumentException("invalid disconnect wait timeout");
+            throw new IllegalArgumentException("invalid heartbeat wait timeout");
         }
 
-        if (keyPair == null) {
-            throw new IllegalArgumentException("keyPair is required");
+        if (keyPairHandler == null) {
+            throw new IllegalArgumentException("keyPairHandler is required");
         }
         if (operationalCertificateFileId == null) {
             throw new IllegalArgumentException("operationalCertificateFileId is required");
@@ -234,7 +233,8 @@ public class SCNetworkBuilder {
         }
         return new SCNetwork(localNetworkNumber, vmac, uuid, apduLength, maxBvlcLengthAccepted, maxNpduLengthAccepted,
                 primaryHubUri, failoverHubUri, minimumReconnectTime, maximumReconnectTime, connectWaitTimeout,
-                disconnectWaitTimeout, heartbeatTimeout, heartbeatAckTimeout, keyPair, operationalCertificateFileId,
-                issuerCertificateFile1Id, issuerCertificateFile2Id, certificateSigningRequestFileId, backoffPolicy);
+                disconnectWaitTimeout, heartbeatTimeout, heartbeatAckTimeout, keyPairHandler,
+                operationalCertificateFileId, issuerCertificateFile1Id, issuerCertificateFile2Id,
+                certificateSigningRequestFileId, backoffPolicy);
     }
 }
