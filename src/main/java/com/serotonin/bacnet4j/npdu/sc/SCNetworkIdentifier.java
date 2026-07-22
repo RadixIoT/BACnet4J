@@ -27,19 +27,40 @@
 
 package com.serotonin.bacnet4j.npdu.sc;
 
+import java.util.Objects;
+
 import com.serotonin.bacnet4j.npdu.NetworkIdentifier;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.util.sero.StreamUtils;
 
 public class SCNetworkIdentifier extends NetworkIdentifier {
-    private final OctetString vmac;
+    private final String uuid;
 
-    public SCNetworkIdentifier(OctetString vmac) {
-        this.vmac = vmac;
+    public SCNetworkIdentifier(String uuid) {
+        // Normalize to the same lowercase undashed hex representation that the OctetString
+        // constructor produces, so that identifiers created from either form are equal.
+        this.uuid = uuid.replace("-", "").toLowerCase();
+    }
+
+    public SCNetworkIdentifier(OctetString uuid) {
+        this.uuid = StreamUtils.toHex(uuid.getBytes());
     }
 
     @Override
     public String getIdString() {
-        return StreamUtils.toHex(vmac.getBytes());
+        return uuid;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        SCNetworkIdentifier that = (SCNetworkIdentifier) o;
+        return Objects.equals(uuid, that.uuid);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(uuid);
     }
 }
