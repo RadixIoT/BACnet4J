@@ -332,6 +332,24 @@ public class ScheduleObjectTest extends AbstractTest {
         assertEquals(new SequenceOf<>(remote11), list);
     }
 
+    /**
+     * A schedule whose List_Of_Object_Property_References names a nonexistent local object must not NPE when
+     * the scheduled value is written, which happens during construction. Per 12.24.13, all members of the list
+     * must be writable, so the unresolvable reference is reported as CONFIGURATION_ERROR.
+     */
+    @Test
+    public void referenceToNonexistentObject_setsConfigurationError() throws Exception {
+        SequenceOf<DeviceObjectPropertyReference> refs = new SequenceOf<>(
+                new DeviceObjectPropertyReference(new ObjectIdentifier(ObjectType.analogValue, 99),
+                        PropertyIdentifier.presentValue, null, null));
+
+        ScheduleObject so = d1.addObject(new ScheduleObject(
+                d1, 0, "sch0", new DateRange(Date.MINIMUM_DATE, Date.MAXIMUM_DATE), null,
+                new SequenceOf<>(), new Real(8), refs, 12, false));
+
+        assertEquals(Reliability.configurationError, so.get(PropertyIdentifier.reliability));
+    }
+
     @Test
     public void changeDataType() throws Exception {
         AnalogValueObject av = d1.addObject(new AnalogValueObject(

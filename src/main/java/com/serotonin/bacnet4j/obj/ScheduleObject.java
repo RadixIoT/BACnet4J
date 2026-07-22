@@ -479,6 +479,13 @@ public class ScheduleObject extends BACnetObject {
             if (dopr.getDeviceIdentifier() == null) {
                 // Local write.
                 BACnetObject that = getLocalDevice().getObject(dopr.getObjectIdentifier());
+                if (that == null) {
+                    // 12.24.13 requires all members of List_Of_Object_Property_References to be writable; a
+                    // reference to a nonexistent object is a configuration error.
+                    LOG.warn("Schedule references nonexistent local object {}", dopr.getObjectIdentifier());
+                    writePropertyInternal(PropertyIdentifier.reliability, Reliability.configurationError);
+                    continue;
+                }
                 try {
                     that.writeProperty(new ValueSource(new DeviceObjectReference(getLocalDevice().getId(), getId())),
                             new PropertyValue(dopr.getPropertyIdentifier(), dopr.getPropertyArrayIndex(), value,
