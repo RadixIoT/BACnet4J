@@ -399,7 +399,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
     }
 
     private void deleteBackupFile(ObjectIdentifier fileId) {
-        FileObject fileObject = getLocalDevice().getObject(fileId);
+        FileObject fileObject = Objects.requireNonNull(getLocalDevice().getObject(fileId));
         var fileAccess = (StreamAccess) fileObject.getFileAccess();
         var filePath = fileAccess.getFile().toPath();
         try {
@@ -410,7 +410,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
     }
 
     private byte[] fileContent(ObjectIdentifier fileId) throws IOException {
-        FileObject fileObject = getLocalDevice().getObject(fileId);
+        FileObject fileObject = Objects.requireNonNull(getLocalDevice().getObject(fileId));
         var fileAccess = (StreamAccess) fileObject.getFileAccess();
         var filePath = fileAccess.getFile().toPath();
         return Files.readAllBytes(filePath);
@@ -423,7 +423,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
     }
 
     private void reinstateBackupFile(ObjectIdentifier fileId) {
-        FileObject fileObject = getLocalDevice().getObject(fileId);
+        FileObject fileObject = Objects.requireNonNull(getLocalDevice().getObject(fileId));
         var fileAccess = (StreamAccess) fileObject.getFileAccess();
         var filePath = fileAccess.getFile().toPath();
         var backupPath = getBackupPath(filePath);

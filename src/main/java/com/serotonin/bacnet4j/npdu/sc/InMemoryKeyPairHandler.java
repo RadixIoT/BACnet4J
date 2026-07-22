@@ -37,8 +37,8 @@ import java.util.Objects;
  * (encrypted at rest) so they survive a device restart.
  */
 public class InMemoryKeyPairHandler implements SCKeyPairHandler {
-    private volatile KeyPair activeKeyPair;
-    private volatile KeyPair pendingKeyPair;
+    private KeyPair activeKeyPair;
+    private KeyPair pendingKeyPair;
 
     public InMemoryKeyPairHandler(KeyPair activeKeyPair) {
         this(activeKeyPair, null);
