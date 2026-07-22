@@ -90,6 +90,7 @@ import com.serotonin.bacnet4j.type.enumerated.NetworkType;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.ProtocolLevel;
+import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.enumerated.SCConnectionState;
 import com.serotonin.bacnet4j.type.enumerated.SCHubConnectorState;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
@@ -1313,6 +1314,36 @@ public class SecureConnectNetworkPortObjectTest {
 
             assertEquals(deviceKey(), keyPairHandler.getActiveKeyPair());
             assertEquals(otherKey(), keyPairHandler.getPendingKeyPair());
+        });
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Current_Health and Reliability evaluation. In this test environment the operational cert
+    // file is empty, so network initialization fails, which the port must surface on read.
+    // ---------------------------------------------------------------------------------------
+
+    /**
+     * Current_Health (12.56.17) is evaluated on read and reports the network initialization error.
+     * The withLocalDevice harness leaves the operational certificate file empty, so TLS
+     * initialization fails with valueOutOfRange on the property class.
+     */
+    @Test
+    public void currentHealth_reportsInitializationError() throws Exception {
+        withLocalDevice(localDevice -> {
+            Health health = npo.readProperty(PropertyIdentifier.currentHealth);
+            assertEquals(ErrorClass.property, health.getResult().getErrorClass());
+            assertEquals(ErrorCode.valueOutOfRange, health.getResult().getErrorCode());
+        });
+    }
+
+    /**
+     * Reliability is evaluated on read; a network initialization failure is reported as
+     * CONFIGURATION_ERROR, which also raises the FAULT status flag.
+     */
+    @Test
+    public void reliability_reportsConfigurationErrorOnInitializationFailure() throws Exception {
+        withLocalDevice(localDevice -> {
+            assertEquals(Reliability.configurationError, npo.readProperty(PropertyIdentifier.reliability));
         });
     }
 

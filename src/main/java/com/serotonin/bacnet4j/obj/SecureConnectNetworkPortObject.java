@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
+import com.serotonin.bacnet4j.npdu.sc.SCHubConnectionListener;
 import com.serotonin.bacnet4j.npdu.sc.SCKeyPairHandler;
 import com.serotonin.bacnet4j.npdu.sc.SCNetwork;
 import com.serotonin.bacnet4j.npdu.sc.SCNetworkUtils;
@@ -74,10 +75,12 @@ import com.serotonin.bacnet4j.type.enumerated.NetworkPortCommand;
 import com.serotonin.bacnet4j.type.enumerated.NetworkType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.ProtocolLevel;
+import com.serotonin.bacnet4j.type.enumerated.Reliability;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
@@ -92,6 +95,8 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
 
     private final SCNetwork network;
     private final SCKeyPairHandler keyPairHandler;
+
+    private SCHubConnectionListener hubConnectionListener;
 
     public SecureConnectNetworkPortObject(LocalDevice localDevice, SCNetwork network,
             SCKeyPairHandler keyPairHandler, int instanceNumber) {
@@ -165,6 +170,58 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
             validateUnsignedRange(value.getValue(), 3, 300);
         }
         return false;
+    }
+
+    @Override
+    protected void beforeReadProperty(PropertyIdentifier pid) throws BACnetServiceException {
+        super.beforeReadProperty(pid);
+        if (pid.equals(PropertyIdentifier.macAddress)) {
+            // The node re-randomizes its VMAC when the hub reports a duplicate (AB.6.2.2), so the property
+            // is refreshed from the network on read.
+            OctetString vmac = network.getVmac();
+            if (!vmac.equals(get(PropertyIdentifier.macAddress))) {
+                writePropertyInternal(PropertyIdentifier.macAddress, vmac);
+            }
+        } else if (pid.equals(PropertyIdentifier.currentHealth)) {
+            writePropertyInternal(PropertyIdentifier.currentHealth, evaluateHealth());
+        }
+    }
+
+    /**
+     * Evaluates Current_Health per 12.56.17: the most recent error for this port. A network initialization
+     * error (e.g. an invalid hub URI or a TLS configuration problem) takes precedence. Otherwise, when there
+     * is no hub connection, the most recent connection error is reported: the primary connection's error
+     * first since the connector always retries the primary before the failover, then the failover's.
+     * Otherwise, the port is healthy.
+     */
+    protected Health evaluateHealth() {
+        var initError = network.getInitializationError();
+        if (initError != null) {
+            return new Health(new DateTime(getLocalDevice()), initError.getError(), null,
+                    initError.getErrorDetails());
+        }
+        if (!network.isHubConnected()) {
+            for (var status : List.of(network.getPrimaryHubConnectionStatus(),
+                    network.getFailoverHubConnectionStatus())) {
+                if (status.getError() != null) {
+                    return new Health(new DateTime(getLocalDevice()), status.getError(), null,
+                            status.getErrorDetails());
+                }
+            }
+        }
+        return new Health(new DateTime(getLocalDevice()),
+                new ErrorClassAndCode(ErrorClass.object, ErrorCode.success), null, null);
+    }
+
+    /**
+     * A network initialization failure means the port configuration could not be applied, which is a fault.
+     * Connection-level failures are not faults: they are transient, the connector retries them, and they are
+     * visible in Current_Health and the connection status properties.
+     */
+    @Override
+    protected Reliability evaluateReliability() {
+        return network.getInitializationError() == null ? Reliability.noFaultDetected
+                : Reliability.configurationError;
     }
 
     /**
@@ -341,12 +398,26 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         };
         getLocalDevice().getEventHandler().addListener(certFileChangeListener);
 
+        // Keep SC_Hub_Connector_State and the hub connection status properties current as the hub connector
+        // transitions, so that reads and COV-style monitoring of this object see live values.
+        hubConnectionListener = (oldState, newState) -> {
+            writePropertyInternal(PropertyIdentifier.scHubConnectorState, newState);
+            writePropertyInternal(PropertyIdentifier.scPrimaryHubConnectionStatus,
+                    network.getPrimaryHubConnectionStatus());
+            writePropertyInternal(PropertyIdentifier.scFailoverHubConnectionStatus,
+                    network.getFailoverHubConnectionStatus());
+        };
+        network.addHubConnectionListener(hubConnectionListener);
+
         // Check if there are backup versions of the cert files, and if so make them the current files.
         reinstateBackupFiles();
     }
 
     @Override
     protected void terminateImpl() {
+        if (hubConnectionListener != null) {
+            network.removeHubConnectionListener(hubConnectionListener);
+        }
         if (certFileChangeListener != null) {
             getLocalDevice().getEventHandler().removeListener(certFileChangeListener);
         }

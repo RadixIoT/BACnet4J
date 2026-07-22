@@ -109,6 +109,8 @@ public class SCNetwork extends Network {
             new SCHubConnection(SCConnectionState.notConnected, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED);
     private SCNode node;
     private final CopyOnWriteArrayList<SCHubConnectionListener> hubConnectionListeners = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<CompletableFuture<SCHubConnectorState>> pendingConnectionFutures =
+            new CopyOnWriteArrayList<>();
 
     private long bytesOut;
     private long bytesIn;
@@ -341,9 +343,11 @@ public class SCNetwork extends Network {
      * wait on this future before starting operations that require the network.
      * <p>
      * The future completes on the local device's executor thread; chain substantial work with the async
-     * continuation methods. It never completes exceptionally and does not time out by itself — callers that
-     * cannot wait indefinitely (e.g. because the hub may be unreachable) should apply
-     * {@link CompletableFuture#orTimeout}. Termination of the network does not complete the future.
+     * continuation methods. It does not time out by itself — callers that cannot wait indefinitely (e.g.
+     * because the hub may be unreachable) should apply {@link CompletableFuture#orTimeout}. If the network
+     * is terminated while the future is pending, the future is canceled, so a blocked
+     * {@code join()}/{@code get()} throws {@link java.util.concurrent.CancellationException} rather than
+     * waiting forever.
      */
     public CompletableFuture<SCHubConnectorState> whenHubConnected() {
         CompletableFuture<SCHubConnectorState> future = new CompletableFuture<>();
@@ -353,13 +357,17 @@ public class SCNetwork extends Network {
             }
         };
         addHubConnectionListener(listener);
+        pendingConnectionFutures.add(future);
         // Check the current state after registering the listener so that a connection established between
         // the check and the registration cannot be missed.
         SCHubConnectorState state = getHubConnectorState();
         if (state != SCHubConnectorState.noHubConnection) {
             future.complete(state);
         }
-        future.whenComplete((s, e) -> removeHubConnectionListener(listener));
+        future.whenComplete((s, e) -> {
+            removeHubConnectionListener(listener);
+            pendingConnectionFutures.remove(future);
+        });
         return future;
     }
 
@@ -379,11 +387,12 @@ public class SCNetwork extends Network {
 
     /**
      * Returns the connection status describing why this network failed to initialize, or null if it initialized
-     * successfully. Initialization failures - e.g. TLS configuration problems or invalid hub URIs - are recorded
-     * here rather than thrown from {@link #initialize(Transport)}. Only meaningful after initialization.
+     * successfully or initialization has not been attempted. Initialization failures - e.g. TLS configuration
+     * problems or invalid hub URIs - are recorded here rather than thrown from {@link #initialize(Transport)}.
+     * Used by the network port object to evaluate Current_Health and Reliability.
      */
     public SCHubConnection getInitializationError() {
-        return node == null ? initializationError : null;
+        return initializationError.getError() == null ? null : initializationError;
     }
 
     @Override
@@ -499,6 +508,12 @@ public class SCNetwork extends Network {
     public void terminate() {
         if (node != null) {
             node.terminate();
+        }
+        // Cancel any outstanding whenHubConnected() futures so that waiting callers are released
+        // instead of blocking forever. Cancellation also removes each future's listener via its
+        // whenComplete hook.
+        for (CompletableFuture<SCHubConnectorState> future : pendingConnectionFutures) {
+            future.cancel(false);
         }
     }
 
