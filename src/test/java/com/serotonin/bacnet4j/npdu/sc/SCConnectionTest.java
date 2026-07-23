@@ -74,6 +74,7 @@ import com.serotonin.bacnet4j.type.constructed.SCHubConnection;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.SCConnectionState;
+import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -1079,30 +1080,20 @@ public class SCConnectionTest {
     // ======================================================================================
 
     /**
-     * Documents a real bug in SCConnection (not a test bug): when onWebsocketClose receives a
-     * non-1000 status code from CONNECTED, it sets `connectionError` BEFORE the SM fires
-     * REMOTE_CLOSE. The REMOTE_CLOSE handler in CONNECTED calls connectionClosed(true), which
-     * unconditionally sets connectionState = notConnected. SCHubConnection's constructor
-     * rejects (notConnected | connected) combined with a non-null error, so getConnectionStatus()
-     * throws IllegalArgumentException afterward. A proper fix would have connectionClosed
-     * choose disconnectedWithErrors when connectionError != null.
-     * <p>
-     * Keeping this test (passing) as a regression marker — when the bug is fixed, this test
-     * will start to fail and should be replaced with a positive assertion of the mapping.
+     * A connection lost with a non-normal close code is reported as DISCONNECTED_WITH_ERRORS with the
+     * mapped error present (12.56.88, AB.7.5.5). NOT_CONNECTED is reserved for successful disconnects,
+     * for which the error field must be absent.
      */
     @Test
-    public void remoteClose_nonNormalCode_currentlyBreaksGetConnectionStatus() {
+    public void remoteClose_nonNormalCode_reportsDisconnectedWithErrors() {
         enterConnected();
         connection.onWebsocketClose(1002, "proto");
 
-        // Pre-bug-fix: getConnectionStatus throws because notConnected + non-null error is
-        // disallowed by SCHubConnection's constructor.
-        try {
-            connection.getConnectionStatus();
-            org.junit.Assert.fail("getConnectionStatus should throw — bug is masked");
-        } catch (IllegalArgumentException expected) {
-            // Documented bug.
-        }
+        var status = connection.getConnectionStatus();
+        assertEquals(SCConnectionState.disconnectedWithErrors, status.getConnectionState());
+        assertEquals(new ErrorClassAndCode(ErrorClass.communication, ErrorCode.websocketProtocolError),
+                status.getError());
+        assertEquals("proto", status.getErrorDetails().getValue());
     }
 
     @Test

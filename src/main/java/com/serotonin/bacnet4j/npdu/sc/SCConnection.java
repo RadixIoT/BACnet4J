@@ -162,6 +162,8 @@ public class SCConnection {
             client.closeConnection(CloseFrame.NOCODE, "Hard termination");
             connectionState = SCConnectionState.notConnected;
             disconnectTimestamp = new DateTime(localDevice);
+            connectionError = null;
+            connectionErrorDetails = null;
         }
         state = State.IDLE;
     }
@@ -462,7 +464,8 @@ public class SCConnection {
         cancelHeartbeat(); // May be redundant, but not always.
         cancelTimeout(); // May be redundant, but not always.
         if (wasEstablished) {
-            connectionState = SCConnectionState.notConnected;
+            connectionState =
+                    connectionError == null ? SCConnectionState.notConnected : SCConnectionState.disconnectedWithErrors;
             disconnectTimestamp = new DateTime(localDevice);
         }
         // Notify the connector
