@@ -36,6 +36,7 @@ import static org.mockito.Mockito.mock;
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -164,6 +165,17 @@ public class SCHubConnectionListenerTest {
         network.fireHubConnectionStateChanged(
                 SCHubConnectorState.noHubConnection, SCHubConnectorState.connectedToPrimary);
         assertTrue(future.isCancelled());
+    }
+
+    /**
+     * A network that never initialized has no node and therefore nothing to shut down, so
+     * awaitTermination returns immediately.
+     */
+    @Test
+    public void awaitTerminationReturnsImmediatelyWhenNotInitialized() throws Exception {
+        network.terminate();
+
+        assertTrue(network.awaitTermination(0, TimeUnit.MILLISECONDS));
     }
 
     @Test

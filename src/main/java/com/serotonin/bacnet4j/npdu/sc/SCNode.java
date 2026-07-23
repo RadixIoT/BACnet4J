@@ -28,6 +28,7 @@
 package com.serotonin.bacnet4j.npdu.sc;
 
 import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -87,6 +88,7 @@ public class SCNode {
 
     private State state = State.IDLE;
     private ScheduledFuture<Void> timeoutFuture;
+    private final CountDownLatch terminationLatch = new CountDownLatch(1);
 
     public SCNode(SCNetwork network) {
         this.network = network;
@@ -114,6 +116,22 @@ public class SCNode {
         queueEvent(Event.STOP);
     }
 
+    public void hardTerminate() {
+        hubConnector.hardTerminate();
+        state = State.IDLE;
+    }
+
+    /**
+     * Waits for this node to complete the shutdown started by {@link #terminate()}. The shutdown is
+     * asynchronous: the connections perform their disconnect handshakes, and their events dispatch through
+     * the local device's executor, which must still be running while waiting.
+     *
+     * @return true if the node reached the idle state within the timeout.
+     */
+    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+        return terminationLatch.await(timeout, unit);
+    }
+
     public SCHubConnectorState getHubConnectorState() {
         return hubConnector.getHubConnectorState();
     }
@@ -133,9 +151,14 @@ public class SCNode {
     protected synchronized void handleEvent(Event event) {
         LOG.debug("manageState start: {}, event={}", state, event);
 
-        if (event == Event.STOP && state != State.IDLE) {
-            hubConnector.terminate();
-            state = State.STOPPING;
+        if (event == Event.STOP) {
+            if (state == State.IDLE) {
+                // Nothing to shut down; the node is already terminated.
+                terminationLatch.countDown();
+            } else {
+                hubConnector.terminate();
+                state = State.STOPPING;
+            }
             return;
         }
 
@@ -180,6 +203,7 @@ public class SCNode {
             case STOPPING -> {
                 if (event == Event.CONNECTOR_IDLE) {
                     state = State.IDLE;
+                    terminationLatch.countDown();
                 } else {
                     illegalState(event);
                 }

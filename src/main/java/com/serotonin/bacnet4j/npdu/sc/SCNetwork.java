@@ -35,6 +35,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLContext;
 
@@ -514,6 +515,24 @@ public class SCNetwork extends Network {
         // whenComplete hook.
         for (CompletableFuture<SCHubConnectorState> future : pendingConnectionFutures) {
             future.cancel(false);
+        }
+    }
+
+    /**
+     * Waits for the node to complete the shutdown started by {@link #terminate()}: the connections perform
+     * their disconnect handshakes and the state machines return to idle. The shutdown events dispatch
+     * through the local device's executor, so this must be called before that executor is shut down —
+     * {@code LocalDevice.terminate} does this in the correct order.
+     */
+    @Override
+    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+        return node == null || node.awaitTermination(timeout, unit);
+    }
+
+    @Override
+    public void hardTerminate() {
+        if (node != null) {
+            node.hardTerminate();
         }
     }
 

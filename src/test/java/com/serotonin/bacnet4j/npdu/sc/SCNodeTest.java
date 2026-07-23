@@ -232,8 +232,8 @@ public class SCNodeTest {
         node.terminate();
 
         assertEquals(SCNode.State.IDLE, node.getState());
-        // STOP from IDLE is the no-op illegal-event path (the `state != IDLE` guard on the
-        // global STOP handler). The hub connector must NOT be terminated.
+        // STOP from IDLE completes termination immediately (there is nothing to shut down).
+        // The hub connector must NOT be terminated.
         verify(hubConnector, never()).terminate();
     }
 
@@ -558,6 +558,35 @@ public class SCNodeTest {
         // Only CONNECTOR_IDLE exits STOPPING; DISCONNECTED is illegal here.
         assertEquals(SCNode.State.STOPPING, node.getState());
         verify(network, never()).setVmac(any(OctetString.class));
+    }
+
+    // ======================================================================================
+    // awaitTermination — releases when the shutdown started by terminate() completes
+    // ======================================================================================
+
+    @Test
+    public void awaitTermination_releasesWhenStoppingReachesIdle() throws Exception {
+        enterStopping();
+        assertFalse("node is still stopping", node.awaitTermination(0, TimeUnit.MILLISECONDS));
+
+        node.onConnectorIdle();
+
+        assertEquals(SCNode.State.IDLE, node.getState());
+        assertTrue("node has terminated", node.awaitTermination(0, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    public void awaitTermination_releasesImmediatelyWhenStoppedWhileIdle() throws Exception {
+        node.terminate();
+
+        assertTrue(node.awaitTermination(0, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    public void awaitTermination_timesOutWhileStillStopping() throws Exception {
+        enterStopping();
+
+        assertFalse(node.awaitTermination(10, TimeUnit.MILLISECONDS));
     }
 
     // ======================================================================================
