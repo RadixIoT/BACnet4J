@@ -28,6 +28,8 @@
 package com.serotonin.bacnet4j.npdu.sc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -98,6 +100,7 @@ public class SCNodeIntegrationTest {
     private static final int RECONNECT_SECS = 5;
 
     private SCNetwork network;
+    private Transport transport;
     private ScWebSocketClient primaryClient;
     private ScWebSocketClient failoverClient;
     private IntegrationNode node;
@@ -120,7 +123,7 @@ public class SCNodeIntegrationTest {
     @Before
     public void setUp() {
         network = mock(SCNetwork.class);
-        var transport = mock(Transport.class);
+        transport = mock(Transport.class);
         var localDevice = mock(LocalDevice.class);
         primaryClient = mock(ScWebSocketClient.class);
         failoverClient = mock(ScWebSocketClient.class);
@@ -699,5 +702,31 @@ public class SCNodeIntegrationTest {
         feed(node.hub.primary, incoming);
         verify(network).onIncoming(org.mockito.ArgumentMatchers.argThat(
                 m -> m != null && m.getFunction() == SCBVLC.ENCAPSULATED_NPDU));
+    }
+
+    /**
+     * A node configured with no hub URIs (e.g. not yet commissioned) creates no connections, so no
+     * connection event can ever complete a stop. Terminating such a node must still wind the whole
+     * stack to IDLE and release awaitTermination — otherwise LocalDevice.terminate would burn its
+     * full timeout waiting on a latch that can never count down through connection events.
+     */
+    @Test
+    public void integration_terminate_noHubUris_awaitTerminationReleases() throws Exception {
+        when(network.getPrimaryHub()).thenReturn(null);
+        when(network.getFailoverHub()).thenReturn(null);
+        IntegrationNode bareNode = new IntegrationNode(network, primaryClient, failoverClient);
+        bareNode.configure(transport);
+
+        // With no connections to attempt, the connector cycles to DELAYING with a retry timeout.
+        bareNode.initialize();
+        assertEquals(SCNode.State.STARTING, bareNode.getState());
+        assertEquals(SCHubConnector.State.DELAYING, bareNode.hub.getState());
+        assertFalse(bareNode.awaitTermination(0, TimeUnit.MILLISECONDS));
+
+        bareNode.terminate();
+
+        assertEquals(SCHubConnector.State.IDLE, bareNode.hub.getState());
+        assertEquals(SCNode.State.IDLE, bareNode.getState());
+        assertTrue(bareNode.awaitTermination(0, TimeUnit.MILLISECONDS));
     }
 }

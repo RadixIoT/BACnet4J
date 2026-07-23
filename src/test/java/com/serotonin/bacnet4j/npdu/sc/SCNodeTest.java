@@ -589,6 +589,23 @@ public class SCNodeTest {
         assertFalse(node.awaitTermination(10, TimeUnit.MILLISECONDS));
     }
 
+    /**
+     * A hard termination forces the node to IDLE without waiting for the shutdown handshakes,
+     * so it must also release awaiting callers. This is the LocalDevice.terminate escalation
+     * path after awaitTermination times out.
+     */
+    @Test
+    public void hardTerminate_forcesIdleAndReleasesAwaitTermination() throws Exception {
+        enterStopping();
+        assertFalse(node.awaitTermination(0, TimeUnit.MILLISECONDS));
+
+        node.hardTerminate();
+
+        assertEquals(SCNode.State.IDLE, node.getState());
+        verify(hubConnector).hardTerminate();
+        assertTrue(node.awaitTermination(0, TimeUnit.MILLISECONDS));
+    }
+
     // ======================================================================================
     // onIncoming — message handling, independent of the state machine
     // ======================================================================================

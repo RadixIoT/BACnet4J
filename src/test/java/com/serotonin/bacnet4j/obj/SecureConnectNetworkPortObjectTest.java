@@ -46,6 +46,7 @@ import java.security.SecureRandom;
 import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
+import java.util.Set;
 import java.time.Instant;
 import java.util.Date;
 
@@ -334,13 +335,10 @@ public class SecureConnectNetworkPortObjectTest {
     }
 
     /**
-     * Returns the pending-changes flag for a specific cert. Op cert is a single-element array;
-     * issuer certs is a two-element array (index 0 = issuer1, index 1 = issuer2).
+     * Returns whether the given certificate file has a pending (unactivated) content change.
      */
-    @SuppressWarnings("unchecked")
-    private Boolean pendingFlag(PropertyIdentifier pid, int arrayIndex) {
-        var value = (BACnetArray<Boolean>) npo.getPendingChanges().get(pid);
-        return value == null ? null : value.get(arrayIndex);
+    private boolean certPending(ObjectIdentifier fileId) {
+        return npo.getChangedCertificateFiles().contains(fileId);
     }
 
     // ---------------------------------------------------------------------------------------
@@ -364,8 +362,37 @@ public class SecureConnectNetworkPortObjectTest {
             // Backup file preserves the original content.
             assertArrayEquals("old-op-cert".getBytes(), readBackupFile(OP_CERT_ID));
             // Pending change is registered on the operational cert property.
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.operationalCertificateFile, 0));
+            assertTrue(certPending(OP_CERT_ID));
             assertEquals(Boolean.TRUE, npo.readProperty(PropertyIdentifier.changesPending));
+        });
+    }
+
+    /**
+     * While a certificate file change is pending, reads of the certificate file reference properties must
+     * return the real ObjectIdentifier values, and getPendingChanges() must not contain marker entries.
+     * Regression test: the markers were previously stored in the base class's pending-changes map under
+     * the real property ids, so get() substituted a BACnetArray of Booleans for the OID on the wire, and
+     * product persistence code iterating getPendingChanges() would have persisted the markers as values.
+     */
+    @Test
+    public void certFilePropertiesReadCorrectlyWhileChangePending() throws Exception {
+        withLocalDevice(localDevice -> {
+            Files.write(pathFor(OP_CERT_ID), "old-op-cert".getBytes());
+            Files.write(pathFor(ISSUER_1_ID), "old-issuer-1".getBytes());
+
+            atomicWriteFile(localDevice, OP_CERT_ID, "new-op-cert".getBytes());
+            atomicWriteFile(localDevice, ISSUER_1_ID, "new-issuer-1".getBytes());
+            assertEquals(Boolean.TRUE, npo.readProperty(PropertyIdentifier.changesPending));
+
+            // The reference properties still read as the actual object identifiers.
+            assertEquals(OP_CERT_ID, npo.readProperty(PropertyIdentifier.operationalCertificateFile));
+            assertEquals(new BACnetArray<>(ISSUER_1_ID, ISSUER_2_ID),
+                    npo.readProperty(PropertyIdentifier.issuerCertificateFiles));
+            assertEquals(OP_CERT_ID, npo.get(PropertyIdentifier.operationalCertificateFile));
+
+            // The markers are not exposed through the pending property values.
+            assertTrue(npo.getPendingChanges().isEmpty());
+            assertEquals(Set.of(OP_CERT_ID, ISSUER_1_ID), npo.getChangedCertificateFiles());
         });
     }
 
@@ -387,7 +414,7 @@ public class SecureConnectNetworkPortObjectTest {
             // Backup file preserves the original content.
             assertArrayEquals("old-op-cert".getBytes(), readBackupFile(OP_CERT_ID));
             // Pending change is registered on the operational cert property.
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.operationalCertificateFile, 0));
+            assertTrue(certPending(OP_CERT_ID));
             assertEquals(Boolean.TRUE, npo.readProperty(PropertyIdentifier.changesPending));
         });
     }
@@ -431,9 +458,9 @@ public class SecureConnectNetworkPortObjectTest {
             assertArrayEquals("og-cert-1-data".getBytes(), readBackupFile(ISSUER_1_ID));
             assertArrayEquals("og-cert-2-data".getBytes(), readBackupFile(ISSUER_2_ID));
             // Pending change is registered on the operational cert property.
-            assertNull(pendingFlag(PropertyIdentifier.operationalCertificateFile, 0));
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 0));
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 1));
+            assertFalse(certPending(OP_CERT_ID));
+            assertTrue(certPending(ISSUER_1_ID));
+            assertTrue(certPending(ISSUER_2_ID));
             assertEquals(Boolean.TRUE, npo.readProperty(PropertyIdentifier.changesPending));
             assertEquals(new Real(33.3F),
                     localDevice.getObject(new ObjectIdentifier(ObjectType.analogValue, ANALOG_VALUE_INSTANCE))
@@ -456,8 +483,8 @@ public class SecureConnectNetworkPortObjectTest {
             assertArrayEquals("new-issuer-1".getBytes(), readCertFile(ISSUER_1_ID));
             assertArrayEquals("old-issuer-1".getBytes(), readBackupFile(ISSUER_1_ID));
 
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 0));
-            assertEquals(Boolean.FALSE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 1));
+            assertTrue(certPending(ISSUER_1_ID));
+            assertFalse(certPending(ISSUER_2_ID));
 
             // Issuer 2's backup file should not exist since it was not touched.
             assertFalse(Files.exists(backupPathFor(ISSUER_2_ID)));
@@ -480,8 +507,8 @@ public class SecureConnectNetworkPortObjectTest {
             assertArrayEquals("new-issuer-2".getBytes(), readCertFile(ISSUER_2_ID));
             assertArrayEquals("old-issuer-2".getBytes(), readBackupFile(ISSUER_2_ID));
 
-            assertEquals(Boolean.FALSE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 0));
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 1));
+            assertFalse(certPending(ISSUER_1_ID));
+            assertTrue(certPending(ISSUER_2_ID));
         });
     }
 
@@ -498,8 +525,8 @@ public class SecureConnectNetworkPortObjectTest {
             atomicWriteFile(localDevice, ISSUER_1_ID, "new-1".getBytes());
             atomicWriteFile(localDevice, ISSUER_2_ID, "new-2".getBytes());
 
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 0));
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 1));
+            assertTrue(certPending(ISSUER_1_ID));
+            assertTrue(certPending(ISSUER_2_ID));
             assertArrayEquals("old-1".getBytes(), readBackupFile(ISSUER_1_ID));
             assertArrayEquals("old-2".getBytes(), readBackupFile(ISSUER_2_ID));
         });
@@ -544,7 +571,7 @@ public class SecureConnectNetworkPortObjectTest {
 
             // Backup gone, pending change cleared, file has original content.
             assertFalse(Files.exists(backupPathFor(OP_CERT_ID)));
-            assertFalse(npo.getPendingChanges().containsKey(PropertyIdentifier.operationalCertificateFile));
+            assertFalse(certPending(OP_CERT_ID));
             assertEquals(Boolean.FALSE, npo.readProperty(PropertyIdentifier.changesPending));
             assertArrayEquals("original".getBytes(), readCertFile(OP_CERT_ID));
         });
@@ -569,8 +596,8 @@ public class SecureConnectNetworkPortObjectTest {
 
             assertFalse(Files.exists(backupPathFor(ISSUER_1_ID)));
             assertTrue(Files.exists(backupPathFor(ISSUER_2_ID)));
-            assertEquals(Boolean.FALSE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 0));
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 1));
+            assertFalse(certPending(ISSUER_1_ID));
+            assertTrue(certPending(ISSUER_2_ID));
             assertEquals(Boolean.TRUE, npo.readProperty(PropertyIdentifier.changesPending));
         });
     }
@@ -591,7 +618,8 @@ public class SecureConnectNetworkPortObjectTest {
             atomicWriteFile(localDevice, ISSUER_1_ID, "orig-1".getBytes());
             atomicWriteFile(localDevice, ISSUER_2_ID, "orig-2".getBytes());
 
-            assertFalse(npo.getPendingChanges().containsKey(PropertyIdentifier.issuerCertificateFiles));
+            assertFalse(certPending(ISSUER_1_ID));
+            assertFalse(certPending(ISSUER_2_ID));
             assertEquals(Boolean.FALSE, npo.readProperty(PropertyIdentifier.changesPending));
         });
     }
@@ -626,6 +654,7 @@ public class SecureConnectNetworkPortObjectTest {
             assertFalse(Files.exists(backupPathFor(OP_CERT_ID)));
             assertFalse(Files.exists(backupPathFor(ISSUER_1_ID)));
             assertTrue(npo.getPendingChanges().isEmpty());
+            assertTrue(npo.getChangedCertificateFiles().isEmpty());
             assertEquals(Boolean.FALSE, npo.readProperty(PropertyIdentifier.changesPending));
         });
     }
@@ -661,6 +690,7 @@ public class SecureConnectNetworkPortObjectTest {
             // No pending changes because they never activated and the state is now the
             // pre-crash steady state.
             assertTrue(npo.getPendingChanges().isEmpty());
+            assertTrue(npo.getChangedCertificateFiles().isEmpty());
             assertEquals(Boolean.FALSE, npo.readProperty(PropertyIdentifier.changesPending));
         });
     }
@@ -692,6 +722,7 @@ public class SecureConnectNetworkPortObjectTest {
             assertFalse(Files.exists(backupPathFor(OP_CERT_ID)));
             assertFalse(Files.exists(backupPathFor(ISSUER_1_ID)));
             assertTrue(npo.getPendingChanges().isEmpty());
+            assertTrue(npo.getChangedCertificateFiles().isEmpty());
             assertEquals(Boolean.FALSE, npo.readProperty(PropertyIdentifier.changesPending));
         });
     }
@@ -759,7 +790,7 @@ public class SecureConnectNetworkPortObjectTest {
             // Truncate the op cert file to 0 bytes, creating a pending change on it.
             handleConfirmedRequest(localDevice, new WritePropertyRequest(OP_CERT_ID, PropertyIdentifier.fileSize,
                     null, UnsignedInteger.ZERO, null));
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.operationalCertificateFile, 0));
+            assertTrue(certPending(OP_CERT_ID));
 
             npo.writeProperty(new ValueSource(), PropertyIdentifier.command,
                     NetworkPortCommand.validateChanges);
@@ -788,9 +819,9 @@ public class SecureConnectNetworkPortObjectTest {
                 handleConfirmedRequest(localDevice, new WritePropertyRequest(fileId, PropertyIdentifier.fileSize,
                         null, UnsignedInteger.ZERO, null));
             }
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.operationalCertificateFile, 0));
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 0));
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 1));
+            assertTrue(certPending(OP_CERT_ID));
+            assertTrue(certPending(ISSUER_1_ID));
+            assertTrue(certPending(ISSUER_2_ID));
 
             npo.writeProperty(new ValueSource(), PropertyIdentifier.command,
                     NetworkPortCommand.validateChanges);
@@ -1126,8 +1157,8 @@ public class SecureConnectNetworkPortObjectTest {
 
             // Replace the signer with an unrelated issuer. Only the issuer file is pending.
             atomicWriteFile(localDevice, ISSUER_1_ID, der(issuerB));
-            assertNull(pendingFlag(PropertyIdentifier.operationalCertificateFile, 0));
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 0));
+            assertFalse(certPending(OP_CERT_ID));
+            assertTrue(certPending(ISSUER_1_ID));
 
             npo.writeProperty(new ValueSource(), PropertyIdentifier.command,
                     NetworkPortCommand.validateChanges);
@@ -1160,7 +1191,7 @@ public class SecureConnectNetworkPortObjectTest {
             Files.write(pathFor(ISSUER_1_ID), der(issuerA));
 
             atomicWriteFile(localDevice, ISSUER_2_ID, der(issuerB));
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.issuerCertificateFiles, 1));
+            assertTrue(certPending(ISSUER_2_ID));
 
             npo.writeProperty(new ValueSource(), PropertyIdentifier.command,
                     NetworkPortCommand.validateChanges);
@@ -1220,7 +1251,7 @@ public class SecureConnectNetworkPortObjectTest {
             // All cert files start empty on disk (from the withLocalDevice helper). Write the
             // new op cert to trigger its pending flag.
             atomicWriteFile(localDevice, OP_CERT_ID, der(opCert));
-            assertEquals(Boolean.TRUE, pendingFlag(PropertyIdentifier.operationalCertificateFile, 0));
+            assertTrue(certPending(OP_CERT_ID));
 
             npo.writeProperty(new ValueSource(), PropertyIdentifier.command,
                     NetworkPortCommand.validateChanges);

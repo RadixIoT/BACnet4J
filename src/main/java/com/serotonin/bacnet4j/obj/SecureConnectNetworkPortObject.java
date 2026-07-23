@@ -44,6 +44,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,11 +63,9 @@ import com.serotonin.bacnet4j.service.confirmed.WritePropertyMultipleRequest;
 import com.serotonin.bacnet4j.service.confirmed.WritePropertyRequest;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.Address;
-import com.serotonin.bacnet4j.type.constructed.BACnetArray;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.constructed.Health;
 import com.serotonin.bacnet4j.type.constructed.ObjectPropertyValue;
-import com.serotonin.bacnet4j.type.constructed.PropertyReference;
 import com.serotonin.bacnet4j.type.constructed.PropertyValue;
 import com.serotonin.bacnet4j.type.constructed.ValueSource;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
@@ -117,7 +116,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
 
         // There are things this port may need to do before the network initializes, so don't allow this state.
         if (network.isInitialized()) {
-            throw new IllegalStateException("Network port object already initialized");
+            throw new IllegalStateException("Network already initialized");
         }
         this.network = network;
         this.keyPairHandler = Objects.requireNonNull(keyPairHandler, "keyPairHandler is required");
@@ -328,16 +327,16 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
              * - we detect atomic write file requests, and write property [multiple] requests that change the file size
              *   property, when these requests are destined for the ids of the 3 cert files.
              * - if a change is made, we make a copy of the original file using ".pendingChangesBackup" for the
-             *   extension. We also add an entry to the pending changes map, using the propery id of the cert. But,
-             *   because the issuer certs is an array, we need to track each cert separately by using an array as the
-             *   value. The array values are BACnet Booleans. For convenience, we also use an array for the operational
-             *   cert even though there is only one.
+             *   extension. We also add the file's object id to the changedCertFiles set. The set is deliberately
+             *   separate from the base class's pending-changes map: that map holds pending property *values*
+             *   which get() substitutes on read and which products persist, whereas these are just markers - the
+             *   pending data is the file content itself. isChanged() is overridden to include the set so that
+             *   Changes_Pending and the command gating still see cert file changes.
              * - the changes are called "pending", but this is only from the perspective of the network port object.
              *   we allow requests to continue as normal because the changes they make need to be reflected in, e.g.,
              *   subsequent read requests.
              * - subseqent write file requests may change the file back to its original content. If this happens we
-             *   remove the backup file and set the appropriate array value to false, and if the array only has false
-             *   values, remove the entry from the pending changes map.
+             *   remove the backup file and the file's entry in the set.
              * - note that the code does not attempt to detect reversions of file size, e.g. changing the file size to
              *   some other value and then changing it back again. If a file has been marked as changed, no change to
              *   its file size property will not remove that mark.
@@ -430,13 +429,39 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
 
     protected static final String BACKUP_EXTENSION = ".pendingChangesBackup";
 
+    /**
+     * The ids of the certificate File objects that have pending (unactivated) content changes, i.e. that have
+     * a backup of their original content on disk. Deliberately not kept in the base class's pending-changes
+     * map: these are markers, not property values — the pending data is the file content itself. Storing them
+     * under the real property ids would make {@link #get} return the marker for reads of the certificate file
+     * properties, and would expose them to product persistence code iterating {@link #getPendingChanges()}.
+     */
+    private final Set<ObjectIdentifier> changedCertFiles = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Returns the ids of the certificate File objects that currently have pending content changes.
+     */
+    public Set<ObjectIdentifier> getChangedCertificateFiles() {
+        return Set.copyOf(changedCertFiles);
+    }
+
+    /**
+     * Certificate file content changes count as pending changes (12.56.100/101) even though they are tracked
+     * outside the base class's pending-changes map.
+     */
+    @Override
+    public boolean isChanged() {
+        return super.isChanged() || !changedCertFiles.isEmpty();
+    }
+
     @Override
     protected void discardChanges() {
         super.discardChanges();
-        // No need to remove markers because the super class clears the pending changes. Just reinstate the backup files.
+        // Reinstate the backup files and clear the markers; the super class only clears its own map.
         // The pending key pair in the key pair handler is deliberately left alone: GENERATE_CSR_FILE does not
         // affect Changes_Pending (12.56.16), and the CSR created with that pair may still be at the signing CA.
         reinstateBackupFiles();
+        changedCertFiles.clear();
     }
 
     /**
@@ -452,6 +477,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         deleteBackupFile(network.getOperationalCertificateFileId());
         deleteBackupFile(network.getIssuerCertificateFileIds().get(0));
         deleteBackupFile(network.getIssuerCertificateFileIds().get(1));
+        changedCertFiles.clear();
         notifyCertificateActivated();
     }
 
@@ -511,39 +537,28 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected void handleFileWrite(AtomicWriteFileRequest awf) {
         try {
-            // Check if a backup already exists.
-            var ref = filePropertyReference(awf.getFileIdentifier());
-            var propertyIndex = ref.getPropertyArrayIndex().intValue();
-            var backupFileFlags = (BACnetArray<Boolean>) getPendingChanges().get(ref.getPropertyIdentifier());
-            Boolean hasBackupFile = backupFileFlags == null ? Boolean.FALSE : backupFileFlags.get(propertyIndex);
-
-            FileObject fileObject = getLocalDevice().getObject(awf.getFileIdentifier());
+            var fileId = awf.getFileIdentifier();
+            FileObject fileObject = getLocalDevice().getObject(fileId);
             var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
             var filePath = fileAccess.getFile().toPath();
             var backupPath = getBackupPath(filePath);
             var requestStream = awf.getStreamAccess();
 
-            if (Boolean.TRUE.equals(hasBackupFile)) {
+            if (changedCertFiles.contains(fileId)) {
                 // Check if the new content is the same as the backup, but only if the start index is zero.
                 if (requestStream.getFileStartPosition().intValue() == 0
                         && Arrays.equals(Files.readAllBytes(backupPath), requestStream.getFileData().getBytes())) {
-                    // The original content is being reverted. Remove the backup file and the flag.
+                    // The original content is being reverted. Remove the backup file and the marker.
                     Files.delete(backupPath);
-                    Objects.requireNonNull(backupFileFlags).set(propertyIndex, Boolean.FALSE);
-
-                    // If all the flags are false, remove the property
-                    if (backupFileFlags.stream().allMatch(Boolean.FALSE::equals)) {
-                        pendingChanges().remove(ref.getPropertyIdentifier());
-                    }
+                    changedCertFiles.remove(fileId);
                 } // Otherwise there is nothing to do. The file is just being changed again.
             } else {
                 // Check if the content is actually changing, but only if the start index is zero.
                 if (requestStream.getFileStartPosition().intValue() != 0
                         || !Arrays.equals(Files.readAllBytes(filePath), requestStream.getFileData().getBytes())) {
-                    createBackupFile(filePath, backupPath, backupFileFlags, ref);
+                    createBackupFile(fileId, filePath, backupPath);
                 } // Otherwise ignore because the file is not actually changing.
             }
         } catch (IOException e) {
@@ -551,64 +566,35 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         }
     }
 
-    @SuppressWarnings("unchecked")
     protected void handleFileSizeChange(ObjectIdentifier fileId) {
         try {
-            var ref = filePropertyReference(fileId);
-            var propertyIndex = ref.getPropertyArrayIndex().intValue();
-            var backupFileFlags = (BACnetArray<Boolean>) getPendingChanges().get(ref.getPropertyIdentifier());
-            Boolean hasBackupFile = backupFileFlags == null ? Boolean.FALSE : backupFileFlags.get(propertyIndex);
-
             // If there already is a backup file, ignore because there is no way with a fileSize write to reverse a change.
-            if (Boolean.FALSE.equals(hasBackupFile)) {
+            if (!changedCertFiles.contains(fileId)) {
                 // Create a backup file
                 FileObject fileObject = getLocalDevice().getObject(fileId);
                 var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
                 var filePath = fileAccess.getFile().toPath();
                 var backupPath = getBackupPath(filePath);
-                createBackupFile(filePath, backupPath, backupFileFlags, ref);
+                createBackupFile(fileId, filePath, backupPath);
             }
         } catch (IOException e) {
             LOG.error("Failed to handle cert file change", e);
         }
     }
 
-    protected void createBackupFile(Path filePath, Path backupPath, BACnetArray<Boolean> backupFileFlags,
-            PropertyReference ref) throws IOException {
-        // Create the backup, and add a pending change marker.
+    protected void createBackupFile(ObjectIdentifier fileId, Path filePath, Path backupPath) throws IOException {
+        // Create the backup, and mark the file as changed.
         if (Files.exists(filePath)) {
             Files.copy(filePath, backupPath, StandardCopyOption.COPY_ATTRIBUTES);
         } else {
             // The file may not actually exist, and so we create a 0-length marker file.
             Files.write(backupPath, new byte[0], StandardOpenOption.CREATE_NEW);
         }
-        // Set a marker in the pending changes
-        if (backupFileFlags == null) {
-            backupFileFlags = new BACnetArray<>(arrayLength(ref.getPropertyIdentifier()), Boolean.FALSE);
-        }
-        backupFileFlags.set(ref.getPropertyArrayIndex().intValue(), Boolean.TRUE);
-        pendingChanges().put(ref.getPropertyIdentifier(), backupFileFlags);
+        changedCertFiles.add(fileId);
     }
 
     protected Path getBackupPath(Path filePath) {
         return filePath.resolveSibling(filePath.getFileName() + BACKUP_EXTENSION);
-    }
-
-    protected PropertyReference filePropertyReference(ObjectIdentifier fileId) {
-        if (fileId.equals(network.getOperationalCertificateFileId())) {
-            return new PropertyReference(PropertyIdentifier.operationalCertificateFile, UnsignedInteger.ZERO);
-        }
-        var issuerCerts = network.getIssuerCertificateFileIds();
-        if (fileId.equals(issuerCerts.get(0))) {
-            return new PropertyReference(PropertyIdentifier.issuerCertificateFiles, UnsignedInteger.ZERO);
-        } else if (fileId.equals(issuerCerts.get(1))) {
-            return new PropertyReference(PropertyIdentifier.issuerCertificateFiles, new UnsignedInteger(1));
-        }
-        throw new IllegalStateException("Unknown fileId: " + fileId);
-    }
-
-    protected int arrayLength(PropertyIdentifier pid) {
-        return PropertyIdentifier.operationalCertificateFile.equals(pid) ? 1 : 2;
     }
 
     @Override
@@ -658,8 +644,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         // change to an issuer certificate can invalidate the operational certificate's chain. The issuer
         // certificates themselves are not validated beyond the parsing above: 12.56.101 defines no required
         // validations for them, and AB.7.4 does not check issuer expiry at connection time either.
-        if (!getPendingChanges().containsKey(PropertyIdentifier.operationalCertificateFile)
-                && !getPendingChanges().containsKey(PropertyIdentifier.issuerCertificateFiles)) {
+        if (changedCertFiles.isEmpty()) {
             return;
         }
 

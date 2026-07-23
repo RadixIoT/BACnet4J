@@ -1197,4 +1197,42 @@ public class SCHubConnectorTest {
 
         verify(network, never()).fireHubConnectionStateChanged(any(), any());
     }
+
+    // ======================================================================================
+    // STOP with no connections configured (both hub URIs blank). No connection events can
+    // ever arrive to complete the stop, so the connector must go idle immediately and notify
+    // the node — otherwise node.awaitTermination would hang until its timeout.
+    // ======================================================================================
+
+    /**
+     * With no connections, initialize() cycles to DELAYING with a backoff retry timeout
+     * scheduled. STOP must cancel that timeout, go straight to IDLE, and notify the node.
+     */
+    @Test
+    public void stop_noConnectionsConfigured_goesIdleImmediately() {
+        TestHubConnector noConnections = buildConnector(false, false);
+        noConnections.initialize();
+        assertEquals(SCHubConnector.State.DELAYING, noConnections.getState());
+        assertNotCanceled(lastTask());
+
+        noConnections.terminate();
+
+        assertEquals(SCHubConnector.State.IDLE, noConnections.getState());
+        verify(node).onConnectorIdle();
+        assertCanceled(lastTask());
+    }
+
+    /**
+     * STOP before initialize() with no connections must also complete immediately rather than
+     * parking in STOPPING.
+     */
+    @Test
+    public void stop_noConnectionsBeforeInitialize_goesIdleAndNotifies() {
+        TestHubConnector noConnections = buildConnector(false, false);
+
+        noConnections.terminate();
+
+        assertEquals(SCHubConnector.State.IDLE, noConnections.getState());
+        verify(node).onConnectorIdle();
+    }
 }

@@ -119,6 +119,7 @@ public class SCNode {
     public void hardTerminate() {
         hubConnector.hardTerminate();
         state = State.IDLE;
+        terminationLatch.countDown();
     }
 
     /**

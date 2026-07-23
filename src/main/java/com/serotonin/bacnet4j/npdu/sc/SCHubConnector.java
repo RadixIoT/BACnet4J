@@ -191,6 +191,13 @@ public class SCHubConnector {
             if (failoverConnection != null) {
                 failoverConnection.terminate();
             }
+            if (primaryConnection == null && failoverConnection == null) {
+                // No connections were ever created (blank hub URIs), so no connection
+                // event will arrive to complete the stop. Go idle immediately.
+                cancelTimeout();
+                state = State.IDLE;
+                node.onConnectorIdle();
+            }
             LOG.debug("handleEvent end: {}", state);
             return;
         }
