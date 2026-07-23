@@ -161,8 +161,8 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
             final List<ObjectIdentifier> fileOids = new ArrayList<>(files.length);
             for (final File file : files) {
                 final File copy = new File(file.getParentFile(), file.getName() + ".backup");
-                if (copy.exists())
-                    copy.delete();
+                if (Files.exists(copy.toPath()))
+                    Files.delete(copy.toPath());
                 Files.copy(file.toPath(), copy.toPath());
 
                 final int instanceNumber = localDevice.getNextInstanceObjectNumber(ObjectType.file);
@@ -377,7 +377,7 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
      * as being new should be removed as required, since this handler will only remove file objects that it created, as
      * given by the configurationFiles property.
      *
-     * @param localDevice
+     * @param localDevice the local device
      */
     protected void finishRestore(final LocalDevice localDevice) {
         // Override as required

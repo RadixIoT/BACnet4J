@@ -32,11 +32,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.file.Files;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
 import com.serotonin.bacnet4j.util.sero.StreamUtils;
 
@@ -88,7 +88,12 @@ public class FileStreamAccess extends StreamAccess {
 
     @Override
     public boolean delete() {
-        return file.delete();
+        try {
+            Files.delete(file.toPath());
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     @Override
@@ -103,7 +108,7 @@ public class FileStreamAccess extends StreamAccess {
     }
 
     @Override
-    public OctetString readData(final long start, final long length) throws IOException, BACnetServiceException {
+    public OctetString readData(final long start, final long length) throws IOException {
         long skip = start;
         try (FileInputStream in = new FileInputStream(file)) {
             while (skip > 0) {
@@ -129,7 +134,7 @@ public class FileStreamAccess extends StreamAccess {
             }
             raf.seek(actualStart);
 
-            final byte bytes[] = data.getBytes();
+            final byte[] bytes = data.getBytes();
             raf.write(bytes);
 
             return actualStart;
