@@ -42,7 +42,7 @@ import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.obj.AnalogInputObject;
 import com.serotonin.bacnet4j.obj.FileObject;
 import com.serotonin.bacnet4j.obj.fileAccess.CrlfDelimitedFileAccess;
-import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.FileStreamAccess;
 import com.serotonin.bacnet4j.service.acknowledgement.AtomicReadFileAck;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.enumerated.EngineeringUnits;
@@ -94,7 +94,7 @@ public class AtomicReadFileRequestTest {
     @Test
     public void stream() throws Exception {
         // Create the file object to use.
-        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(new File(path))));
+        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new FileStreamAccess(new File(path))));
 
         // Read starting at -1.
         TestUtils.assertRequestHandleException(() -> {

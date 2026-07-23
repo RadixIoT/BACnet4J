@@ -28,6 +28,9 @@
 package com.serotonin.bacnet4j.npdu.sc;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.KeyPair;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -45,6 +48,10 @@ public class SCNetworkUtils {
     public static final String DEFAULT_CERTIFICATE_TYPE = "X.509";
 
     private SCNetworkUtils() {
+    }
+
+    public static byte[] loadPEMAt(String path) throws IOException {
+        return loadPEM(Files.readString(Paths.get(path)));
     }
 
     public static byte[] loadPEM(String pem) {

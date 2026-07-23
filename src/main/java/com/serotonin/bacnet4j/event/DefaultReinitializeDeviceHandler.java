@@ -44,7 +44,7 @@ import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.DeviceObject;
 import com.serotonin.bacnet4j.obj.FileObject;
-import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.FileStreamAccess;
 import com.serotonin.bacnet4j.service.Service;
 import com.serotonin.bacnet4j.service.confirmed.AtomicReadFileRequest;
 import com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest;
@@ -167,7 +167,7 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
 
                 final int instanceNumber = localDevice.getNextInstanceObjectNumber(ObjectType.file);
                 final FileObject fo = localDevice.addObject(new FileObject(localDevice, instanceNumber,
-                        "configurationFile", new StreamAccess(copy)));
+                        "configurationFile", new FileStreamAccess(copy)));
                 fileOids.add(fo.getId());
             }
             configurationFiles = new BACnetArray<>(fileOids);

@@ -46,7 +46,7 @@ import org.junit.rules.TemporaryFolder;
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.obj.FileObject;
 import com.serotonin.bacnet4j.obj.SecureConnectNetworkPortObject;
-import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.FileStreamAccess;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.SCHubConnectorState;
@@ -199,11 +199,11 @@ public class SCHubConnectionListenerTest {
      */
     private SecureConnectNetworkPortObject addPortObject(LocalDevice localDevice) throws Exception {
         localDevice.addObject(new FileObject(localDevice, 1, "pem",
-                new StreamAccess(tempFolder.newFile("operational.pem"))));
+                new FileStreamAccess(tempFolder.newFile("operational.pem"))));
         localDevice.addObject(new FileObject(localDevice, 2, "pem",
-                new StreamAccess(tempFolder.newFile("issuer1.pem"))));
+                new FileStreamAccess(tempFolder.newFile("issuer1.pem"))));
         localDevice.addObject(new FileObject(localDevice, 3, "pem",
-                new StreamAccess(tempFolder.newFile("issuer2.pem"))));
+                new FileStreamAccess(tempFolder.newFile("issuer2.pem"))));
         return localDevice.addObject(new SecureConnectNetworkPortObject(
                 localDevice, network, keyPairHandler, 12));
     }

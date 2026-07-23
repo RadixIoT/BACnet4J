@@ -66,7 +66,7 @@ import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.npdu.sc.InMemoryKeyPairHandler;
 import com.serotonin.bacnet4j.npdu.sc.SCNetwork;
 import com.serotonin.bacnet4j.npdu.sc.SCNetworkBuilder;
-import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.FileStreamAccess;
 import com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedRequestService;
 import com.serotonin.bacnet4j.service.confirmed.WritePropertyMultipleRequest;
@@ -264,11 +264,11 @@ public class SecureConnectNetworkPortObjectTest {
                 .build();
         try (var localDevice = new LocalDevice(1, new DefaultTransport(network))) {
             localDevice.addObject(new FileObject(localDevice, OPERATIONAL_CERT, "pem",
-                    new StreamAccess(certFile("operational.pem"))));
+                    new FileStreamAccess(certFile("operational.pem"))));
             localDevice.addObject(new FileObject(localDevice, ISSUER_CERT_1, "pem",
-                    new StreamAccess(certFile("issuer1.pem"))));
+                    new FileStreamAccess(certFile("issuer1.pem"))));
             localDevice.addObject(new FileObject(localDevice, ISSUER_CERT_2, "pem",
-                    new StreamAccess(certFile("issuer2.pem"))));
+                    new FileStreamAccess(certFile("issuer2.pem"))));
             localDevice.addObject(new AnalogValueObject(localDevice, ANALOG_VALUE_INSTANCE, "av", 22.2F,
                     EngineeringUnits.noUnits, true));
             npo = localDevice.addObject(new SecureConnectNetworkPortObject(localDevice,

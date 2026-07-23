@@ -63,7 +63,7 @@ import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.npdu.sc.InMemoryKeyPairHandler;
 import com.serotonin.bacnet4j.npdu.sc.SCNetwork;
 import com.serotonin.bacnet4j.npdu.sc.SCNetworkBuilder;
-import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.FileStreamAccess;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.constructed.ValueSource;
 import com.serotonin.bacnet4j.type.enumerated.NetworkPortCommand;
@@ -142,13 +142,13 @@ public class SCCsrGenerationTest {
 
         localDevice = new LocalDevice(1, new DefaultTransport(network));
         localDevice.addObject(new FileObject(localDevice, OPERATIONAL_CERT, "pem",
-                new StreamAccess(new File(tempFolder.getRoot(), "operational.pem"))));
+                new FileStreamAccess(new File(tempFolder.getRoot(), "operational.pem"))));
         localDevice.addObject(new FileObject(localDevice, ISSUER_CERT_1, "pem",
-                new StreamAccess(new File(tempFolder.getRoot(), "issuer1.pem"))));
+                new FileStreamAccess(new File(tempFolder.getRoot(), "issuer1.pem"))));
         localDevice.addObject(new FileObject(localDevice, ISSUER_CERT_2, "pem",
-                new StreamAccess(new File(tempFolder.getRoot(), "issuer2.pem"))));
+                new FileStreamAccess(new File(tempFolder.getRoot(), "issuer2.pem"))));
         localDevice.addObject(new FileObject(localDevice, CSR_FILE, "pem",
-                new StreamAccess(new File(tempFolder.getRoot(), "csr.pem"))));
+                new FileStreamAccess(new File(tempFolder.getRoot(), "csr.pem"))));
         npo = localDevice.addObject(new CsrGeneratingSCNetworkPortObject(
                 localDevice, (SCNetwork) localDevice.getNetwork(), keyPairHandler, NETWORK_PORT_INSTANCE));
         localDevice.initialize();
@@ -250,7 +250,7 @@ public class SCCsrGenerationTest {
                 var csrFileId = new ObjectIdentifier(ObjectType.file,
                         4);  // CSR_FILE — hard-coded here for clarity
                 var csrFile = (FileObject) getLocalDevice().getObject(csrFileId);
-                var access = (StreamAccess) csrFile.getFileAccess();
+                var access = (FileStreamAccess) csrFile.getFileAccess();
                 access.writeData(0, new OctetString(sw.toString().getBytes()));
             } catch (Exception e) {
                 throw new RuntimeException("CSR generation failed", e);

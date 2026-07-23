@@ -49,7 +49,7 @@ import com.serotonin.bacnet4j.npdu.test.TestNetwork;
 import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.obj.FileObject;
 import com.serotonin.bacnet4j.obj.fileAccess.CrlfDelimitedFileAccess;
-import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.FileStreamAccess;
 import com.serotonin.bacnet4j.persistence.FilePersistence;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
@@ -111,7 +111,7 @@ public class BackupRestoreTest {
 
                 final FileObject stream = localDevice.addObject(new FileObject(localDevice,
                         localDevice.getNextInstanceObjectNumber(ObjectType.file), "configurationFile",
-                        new StreamAccess(streamFile)));
+                        new FileStreamAccess(streamFile)));
                 final FileObject rec = localDevice.addObject(new FileObject(localDevice,
                         localDevice.getNextInstanceObjectNumber(ObjectType.file), "configurationFile",
                         new CrlfDelimitedFileAccess(recordFile)));
@@ -131,7 +131,7 @@ public class BackupRestoreTest {
 
                     // Verify the file copy here because the file will be deleted in the clean up.
                     final FileObject stream = (FileObject) localDevice.getObject(configurationFiles.get(0));
-                    final File restoredStream = ((StreamAccess) stream.getFileAccess()).getFile();
+                    final File restoredStream = ((FileStreamAccess) stream.getFileAccess()).getFile();
 
                     final FileObject rec = (FileObject) localDevice.getObject(configurationFiles.get(1));
                     final File restoredRecord = ((CrlfDelimitedFileAccess) rec.getFileAccess()).getFile();

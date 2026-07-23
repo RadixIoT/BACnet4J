@@ -55,7 +55,7 @@ import com.serotonin.bacnet4j.npdu.sc.SCHubConnectionListener;
 import com.serotonin.bacnet4j.npdu.sc.SCKeyPairHandler;
 import com.serotonin.bacnet4j.npdu.sc.SCNetwork;
 import com.serotonin.bacnet4j.npdu.sc.SCNetworkUtils;
-import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.FileStreamAccess;
 import com.serotonin.bacnet4j.service.Service;
 import com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest;
 import com.serotonin.bacnet4j.service.confirmed.WritePropertyMultipleRequest;
@@ -89,6 +89,10 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
  * <p>The properties in Table 12-71.8 not initialized here are either optional (and left to product builders) or
  * dynamic state owned by the BACnet/SC stack (e.g., {@code SC_Hub_Connector_State}, hub connection status lists,
  * failed connection requests).
+ *
+ * <p>The certificate File objects referenced by this port must use {@code FileStreamAccess}: the pending-changes
+ * mechanism keeps backup copies of the certificate files on disk beside the originals so that unactivated changes
+ * can be discarded and do not survive a restart.
  */
 public class SecureConnectNetworkPortObject extends NetworkPortObject {
     static final Logger LOG = LoggerFactory.getLogger(SecureConnectNetworkPortObject.class);
@@ -471,7 +475,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
 
     private void deleteBackupFile(ObjectIdentifier fileId) {
         FileObject fileObject = Objects.requireNonNull(getLocalDevice().getObject(fileId));
-        var fileAccess = (StreamAccess) fileObject.getFileAccess();
+        var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
         var filePath = fileAccess.getFile().toPath();
         try {
             Files.deleteIfExists(getBackupPath(filePath));
@@ -482,7 +486,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
 
     private byte[] fileContent(ObjectIdentifier fileId) throws IOException {
         FileObject fileObject = Objects.requireNonNull(getLocalDevice().getObject(fileId));
-        var fileAccess = (StreamAccess) fileObject.getFileAccess();
+        var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
         var filePath = fileAccess.getFile().toPath();
         return Files.readAllBytes(filePath);
     }
@@ -495,7 +499,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
 
     private void reinstateBackupFile(ObjectIdentifier fileId) {
         FileObject fileObject = Objects.requireNonNull(getLocalDevice().getObject(fileId));
-        var fileAccess = (StreamAccess) fileObject.getFileAccess();
+        var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
         var filePath = fileAccess.getFile().toPath();
         var backupPath = getBackupPath(filePath);
         try {
@@ -517,7 +521,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
             Boolean hasBackupFile = backupFileFlags == null ? Boolean.FALSE : backupFileFlags.get(propertyIndex);
 
             FileObject fileObject = getLocalDevice().getObject(awf.getFileIdentifier());
-            var fileAccess = (StreamAccess) fileObject.getFileAccess();
+            var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
             var filePath = fileAccess.getFile().toPath();
             var backupPath = getBackupPath(filePath);
             var requestStream = awf.getStreamAccess();
@@ -559,7 +563,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
             if (Boolean.FALSE.equals(hasBackupFile)) {
                 // Create a backup file
                 FileObject fileObject = getLocalDevice().getObject(fileId);
-                var fileAccess = (StreamAccess) fileObject.getFileAccess();
+                var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
                 var filePath = fileAccess.getFile().toPath();
                 var backupPath = getBackupPath(filePath);
                 createBackupFile(filePath, backupPath, backupFileFlags, ref);
@@ -669,7 +673,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
             return;
         }
 
-        checkCertValidity(opCert, opFileId, PropertyIdentifier.operationalCertificateFile);
+        checkCertValidity(opCert, opFileId);
 
         // 12.56.100 requires the certificate to validate against "an internal private key", i.e. either the
         // active pair or the pending pair from an outstanding GENERATE_CSR_FILE.
@@ -684,15 +688,15 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         }
     }
 
-    private void checkCertValidity(X509Certificate cert, ObjectIdentifier fileId, PropertyIdentifier pid)
+    private void checkCertValidity(X509Certificate cert, ObjectIdentifier fileId)
             throws CertException {
         try {
             cert.checkValidity();
         } catch (CertificateExpiredException e) {
-            throw new CertException(pid, ErrorCode.certificateExpired,
+            throw new CertException(PropertyIdentifier.operationalCertificateFile, ErrorCode.certificateExpired,
                     "Certificate at " + fileId + " expired on " + cert.getNotAfter());
         } catch (CertificateNotYetValidException e) {
-            throw new CertException(pid, ErrorCode.certificateInvalid,
+            throw new CertException(PropertyIdentifier.operationalCertificateFile, ErrorCode.certificateInvalid,
                     "Certificate " + fileId + " not yet valid until " + cert.getNotBefore());
         }
     }
