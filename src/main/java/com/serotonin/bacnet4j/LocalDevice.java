@@ -405,7 +405,7 @@ public class LocalDevice implements AutoCloseable {
         if (timer != null) {
             timer.shutdown();
             try {
-                long remaining = Math.max(deadline - System.nanoTime(), 1000); // At least one millisecond
+                long remaining = Math.max(deadline - System.nanoTime(), 1_000_000); // At least one millisecond
                 if (!timer.awaitTermination(remaining, TimeUnit.NANOSECONDS)) {
                     LOG.warn("BACnet4J timer did not shutdown within the timeout");
                 }
