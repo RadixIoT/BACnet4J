@@ -60,7 +60,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
  * State machine coverage for SCNode. Mirrors SCConnectionTest / SCHubConnectorTest:
- * inline localDevice.execute(...) serializes events on the test thread, a ScheduledTask harness
+ * an inline network.executeSerially(...) stub serializes events on the test thread, a ScheduledTask harness
  * captures schedule() calls so timer delay and cancellation can be asserted, and a TestNode
  * subclass overrides createHubConnector(...) to inject a Mockito mock.
  * <p>
@@ -110,7 +110,7 @@ public class SCNodeTest {
         doAnswer(inv -> {
             ((Runnable) inv.getArgument(0)).run();
             return null;
-        }).when(localDevice).execute(any(Runnable.class));
+        }).when(network).executeSerially(any(Runnable.class));
 
         // Capture scheduled tasks so timer delay and cancellation can be asserted.
         scheduledTasks.clear();
@@ -232,8 +232,8 @@ public class SCNodeTest {
         node.terminate();
 
         assertEquals(SCNode.State.IDLE, node.getState());
-        // STOP from IDLE is the no-op illegal-event path (the `state != IDLE` guard on the
-        // global STOP handler). The hub connector must NOT be terminated.
+        // STOP from IDLE completes termination immediately (there is nothing to shut down).
+        // The hub connector must NOT be terminated.
         verify(hubConnector, never()).terminate();
     }
 
@@ -377,6 +377,32 @@ public class SCNodeTest {
         assertEquals(SCNode.State.STARTING, node.getState());
         verify(hubConnector).hardTerminate();
         verify(network).setVmac(any(OctetString.class));
+        verify(hubConnector, times(2)).initialize();
+    }
+
+    /**
+     * A stale disconnect-wait timeout — one that fired but whose event was overtaken by the DISCONNECTED
+     * event that cancelled it — is rejected as illegal by the state machine: TIMEOUT is only legal in
+     * NEW_MAC_STOPPING, and every path that cancels the timeout also leaves that state. This is why the
+     * timeout needs no at-processing-time cancellation guard.
+     */
+    @Test
+    public void newMacStopping_staleTimeoutAfterDisconnected_isIgnored() {
+        enterNewMacStopping();
+        ScheduledTask timer = lastTask();
+
+        // The graceful path completes first, cancelling the timer and moving on to STARTING.
+        node.onDisconnected();
+        assertEquals(SCNode.State.STARTING, node.getState());
+        assertCanceled(timer);
+
+        // The stale timeout event arrives anyway (fired before the cancel was processed).
+        timer.runnable.run();
+
+        // No effect: no forced termination, no second VMAC rotation, no extra restart.
+        assertEquals(SCNode.State.STARTING, node.getState());
+        verify(hubConnector, never()).hardTerminate();
+        verify(network, times(1)).setVmac(any(OctetString.class));
         verify(hubConnector, times(2)).initialize();
     }
 
@@ -558,6 +584,52 @@ public class SCNodeTest {
         // Only CONNECTOR_IDLE exits STOPPING; DISCONNECTED is illegal here.
         assertEquals(SCNode.State.STOPPING, node.getState());
         verify(network, never()).setVmac(any(OctetString.class));
+    }
+
+    // ======================================================================================
+    // awaitTermination — releases when the shutdown started by terminate() completes
+    // ======================================================================================
+
+    @Test
+    public void awaitTermination_releasesWhenStoppingReachesIdle() throws Exception {
+        enterStopping();
+        assertFalse("node is still stopping", node.awaitTermination(0, TimeUnit.MILLISECONDS));
+
+        node.onConnectorIdle();
+
+        assertEquals(SCNode.State.IDLE, node.getState());
+        assertTrue("node has terminated", node.awaitTermination(0, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    public void awaitTermination_releasesImmediatelyWhenStoppedWhileIdle() throws Exception {
+        node.terminate();
+
+        assertTrue(node.awaitTermination(0, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    public void awaitTermination_timesOutWhileStillStopping() throws Exception {
+        enterStopping();
+
+        assertFalse(node.awaitTermination(10, TimeUnit.MILLISECONDS));
+    }
+
+    /**
+     * A hard termination forces the node to IDLE without waiting for the shutdown handshakes,
+     * so it must also release awaiting callers. This is the LocalDevice.terminate escalation
+     * path after awaitTermination times out.
+     */
+    @Test
+    public void hardTerminate_forcesIdleAndReleasesAwaitTermination() throws Exception {
+        enterStopping();
+        assertFalse(node.awaitTermination(0, TimeUnit.MILLISECONDS));
+
+        node.hardTerminate();
+
+        assertEquals(SCNode.State.IDLE, node.getState());
+        verify(hubConnector).hardTerminate();
+        assertTrue(node.awaitTermination(0, TimeUnit.MILLISECONDS));
     }
 
     // ======================================================================================

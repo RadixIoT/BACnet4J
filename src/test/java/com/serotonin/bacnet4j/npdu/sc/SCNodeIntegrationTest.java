@@ -28,6 +28,8 @@
 package com.serotonin.bacnet4j.npdu.sc;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -82,7 +84,7 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
  * Driving an event is done by calling the appropriate SCConnection callback on a real
  * connection instance (e.g. onWebsocketOpen, onWebsocketMessage). The connection updates its
  * own state machine, which fires callbacks up to the hub connector, which fires callbacks up
- * to the node — all on the test thread, because localDevice.execute is stubbed to run inline.
+ * to the node — all on the test thread, because network.executeSerially is stubbed to drain a FIFO.
  */
 public class SCNodeIntegrationTest {
     private static final URI PRIMARY_URI = URI.create("wss://primary.example.com/");
@@ -98,16 +100,17 @@ public class SCNodeIntegrationTest {
     private static final int RECONNECT_SECS = 5;
 
     private SCNetwork network;
+    private Transport transport;
     private ScWebSocketClient primaryClient;
     private ScWebSocketClient failoverClient;
     private IntegrationNode node;
     private final Clock clock = Clock.systemUTC();
 
     /**
-     * Pending events queued by localDevice.execute. We process them FIFO from the top-level
+     * Pending events queued by network.executeSerially. We process them FIFO from the top-level
      * test call rather than running each one inline, because inline execution recurses
-     * depth-first and breaks ordering invariants the real (single-threaded) executor would
-     * enforce. Without this, e.g. SCHubConnector's STOP handler (which calls primary.terminate
+     * depth-first and breaks the ordering invariants that the production SerialExecutor enforces.
+     * Without this, e.g. SCHubConnector's STOP handler (which calls primary.terminate
      * then failover.terminate) would let primary's full restart complete before failover's
      * terminate even began.
      */
@@ -120,7 +123,7 @@ public class SCNodeIntegrationTest {
     @Before
     public void setUp() {
         network = mock(SCNetwork.class);
-        var transport = mock(Transport.class);
+        transport = mock(Transport.class);
         var localDevice = mock(LocalDevice.class);
         primaryClient = mock(ScWebSocketClient.class);
         failoverClient = mock(ScWebSocketClient.class);
@@ -144,9 +147,9 @@ public class SCNodeIntegrationTest {
         setupClientMock(primaryClient);
         setupClientMock(failoverClient);
 
-        // Events queued via localDevice.execute(...) are appended to a FIFO and drained from
-        // the outermost call on the test thread. This mirrors a real single-threaded executor:
-        // nested execute() calls enqueue, they don't recurse.
+        // Events queued via network.executeSerially(...) are appended to a FIFO and drained from
+        // the outermost call on the test thread. This mirrors the production SerialExecutor exactly:
+        // nested submissions enqueue breadth-first, they don't recurse.
         draining = false;
         doAnswer(inv -> {
             pendingEvents.add(inv.getArgument(0));
@@ -161,7 +164,7 @@ public class SCNodeIntegrationTest {
                 }
             }
             return null;
-        }).when(localDevice).execute(any(Runnable.class));
+        }).when(network).executeSerially(any(Runnable.class));
 
         // Capture every schedule call. The returned mock future's cancel() is a no-op for our
         // purposes, but we keep the Runnable around so timer-driven tests can fire it manually.
@@ -515,8 +518,8 @@ public class SCNodeIntegrationTest {
         // The retry-primary timer was armed when WAIT_FAILOVER → CONNECTED_FAILOVER. Firing it
         // moves the connector to REWAIT_PRIMARY (a substate of CONNECTED_FAILOVER) and triggers a
         // fresh primary connection attempt. The primary's websocket client has been closed since
-        // the original failure (getReadyState=CLOSED), so SCConnection issues reconnect() rather
-        // than connect() this time.
+        // the original failure (getReadyState=CLOSED), so SCConnection terminates it and connects
+        // with a fresh client (the harness returns the same mock) this time.
         clearInvocations(primaryClient);
         fireLatestScheduled();
 
@@ -525,7 +528,7 @@ public class SCNodeIntegrationTest {
         // Failover is still serving traffic; status surface still reports failover.
         assertEquals(SCConnection.State.CONNECTED, node.hub.failover.getState());
         assertEquals(SCHubConnectorState.connectedToFailover, node.getHubConnectorState());
-        verify(primaryClient).reconnect();
+        verify(primaryClient).connect();
 
         // Primary websocket opens; SCConnection sends a new Connect-Request.
         simulateOpen(primaryClient);
@@ -664,7 +667,8 @@ public class SCNodeIntegrationTest {
         // Node stays STARTED — DISCONNECTED in STARTED is silently ignored so the connector can
         // bring the connection back without bouncing the upper layer.
         assertEquals(SCNode.State.STARTED, node.getState());
-        verify(primaryClient).reconnect();
+        // Invocations were cleared mid-test; this is the re-initialization's connect on a fresh client.
+        verify(primaryClient).connect();
     }
 
     /**
@@ -699,5 +703,31 @@ public class SCNodeIntegrationTest {
         feed(node.hub.primary, incoming);
         verify(network).onIncoming(org.mockito.ArgumentMatchers.argThat(
                 m -> m != null && m.getFunction() == SCBVLC.ENCAPSULATED_NPDU));
+    }
+
+    /**
+     * A node configured with no hub URIs (e.g. not yet commissioned) creates no connections, so no
+     * connection event can ever complete a stop. Terminating such a node must still wind the whole
+     * stack to IDLE and release awaitTermination — otherwise LocalDevice.terminate would burn its
+     * full timeout waiting on a latch that can never count down through connection events.
+     */
+    @Test
+    public void integration_terminate_noHubUris_awaitTerminationReleases() throws Exception {
+        when(network.getPrimaryHub()).thenReturn(null);
+        when(network.getFailoverHub()).thenReturn(null);
+        IntegrationNode bareNode = new IntegrationNode(network, primaryClient, failoverClient);
+        bareNode.configure(transport);
+
+        // With no connections to attempt, the connector cycles to DELAYING with a retry timeout.
+        bareNode.initialize();
+        assertEquals(SCNode.State.STARTING, bareNode.getState());
+        assertEquals(SCHubConnector.State.DELAYING, bareNode.hub.getState());
+        assertFalse(bareNode.awaitTermination(0, TimeUnit.MILLISECONDS));
+
+        bareNode.terminate();
+
+        assertEquals(SCHubConnector.State.IDLE, bareNode.hub.getState());
+        assertEquals(SCNode.State.IDLE, bareNode.getState());
+        assertTrue(bareNode.awaitTermination(0, TimeUnit.MILLISECONDS));
     }
 }

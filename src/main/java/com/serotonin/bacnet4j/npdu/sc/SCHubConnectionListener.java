@@ -27,42 +27,27 @@
 
 package com.serotonin.bacnet4j.npdu.sc;
 
-public class ExponentialBackoff implements BackoffPolicy {
-    private final double multiplier;
-    private int minimumReconnectTime;
-    private int maximumReconnectTime;
+import com.serotonin.bacnet4j.type.enumerated.SCHubConnectorState;
 
-    private int nextReconnectTime;
-
-    public ExponentialBackoff(double multiplier) {
-        this.multiplier = multiplier;
-    }
-
-    public void configure(int minimumReconnectTime, int maximumReconnectTime) {
-        this.minimumReconnectTime = minimumReconnectTime;
-        this.maximumReconnectTime = maximumReconnectTime;
-        reset();
-    }
-
-    public int getReconnectWaitTimeout() {
-        int result = nextReconnectTime;
-
-        // Might consider adding some randomness here too.
-        int next = (int) Math.round(nextReconnectTime * multiplier);
-        if (next == nextReconnectTime) {
-            next += 1; // Ensure it increases by at least one.
-        }
-        if (next > maximumReconnectTime) {
-            next = maximumReconnectTime;
-        }
-
-        nextReconnectTime = next;
-
-        return result;
-    }
-
-    public void reset() {
-        // 12.56.82
-        nextReconnectTime = Math.min(minimumReconnectTime, maximumReconnectTime);
-    }
+/**
+ * Listener for changes to a BACnet/SC network's hub connector state. Unlike other network types, an SC
+ * network is not usable when {@code LocalDevice.initialize()} returns: the hub connection is established
+ * asynchronously, and until then outgoing messages are dropped. Register a listener with
+ * {@link SCNetwork#addHubConnectionListener} to learn when the network becomes usable
+ * ({@code noHubConnection} to {@code connectedToPrimary} or {@code connectedToFailover}), when it fails
+ * over or recovers between hubs, and when the connection is lost.
+ *
+ * @see SCNetwork#whenHubConnected()
+ */
+@FunctionalInterface
+public interface SCHubConnectionListener {
+    /**
+     * Called when the hub connector state changes. Notified on the local device's executor while the hub
+     * connector processes its state machine, so implementations must return quickly and must not block;
+     * hand off substantial work to another thread.
+     *
+     * @param oldState the state before the change.
+     * @param newState the state after the change.
+     */
+    void hubConnectionStateChanged(SCHubConnectorState oldState, SCHubConnectorState newState);
 }

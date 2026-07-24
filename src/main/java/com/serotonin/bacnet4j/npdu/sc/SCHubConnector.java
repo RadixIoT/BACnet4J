@@ -124,7 +124,12 @@ public class SCHubConnector {
         queueEvent(Event.STOP);
     }
 
-    public synchronized void hardTerminate() {
+    /**
+     * Immediately forces the connector and its connections to idle. Deliberately bypasses the serial event
+     * queue; see {@link SCNode#hardTerminate()}.
+     */
+    public void hardTerminate() {
+        SCHubConnectorState before = getHubConnectorState();
         cancelTimeout();
         if (primaryConnection != null) {
             primaryConnection.hardTerminate();
@@ -133,6 +138,7 @@ public class SCHubConnector {
             failoverConnection.hardTerminate();
         }
         state = State.IDLE;
+        notifyIfStateChanged(before);
     }
 
     public SCHubConnectorState getHubConnectorState() {
@@ -166,10 +172,19 @@ public class SCHubConnector {
     }
 
     private void queueEvent(Event event, Object... args) {
-        localDevice.execute(() -> handleEvent(event, args));
+        network.executeSerially(() -> handleEvent(event, args));
     }
 
-    protected synchronized void handleEvent(Event event, Object... args) {
+    protected void handleEvent(Event event, Object... args) {
+        SCHubConnectorState before = getHubConnectorState();
+        try {
+            handleEventInternal(event, args);
+        } finally {
+            notifyIfStateChanged(before);
+        }
+    }
+
+    private void handleEventInternal(Event event, Object... args) {
         LOG.debug("handleEvent start: {}, event={}, args={}", state, event, args);
 
         if (event == Event.STOP) {
@@ -179,6 +194,13 @@ public class SCHubConnector {
             }
             if (failoverConnection != null) {
                 failoverConnection.terminate();
+            }
+            if (primaryConnection == null && failoverConnection == null) {
+                // No connections were ever created (blank hub URIs), so no connection
+                // event will arrive to complete the stop. Go idle immediately.
+                cancelTimeout();
+                state = State.IDLE;
+                node.onConnectorIdle();
             }
             LOG.debug("handleEvent end: {}", state);
             return;
@@ -326,6 +348,18 @@ public class SCHubConnector {
         LOG.debug("handleEvent end: {}", state);
     }
 
+    /**
+     * Notifies the network's hub connection listeners if the externally visible connector state differs
+     * from the given prior state. Internal state transitions that map to the same BACnetSCHubConnectorState
+     * value (e.g. CONNECTED_FAILOVER to REWAIT_PRIMARY) do not produce notifications.
+     */
+    private void notifyIfStateChanged(SCHubConnectorState before) {
+        SCHubConnectorState after = getHubConnectorState();
+        if (before != after) {
+            network.fireHubConnectionStateChanged(before, after);
+        }
+    }
+
     private void raiseChange(State newState) {
         state = newState;
         queueEvent(Event.CHANGE);
@@ -359,13 +393,15 @@ public class SCHubConnector {
         LOG.error("Illegal event '{}' for state '{}', args={}", event, state, args);
     }
 
-    private synchronized void setTimeoutFuture(int seconds) {
+    private void setTimeoutFuture(int seconds) {
         LOG.debug("setTimeoutFuture with {} seconds", seconds);
         cancelTimeout();
-        timeoutFuture = localDevice.schedule(() -> handleEvent(Event.TIMEOUT), seconds, TimeUnit.SECONDS);
+        // The timeout event is processed through the network's serial queue like every other event so that
+        // it cannot overtake events submitted before it.
+        timeoutFuture = localDevice.schedule(() -> queueEvent(Event.TIMEOUT), seconds, TimeUnit.SECONDS);
     }
 
-    private synchronized void cancelTimeout() {
+    private void cancelTimeout() {
         if (timeoutFuture != null) {
             timeoutFuture.cancel(false);
         }

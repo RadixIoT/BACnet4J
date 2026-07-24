@@ -27,40 +27,49 @@
 
 package com.serotonin.bacnet4j.npdu.sc;
 
+import java.security.KeyPair;
+import java.security.cert.X509Certificate;
 import java.util.Objects;
 
-import com.serotonin.bacnet4j.npdu.NetworkIdentifier;
-import com.serotonin.bacnet4j.type.primitive.OctetString;
-import com.serotonin.bacnet4j.util.sero.StreamUtils;
+/**
+ * A {@link SCKeyPairHandler} that holds the key pairs in memory only. Suitable for tests and as a reference
+ * for the promotion logic; a shipping product must provide an implementation that persists both pairs
+ * (encrypted at rest) so they survive a device restart.
+ */
+public class InMemoryKeyPairHandler implements SCKeyPairHandler {
+    private KeyPair activeKeyPair;
+    private KeyPair pendingKeyPair;
 
-public class SCNetworkIdentifier extends NetworkIdentifier {
-    private final String uuid;
-
-    public SCNetworkIdentifier(String uuid) {
-        // Normalize to the same lowercase undashed hex representation that the OctetString
-        // constructor produces, so that identifiers created from either form are equal.
-        this.uuid = uuid.replace("-", "").toLowerCase();
+    public InMemoryKeyPairHandler(KeyPair activeKeyPair) {
+        this(activeKeyPair, null);
     }
 
-    public SCNetworkIdentifier(OctetString uuid) {
-        this.uuid = StreamUtils.toHex(uuid.getBytes());
-    }
-
-    @Override
-    public String getIdString() {
-        return uuid;
+    public InMemoryKeyPairHandler(KeyPair activeKeyPair, KeyPair pendingKeyPair) {
+        this.activeKeyPair = Objects.requireNonNull(activeKeyPair, "activeKeyPair is required");
+        this.pendingKeyPair = pendingKeyPair;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass())
-            return false;
-        SCNetworkIdentifier that = (SCNetworkIdentifier) o;
-        return Objects.equals(uuid, that.uuid);
+    public KeyPair getActiveKeyPair() {
+        return activeKeyPair;
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hashCode(uuid);
+    public KeyPair getPendingKeyPair() {
+        return pendingKeyPair;
+    }
+
+    @Override
+    public void setPendingKeyPair(KeyPair keyPair) {
+        pendingKeyPair = keyPair;
+    }
+
+    @Override
+    public void certificateActivated(X509Certificate certificate) {
+        KeyPair pending = pendingKeyPair;
+        if (pending != null && SCNetworkUtils.publicKeyMatches(certificate, pending)) {
+            activeKeyPair = pending;
+            pendingKeyPair = null;
+        }
     }
 }

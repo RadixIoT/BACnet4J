@@ -27,6 +27,8 @@
 
 package com.serotonin.bacnet4j.npdu;
 
+import java.util.concurrent.TimeUnit;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,6 +99,24 @@ public abstract class Network {
     }
 
     public abstract void terminate();
+
+    /**
+     * Waits for the network to complete any asynchronous shutdown started by {@link #terminate()}. Called
+     * by {@code LocalDevice.terminate} between terminating the transport and shutting down the executor,
+     * because asynchronous shutdown (e.g. the BACnet/SC state machines) dispatches its events through that
+     * executor. Networks whose termination is synchronous return true immediately, which is the default.
+     *
+     * @param timeout the timeout duration
+     * @param unit    the unit of time
+     * @return true if the network terminated within the timeout.
+     */
+    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+        return true;
+    }
+
+    public void hardTerminate() {
+        // no op by default
+    }
 
     public final Address getLocalBroadcastAddress() {
         return new Address(localNetworkNumber, getBroadcastMAC());

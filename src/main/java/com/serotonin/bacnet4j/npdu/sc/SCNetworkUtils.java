@@ -28,9 +28,14 @@
 package com.serotonin.bacnet4j.npdu.sc;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.KeyPair;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.regex.Pattern;
 
@@ -43,6 +48,10 @@ public class SCNetworkUtils {
     public static final String DEFAULT_CERTIFICATE_TYPE = "X.509";
 
     private SCNetworkUtils() {
+    }
+
+    public static byte[] loadPEMAt(String path) throws IOException {
+        return loadPEM(Files.readString(Paths.get(path)));
     }
 
     public static byte[] loadPEM(String pem) {
@@ -62,5 +71,16 @@ public class SCNetworkUtils {
             return null;
         }
         return (X509Certificate) cf.generateCertificate(new ByteArrayInputStream(bytes));
+    }
+
+    /**
+     * Returns true if the certificate's public key equals the key pair's public key. Null-safe on both
+     * arguments and on the pair's public key.
+     */
+    public static boolean publicKeyMatches(X509Certificate certificate, KeyPair keyPair) {
+        if (certificate == null || keyPair == null || keyPair.getPublic() == null) {
+            return false;
+        }
+        return Arrays.equals(certificate.getPublicKey().getEncoded(), keyPair.getPublic().getEncoded());
     }
 }

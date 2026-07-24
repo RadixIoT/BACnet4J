@@ -66,4 +66,21 @@ public class ExponentialBackoffTest {
         assertEquals(2, eb.getReconnectWaitTimeout());
         assertEquals(3, eb.getReconnectWaitTimeout());
     }
+
+    /**
+     * 12.56.82: when the minimum reconnect time is greater than the maximum, the wait between attempts
+     * is a local matter but shall not exceed the maximum. The first wait after configure/reset was
+     * previously the unclamped minimum.
+     */
+    @Test
+    public void minimumGreaterThanMaximum_neverExceedsMaximum() {
+        ExponentialBackoff eb = new ExponentialBackoff(1.5);
+        eb.configure(100, 30);
+
+        assertEquals(30, eb.getReconnectWaitTimeout());
+        assertEquals(30, eb.getReconnectWaitTimeout());
+
+        eb.reset();
+        assertEquals(30, eb.getReconnectWaitTimeout());
+    }
 }

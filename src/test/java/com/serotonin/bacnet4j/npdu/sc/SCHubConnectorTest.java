@@ -60,7 +60,7 @@ import com.serotonin.bacnet4j.type.enumerated.SCHubConnectorState;
 
 /**
  * State machine coverage for SCHubConnector. Mirrors the SCConnectionTest structure: an inline
- * localDevice.execute(...) stub serializes events on the test thread, a ScheduledTask harness
+ * network.executeSerially(...) stub serializes events on the test thread, a ScheduledTask harness
  * captures schedule() calls so timer delays and cancellation can be asserted, and a TestHubConnector
  * subclass overrides createConnection(...) to inject mock SCConnections for primary and failover.
  * <p>
@@ -121,7 +121,7 @@ public class SCHubConnectorTest {
         doAnswer(inv -> {
             ((Runnable) inv.getArgument(0)).run();
             return null;
-        }).when(localDevice).execute(any(Runnable.class));
+        }).when(network).executeSerially(any(Runnable.class));
 
         // Capture every schedule(...) into a ScheduledTask whose mock future routes cancel(...)
         // back into the task so tests can assert cancellation.
@@ -1106,5 +1106,133 @@ public class SCHubConnectorTest {
         assertEquals(SCHubConnector.State.STOPPING, noPrimary.getState());
         verify(failoverConn).terminate();
         verify(primaryConn, never()).terminate();
+    }
+
+    // ======================================================================================
+    // Hub connection state change notifications. The connector notifies through
+    // network.fireHubConnectionStateChanged whenever the externally visible
+    // SCHubConnectorState changes; internal transitions that map to the same value are silent.
+    // ======================================================================================
+
+    @Test
+    public void notify_connectToPrimary_firesNoConnectionToPrimary() {
+        enterConnectedPrimary();
+
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.noHubConnection, SCHubConnectorState.connectedToPrimary);
+        verify(network, times(1)).fireHubConnectionStateChanged(any(), any());
+    }
+
+    @Test
+    public void notify_connectToFailover_firesNoConnectionToFailover() {
+        enterConnectedFailover();
+
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.noHubConnection, SCHubConnectorState.connectedToFailover);
+        verify(network, times(1)).fireHubConnectionStateChanged(any(), any());
+    }
+
+    /**
+     * CONNECTED_FAILOVER to REWAIT_PRIMARY maps to the same external state (connectedToFailover),
+     * so retrying the primary while connected to the failover must not produce a notification.
+     */
+    @Test
+    public void notify_failoverToRewaitPrimary_isSilent() {
+        enterRewaitPrimary();
+
+        verify(network, times(1)).fireHubConnectionStateChanged(any(), any());
+    }
+
+    /**
+     * Recovery from the failover to the primary changes the external state without passing through
+     * a disconnected state, and must be notified as failover to primary.
+     */
+    @Test
+    public void notify_recoveryToPrimary_firesFailoverToPrimary() {
+        enterRewaitPrimary();
+
+        connector.onConnectionEstablished(primaryConn);
+
+        assertEquals(SCHubConnector.State.CONNECTED_PRIMARY, connector.getState());
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.connectedToFailover, SCHubConnectorState.connectedToPrimary);
+    }
+
+    @Test
+    public void notify_connectionLost_firesPrimaryToNoConnection() {
+        enterConnectedPrimary();
+        clearInvocations(network);
+
+        connector.onConnectionIdle(primaryConn, true);
+
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.connectedToPrimary, SCHubConnectorState.noHubConnection);
+    }
+
+    @Test
+    public void notify_stopWhileConnected_firesPrimaryToNoConnection() {
+        enterConnectedPrimary();
+        clearInvocations(network);
+
+        connector.terminate();
+
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.connectedToPrimary, SCHubConnectorState.noHubConnection);
+    }
+
+    @Test
+    public void notify_hardTerminateWhileConnected_firesPrimaryToNoConnection() {
+        enterConnectedPrimary();
+        clearInvocations(network);
+
+        connector.hardTerminate();
+
+        verify(network).fireHubConnectionStateChanged(
+                SCHubConnectorState.connectedToPrimary, SCHubConnectorState.noHubConnection);
+    }
+
+    @Test
+    public void notify_hardTerminateWhileIdle_isSilent() {
+        connector.hardTerminate();
+
+        verify(network, never()).fireHubConnectionStateChanged(any(), any());
+    }
+
+    // ======================================================================================
+    // STOP with no connections configured (both hub URIs blank). No connection events can
+    // ever arrive to complete the stop, so the connector must go idle immediately and notify
+    // the node — otherwise node.awaitTermination would hang until its timeout.
+    // ======================================================================================
+
+    /**
+     * With no connections, initialize() cycles to DELAYING with a backoff retry timeout
+     * scheduled. STOP must cancel that timeout, go straight to IDLE, and notify the node.
+     */
+    @Test
+    public void stop_noConnectionsConfigured_goesIdleImmediately() {
+        TestHubConnector noConnections = buildConnector(false, false);
+        noConnections.initialize();
+        assertEquals(SCHubConnector.State.DELAYING, noConnections.getState());
+        assertNotCanceled(lastTask());
+
+        noConnections.terminate();
+
+        assertEquals(SCHubConnector.State.IDLE, noConnections.getState());
+        verify(node).onConnectorIdle();
+        assertCanceled(lastTask());
+    }
+
+    /**
+     * STOP before initialize() with no connections must also complete immediately rather than
+     * parking in STOPPING.
+     */
+    @Test
+    public void stop_noConnectionsBeforeInitialize_goesIdleAndNotifies() {
+        TestHubConnector noConnections = buildConnector(false, false);
+
+        noConnections.terminate();
+
+        assertEquals(SCHubConnector.State.IDLE, noConnections.getState());
+        verify(node).onConnectorIdle();
     }
 }
