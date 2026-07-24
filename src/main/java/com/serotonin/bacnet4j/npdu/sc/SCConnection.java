@@ -261,6 +261,7 @@ public class SCConnection {
                     // Ensure that the URI uses the "wss" protocol.
                     if (!"wss".equals(uri.getScheme())) {
                         connectionState = SCConnectionState.failedToConnect;
+                        connectTimestamp = new DateTime(localDevice);
                         connectionError =
                                 new ErrorClassAndCode(ErrorClass.communication, ErrorCode.websocketSchemeNotSupported);
                         connectionClosed(false);
@@ -295,6 +296,7 @@ public class SCConnection {
                         client.close();
                     }
                     connectionState = SCConnectionState.failedToConnect;
+                    connectTimestamp = new DateTime(localDevice);
                     connectionClosed(false);
                 } else if (event == Event.ACCEPT) {
                     LOG.debug("{} websocket connected", name);
@@ -318,6 +320,7 @@ public class SCConnection {
                         client.close();
                     }
                     connectionState = SCConnectionState.failedToConnect;
+                    connectTimestamp = new DateTime(localDevice);
                     connectionClosed(false);
                 } else if (event == Event.MESSAGE && message != null) {
                     switch (message.getFunction()) {
@@ -354,6 +357,7 @@ public class SCConnection {
                                             name, result.getErrorHeaderMarker(), result.getResultCode(),
                                             result.getErrorCode(), result.getErrorClass());
                                     connectionState = SCConnectionState.failedToConnect;
+                                    connectTimestamp = new DateTime(localDevice);
                                     connectionError =
                                             new ErrorClassAndCode(result.getErrorClass(), result.getErrorCode());
                                     connectionErrorDetails = result.getErrorDetails();
