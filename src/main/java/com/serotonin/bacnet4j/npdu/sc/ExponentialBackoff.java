@@ -44,11 +44,6 @@ public class ExponentialBackoff implements BackoffPolicy {
         reset();
     }
 
-    public int getInitialWaitTimeout() {
-        // 12.56.82
-        return Math.min(minimumReconnectTime, maximumReconnectTime);
-    }
-
     public int getReconnectWaitTimeout() {
         int result = nextReconnectTime;
 
@@ -67,6 +62,7 @@ public class ExponentialBackoff implements BackoffPolicy {
     }
 
     public void reset() {
-        nextReconnectTime = minimumReconnectTime;
+        // 12.56.82
+        nextReconnectTime = Math.min(minimumReconnectTime, maximumReconnectTime);
     }
 }
