@@ -109,7 +109,7 @@ public class SCNetwork extends Network {
     private SCHubConnection initializationError =
             new SCHubConnection(SCConnectionState.notConnected, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED);
     private SCNode node;
-    private volatile SerialExecutor eventExecutor;
+    private SerialExecutor eventExecutor;
     private volatile boolean terminated = false;
     private final CopyOnWriteArrayList<SCHubConnectionListener> hubConnectionListeners = new CopyOnWriteArrayList<>();
     private final CopyOnWriteArrayList<CompletableFuture<SCHubConnectorState>> pendingConnectionFutures =

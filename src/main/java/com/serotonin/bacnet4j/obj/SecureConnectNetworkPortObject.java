@@ -558,7 +558,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
 
     protected void handleFileWrite(AtomicWriteFileRequest awf) {
         var fileId = awf.getFileIdentifier();
-        FileObject fileObject = getLocalDevice().getObject(fileId);
+        FileObject fileObject = Objects.requireNonNull(getLocalDevice().getObject(fileId));
         var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
         var filePath = fileAccess.getFile().toPath();
         var backupPath = getBackupPath(filePath);
@@ -592,7 +592,7 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         // If there already is a backup file, ignore because there is no way with a fileSize write to reverse a change.
         if (!changedCertFiles.contains(fileId)) {
             // Create a backup file
-            FileObject fileObject = getLocalDevice().getObject(fileId);
+            FileObject fileObject = Objects.requireNonNull(getLocalDevice().getObject(fileId));
             var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
             var filePath = fileAccess.getFile().toPath();
             var backupPath = getBackupPath(filePath);

@@ -54,7 +54,7 @@ public class ScWebSocketClient extends WebSocketClient {
     private final String name;
     // Volatile: terminate() nulls this from the event-processing thread while the websocket threads read
     // it in the callbacks.
-    private volatile SCConnection connection;
+    private SCConnection connection;
 
     public ScWebSocketClient(String name, URI serverUri, SCConnection connection, int connectTimeout) {
         super(serverUri, draft, null, connectTimeout);

@@ -31,6 +31,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
 import java.security.KeyPair;
@@ -279,7 +280,12 @@ public class SCHubConnectionListenerTest {
      */
     @Test
     public void hardTerminateBeforeInitializeIsSafe() {
-        network.hardTerminate();
+        try {
+            network.hardTerminate();
+        } catch (Exception e) {
+            fail("hard terminate failed");
+            throw e;
+        }
     }
 
     /**
