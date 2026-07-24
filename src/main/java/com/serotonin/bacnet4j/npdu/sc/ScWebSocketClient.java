@@ -33,6 +33,7 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 import javax.net.ssl.SSLParameters;
 
@@ -52,8 +53,6 @@ public class ScWebSocketClient extends WebSocketClient {
     private static final Draft_6455 draft = new Draft_6455(Collections.emptyList(), List.of(new Protocol(SUBPROTOCOL)));
 
     private final String name;
-    // Volatile: terminate() nulls this from the event-processing thread while the websocket threads read
-    // it in the callbacks.
     private SCConnection connection;
 
     public ScWebSocketClient(String name, URI serverUri, SCConnection connection, int connectTimeout) {
@@ -73,45 +72,52 @@ public class ScWebSocketClient extends WebSocketClient {
         params.setEndpointIdentificationAlgorithm(null);
     }
 
+    private void withConnection(Consumer<SCConnection> consumer) {
+        SCConnection localConnection = connection;
+        if (localConnection != null) {
+            consumer.accept(localConnection);
+        }
+    }
+
     @Override
     public void onOpen(ServerHandshake handshake) {
-        if (connection != null) {
+        withConnection(conn -> {
             LOG.debug("{} websocket onOpen: {}", name, handshake.getHttpStatus());
-            connection.onWebsocketOpen();
-        }
+            conn.onWebsocketOpen();
+        });
     }
 
     @Override
     public void onMessage(String message) {
         // AB.7.5.3
-        if (connection != null) {
-            connection.onTextData(message);
-        }
+        withConnection(conn -> {
+            conn.onTextData(message);
+        });
     }
 
     @Override
     public void onMessage(ByteBuffer bb) {
-        if (connection != null) {
+        withConnection(conn -> {
             LOG.debug("{} websocket onMessage: {}", name, bb);
             var queue = new ByteQueue();
             queue.push(bb);
-            connection.onWebsocketMessage(queue);
-        }
+            conn.onWebsocketMessage(queue);
+        });
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        if (connection != null) {
+        withConnection(conn -> {
             LOG.debug("{} Websocket onClose: code={}, reason={}, remote={}", name, code, reason, remote);
             if (remote) {
-                connection.onWebsocketClose(code, reason);
+                conn.onWebsocketClose(code, reason);
             }
-        }
+        });
     }
 
     @Override
     public void onError(Exception ex) {
-        if (connection != null) {
+        withConnection(conn -> {
             LOG.warn("{} error on websocket connection", name, ex);
             // Codes for various error conditions are defined in AB.7.5.1. But the spec says that they merely "can be used",
             // so the best effort is made to determine the cause, but ultimately "other" is used.
@@ -123,7 +129,7 @@ public class ScWebSocketClient extends WebSocketClient {
             } else if (ex instanceof NoRouteToHostException) {
                 code = ErrorCode.ipAddressNotReachable;
             }
-            connection.onWebsocketError(code, ex.getMessage());
-        }
+            conn.onWebsocketError(code, ex.getMessage());
+        });
     }
 }
