@@ -518,8 +518,8 @@ public class SCNodeIntegrationTest {
         // The retry-primary timer was armed when WAIT_FAILOVER → CONNECTED_FAILOVER. Firing it
         // moves the connector to REWAIT_PRIMARY (a substate of CONNECTED_FAILOVER) and triggers a
         // fresh primary connection attempt. The primary's websocket client has been closed since
-        // the original failure (getReadyState=CLOSED), so SCConnection issues reconnect() rather
-        // than connect() this time.
+        // the original failure (getReadyState=CLOSED), so SCConnection terminates it and connects
+        // with a fresh client (the harness returns the same mock) this time.
         clearInvocations(primaryClient);
         fireLatestScheduled();
 
@@ -528,7 +528,7 @@ public class SCNodeIntegrationTest {
         // Failover is still serving traffic; status surface still reports failover.
         assertEquals(SCConnection.State.CONNECTED, node.hub.failover.getState());
         assertEquals(SCHubConnectorState.connectedToFailover, node.getHubConnectorState());
-        verify(primaryClient).reconnect();
+        verify(primaryClient).connect();
 
         // Primary websocket opens; SCConnection sends a new Connect-Request.
         simulateOpen(primaryClient);
@@ -667,7 +667,8 @@ public class SCNodeIntegrationTest {
         // Node stays STARTED — DISCONNECTED in STARTED is silently ignored so the connector can
         // bring the connection back without bouncing the upper layer.
         assertEquals(SCNode.State.STARTED, node.getState());
-        verify(primaryClient).reconnect();
+        // Invocations were cleared mid-test; this is the re-initialization's connect on a fresh client.
+        verify(primaryClient).connect();
     }
 
     /**
