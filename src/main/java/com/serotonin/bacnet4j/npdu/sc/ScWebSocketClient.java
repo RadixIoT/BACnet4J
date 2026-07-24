@@ -90,9 +90,7 @@ public class ScWebSocketClient extends WebSocketClient {
     @Override
     public void onMessage(String message) {
         // AB.7.5.3
-        withConnection(conn -> {
-            conn.onTextData(message);
-        });
+        withConnection(conn -> conn.onTextData(message));
     }
 
     @Override
