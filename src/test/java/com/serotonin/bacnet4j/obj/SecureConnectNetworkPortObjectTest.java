@@ -46,9 +46,9 @@ import java.security.SecureRandom;
 import java.security.Security;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
-import java.util.Set;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Set;
 
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -302,6 +302,12 @@ public class SecureConnectNetworkPortObjectTest {
     private Path backupPathFor(ObjectIdentifier fileId) {
         Path p = pathFor(fileId);
         return p.resolveSibling(p.getFileName() + SecureConnectNetworkPortObject.BACKUP_EXTENSION);
+    }
+
+    /** Temp path used while a backup is being created, before its atomic move into place. */
+    private Path backupTempPathFor(ObjectIdentifier fileId) {
+        Path p = backupPathFor(fileId);
+        return p.resolveSibling(p.getFileName() + ".tmp");
     }
 
     /**
@@ -662,6 +668,40 @@ public class SecureConnectNetworkPortObjectTest {
     // ---------------------------------------------------------------------------------------
     // Unintended restart tests
     // ---------------------------------------------------------------------------------------
+
+    /**
+     * Backup creation goes through a temp file that is atomically moved into place, so a completed
+     * backup leaves no temp residue beside it.
+     */
+    @Test
+    public void backupCreation_leavesNoTempResidue() throws Exception {
+        withLocalDevice(localDevice -> {
+            Files.write(pathFor(OP_CERT_ID), "old-op-cert".getBytes());
+
+            atomicWriteFile(localDevice, OP_CERT_ID, "new-op-cert".getBytes());
+
+            assertArrayEquals("old-op-cert".getBytes(), readBackupFile(OP_CERT_ID));
+            assertFalse(Files.exists(backupTempPathFor(OP_CERT_ID)));
+        });
+    }
+
+    /**
+     * A partial backup temp file left by a crash mid-backup-creation must be removed at initialization
+     * and must NOT be treated as a backup: the certificate file is left untouched.
+     */
+    @Test
+    public void strayBackupTemp_isRemovedOnInitWithoutReinstating() throws Exception {
+        Files.write(certFile("operational.pem").toPath(), "current-cert".getBytes());
+        Files.write(certFile("operational.pem" + SecureConnectNetworkPortObject.BACKUP_EXTENSION + ".tmp").toPath(),
+                "partial-backup".getBytes());
+
+        withLocalDevice(localDevice -> {
+            // The cert file is untouched and the partial temp file is gone.
+            assertArrayEquals("current-cert".getBytes(), readCertFile(OP_CERT_ID));
+            assertFalse(Files.exists(backupTempPathFor(OP_CERT_ID)));
+            assertEquals(Boolean.FALSE, npo.readProperty(PropertyIdentifier.changesPending));
+        });
+    }
 
     /**
      * If the device restarts (e.g., a crash or power cycle) while pending changes exist,

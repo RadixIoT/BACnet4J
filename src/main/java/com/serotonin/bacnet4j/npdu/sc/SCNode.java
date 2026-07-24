@@ -116,6 +116,12 @@ public class SCNode {
         queueEvent(Event.STOP);
     }
 
+    /**
+     * Immediately forces the node and everything below it to idle. Deliberately bypasses the serial event
+     * queue: this is the escalation used when orderly shutdown has failed, so it must not depend on the
+     * queue (or its delegate executor, which may be about to shut down) still draining. It is therefore the
+     * one entry point that can run out of order with queued events.
+     */
     public void hardTerminate() {
         hubConnector.hardTerminate();
         state = State.IDLE;
@@ -146,10 +152,10 @@ public class SCNode {
     }
 
     private void queueEvent(Event event) {
-        localDevice.execute(() -> handleEvent(event));
+        network.executeSerially(() -> handleEvent(event));
     }
 
-    protected synchronized void handleEvent(Event event) {
+    protected void handleEvent(Event event) {
         LOG.debug("manageState start: {}, event={}", state, event);
 
         if (event == Event.STOP) {
@@ -232,14 +238,11 @@ public class SCNode {
 
     private synchronized void setTimeoutFuture(int seconds) {
         cancelTimeout();
-        timeoutFuture = localDevice.schedule(() -> {
-            synchronized (this) {
-                if (!timeoutFuture.isCancelled()) {
-                    // Timer is still in force.
-                    handleEvent(Event.TIMEOUT);
-                }
-            }
-        }, seconds, TimeUnit.SECONDS);
+        // The timeout fires on a scheduler thread, but the event is processed through the network's serial
+        // queue like every other event so that it cannot overtake events submitted before it. No stale-timeout
+        // guard is needed: TIMEOUT is only legal in NEW_MAC_STOPPING, and every path that cancels this timeout
+        // also leaves that state, so a stale event is rejected by the state machine as illegal.
+        timeoutFuture = localDevice.schedule(() -> queueEvent(Event.TIMEOUT), seconds, TimeUnit.SECONDS);
     }
 
     private synchronized void cancelTimeout() {

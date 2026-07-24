@@ -36,6 +36,7 @@ import static org.mockito.Mockito.mock;
 import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
@@ -178,6 +179,20 @@ public class SCHubConnectionListenerTest {
         assertTrue(network.awaitTermination(0, TimeUnit.MILLISECONDS));
     }
 
+    /**
+     * A whenHubConnected() call made after the network has terminated returns an already-cancelled
+     * future rather than one that nothing will ever complete — the javadoc's no-hang guarantee must
+     * hold regardless of the ordering of the two calls.
+     */
+    @Test
+    public void whenHubConnectedAfterTerminateIsCancelled() {
+        network.terminate();
+
+        var future = network.whenHubConnected();
+
+        assertTrue(future.isCancelled());
+    }
+
     @Test
     public void completedFutureIsUnaffectedByTerminate() {
         var future = network.whenHubConnected();
@@ -232,6 +247,39 @@ public class SCHubConnectionListenerTest {
             assertEquals(SCHubConnectorState.connectedToPrimary,
                     npo.get(PropertyIdentifier.scHubConnectorState));
         }
+    }
+
+    /**
+     * A hard terminate stops the network's serial event queue: queued events are stale by definition and
+     * must not act on the forcibly reset state machines (e.g. a queued backoff-retry timeout starting a
+     * new connection attempt). Events submitted afterwards are dropped.
+     */
+    @Test
+    public void hardTerminateStopsEventProcessing() throws Exception {
+        try (var localDevice = new LocalDevice(1, new DefaultTransport(network))) {
+            addPortObject(localDevice);
+            localDevice.initialize();
+
+            // The serial event queue is operational after initialization.
+            var ran = new CountDownLatch(1);
+            network.executeSerially(ran::countDown);
+            assertTrue(ran.await(5, TimeUnit.SECONDS));
+
+            network.hardTerminate();
+
+            var afterStop = new CountDownLatch(1);
+            network.executeSerially(afterStop::countDown);
+            assertFalse(afterStop.await(100, TimeUnit.MILLISECONDS));
+        }
+    }
+
+    /**
+     * Hard terminate on a network that was never initialized has no executor and no node, and must not
+     * throw.
+     */
+    @Test
+    public void hardTerminateBeforeInitializeIsSafe() {
+        network.hardTerminate();
     }
 
     /**

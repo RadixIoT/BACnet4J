@@ -124,7 +124,11 @@ public class SCHubConnector {
         queueEvent(Event.STOP);
     }
 
-    public synchronized void hardTerminate() {
+    /**
+     * Immediately forces the connector and its connections to idle. Deliberately bypasses the serial event
+     * queue; see {@link SCNode#hardTerminate()}.
+     */
+    public void hardTerminate() {
         SCHubConnectorState before = getHubConnectorState();
         cancelTimeout();
         if (primaryConnection != null) {
@@ -168,10 +172,10 @@ public class SCHubConnector {
     }
 
     private void queueEvent(Event event, Object... args) {
-        localDevice.execute(() -> handleEvent(event, args));
+        network.executeSerially(() -> handleEvent(event, args));
     }
 
-    protected synchronized void handleEvent(Event event, Object... args) {
+    protected void handleEvent(Event event, Object... args) {
         SCHubConnectorState before = getHubConnectorState();
         try {
             handleEventInternal(event, args);
@@ -389,13 +393,15 @@ public class SCHubConnector {
         LOG.error("Illegal event '{}' for state '{}', args={}", event, state, args);
     }
 
-    private synchronized void setTimeoutFuture(int seconds) {
+    private void setTimeoutFuture(int seconds) {
         LOG.debug("setTimeoutFuture with {} seconds", seconds);
         cancelTimeout();
-        timeoutFuture = localDevice.schedule(() -> handleEvent(Event.TIMEOUT), seconds, TimeUnit.SECONDS);
+        // The timeout event is processed through the network's serial queue like every other event so that
+        // it cannot overtake events submitted before it.
+        timeoutFuture = localDevice.schedule(() -> queueEvent(Event.TIMEOUT), seconds, TimeUnit.SECONDS);
     }
 
-    private synchronized void cancelTimeout() {
+    private void cancelTimeout() {
         if (timeoutFuture != null) {
             timeoutFuture.cancel(false);
         }

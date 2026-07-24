@@ -109,6 +109,8 @@ public class SCNetwork extends Network {
     private SCHubConnection initializationError =
             new SCHubConnection(SCConnectionState.notConnected, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED);
     private SCNode node;
+    private volatile SerialExecutor eventExecutor;
+    private volatile boolean terminated = false;
     private final CopyOnWriteArrayList<SCHubConnectionListener> hubConnectionListeners = new CopyOnWriteArrayList<>();
     private final CopyOnWriteArrayList<CompletableFuture<SCHubConnectorState>> pendingConnectionFutures =
             new CopyOnWriteArrayList<>();
@@ -348,7 +350,8 @@ public class SCNetwork extends Network {
      * because the hub may be unreachable) should apply {@link CompletableFuture#orTimeout}. If the network
      * is terminated while the future is pending, the future is canceled, so a blocked
      * {@code join()}/{@code get()} throws {@link java.util.concurrent.CancellationException} rather than
-     * waiting forever.
+     * waiting forever. A call made after termination returns an already-canceled future; a subsequent
+     * {@code initialize} resets this.
      */
     public CompletableFuture<SCHubConnectorState> whenHubConnected() {
         CompletableFuture<SCHubConnectorState> future = new CompletableFuture<>();
@@ -359,17 +362,35 @@ public class SCNetwork extends Network {
         };
         addHubConnectionListener(listener);
         pendingConnectionFutures.add(future);
+        // The cleanup is registered before any path that can complete the future, so that completion -
+        // by the listener, the early-complete below, cancellation from terminate(), or the terminated
+        // check below - always removes the listener and the pending entry.
+        future.whenComplete((s, e) -> {
+            removeHubConnectionListener(listener);
+            pendingConnectionFutures.remove(future);
+        });
         // Check the current state after registering the listener so that a connection established between
         // the check and the registration cannot be missed.
         SCHubConnectorState state = getHubConnectorState();
         if (state != SCHubConnectorState.noHubConnection) {
             future.complete(state);
         }
-        future.whenComplete((s, e) -> {
-            removeHubConnectionListener(listener);
-            pendingConnectionFutures.remove(future);
-        });
+        if (terminated) {
+            future.cancel(false);
+        }
         return future;
+    }
+
+    /**
+     * Runs the given state machine event strictly after all previously submitted events, one at a time.
+     * All events of this network's node, hub connector, and connections — including their timeouts — are
+     * dispatched through here, so they are processed in the order in which they were submitted, regardless
+     * of which thread produced them. The exception is hard termination, which deliberately bypasses the
+     * queue: it is the escalation used when orderly shutdown has failed, and must not depend on the queue
+     * (or its delegate executor, which may be about to shut down) still draining.
+     */
+    void executeSerially(Runnable event) {
+        eventExecutor.execute(event);
     }
 
     /**
@@ -404,6 +425,7 @@ public class SCNetwork extends Network {
                 new SCHubConnection(SCConnectionState.notConnected, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED);
 
         LocalDevice localDevice = transport.getLocalDevice();
+        eventExecutor = new SerialExecutor(localDevice::execute);
         localDevice.getDeviceObject().writePropertyInternal(PropertyIdentifier.deviceUuid, uuid);
 
         // Ensure the URIs start with "wss" and are valid URIs
@@ -500,13 +522,21 @@ public class SCNetwork extends Network {
                 throw new IllegalArgumentException(
                         propName + " file object has unsupported file type: " + fo.get(PropertyIdentifier.fileType));
             }
-            return access.readData(0, access.length()).getBytes();
+            // Read under the file object's lock so that a concurrent AtomicWriteFile cannot produce a
+            // torn read of the certificate content.
+            fo.getLock().lock();
+            try {
+                return access.readData(0, access.length()).getBytes();
+            } finally {
+                fo.getLock().unlock();
+            }
         }
         throw new IllegalArgumentException(propName + " does not reference a file object");
     }
 
     @Override
     public void terminate() {
+        terminated = true;
         if (node != null) {
             node.terminate();
         }
@@ -531,6 +561,13 @@ public class SCNetwork extends Network {
 
     @Override
     public void hardTerminate() {
+        // Stop the serial event queue before forcing the state machines to idle: queued events are stale
+        // by definition, and letting them drain afterward could act on the reset state machines — e.g. a
+        // queued backoff-retry timeout would start a new connection attempt. A subsequent initialize()
+        // creates a fresh executor.
+        if (eventExecutor != null) {
+            eventExecutor.stop();
+        }
         if (node != null) {
             node.hardTerminate();
         }

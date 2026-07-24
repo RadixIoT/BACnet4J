@@ -60,7 +60,7 @@ import com.serotonin.bacnet4j.type.enumerated.SCHubConnectorState;
 
 /**
  * State machine coverage for SCHubConnector. Mirrors the SCConnectionTest structure: an inline
- * localDevice.execute(...) stub serializes events on the test thread, a ScheduledTask harness
+ * network.executeSerially(...) stub serializes events on the test thread, a ScheduledTask harness
  * captures schedule() calls so timer delays and cancellation can be asserted, and a TestHubConnector
  * subclass overrides createConnection(...) to inject mock SCConnections for primary and failover.
  * <p>
@@ -121,7 +121,7 @@ public class SCHubConnectorTest {
         doAnswer(inv -> {
             ((Runnable) inv.getArgument(0)).run();
             return null;
-        }).when(localDevice).execute(any(Runnable.class));
+        }).when(network).executeSerially(any(Runnable.class));
 
         // Capture every schedule(...) into a ScheduledTask whose mock future routes cancel(...)
         // back into the task so tests can assert cancellation.

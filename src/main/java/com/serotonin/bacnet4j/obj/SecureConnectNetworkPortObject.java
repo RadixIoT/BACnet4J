@@ -30,6 +30,7 @@ package com.serotonin.bacnet4j.obj;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -503,18 +504,30 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         FileObject fileObject = Objects.requireNonNull(getLocalDevice().getObject(fileId));
         var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
         var filePath = fileAccess.getFile().toPath();
+        fileObject.getLock().lock();
         try {
             Files.deleteIfExists(getBackupPath(filePath));
         } catch (IOException e) {
             LOG.error("Failed to delete cert backup file for {}", fileId, e);
+        } finally {
+            fileObject.getLock().unlock();
         }
     }
 
+    /**
+     * Reads the file's full content under the file object's lock, so that a concurrent AtomicWriteFile
+     * cannot produce a torn read.
+     */
     private byte[] fileContent(ObjectIdentifier fileId) throws IOException {
         FileObject fileObject = Objects.requireNonNull(getLocalDevice().getObject(fileId));
         var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
         var filePath = fileAccess.getFile().toPath();
-        return Files.readAllBytes(filePath);
+        fileObject.getLock().lock();
+        try {
+            return Files.readAllBytes(filePath);
+        } finally {
+            fileObject.getLock().unlock();
+        }
     }
 
     private void reinstateBackupFiles() {
@@ -528,24 +541,31 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
         var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
         var filePath = fileAccess.getFile().toPath();
         var backupPath = getBackupPath(filePath);
+        fileObject.getLock().lock();
         try {
-            Files.move(backupPath, filePath, StandardCopyOption.REPLACE_EXISTING);
+            // Remove any partial backup left by a crash mid-creation; it was never moved into place, so it
+            // must not be reinstated.
+            Files.deleteIfExists(getBackupTempPath(filePath));
+            atomicMove(backupPath, filePath);
         } catch (NoSuchFileException e) {
-            LOG.debug("No cert backup file to delete at {}", filePath, e);
+            LOG.debug("No cert backup file to reinstate at {}", filePath, e);
         } catch (IOException e) {
             LOG.error("Failed to reinstate backup file at {}", filePath, e);
+        } finally {
+            fileObject.getLock().unlock();
         }
     }
 
     protected void handleFileWrite(AtomicWriteFileRequest awf) {
-        try {
-            var fileId = awf.getFileIdentifier();
-            FileObject fileObject = getLocalDevice().getObject(fileId);
-            var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
-            var filePath = fileAccess.getFile().toPath();
-            var backupPath = getBackupPath(filePath);
-            var requestStream = awf.getStreamAccess();
+        var fileId = awf.getFileIdentifier();
+        FileObject fileObject = getLocalDevice().getObject(fileId);
+        var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
+        var filePath = fileAccess.getFile().toPath();
+        var backupPath = getBackupPath(filePath);
+        var requestStream = awf.getStreamAccess();
 
+        fileObject.getLock().lock();
+        try {
             if (changedCertFiles.contains(fileId)) {
                 // Check if the new content is the same as the backup, but only if the start index is zero.
                 if (requestStream.getFileStartPosition().intValue() == 0
@@ -563,38 +583,63 @@ public class SecureConnectNetworkPortObject extends NetworkPortObject {
             }
         } catch (IOException e) {
             LOG.error("Failed to handle cert file write", e);
+        } finally {
+            fileObject.getLock().unlock();
         }
     }
 
     protected void handleFileSizeChange(ObjectIdentifier fileId) {
-        try {
-            // If there already is a backup file, ignore because there is no way with a fileSize write to reverse a change.
-            if (!changedCertFiles.contains(fileId)) {
-                // Create a backup file
-                FileObject fileObject = getLocalDevice().getObject(fileId);
-                var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
-                var filePath = fileAccess.getFile().toPath();
-                var backupPath = getBackupPath(filePath);
+        // If there already is a backup file, ignore because there is no way with a fileSize write to reverse a change.
+        if (!changedCertFiles.contains(fileId)) {
+            // Create a backup file
+            FileObject fileObject = getLocalDevice().getObject(fileId);
+            var fileAccess = (FileStreamAccess) fileObject.getFileAccess();
+            var filePath = fileAccess.getFile().toPath();
+            var backupPath = getBackupPath(filePath);
+            fileObject.getLock().lock();
+            try {
                 createBackupFile(fileId, filePath, backupPath);
+            } catch (IOException e) {
+                LOG.error("Failed to handle cert file change", e);
+            } finally {
+                fileObject.getLock().unlock();
             }
-        } catch (IOException e) {
-            LOG.error("Failed to handle cert file change", e);
         }
     }
 
     protected void createBackupFile(ObjectIdentifier fileId, Path filePath, Path backupPath) throws IOException {
-        // Create the backup, and mark the file as changed.
+        // The backup is written to a temp file and atomically moved into place. A crash mid-copy must not
+        // leave a partial file at the backup path, because initialization after a restart reinstates
+        // backups over the certificate files.
+        var tempPath = getBackupTempPath(filePath);
         if (Files.exists(filePath)) {
-            Files.copy(filePath, backupPath, StandardCopyOption.COPY_ATTRIBUTES);
+            Files.copy(filePath, tempPath, StandardCopyOption.COPY_ATTRIBUTES, StandardCopyOption.REPLACE_EXISTING);
         } else {
             // The file may not actually exist, and so we create a 0-length marker file.
-            Files.write(backupPath, new byte[0], StandardOpenOption.CREATE_NEW);
+            Files.write(tempPath, new byte[0], StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         }
+        atomicMove(tempPath, backupPath);
         changedCertFiles.add(fileId);
     }
 
     protected Path getBackupPath(Path filePath) {
         return filePath.resolveSibling(filePath.getFileName() + BACKUP_EXTENSION);
+    }
+
+    protected Path getBackupTempPath(Path filePath) {
+        return filePath.resolveSibling(filePath.getFileName() + BACKUP_EXTENSION + ".tmp");
+    }
+
+    /**
+     * Moves atomically where the file system supports it (same-directory renames on common file systems
+     * do), so that a crash cannot leave a partial file at the target.
+     */
+    private static void atomicMove(Path source, Path target) throws IOException {
+        try {
+            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     @Override

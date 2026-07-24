@@ -51,7 +51,7 @@ public class ScWebSocketClientTest {
     private static final URI URI_UNDER_TEST = URI.create("wss://test.example.com:4443/");
 
     private ScWebSocketClient newClient(SCConnection connection) {
-        return new ScWebSocketClient("test", URI_UNDER_TEST, connection);
+        return new ScWebSocketClient("test", URI_UNDER_TEST, connection, 5000);
     }
 
     private ErrorCode captureErrorCode(SCConnection connection) {

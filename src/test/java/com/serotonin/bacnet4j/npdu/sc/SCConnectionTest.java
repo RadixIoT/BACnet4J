@@ -84,8 +84,8 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
  * smoke tests for illegal events per state. The WebSocket client is a Mockito mock returned by
  * a test subclass that overrides createClient(); no real network or SSL setup occurs.
  * <p>
- * Event delivery now flows through localDevice.execute(...). In tests we stub execute() to
- * invoke the Runnable inline so the SM runs synchronously on the calling thread.
+ * Event delivery flows through the network's serial event queue (SCNetwork.executeSerially). In tests we
+ * stub it to invoke the Runnable inline so the SM runs synchronously on the calling thread.
  */
 public class SCConnectionTest {
     private static final URI WSS_URI = URI.create("wss://example.com:47808/");
@@ -141,7 +141,7 @@ public class SCConnectionTest {
         doAnswer(inv -> {
             ((Runnable) inv.getArgument(0)).run();
             return null;
-        }).when(localDevice).execute(any(Runnable.class));
+        }).when(network).executeSerially(any(Runnable.class));
 
         when(network.getConnectWaitTimeout()).thenReturn(new UnsignedInteger(CONNECT_WAIT_SECS));
         when(network.getDisconnectWaitTimeout()).thenReturn(new UnsignedInteger(DISCONNECT_WAIT_SECS));
@@ -170,6 +170,8 @@ public class SCConnectionTest {
                         task.canceled = true;
                         return true;
                     });
+                    // The stale-timeout guard checks the fired event's own future.
+                    when(future.isCancelled()).thenAnswer(c -> task.canceled);
                     return future;
                 });
 
@@ -390,13 +392,19 @@ public class SCConnectionTest {
         assertNotCanceled(lastTask());
     }
 
+    /**
+     * A used client (readyState != NOT_YET_CONNECTED) is terminated and replaced with a fresh one on
+     * INITIATE — never reconnect(): WebSocketClient instances are not reliably reusable. The harness's
+     * createClient() returns the same mock, so the fresh client's connect() shows on the same mock.
+     */
     @Test
-    public void idle_initiate_clientAlreadyConnected_callsReconnectNotConnect() {
+    public void idle_initiate_usedClient_isTerminatedAndReplaced() {
         when(client.getReadyState()).thenReturn(ReadyState.CLOSED);
         connection.initialize();
         assertEquals(SCConnection.State.AWAITING_WEBSOCKET, connection.getState());
-        verify(client, never()).connect();
-        verify(client).reconnect();
+        verify(client).terminate();
+        verify(client).connect();
+        verify(client, never()).reconnect();
     }
 
     @Test
@@ -433,7 +441,7 @@ public class SCConnectionTest {
 
         fireScheduled(0); // delivers Event.TIMEOUT to IDLE
 
-        // IDLE now treats TIMEOUT as illegal — no transition, no client interaction.
+        // The stale-timeout guard discards it — no transition, no client interaction.
         assertEquals(SCConnection.State.IDLE, connection.getState());
     }
 
@@ -855,6 +863,70 @@ public class SCConnectionTest {
         feedMessage(heartbeatAck(9999));
 
         assertEquals(SCConnection.State.CONNECTED, connection.getState());
+    }
+
+    /**
+     * A heartbeat that fires while a disconnect is in progress must be discarded. The heartbeat is
+     * scheduled on a timer thread and can be past its cancellation when the DISCONNECT is processed;
+     * unguarded it would send a Heartbeat-Request in DISCONNECTING and replace the short disconnect-wait
+     * timeout with the much longer heartbeat ACK timeout, stalling the shutdown.
+     */
+    @Test
+    public void disconnecting_staleHeartbeat_isDiscarded() {
+        enterConnected();
+        // Arm the heartbeat timer.
+        feedMessage(advertisement(100));
+        ScheduledTask heartbeatTask = lastTask();
+        assertScheduledFor(heartbeatTask, HEARTBEAT_SECS);
+
+        // Begin an orderly disconnect: sends Disconnect-Request, arms the disconnect-wait, cancels the
+        // heartbeat.
+        connection.terminate();
+        assertEquals(SCConnection.State.DISCONNECTING, connection.getState());
+        ScheduledTask disconnectWait = lastTask();
+        assertScheduledFor(disconnectWait, DISCONNECT_WAIT_SECS);
+        assertCanceled(heartbeatTask);
+
+        // The heartbeat had already fired; its stale event is processed after the cancel.
+        heartbeatTask.runnable.run();
+
+        // Discarded: still disconnecting, the disconnect-wait timeout is intact, and no Heartbeat-Request
+        // was sent.
+        assertEquals(SCConnection.State.DISCONNECTING, connection.getState());
+        assertNotCanceled(disconnectWait);
+        SCBVLC sent = lastSent();
+        assertEquals(SCBVLC.DISCONNECT_REQUEST, sent.getFunction());
+    }
+
+    /**
+     * The heartbeat-ACK race that the stale-timeout guard exists for: the ack arrives at the last instant,
+     * so the ack-wait timeout fires and enqueues its event just before the ACK cancels it. The stale timeout
+     * must be discarded — without the guard it would be misread as "heartbeat ACK not received" and
+     * disconnect a healthy connection. The guard checks the timeoutFuture field, which here still refers to
+     * the cancelled ack-wait because nothing rescheduled it.
+     */
+    @Test
+    public void connected_staleAckWaitTimeoutAfterAck_isDiscarded() {
+        enterConnected();
+        // Arm the heartbeat timer and fire it, sending a Heartbeat-Request and starting the ack-wait.
+        feedMessage(advertisement(100));
+        ScheduledTask heartbeatTask = lastTask();
+        heartbeatTask.runnable.run();
+        SCBVLC sentRequest = lastSent();
+        assertEquals(SCBVLC.HEARTBEAT_REQUEST, sentRequest.getFunction());
+        ScheduledTask ackWait = lastTask();
+
+        // The ACK arrives and is processed, cancelling the ack-wait.
+        feedMessage(heartbeatAck(sentRequest.getId()));
+        assertCanceled(ackWait);
+
+        // The ack-wait had already fired; its stale event is processed after the cancel.
+        ackWait.runnable.run();
+
+        // Discarded: still connected, no Disconnect-Request was sent.
+        assertEquals(SCConnection.State.CONNECTED, connection.getState());
+        SCBVLC sent = lastSent();
+        org.junit.Assert.assertNotEquals(SCBVLC.DISCONNECT_REQUEST, sent.getFunction());
     }
 
     @Test
@@ -1364,20 +1436,18 @@ public class SCConnectionTest {
         verify(owner, times(1)).onConnectionIdle(connection, false);
         verify(owner, never()).onConnectionEstablished(any());
 
-        // Second attempt — the underlying WS client is now in a "post-close" state,
-        // so the SM must route via reconnect() rather than connect().
+        // Second attempt — the underlying WS client is now in a "post-close" state, so it is
+        // terminated and replaced with a fresh client (never reconnect()). The harness returns
+        // the same mock from createClient(), so both attempts' connect() land on the same mock.
         when(client.getReadyState()).thenReturn(ReadyState.CLOSED);
 
         connection.initialize();
         assertEquals(SCConnection.State.AWAITING_WEBSOCKET, connection.getState());
 
-        // Wire-level: connect() exactly once (first attempt), reconnect() exactly
-        // once (second attempt), in that order.
-        InOrder clientOrder = inOrder(client);
-        clientOrder.verify(client).connect();
-        clientOrder.verify(client).reconnect();
-        verify(client, times(1)).connect();
-        verify(client, times(1)).reconnect();
+        // Wire-level: connect() once per attempt, the used client terminated, never reconnect().
+        verify(client, times(2)).connect();
+        verify(client, times(1)).terminate();
+        verify(client, never()).reconnect();
 
         // Owner-callback count is STILL exactly one onConnectionIdle. The second
         // initialize() did not produce a spurious additional notification.

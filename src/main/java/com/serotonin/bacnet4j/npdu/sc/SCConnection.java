@@ -81,6 +81,7 @@ public class SCConnection {
         ACCEPT,
         DISCONNECT,
         TIMEOUT,
+        HEARTBEAT,
         CONNECT_ERROR,
         MESSAGE,
         REMOTE_CLOSE,
@@ -103,7 +104,7 @@ public class SCConnection {
     private ScWebSocketClient client;
     private ScheduledFuture<Void> timeoutFuture;
     private ScheduledFuture<Void> heartbeatFuture;
-    private int nextMessageId = 0; // Don't use this directly. Use getMessageId().
+    private int nextMessageId = 0; // Don't use this directly. Use getNextMessageId().
 
     // Reportable connection state
     private SCConnectionState connectionState = SCConnectionState.notConnected;
@@ -128,11 +129,12 @@ public class SCConnection {
 
     public void configure(Transport transport) {
         localDevice = transport.getLocalDevice();
+        // Create a new client here so that the field is not null.
         client = createClient();
     }
 
     protected ScWebSocketClient createClient() {
-        var c = new ScWebSocketClient(name, uri, this);
+        var c = new ScWebSocketClient(name, uri, this, network.getConnectWaitTimeout().intValue() * 1000);
         c.setSocketFactory(getSSLSocketFactory());
         // BACnet/SC uses BVLC HEARTBEAT messages for peer liveness (Annex AB Clause 6); the spec
         // does not require WebSocket Pongs, and many SC peers won't send them. Leaving the
@@ -153,6 +155,10 @@ public class SCConnection {
         handleEvent(Event.DISCONNECT);
     }
 
+    /**
+     * Immediately forces the connection to idle. Deliberately bypasses the serial event queue; see
+     * {@link SCNode#hardTerminate()}.
+     */
     public synchronized void hardTerminate() {
         cancelTimeout();
         cancelHeartbeat();
@@ -165,10 +171,11 @@ public class SCConnection {
             connectionError = null;
             connectionErrorDetails = null;
         }
+        client.terminate();
         state = State.IDLE;
     }
 
-    public SCHubConnection getConnectionStatus() {
+    public synchronized SCHubConnection getConnectionStatus() {
         return new SCHubConnection(connectionState, connectTimestamp, disconnectTimestamp, connectionError,
                 connectionErrorDetails == null ? null : new CharacterString(connectionErrorDetails));
     }
@@ -202,16 +209,34 @@ public class SCConnection {
     }
 
     private void handleEvent(Event event, Object... args) {
-        localDevice.execute(() -> handleEventImpl(event, args));
+        network.executeSerially(() -> handleEventImpl(event, args));
     }
 
     protected synchronized void handleEventImpl(Event event, Object... args) {
         LOG.debug("{} handleEvent start: {}, event={}, args={}", name, state, event, args);
 
+        if (args.length > 0 && args[0] instanceof ErrorAndDetails errorAndDetails) {
+            connectionError = errorAndDetails.error;
+            connectionErrorDetails = errorAndDetails.reason;
+        }
+
+        if (event == Event.TIMEOUT && (timeoutFuture == null || timeoutFuture.isCancelled())) {
+            LOG.debug("{} discarding stale timeout in state {}", name, state);
+            return;
+        }
+
+        if (event == Event.HEARTBEAT && state != State.CONNECTED) {
+            // A stale heartbeat: it fired while the connection was leaving CONNECTED (e.g. a disconnect in
+            // progress). Sending it would be a protocol violation, and its ack-wait timeout would replace
+            // the disconnect-wait timeout.
+            LOG.debug("{} discarding stale heartbeat in state {}", name, state);
+            return;
+        }
+
         SCBVLC message = null;
         SCPayload payload = null;
-        if (event == Event.MESSAGE) {
-            message = parseMessage((ByteQueue) args[0]); // will send NAKs for badly formatted messages
+        if (event == Event.MESSAGE && args[0] instanceof ByteQueue queue) {
+            message = parseMessage(queue); // will send NAKs for badly formatted messages
             if (message != null) {
                 // Centralize the parsing of payload here so that parsing issues can be handled.
                 try {
@@ -240,14 +265,17 @@ public class SCConnection {
                                 new ErrorClassAndCode(ErrorClass.communication, ErrorCode.websocketSchemeNotSupported);
                         connectionClosed(false);
                     } else {
-                        // Async calls to connect. The client will report what happened via callbacks.
-                        if (client.getReadyState() == ReadyState.NOT_YET_CONNECTED) {
-                            client.connect();
-                        } else {
-                            client.reconnect();
+                        // Async call to connect. The client will report what happened via callbacks.
+                        // Clients are not reused across attempts: the library's reconnect() races its own
+                        // engine and write thread, producing attempts that never call back. A used client
+                        // is terminated - muting any late callbacks from it - and replaced.
+                        if (client.getReadyState() != ReadyState.NOT_YET_CONNECTED) {
+                            client.terminate();
+                            client = createClient();
                         }
+                        client.connect();
                         state = State.AWAITING_WEBSOCKET;
-                        setTimeoutFuture(network.getConnectWaitTimeout().intValue(), state);
+                        setTimeoutFuture(network.getConnectWaitTimeout().intValue());
                     }
                 } else if (event == Event.REMOTE_CLOSE) {
                     LOG.debug("{} remote close event while idle.", name);
@@ -273,7 +301,7 @@ public class SCConnection {
                     // check AB.6.2.2 "WebSocket established" transition
                     sendConnectRequest();
                     state = State.AWAITING_ACCEPT;
-                    setTimeoutFuture(network.getConnectWaitTimeout().intValue(), state);
+                    setTimeoutFuture(network.getConnectWaitTimeout().intValue());
                 } else {
                     illegalState(event, args);
                 }
@@ -359,8 +387,10 @@ public class SCConnection {
                 if (event == Event.DISCONNECT) {
                     sendDisconnectRequest();
                     state = State.DISCONNECTING;
-                    setTimeoutFuture(network.getDisconnectWaitTimeout().intValue(), state);
+                    setTimeoutFuture(network.getDisconnectWaitTimeout().intValue());
                     cancelHeartbeat();
+                } else if (event == Event.HEARTBEAT) {
+                    sendHeartbeatRequest();
                 } else if (event == Event.REMOTE_CLOSE) {
                     connectionClosed(true);
                 } else if (event == Event.TEXT_DATA) {
@@ -477,11 +507,8 @@ public class SCConnection {
     }
 
     protected void onWebsocketError(ErrorCode errorCode, String message) {
-        // Don't set the disconnect time because we were never connected.
-        connectionError = new ErrorClassAndCode(ErrorClass.communication, errorCode);
-        connectionErrorDetails = message;
-
-        handleEvent(Event.CONNECT_ERROR);
+        handleEvent(Event.CONNECT_ERROR,
+                new ErrorAndDetails(new ErrorClassAndCode(ErrorClass.communication, errorCode), message));
     }
 
     protected void onWebsocketOpen() {
@@ -515,19 +542,22 @@ public class SCConnection {
             default -> ErrorCode.websocketError;
         };
 
+        ErrorAndDetails error = null;
         if (statusCode != 1000) { // Ignore normal
-            connectionError = new ErrorClassAndCode(ErrorClass.communication, errorCode);
-            connectionErrorDetails = reason;
+            error = new ErrorAndDetails(new ErrorClassAndCode(ErrorClass.communication, errorCode), reason);
         }
-        handleEvent(Event.REMOTE_CLOSE);
+        handleEvent(Event.REMOTE_CLOSE, error);
     }
 
-    private void setTimeoutFuture(int seconds, State source) {
+    record ErrorAndDetails(ErrorClassAndCode error, String reason) {
+    }
+
+    private synchronized void setTimeoutFuture(int seconds) {
         cancelTimeout();
-        timeoutFuture = localDevice.schedule(() -> handleEventImpl(Event.TIMEOUT, source), seconds, TimeUnit.SECONDS);
+        timeoutFuture = localDevice.schedule(() -> handleEvent(Event.TIMEOUT), seconds, TimeUnit.SECONDS);
     }
 
-    private void cancelTimeout() {
+    private synchronized void cancelTimeout() {
         if (timeoutFuture != null) {
             timeoutFuture.cancel(false);
         }
@@ -536,10 +566,8 @@ public class SCConnection {
     private void resetHeartbeatFuture() {
         cancelHeartbeat();
         LOG.debug("{} resetting heartbeat", name);
-        heartbeatFuture = localDevice.schedule(() -> {
-            LOG.debug("{} sending heartbeat", name);
-            sendHeartbeatRequest();
-        }, network.getHeartbeatTimeout().intValue(), TimeUnit.SECONDS);
+        heartbeatFuture = localDevice.schedule(() ->
+                handleEvent(Event.HEARTBEAT), network.getHeartbeatTimeout().intValue(), TimeUnit.SECONDS);
     }
 
     private void cancelHeartbeat() {
@@ -565,7 +593,7 @@ public class SCConnection {
         expectedHeartbeatMessageId = getNextMessageId();
         var message = new SCBVLC(null, null, SCBVLC.HEARTBEAT_REQUEST, expectedHeartbeatMessageId);
         write(message.write());
-        setTimeoutFuture(network.getHeartbeatAckTimeout(), state);
+        setTimeoutFuture(network.getHeartbeatAckTimeout());
     }
 
     private void sendDisconnectRequest() {
@@ -604,8 +632,7 @@ public class SCConnection {
         return message;
     }
 
-    // Only call this from a synchronized method.
-    private int getNextMessageId() {
+    private synchronized int getNextMessageId() {
         nextMessageId++;
         if (nextMessageId > 0xFFFF) {
             nextMessageId = 0;
@@ -800,7 +827,7 @@ public class SCConnection {
     }
 
     @Override
-    public String toString() {
+    public synchronized String toString() {
         return "%s: state=%s, timeout=%s, heartbeat=%s, connectionState=%s, connectTimestamp=%s, disconnectTimestamp=%s, connectionError=%s, connectionErrorDetails=%s"
                 .formatted(name, state,
                         (timeoutFuture == null || timeoutFuture.isCancelled()) ? "inactive" : "active",

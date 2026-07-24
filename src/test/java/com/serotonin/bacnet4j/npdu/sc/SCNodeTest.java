@@ -60,7 +60,7 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
  * State machine coverage for SCNode. Mirrors SCConnectionTest / SCHubConnectorTest:
- * inline localDevice.execute(...) serializes events on the test thread, a ScheduledTask harness
+ * an inline network.executeSerially(...) stub serializes events on the test thread, a ScheduledTask harness
  * captures schedule() calls so timer delay and cancellation can be asserted, and a TestNode
  * subclass overrides createHubConnector(...) to inject a Mockito mock.
  * <p>
@@ -110,7 +110,7 @@ public class SCNodeTest {
         doAnswer(inv -> {
             ((Runnable) inv.getArgument(0)).run();
             return null;
-        }).when(localDevice).execute(any(Runnable.class));
+        }).when(network).executeSerially(any(Runnable.class));
 
         // Capture scheduled tasks so timer delay and cancellation can be asserted.
         scheduledTasks.clear();
@@ -377,6 +377,32 @@ public class SCNodeTest {
         assertEquals(SCNode.State.STARTING, node.getState());
         verify(hubConnector).hardTerminate();
         verify(network).setVmac(any(OctetString.class));
+        verify(hubConnector, times(2)).initialize();
+    }
+
+    /**
+     * A stale disconnect-wait timeout — one that fired but whose event was overtaken by the DISCONNECTED
+     * event that cancelled it — is rejected as illegal by the state machine: TIMEOUT is only legal in
+     * NEW_MAC_STOPPING, and every path that cancels the timeout also leaves that state. This is why the
+     * timeout needs no at-processing-time cancellation guard.
+     */
+    @Test
+    public void newMacStopping_staleTimeoutAfterDisconnected_isIgnored() {
+        enterNewMacStopping();
+        ScheduledTask timer = lastTask();
+
+        // The graceful path completes first, cancelling the timer and moving on to STARTING.
+        node.onDisconnected();
+        assertEquals(SCNode.State.STARTING, node.getState());
+        assertCanceled(timer);
+
+        // The stale timeout event arrives anyway (fired before the cancel was processed).
+        timer.runnable.run();
+
+        // No effect: no forced termination, no second VMAC rotation, no extra restart.
+        assertEquals(SCNode.State.STARTING, node.getState());
+        verify(hubConnector, never()).hardTerminate();
+        verify(network, times(1)).setVmac(any(OctetString.class));
         verify(hubConnector, times(2)).initialize();
     }
 

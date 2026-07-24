@@ -52,12 +52,20 @@ public class ScWebSocketClient extends WebSocketClient {
     private static final Draft_6455 draft = new Draft_6455(Collections.emptyList(), List.of(new Protocol(SUBPROTOCOL)));
 
     private final String name;
-    private final SCConnection connection;
+    // Volatile: terminate() nulls this from the event-processing thread while the websocket threads read
+    // it in the callbacks.
+    private volatile SCConnection connection;
 
-    public ScWebSocketClient(String name, URI serverUri, SCConnection connection) {
-        super(serverUri, draft);
+    public ScWebSocketClient(String name, URI serverUri, SCConnection connection, int connectTimeout) {
+        super(serverUri, draft, null, connectTimeout);
         this.name = name;
         this.connection = connection;
+    }
+
+    public void terminate() {
+        // Setting this to null prevents the client from sending zombie messages to the connection.
+        connection = null;
+        close();
     }
 
     @Override
@@ -67,45 +75,55 @@ public class ScWebSocketClient extends WebSocketClient {
 
     @Override
     public void onOpen(ServerHandshake handshake) {
-        LOG.debug("{} websocket onOpen: {}", name, handshake.getHttpStatus());
-        connection.onWebsocketOpen();
+        if (connection != null) {
+            LOG.debug("{} websocket onOpen: {}", name, handshake.getHttpStatus());
+            connection.onWebsocketOpen();
+        }
     }
 
     @Override
     public void onMessage(String message) {
         // AB.7.5.3
-        connection.onTextData(message);
+        if (connection != null) {
+            connection.onTextData(message);
+        }
     }
 
     @Override
     public void onMessage(ByteBuffer bb) {
-        LOG.debug("{} websocket onMessage: {}", name, bb);
-        var queue = new ByteQueue();
-        queue.push(bb);
-        connection.onWebsocketMessage(queue);
+        if (connection != null) {
+            LOG.debug("{} websocket onMessage: {}", name, bb);
+            var queue = new ByteQueue();
+            queue.push(bb);
+            connection.onWebsocketMessage(queue);
+        }
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        LOG.debug("{} Websocket onClose: code={}, reason={}, remote={}", name, code, reason, remote);
-        if (remote) {
-            connection.onWebsocketClose(code, reason);
+        if (connection != null) {
+            LOG.debug("{} Websocket onClose: code={}, reason={}, remote={}", name, code, reason, remote);
+            if (remote) {
+                connection.onWebsocketClose(code, reason);
+            }
         }
     }
 
     @Override
     public void onError(Exception ex) {
-        LOG.warn("{} error on websocket connection", name, ex);
-        // Codes for various error conditions are defined in AB.7.5.1. But the spec says that they merely "can be used",
-        // so the best effort is made to determine the cause, but ultimately "other" is used.
-        var code = ErrorCode.other;
-        if (ex instanceof ConnectException cex) {
-            if ("Connection refused".equals(cex.getMessage())) {
-                code = ErrorCode.tcpConnectionRefused; // This could also be a timeout.
+        if (connection != null) {
+            LOG.warn("{} error on websocket connection", name, ex);
+            // Codes for various error conditions are defined in AB.7.5.1. But the spec says that they merely "can be used",
+            // so the best effort is made to determine the cause, but ultimately "other" is used.
+            var code = ErrorCode.other;
+            if (ex instanceof ConnectException cex) {
+                if ("Connection refused".equals(cex.getMessage())) {
+                    code = ErrorCode.tcpConnectionRefused; // This could also be a timeout.
+                }
+            } else if (ex instanceof NoRouteToHostException) {
+                code = ErrorCode.ipAddressNotReachable;
             }
-        } else if (ex instanceof NoRouteToHostException) {
-            code = ErrorCode.ipAddressNotReachable;
+            connection.onWebsocketError(code, ex.getMessage());
         }
-        connection.onWebsocketError(code, ex.getMessage());
     }
 }

@@ -84,7 +84,7 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
  * Driving an event is done by calling the appropriate SCConnection callback on a real
  * connection instance (e.g. onWebsocketOpen, onWebsocketMessage). The connection updates its
  * own state machine, which fires callbacks up to the hub connector, which fires callbacks up
- * to the node — all on the test thread, because localDevice.execute is stubbed to run inline.
+ * to the node — all on the test thread, because network.executeSerially is stubbed to drain a FIFO.
  */
 public class SCNodeIntegrationTest {
     private static final URI PRIMARY_URI = URI.create("wss://primary.example.com/");
@@ -107,10 +107,10 @@ public class SCNodeIntegrationTest {
     private final Clock clock = Clock.systemUTC();
 
     /**
-     * Pending events queued by localDevice.execute. We process them FIFO from the top-level
+     * Pending events queued by network.executeSerially. We process them FIFO from the top-level
      * test call rather than running each one inline, because inline execution recurses
-     * depth-first and breaks ordering invariants the real (single-threaded) executor would
-     * enforce. Without this, e.g. SCHubConnector's STOP handler (which calls primary.terminate
+     * depth-first and breaks the ordering invariants that the production SerialExecutor enforces.
+     * Without this, e.g. SCHubConnector's STOP handler (which calls primary.terminate
      * then failover.terminate) would let primary's full restart complete before failover's
      * terminate even began.
      */
@@ -147,9 +147,9 @@ public class SCNodeIntegrationTest {
         setupClientMock(primaryClient);
         setupClientMock(failoverClient);
 
-        // Events queued via localDevice.execute(...) are appended to a FIFO and drained from
-        // the outermost call on the test thread. This mirrors a real single-threaded executor:
-        // nested execute() calls enqueue, they don't recurse.
+        // Events queued via network.executeSerially(...) are appended to a FIFO and drained from
+        // the outermost call on the test thread. This mirrors the production SerialExecutor exactly:
+        // nested submissions enqueue breadth-first, they don't recurse.
         draining = false;
         doAnswer(inv -> {
             pendingEvents.add(inv.getArgument(0));
@@ -164,7 +164,7 @@ public class SCNodeIntegrationTest {
                 }
             }
             return null;
-        }).when(localDevice).execute(any(Runnable.class));
+        }).when(network).executeSerially(any(Runnable.class));
 
         // Capture every schedule call. The returned mock future's cancel() is a no-op for our
         // purposes, but we keep the Runnable around so timer-driven tests can fire it manually.
