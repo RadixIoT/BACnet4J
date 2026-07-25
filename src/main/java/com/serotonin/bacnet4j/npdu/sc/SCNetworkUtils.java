@@ -44,6 +44,7 @@ import com.serotonin.bacnet4j.util.sero.StreamUtils;
 public class SCNetworkUtils {
     private static final Pattern CERT_TEXT = Pattern.compile("(?m)(?s)^---*BEGIN.*---*$(.*)^---*END.*---*$.*");
 
+    public static final SCVmac ZEROS_VMAC = new SCVmac(StreamUtils.fromHex("000000000000"));
     public static final SCVmac LOCAL_BROADCAST_VMAC = new SCVmac(StreamUtils.fromHex("FFFFFFFFFFFF"));
     public static final String DEFAULT_CERTIFICATE_TYPE = "X.509";
 

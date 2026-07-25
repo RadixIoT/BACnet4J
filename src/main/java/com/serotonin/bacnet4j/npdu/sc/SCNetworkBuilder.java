@@ -195,7 +195,7 @@ public class SCNetworkBuilder {
 
         if (vmac == null) {
             vmac = new OctetString(SCVmac.makeRandom().getBytes());
-        } else if (vmac.equals(OctetString.fromHex("000000000000"))
+        } else if (vmac.equals(SCNetworkUtils.ZEROS_VMAC.getOctetString())
                 || vmac.equals(SCNetworkUtils.LOCAL_BROADCAST_VMAC.getOctetString())) {
             throw new IllegalArgumentException("invalid vmac");
         }

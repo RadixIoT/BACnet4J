@@ -506,7 +506,11 @@ public class SCNodeIntegrationTest {
         // expose on the next read.
         assertEquals(SCConnectionState.failedToConnect,
                 node.getPrimaryHubConnectionStatus().getConnectionState());
-        assertEquals(DateTime.UNSPECIFIED, node.getPrimaryHubConnectionStatus().getConnectTimestamp());
+        // 12.56.88: the connect timestamp indicates when the connection was established OR when the
+        // attempt failed, so the failed attempt stamps it. The disconnect timestamp stays unspecified
+        // because the connection was never established.
+        TestUtils.assertEquals(new DateTime(clock.millis()),
+                node.getPrimaryHubConnectionStatus().getConnectTimestamp(), 10);
         assertEquals(DateTime.UNSPECIFIED, node.getPrimaryHubConnectionStatus().getDisconnectTimestamp());
         assertEquals(new ErrorClassAndCode(ErrorClass.communication, ErrorCode.tlsError),
                 node.getPrimaryHubConnectionStatus().getError());
