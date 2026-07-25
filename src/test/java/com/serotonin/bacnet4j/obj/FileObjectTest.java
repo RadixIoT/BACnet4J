@@ -39,7 +39,8 @@ import org.junit.Test;
 import com.serotonin.bacnet4j.AbstractTest;
 import com.serotonin.bacnet4j.TestUtils;
 import com.serotonin.bacnet4j.obj.fileAccess.CrlfDelimitedFileAccess;
-import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.FileStreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.InMemoryStreamAccess;
 import com.serotonin.bacnet4j.type.constructed.PropertyValue;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
@@ -53,8 +54,24 @@ public class FileObjectTest extends AbstractTest {
 
     @Test
     public void streamReadFileSize() throws Exception {
-        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(new File(path))));
+        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new FileStreamAccess(new File(path))));
         assertEquals(new UnsignedInteger(922), f.readProperty(PropertyIdentifier.fileSize, null));
+    }
+
+    /**
+     * A FileObject backed by InMemoryStreamAccess behaves like a file-backed one: fileSize reads and
+     * writes work against the in-memory content, without a file on disk.
+     */
+    @Test
+    public void inMemoryStreamAccess() throws Exception {
+        var access = new InMemoryStreamAccess("in-memory-test", "some file content".getBytes());
+        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", access));
+
+        assertEquals(new UnsignedInteger(17), f.readProperty(PropertyIdentifier.fileSize, null));
+
+        f.writeProperty(null, PropertyIdentifier.fileSize, new UnsignedInteger(4));
+        assertEquals(new UnsignedInteger(4), f.readProperty(PropertyIdentifier.fileSize, null));
+        assertEquals("some", new String(access.getData()));
     }
 
     @Test
@@ -67,7 +84,7 @@ public class FileObjectTest extends AbstractTest {
     public void streamWriteFileSize() throws Exception {
         // Write a zero file size.
         doInCopy(file -> {
-            final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(file)));
+            final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new FileStreamAccess(file)));
             f.writeProperty(null, PropertyIdentifier.fileSize, UnsignedInteger.ZERO);
             assertEquals(UnsignedInteger.ZERO, f.readProperty(PropertyIdentifier.fileSize, null));
             d1.removeObject(f.getId());
@@ -75,7 +92,7 @@ public class FileObjectTest extends AbstractTest {
 
         // Write > 0 and < file size.
         doInCopy(file -> {
-            final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(file)));
+            final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new FileStreamAccess(file)));
             f.writeProperty(null, PropertyIdentifier.fileSize, new UnsignedInteger(100));
             assertEquals(new UnsignedInteger(100), f.readProperty(PropertyIdentifier.fileSize, null));
             d1.removeObject(f.getId());
@@ -83,7 +100,7 @@ public class FileObjectTest extends AbstractTest {
 
         // Write a file size == size
         doInCopy(file -> {
-            final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(file)));
+            final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new FileStreamAccess(file)));
             f.writeProperty(null, PropertyIdentifier.fileSize, new UnsignedInteger(922));
             assertEquals(new UnsignedInteger(922), f.readProperty(PropertyIdentifier.fileSize, null));
             d1.removeObject(f.getId());
@@ -91,7 +108,7 @@ public class FileObjectTest extends AbstractTest {
 
         // Write a file size > size
         doInCopy(file -> {
-            final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(file)));
+            final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new FileStreamAccess(file)));
             f.writeProperty(null, PropertyIdentifier.fileSize, new UnsignedInteger(1001));
             assertEquals(new UnsignedInteger(1001), f.readProperty(PropertyIdentifier.fileSize, null));
             d1.removeObject(f.getId());
@@ -173,7 +190,7 @@ public class FileObjectTest extends AbstractTest {
         assumeFalse(TestUtils.isDockerEnv());
 
         final File file = new File(path);
-        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(file)));
+        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new FileStreamAccess(file)));
 
         if (file.setWritable(true)) {
             assertEquals(Boolean.FALSE, f.readProperty(PropertyIdentifier.readOnly, null));
@@ -187,7 +204,7 @@ public class FileObjectTest extends AbstractTest {
 
     @Test
     public void streamReadRecordCount() throws Exception {
-        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(new File(path))));
+        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new FileStreamAccess(new File(path))));
         TestUtils.assertBACnetServiceException(() -> {
             f.readProperty(PropertyIdentifier.recordCount, null);
         }, ErrorClass.property, ErrorCode.readAccessDenied);
@@ -201,7 +218,7 @@ public class FileObjectTest extends AbstractTest {
 
     @Test
     public void streamWriteRecordCount() throws Exception {
-        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(new File(path))));
+        final FileObject f = d1.addObject(new FileObject(d1, 0, "test", new FileStreamAccess(new File(path))));
         TestUtils.assertBACnetServiceException(() -> {
             f.writeProperty(null, new PropertyValue(PropertyIdentifier.recordCount, UnsignedInteger.ZERO));
         }, ErrorClass.property, ErrorCode.writeAccessDenied);

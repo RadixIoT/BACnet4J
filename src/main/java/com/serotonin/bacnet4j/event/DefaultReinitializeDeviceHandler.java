@@ -44,7 +44,7 @@ import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.obj.DeviceObject;
 import com.serotonin.bacnet4j.obj.FileObject;
-import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.FileStreamAccess;
 import com.serotonin.bacnet4j.service.Service;
 import com.serotonin.bacnet4j.service.confirmed.AtomicReadFileRequest;
 import com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest;
@@ -161,13 +161,13 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
             final List<ObjectIdentifier> fileOids = new ArrayList<>(files.length);
             for (final File file : files) {
                 final File copy = new File(file.getParentFile(), file.getName() + ".backup");
-                if (copy.exists())
-                    copy.delete();
+                if (Files.exists(copy.toPath()))
+                    Files.delete(copy.toPath());
                 Files.copy(file.toPath(), copy.toPath());
 
                 final int instanceNumber = localDevice.getNextInstanceObjectNumber(ObjectType.file);
                 final FileObject fo = localDevice.addObject(new FileObject(localDevice, instanceNumber,
-                        "configurationFile", new StreamAccess(copy)));
+                        "configurationFile", new FileStreamAccess(copy)));
                 fileOids.add(fo.getId());
             }
             configurationFiles = new BACnetArray<>(fileOids);
@@ -377,7 +377,7 @@ public class DefaultReinitializeDeviceHandler implements ReinitializeDeviceHandl
      * as being new should be removed as required, since this handler will only remove file objects that it created, as
      * given by the configurationFiles property.
      *
-     * @param localDevice
+     * @param localDevice the local device
      */
     protected void finishRestore(final LocalDevice localDevice) {
         // Override as required

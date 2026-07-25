@@ -33,6 +33,7 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 import javax.net.ssl.SSLParameters;
 
@@ -52,12 +53,18 @@ public class ScWebSocketClient extends WebSocketClient {
     private static final Draft_6455 draft = new Draft_6455(Collections.emptyList(), List.of(new Protocol(SUBPROTOCOL)));
 
     private final String name;
-    private final SCConnection connection;
+    private SCConnection connection;
 
-    public ScWebSocketClient(String name, URI serverUri, SCConnection connection) {
-        super(serverUri, draft);
+    public ScWebSocketClient(String name, URI serverUri, SCConnection connection, int connectTimeout) {
+        super(serverUri, draft, null, connectTimeout);
         this.name = name;
         this.connection = connection;
+    }
+
+    public void terminate() {
+        // Setting this to null prevents the client from sending zombie messages to the connection.
+        connection = null;
+        close();
     }
 
     @Override
@@ -65,47 +72,62 @@ public class ScWebSocketClient extends WebSocketClient {
         params.setEndpointIdentificationAlgorithm(null);
     }
 
+    private void withConnection(Consumer<SCConnection> consumer) {
+        SCConnection localConnection = connection;
+        if (localConnection != null) {
+            consumer.accept(localConnection);
+        }
+    }
+
     @Override
     public void onOpen(ServerHandshake handshake) {
-        LOG.debug("{} websocket onOpen: {}", name, handshake.getHttpStatus());
-        connection.onWebsocketOpen();
+        withConnection(conn -> {
+            LOG.debug("{} websocket onOpen: {}", name, handshake.getHttpStatus());
+            conn.onWebsocketOpen();
+        });
     }
 
     @Override
     public void onMessage(String message) {
         // AB.7.5.3
-        connection.onTextData(message);
+        withConnection(conn -> conn.onTextData(message));
     }
 
     @Override
     public void onMessage(ByteBuffer bb) {
-        LOG.debug("{} websocket onMessage: {}", name, bb);
-        var queue = new ByteQueue();
-        queue.push(bb);
-        connection.onWebsocketMessage(queue);
+        withConnection(conn -> {
+            LOG.debug("{} websocket onMessage: {}", name, bb);
+            var queue = new ByteQueue();
+            queue.push(bb);
+            conn.onWebsocketMessage(queue);
+        });
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        LOG.debug("{} Websocket onClose: code={}, reason={}, remote={}", name, code, reason, remote);
-        if (remote) {
-            connection.onWebsocketClose(code, reason);
-        }
+        withConnection(conn -> {
+            LOG.debug("{} Websocket onClose: code={}, reason={}, remote={}", name, code, reason, remote);
+            if (remote) {
+                conn.onWebsocketClose(code, reason);
+            }
+        });
     }
 
     @Override
     public void onError(Exception ex) {
-        LOG.warn("{} error on websocket connection", name, ex);
-        // Codes for various error conditions are defined in AB.7.5.1. But the spec says that they merely "can be used",
-        // so the best effort is made to determine the cause, but ultimately "other" is used.
-        var code = ErrorCode.other;
-        if (ex instanceof ConnectException cex) {
-            if ("Connection refused".equals(cex.getMessage())) {
-                code = ErrorCode.tcpConnectionRefused; // This could also be a timeout.
+        withConnection(conn -> {
+            LOG.warn("{} error on websocket connection", name, ex);
+            // Codes for various error conditions are defined in AB.7.5.1. But the spec says that they merely "can be used",
+            // so the best effort is made to determine the cause, but ultimately "other" is used.
+            var code = ErrorCode.other;
+            if (ex instanceof ConnectException cex) {
+                if ("Connection refused".equals(cex.getMessage())) {
+                    code = ErrorCode.tcpConnectionRefused; // This could also be a timeout.
+                }
+            } else if (ex instanceof NoRouteToHostException) {
+                code = ErrorCode.ipAddressNotReachable;
             }
-        } else if (ex instanceof NoRouteToHostException) {
-            code = ErrorCode.ipAddressNotReachable;
-        }
-        connection.onWebsocketError(code, ex.getMessage());
+            conn.onWebsocketError(code, ex.getMessage());
+        });
     }
 }

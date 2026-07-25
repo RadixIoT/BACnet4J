@@ -25,41 +25,26 @@
  * See www.radixiot.com for commercial license options.
  */
 
-package com.serotonin.bacnet4j.npdu.sc;
+package com.serotonin.bacnet4j.type.primitive;
 
-import java.util.Objects;
+import static org.junit.Assert.assertEquals;
 
-import com.serotonin.bacnet4j.npdu.NetworkIdentifier;
-import com.serotonin.bacnet4j.type.primitive.OctetString;
+import org.junit.Test;
 
-public class SCNetworkIdentifier extends NetworkIdentifier {
-    private final String uuid;
-
-    public SCNetworkIdentifier(String uuid) {
-        // Normalize to the same lowercase undashed hex representation that the OctetString
-        // constructor produces, so that identifiers created from either form are equal.
-        this.uuid = uuid.replace("-", "").toLowerCase();
+public class OctetStringTest {
+    @Test
+    public void toHexRoundTripsWithFromHex() {
+        var hex = "0102aabbccff";
+        assertEquals(hex, OctetString.fromHex(hex).toHex());
     }
 
-    public SCNetworkIdentifier(OctetString uuid) {
-        this.uuid = uuid.toHex();
+    @Test
+    public void toHexPadsAndLowercases() {
+        assertEquals("000a10ff", new OctetString(new byte[] {0x00, 0x0A, 0x10, (byte) 0xFF}).toHex());
     }
 
-    @Override
-    public String getIdString() {
-        return uuid;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass())
-            return false;
-        SCNetworkIdentifier that = (SCNetworkIdentifier) o;
-        return Objects.equals(uuid, that.uuid);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(uuid);
+    @Test
+    public void toHexOfEmptyIsEmpty() {
+        assertEquals("", new OctetString(new byte[0]).toHex());
     }
 }

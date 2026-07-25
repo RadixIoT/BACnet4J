@@ -27,39 +27,27 @@
 
 package com.serotonin.bacnet4j.npdu.sc;
 
-import java.util.Objects;
+import com.serotonin.bacnet4j.type.enumerated.SCHubConnectorState;
 
-import com.serotonin.bacnet4j.npdu.NetworkIdentifier;
-import com.serotonin.bacnet4j.type.primitive.OctetString;
-
-public class SCNetworkIdentifier extends NetworkIdentifier {
-    private final String uuid;
-
-    public SCNetworkIdentifier(String uuid) {
-        // Normalize to the same lowercase undashed hex representation that the OctetString
-        // constructor produces, so that identifiers created from either form are equal.
-        this.uuid = uuid.replace("-", "").toLowerCase();
-    }
-
-    public SCNetworkIdentifier(OctetString uuid) {
-        this.uuid = uuid.toHex();
-    }
-
-    @Override
-    public String getIdString() {
-        return uuid;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass())
-            return false;
-        SCNetworkIdentifier that = (SCNetworkIdentifier) o;
-        return Objects.equals(uuid, that.uuid);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hashCode(uuid);
-    }
+/**
+ * Listener for changes to a BACnet/SC network's hub connector state. Unlike other network types, an SC
+ * network is not usable when {@code LocalDevice.initialize()} returns: the hub connection is established
+ * asynchronously, and until then outgoing messages are dropped. Register a listener with
+ * {@link SCNetwork#addHubConnectionListener} to learn when the network becomes usable
+ * ({@code noHubConnection} to {@code connectedToPrimary} or {@code connectedToFailover}), when it fails
+ * over or recovers between hubs, and when the connection is lost.
+ *
+ * @see SCNetwork#whenHubConnected()
+ */
+@FunctionalInterface
+public interface SCHubConnectionListener {
+    /**
+     * Called when the hub connector state changes. Notified on the local device's executor while the hub
+     * connector processes its state machine, so implementations must return quickly and must not block;
+     * hand off substantial work to another thread.
+     *
+     * @param oldState the state before the change.
+     * @param newState the state after the change.
+     */
+    void hubConnectionStateChanged(SCHubConnectorState oldState, SCHubConnectorState newState);
 }

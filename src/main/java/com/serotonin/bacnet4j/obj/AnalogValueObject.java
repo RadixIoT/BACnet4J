@@ -126,4 +126,11 @@ public class AnalogValueObject extends BACnetObject {
         _supportWritable();
         return this;
     }
+
+    public float addAndGet(float delta) {
+        Real pv = get(PropertyIdentifier.presentValue);
+        var update = pv.floatValue() + delta;
+        writePropertyInternal(PropertyIdentifier.presentValue, new Real(update));
+        return update;
+    }
 }

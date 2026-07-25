@@ -108,6 +108,11 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
 - The method `DeviceEventListener.whoAmIReceived` has been added
 - The method `DeviceEventListener.youAreReceived` has been added
 - Code that allowed an unconfigured device to find an unused device id has been removed
+- `LocalDevice.terminate()` now terminates the transport before shutting down the executor, so BACnet/SC connections
+  close cleanly.
+- The `StreamAccess` class has been made abstract, and two concrete subclasses created: `FileStreamAccess`, and
+  `InMemeoryStreamAccess`. `FileStreamAccess` can be used as a drop in replacement for existing references to
+  `StreamAccess`
 - Many non-breaking changes that bring BACnet4J up to compliance with protocol revision 30
 
 *Version 6.2.0*

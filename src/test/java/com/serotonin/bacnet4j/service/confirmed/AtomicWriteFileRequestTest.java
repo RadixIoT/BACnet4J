@@ -46,7 +46,7 @@ import com.serotonin.bacnet4j.npdu.test.TestNetworkMap;
 import com.serotonin.bacnet4j.obj.AnalogInputObject;
 import com.serotonin.bacnet4j.obj.FileObject;
 import com.serotonin.bacnet4j.obj.fileAccess.CrlfDelimitedFileAccess;
-import com.serotonin.bacnet4j.obj.fileAccess.StreamAccess;
+import com.serotonin.bacnet4j.obj.fileAccess.FileStreamAccess;
 import com.serotonin.bacnet4j.service.acknowledgement.AtomicReadFileAck;
 import com.serotonin.bacnet4j.service.acknowledgement.AtomicWriteFileAck;
 import com.serotonin.bacnet4j.transport.DefaultTransport;
@@ -99,7 +99,7 @@ public class AtomicWriteFileRequestTest {
     @Test
     public void streamAccess() throws Exception {
         // Create the file object to use.
-        FileObject f = d1.addObject(new FileObject(d1, 0, "test", new StreamAccess(new File(path))));
+        FileObject f = d1.addObject(new FileObject(d1, 0, "test", new FileStreamAccess(new File(path))));
 
         // Write starting at -2.
         TestUtils.assertRequestHandleException(() ->
@@ -117,7 +117,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write into an existing range.
         doInCopy(file -> {
-            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
+            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new FileStreamAccess(file)));
             AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(600), new OctetString("!@#$%".getBytes()))).handle(d1, null);
@@ -135,7 +135,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write to exactly the end of the file.
         doInCopy(file -> {
-            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
+            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new FileStreamAccess(file)));
             AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new com.serotonin.bacnet4j.service.confirmed.AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(917), new OctetString("!@#$%".getBytes()))).handle(d1, null);
@@ -153,7 +153,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write a bit beyond the end of the file.
         doInCopy(file -> {
-            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
+            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new FileStreamAccess(file)));
             AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(919), new OctetString("!@#$%".getBytes()))).handle(d1, null);
@@ -171,7 +171,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write starting beyond the end of the file.
         doInCopy(file -> {
-            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
+            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new FileStreamAccess(file)));
             AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(930), new OctetString("!@#$%".getBytes()))).handle(d1, null);
@@ -190,7 +190,7 @@ public class AtomicWriteFileRequestTest {
 
         // Do a legitimate write append.
         doInCopy(file -> {
-            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
+            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new FileStreamAccess(file)));
             AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(-1), new OctetString("!@#$%".getBytes()))).handle(d1, null);
@@ -217,7 +217,7 @@ public class AtomicWriteFileRequestTest {
     @Test
     public void streamAccess_startZeroShorterPreservesTail() throws Exception {
         doInCopy(file -> {
-            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
+            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new FileStreamAccess(file)));
             AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new AtomicWriteFileRequest.StreamAccess(new SignedInteger(0), new OctetString("hello".getBytes())))
                     .handle(d1, null);
@@ -245,7 +245,7 @@ public class AtomicWriteFileRequestTest {
     @Test
     public void streamAccess_startZeroEmptyIsNoOp() throws Exception {
         doInCopy(file -> {
-            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
+            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new FileStreamAccess(file)));
             AtomicWriteFileAck wack = (AtomicWriteFileAck) new AtomicWriteFileRequest(f1.getId(),
                     new AtomicWriteFileRequest.StreamAccess(new SignedInteger(0), new OctetString(new byte[0])))
                     .handle(d1, null);
@@ -399,7 +399,7 @@ public class AtomicWriteFileRequestTest {
         doInCopy(file -> {
             long originalTime = file.lastModified();
             ThreadUtils.sleep(5); // Ensures that the time changes from the original
-            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new StreamAccess(file)));
+            FileObject f1 = d1.addObject(new FileObject(d1, 1, "test", new FileStreamAccess(file)));
             new AtomicWriteFileRequest(f1.getId(),
                     new AtomicWriteFileRequest.StreamAccess(
                             new SignedInteger(600), new OctetString("!@#$%".getBytes()))).handle(d1, null);

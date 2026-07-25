@@ -29,13 +29,19 @@ package com.serotonin.bacnet4j.npdu.sc;
 
 import java.io.IOException;
 import java.net.URI;
-import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.SSLContext;
 
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.enums.MaxApduLength;
@@ -71,6 +77,8 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
  * 3) Provide a mechanism for generating a CSR. See SCCsrGenerationTest.
  */
 public class SCNetwork extends Network {
+    private static final Logger LOG = LoggerFactory.getLogger(SCNetwork.class);
+
     // Configuration
     private OctetString vmac;
     private final OctetString uuid;
@@ -79,13 +87,15 @@ public class SCNetwork extends Network {
     private final int maxNpduLengthAccepted;
     private final String primaryHubUri;
     private final String failoverHubUri;
-    private final int minimumReconnectTime;
-    private final int maximumReconnectTime;
-    private final int connectWaitTimeout;
-    private final int disconnectWaitTimeout;
-    private final int heartbeatTimeout;
+    // The SC timing properties are configurable at runtime (12.56): they are read from here at
+    // each use, so writes to the network port object take effect immediately.
+    private volatile int minimumReconnectTime;
+    private volatile int maximumReconnectTime;
+    private volatile int connectWaitTimeout;
+    private volatile int disconnectWaitTimeout;
+    private volatile int heartbeatTimeout;
     private final int heartbeatAckTimeout;
-    private final KeyPair keyPair;
+    private final SCKeyPairHandler keyPairHandler;
     private final ObjectIdentifier operationalCertificateFileId;
     private final ObjectIdentifier issuerCertificateFile1Id;
     private final ObjectIdentifier issuerCertificateFile2Id;
@@ -99,6 +109,11 @@ public class SCNetwork extends Network {
     private SCHubConnection initializationError =
             new SCHubConnection(SCConnectionState.notConnected, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED);
     private SCNode node;
+    private SerialExecutor eventExecutor;
+    private volatile boolean terminated = false;
+    private final CopyOnWriteArrayList<SCHubConnectionListener> hubConnectionListeners = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<CompletableFuture<SCHubConnectorState>> pendingConnectionFutures =
+            new CopyOnWriteArrayList<>();
 
     private long bytesOut;
     private long bytesIn;
@@ -118,7 +133,7 @@ public class SCNetwork extends Network {
             int disconnectWaitTimeout,
             int heartbeatTimeout,
             int heartbeatAckTimeout,
-            KeyPair keyPair,
+            SCKeyPairHandler keyPairHandler,
             Integer operationalCertificateFileId,
             Integer issuerCertificateFile1Id,
             Integer issuerCertificateFile2Id,
@@ -139,7 +154,7 @@ public class SCNetwork extends Network {
         this.disconnectWaitTimeout = disconnectWaitTimeout;
         this.heartbeatTimeout = heartbeatTimeout;
         this.heartbeatAckTimeout = heartbeatAckTimeout;
-        this.keyPair = keyPair;
+        this.keyPairHandler = keyPairHandler;
         this.operationalCertificateFileId = new ObjectIdentifier(ObjectType.file, operationalCertificateFileId);
         this.issuerCertificateFile1Id = new ObjectIdentifier(ObjectType.file, issuerCertificateFile1Id);
         this.issuerCertificateFile2Id = new ObjectIdentifier(ObjectType.file, issuerCertificateFile2Id);
@@ -161,7 +176,7 @@ public class SCNetwork extends Network {
 
     @Override
     public NetworkIdentifier getNetworkIdentifier() {
-        return new SCNetworkIdentifier(vmac);
+        return new SCNetworkIdentifier(uuid);
     }
 
     @Override
@@ -220,20 +235,42 @@ public class SCNetwork extends Network {
         return new UnsignedInteger(minimumReconnectTime);
     }
 
+    public void setMinimumReconnectTime(int minimumReconnectTime) {
+        this.minimumReconnectTime = minimumReconnectTime;
+        backoffPolicy.configure(minimumReconnectTime, maximumReconnectTime);
+    }
+
     public UnsignedInteger getMaximumReconnectTime() {
         return new UnsignedInteger(maximumReconnectTime);
+    }
+
+    public void setMaximumReconnectTime(int maximumReconnectTime) {
+        this.maximumReconnectTime = maximumReconnectTime;
+        backoffPolicy.configure(minimumReconnectTime, maximumReconnectTime);
     }
 
     public UnsignedInteger getConnectWaitTimeout() {
         return new UnsignedInteger(connectWaitTimeout);
     }
 
+    public void setConnectWaitTimeout(int connectWaitTimeout) {
+        this.connectWaitTimeout = connectWaitTimeout;
+    }
+
     public UnsignedInteger getDisconnectWaitTimeout() {
         return new UnsignedInteger(disconnectWaitTimeout);
     }
 
+    public void setDisconnectWaitTimeout(int disconnectWaitTimeout) {
+        this.disconnectWaitTimeout = disconnectWaitTimeout;
+    }
+
     public UnsignedInteger getHeartbeatTimeout() {
         return new UnsignedInteger(heartbeatTimeout);
+    }
+
+    public void setHeartbeatTimeout(int heartbeatTimeout) {
+        this.heartbeatTimeout = heartbeatTimeout;
     }
 
     // Not a spec value; does not appear in the network port object.
@@ -282,11 +319,102 @@ public class SCNetwork extends Network {
     }
 
     /**
-     * Returns true if the public key in the given certificate equals that in the key pair held by this network. Used
-     * for clause 12.56.100's "operational certificate failed to validate against an internal private key" check.
+     * Adds a listener that is notified when the hub connector state changes. Unlike other network types,
+     * an SC network is not usable when {@code LocalDevice.initialize()} returns: the hub connection is
+     * established asynchronously, and until then outgoing messages are dropped. See
+     * {@link SCHubConnectionListener} for the threading contract.
      */
-    public boolean matchesPublicKey(X509Certificate cert) {
-        return Arrays.equals(cert.getPublicKey().getEncoded(), keyPair.getPublic().getEncoded());
+    public void addHubConnectionListener(SCHubConnectionListener listener) {
+        hubConnectionListeners.add(listener);
+    }
+
+    public void removeHubConnectionListener(SCHubConnectionListener listener) {
+        hubConnectionListeners.remove(listener);
+    }
+
+    /**
+     * Returns true if the hub connector is connected to the primary or the failover hub, i.e. the network
+     * can currently send and receive messages.
+     */
+    public boolean isHubConnected() {
+        return getHubConnectorState() != SCHubConnectorState.noHubConnection;
+    }
+
+    /**
+     * Returns a future that completes with the hub connector state when a hub connection is established,
+     * or immediately if one already is. Intended for startup sequencing: initialize the local device, then
+     * wait on this future before starting operations that require the network.
+     * <p>
+     * The future completes on the local device's executor thread; chain substantial work with the async
+     * continuation methods. It does not time out by itself — callers that cannot wait indefinitely (e.g.
+     * because the hub may be unreachable) should apply {@link CompletableFuture#orTimeout}. If the network
+     * is terminated while the future is pending, the future is canceled, so a blocked
+     * {@code join()}/{@code get()} throws {@link java.util.concurrent.CancellationException} rather than
+     * waiting forever. A call made after termination returns an already-canceled future; a subsequent
+     * {@code initialize} resets this.
+     */
+    public CompletableFuture<SCHubConnectorState> whenHubConnected() {
+        CompletableFuture<SCHubConnectorState> future = new CompletableFuture<>();
+        SCHubConnectionListener listener = (oldState, newState) -> {
+            if (newState != SCHubConnectorState.noHubConnection) {
+                future.complete(newState);
+            }
+        };
+        addHubConnectionListener(listener);
+        pendingConnectionFutures.add(future);
+        // The cleanup is registered before any path that can complete the future, so that completion -
+        // by the listener, the early-complete below, cancellation from terminate(), or the terminated
+        // check below - always removes the listener and the pending entry.
+        future.whenComplete((s, e) -> {
+            removeHubConnectionListener(listener);
+            pendingConnectionFutures.remove(future);
+        });
+        // Check the current state after registering the listener so that a connection established between
+        // the check and the registration cannot be missed.
+        SCHubConnectorState state = getHubConnectorState();
+        if (state != SCHubConnectorState.noHubConnection) {
+            future.complete(state);
+        }
+        if (terminated) {
+            future.cancel(false);
+        }
+        return future;
+    }
+
+    /**
+     * Runs the given state machine event strictly after all previously submitted events, one at a time.
+     * All events of this network's node, hub connector, and connections — including their timeouts — are
+     * dispatched through here, so they are processed in the order in which they were submitted, regardless
+     * of which thread produced them. The exception is hard termination, which deliberately bypasses the
+     * queue: it is the escalation used when orderly shutdown has failed, and must not depend on the queue
+     * (or its delegate executor, which may be about to shut down) still draining.
+     */
+    void executeSerially(Runnable event) {
+        eventExecutor.execute(event);
+    }
+
+    /**
+     * Called by the hub connector when its state changes. Listener exceptions are logged and do not
+     * affect other listeners or the connector.
+     */
+    void fireHubConnectionStateChanged(SCHubConnectorState oldState, SCHubConnectorState newState) {
+        for (SCHubConnectionListener listener : hubConnectionListeners) {
+            try {
+                listener.hubConnectionStateChanged(oldState, newState);
+            } catch (Exception e) {
+                LOG.error("Error in hub connection listener", e);
+            }
+        }
+    }
+
+    /**
+     * Returns the connection status describing why this network failed to initialize, or null if it initialized
+     * successfully or initialization has not been attempted. Initialization failures - e.g. TLS configuration
+     * problems or invalid hub URIs - are recorded here rather than thrown from {@link #initialize(Transport)}.
+     * Used by the network port object to evaluate Current_Health and Reliability.
+     */
+    public SCHubConnection getInitializationError() {
+        return initializationError.getError() == null ? null : initializationError;
     }
 
     @Override
@@ -297,6 +425,7 @@ public class SCNetwork extends Network {
                 new SCHubConnection(SCConnectionState.notConnected, DateTime.UNSPECIFIED, DateTime.UNSPECIFIED);
 
         LocalDevice localDevice = transport.getLocalDevice();
+        eventExecutor = new SerialExecutor(localDevice::execute);
         localDevice.getDeviceObject().writePropertyInternal(PropertyIdentifier.deviceUuid, uuid);
 
         // Ensure the URIs start with "wss" and are valid URIs
@@ -357,8 +486,24 @@ public class SCNetwork extends Network {
             throw new IllegalArgumentException("Both issuer certificates file objects cannot be empty");
         }
 
-        var tls = new SCTLSManager(keyPair.getPrivate(), operationalCertificate, issuerCertificate1,
-                issuerCertificate2);
+        // Select the internal private key that matches the operational certificate. The handler may hold a
+        // pending pair from an outstanding CSR in addition to the active pair; the certificate determines
+        // which pair is effective for the port.
+        X509Certificate opCert;
+        try {
+            CertificateFactory cf = CertificateFactory.getInstance(SCNetworkUtils.DEFAULT_CERTIFICATE_TYPE);
+            opCert = SCNetworkUtils.generateCertificate(cf, operationalCertificate);
+        } catch (CertificateException e) {
+            throw new SCTLSManager.TLSException(ErrorClass.security, ErrorCode.certificateMalformed,
+                    "Operational certificate encoding error: %s", e);
+        }
+        PrivateKey privateKey = keyPairHandler.privateKeyFor(opCert);
+        if (privateKey == null) {
+            throw new SCTLSManager.TLSException(ErrorClass.security, ErrorCode.unknownCertificateKey,
+                    "Operational certificate does not match a private key", null);
+        }
+
+        var tls = new SCTLSManager(privateKey, operationalCertificate, issuerCertificate1, issuerCertificate2);
         sslContext = tls.getSSLContext();
     }
 
@@ -377,15 +522,54 @@ public class SCNetwork extends Network {
                 throw new IllegalArgumentException(
                         propName + " file object has unsupported file type: " + fo.get(PropertyIdentifier.fileType));
             }
-            return access.readData(0, access.length()).getBytes();
+            // Read under the file object's lock so that a concurrent AtomicWriteFile cannot produce a
+            // torn read of the certificate content.
+            fo.getLock().lock();
+            try {
+                return access.readData(0, access.length()).getBytes();
+            } finally {
+                fo.getLock().unlock();
+            }
         }
         throw new IllegalArgumentException(propName + " does not reference a file object");
     }
 
     @Override
     public void terminate() {
+        terminated = true;
         if (node != null) {
             node.terminate();
+        }
+        // Cancel any outstanding whenHubConnected() futures so that waiting callers are released
+        // instead of blocking forever. Cancellation also removes each future's listener via its
+        // whenComplete hook.
+        for (CompletableFuture<SCHubConnectorState> future : pendingConnectionFutures) {
+            future.cancel(false);
+        }
+    }
+
+    /**
+     * Waits for the node to complete the shutdown started by {@link #terminate()}: the connections perform
+     * their disconnect handshakes and the state machines return to idle. The shutdown events dispatch
+     * through the local device's executor, so this must be called before that executor is shut down —
+     * {@code LocalDevice.terminate} does this in the correct order.
+     */
+    @Override
+    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+        return node == null || node.awaitTermination(timeout, unit);
+    }
+
+    @Override
+    public void hardTerminate() {
+        // Stop the serial event queue before forcing the state machines to idle: queued events are stale
+        // by definition, and letting them drain afterward could act on the reset state machines — e.g. a
+        // queued backoff-retry timeout would start a new connection attempt. A subsequent initialize()
+        // creates a fresh executor.
+        if (eventExecutor != null) {
+            eventExecutor.stop();
+        }
+        if (node != null) {
+            node.hardTerminate();
         }
     }
 

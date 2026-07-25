@@ -378,18 +378,42 @@ public class LocalDevice implements AutoCloseable {
         terminate(10, TimeUnit.SECONDS);
     }
 
+    /**
+     * @param timeout     the total time budget for the shutdown: time spent waiting for the network to
+     *                    terminate is deducted from the time given to the executor shutdown.
+     * @param timeoutUnit the unit of the timeout.
+     */
     public synchronized void terminate(long timeout, TimeUnit timeoutUnit) {
+        long deadline = System.nanoTime() + timeoutUnit.toNanos(timeout);
+
+        // Terminate the transport before shutting down the timer: network shutdown - in particular
+        // the SC state machines - dispatches events and timeouts through the timer, so it must
+        // still be operational while the transport closes its connections.
+        transport.terminate();
+        // Wait for asynchronous network shutdown (e.g. the SC disconnect handshakes) to complete
+        // while the timer can still dispatch its events.
+        try {
+            if (!transport.getNetwork().awaitTermination(timeout, timeoutUnit)) {
+                LOG.warn("BACnet network did not terminate within the timeout");
+                transport.getNetwork().hardTerminate();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            transport.getNetwork().hardTerminate();
+            LOG.warn("Interrupted while waiting for network termination", e);
+        }
         if (timer != null) {
             timer.shutdown();
             try {
-                if (!timer.awaitTermination(timeout, timeoutUnit)) {
-                    LOG.warn("BACnet4J timer did not shutdown within 10 seconds");
+                long remaining = Math.max(deadline - System.nanoTime(), 1_000_000); // At least one millisecond
+                if (!timer.awaitTermination(remaining, TimeUnit.NANOSECONDS)) {
+                    LOG.warn("BACnet4J timer did not shutdown within the timeout");
                 }
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 LOG.warn("Interrupted while waiting for shutdown of executors", e);
             }
         }
-        transport.terminate();
         initialized = false;
     }
 

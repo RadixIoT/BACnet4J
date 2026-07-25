@@ -53,6 +53,14 @@ public class OctetString extends Primitive {
         return value;
     }
 
+    /**
+     * Returns the content as a lowercase, undelimited hex string, e.g. "010203040506". The inverse of
+     * {@link #fromHex(String)}.
+     */
+    public String toHex() {
+        return StreamUtils.toHex(value);
+    }
+
     //
     // Reading and writing
     //

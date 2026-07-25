@@ -28,9 +28,8 @@
 package com.serotonin.bacnet4j.npdu.sc;
 
 public interface BackoffPolicy {
-    int getInitialWaitTimeout();
-
-    // This should only be called by the SCNetwork constructor.
+    // This should only be called by SCNetwork: at construction, and again when the reconnect time
+    // properties are written at runtime.
     void configure(int minimumReconnectTime, int maximumReconnectTime);
 
     int getReconnectWaitTimeout();
