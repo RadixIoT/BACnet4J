@@ -114,6 +114,14 @@ public class ExtendedNotif extends AbstractNotificationParameter {
             }
         }
 
+        public Primitive getPrimitive() {
+            return primitive;
+        }
+
+        public DeviceObjectPropertyReference getReference() {
+            return reference;
+        }
+
         @Override
         public String toString() {
             return "Parameter [primitive=" + primitive + ", reference=" + reference + "]";
