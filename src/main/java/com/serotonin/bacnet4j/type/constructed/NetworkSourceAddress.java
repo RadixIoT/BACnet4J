@@ -27,11 +27,17 @@
 
 package com.serotonin.bacnet4j.type.constructed;
 
+import com.serotonin.bacnet4j.type.primitive.OctetString;
+import com.serotonin.bacnet4j.type.primitive.Unsigned16;
+
 /**
  * Marker class to indicate that the address was received
  * in the NPDU as the 'Source Address'
  */
 public class NetworkSourceAddress extends Address {
+    public NetworkSourceAddress(Unsigned16 sourceNetwork, OctetString sourceAddress) {
+        super(sourceNetwork, sourceAddress);
+    }
 
     public NetworkSourceAddress(int sourceNetwork, byte[] sourceAddress) {
         super(sourceNetwork, sourceAddress);
