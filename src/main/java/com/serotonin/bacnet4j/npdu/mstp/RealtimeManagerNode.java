@@ -183,12 +183,10 @@ public class RealtimeManagerNode extends ManagerNode {
     @Override
     protected void waitForReply() {
         if (clock.millis() > lastFrameSendTime + responseTimeoutMs) {
-            if (LOG.isDebugEnabled())
-                LOG.debug("{} waitForReply:ReplyTimeout", thisStation);
+            LOG.debug("{} waitForReply:ReplyTimeout", thisStation);
             state = ManagerNodeState.idle;
         } else if (receivedValidFrame) {
-            if (LOG.isDebugEnabled())
-                LOG.debug("{} waitForReply:ReceivedReply", thisStation);
+            LOG.debug("{} waitForReply:ReceivedReply", thisStation);
             receivedDataNoReply(frame);
             state = ManagerNodeState.idle;
             receivedValidFrame = false;
@@ -203,8 +201,7 @@ public class RealtimeManagerNode extends ManagerNode {
         synchronized (this) {
             if (replyFrame != null) {
                 // Reply
-                if (LOG.isDebugEnabled())
-                    LOG.debug("{} answerDataRequest:Reply", thisStation);
+                LOG.debug("{} answerDataRequest:Reply", thisStation);
                 sendFrame(replyFrame);
                 replyFrame = null;
                 state = ManagerNodeState.idle;
