@@ -32,7 +32,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.npdu.mstp.realtime.RealtimeDriver;
@@ -145,7 +145,7 @@ public class RealtimeManagerNode extends ManagerNode {
                 receivedValidFrame = true;
             }
         } catch (IOException e) {
-            if (StringUtils.equals(e.getMessage(), "Stream closed."))
+            if (Strings.CS.equals(e.getMessage(), "Stream closed."))
                 throw new RuntimeException(e);
             LOG.debug("{} Input stream listener exception", thisStation, e);
             receiveError = true;
@@ -216,7 +216,6 @@ public class RealtimeManagerNode extends ManagerNode {
 
     @Override
     protected void sendFrame(Frame frame) {
-        LOG.info("Sending frame: {}", frame);
         try {
             if (LOG.isTraceEnabled()) {
                 LOG.trace("{} out: {}", tracePrefix(), frame);
@@ -243,11 +242,10 @@ public class RealtimeManagerNode extends ManagerNode {
             out.flush();
             bytesOut += frame.getLength() + 10; //Imply the missing bytes that the driver will add
             lastFrameSendTime = clock.millis();
-            LOG.info("Sent frame {}", frame);
         } catch (IOException e) {
             // Only write the same error message once. Prevents logs from getting filled up unnecessarily with repeated
             // error messages.
-            if (!StringUtils.equals(e.getMessage(), lastWriteError)) {
+            if (!Strings.CS.equals(e.getMessage(), lastWriteError)) {
                 // NOTE: should anything else be informed of this?
                 LOG.error("Error while sending frame", e);
                 lastWriteError = e.getMessage();

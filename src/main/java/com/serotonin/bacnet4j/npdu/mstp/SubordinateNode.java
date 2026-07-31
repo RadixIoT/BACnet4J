@@ -101,8 +101,7 @@ public class SubordinateNode extends MstpNode {
 
             if (type == null) {
                 // ReceivedUnwantedFrame
-                if (LOG.isDebugEnabled())
-                    LOG.debug("Unknown frame type");
+                LOG.debug("Unknown frame type");
             } else if (frame.broadcast()
                     && type.oneOf(FrameType.token, FrameType.bacnetDataExpectingReply, FrameType.testRequest)) {
                 // ReceivedUnwantedFrame

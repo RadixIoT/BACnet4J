@@ -217,9 +217,7 @@ public class ManagerNode extends MstpNode {
     protected void idle() {
         if (silence() >= Constants.NO_TOKEN) {
             // LostToken
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("idle:LostToken");
-            }
+            LOG.debug("idle:LostToken");
             state = ManagerNodeState.noToken;
             activity = true;
         } else if (receivedInvalidFrame != null) {
@@ -231,9 +229,7 @@ public class ManagerNode extends MstpNode {
             frame();
             receivedValidFrame = false;
             activity = true;
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("idle:other");
-            }
+            LOG.debug("idle:other");
         }
     }
 
