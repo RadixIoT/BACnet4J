@@ -85,7 +85,7 @@ public class WritePropertyMultipleRequest extends ConfirmedRequestService {
                 throw createException(ErrorClass.property, ErrorCode.unknownObject, spec, null);
 
             for (PropertyValue pv : spec.getListOfProperties()) {
-                LOG.info("Writing property {} into {}", pv, obj);
+                LOG.debug("Writing property {} into {}", pv, obj);
                 try {
                     if (localDevice.getEventHandler().checkAllowPropertyWrite(from, obj, pv)) {
                         obj.writeProperty(new ValueSource(from), pv);
