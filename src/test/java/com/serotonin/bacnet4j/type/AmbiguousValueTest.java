@@ -80,7 +80,7 @@ public class AmbiguousValueTest {
     @Test(timeout = 5_000)
     public void zeroLengthTagIsNotCorrupt() throws BACnetException {
         AmbiguousValue amb = new AmbiguousValue(new ByteQueue("3e203f"), 3);
-        assertArrayEquals(new byte[] { 0x20 }, amb.getData());
+        assertArrayEquals(new byte[] {0x20}, amb.getData());
     }
 
     /**
@@ -89,7 +89,7 @@ public class AmbiguousValueTest {
     @Test(timeout = 5_000)
     public void exactLengthIsNotCorrupt() throws BACnetException {
         AmbiguousValue amb = new AmbiguousValue(new ByteQueue("3e210d3f"), 3);
-        assertArrayEquals(new byte[] { 0x21, 0x0d }, amb.getData());
+        assertArrayEquals(new byte[] {0x21, 0x0d}, amb.getData());
         assertEquals(new UnsignedInteger(13), amb.convertTo(UnsignedInteger.class));
     }
 
@@ -112,7 +112,7 @@ public class AmbiguousValueTest {
     @Test(timeout = 5_000)
     public void multipleValuesAreAccumulated() throws BACnetException {
         AmbiguousValue amb = new AmbiguousValue(new ByteQueue("3e210d21173f"), 3);
-        assertArrayEquals(new byte[] { 0x21, 0x0d, 0x21, 0x17 }, amb.getData());
+        assertArrayEquals(new byte[] {0x21, 0x0d, 0x21, 0x17}, amb.getData());
     }
 
     private static void assertCorrupt(String hex, int contextId) {
