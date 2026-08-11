@@ -3,7 +3,7 @@ name: bacnet4j
 services:
   # This is the container in which the tests are run.
   bacnet-11:
-    image: maven:3-eclipse-temurin-17-alpine
+    image: maven:3-eclipse-temurin-21-alpine
     depends_on:
       bacnet-22:
         condition: service_healthy
@@ -27,7 +27,7 @@ services:
 
   # This container hosts a BACnet4J instance that sends unicasts and broadcasts that the testing container can receive.
   bacnet-22:
-    image: azul/zulu-openjdk-alpine:17-jre-headless
+    image: azul-zulu:21-jre-headless
     healthcheck:
       # See DockerRemoteDevice, which creates running.txt after the local devices has been initialized. The file is
       # created in the tmp so that it is not shared by the volume mappings.
@@ -48,7 +48,7 @@ services:
     command: ["com.serotonin.bacnet4j.docker.DockerRemoteDevice", "docker-remote-device-22.properties"]
 
   bacnet-33:
-    image: azul/zulu-openjdk-alpine:17-jre-headless
+    image: azul-zulu:21-jre-headless
     healthcheck:
       # See DockerRemoteDevice, which creates running.txt after the local devices has been initialized. The file is
       # created in the tmp so that it is not shared by the volume mappings.

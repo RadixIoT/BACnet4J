@@ -268,6 +268,16 @@ public class SCConnectionTest {
         when(client.isClosed()).thenReturn(false);
     }
 
+    /**
+     * Mirrors a peer that has sent a message and immediately closed: the close frame is processed on
+     * the read thread, moving the client to CLOSING, while the message event is still pending.
+     */
+    private void simulateClientClosing() {
+        when(client.isOpen()).thenReturn(false);
+        when(client.isClosing()).thenReturn(true);
+        when(client.getReadyState()).thenReturn(ReadyState.CLOSING);
+    }
+
     private SCBVLC lastSent() {
         ArgumentCaptor<byte[]> c = ArgumentCaptor.forClass(byte[].class);
         verify(client, atLeastOnce()).send(c.capture());
@@ -642,6 +652,37 @@ public class SCConnectionTest {
         verify(owner).restartWithNewVMAC();
         // VMAC-collision path bypasses connectionClosed(), so no onConnectionIdle notification.
         verify(owner, never()).onConnectionIdle(any(SCConnection.class), org.mockito.ArgumentMatchers.anyBoolean());
+    }
+
+    @Test
+    public void awaitingAccept_bvlcResultNak_duplicateVmac_whileClosing_stillRestartsWithNewVmac() {
+        // A hub that rejects the Connect-Request closes the WebSocket right after the NAK (AB.6.2.2),
+        // so the close frame routinely lands before the NAK's own event is processed. The NAK must
+        // still be read: it is the only trigger for the VMAC rotation, and treating it as a plain
+        // closed socket leaves the node retrying the same duplicate VMAC forever.
+        int connectId = enterAwaitingAccept();
+        simulateClientClosing();
+
+        feedMessage(bvlcResultNak(connectId, ErrorCode.nodeDuplicateVmac));
+
+        assertEquals(SCConnection.State.IDLE, connection.getState());
+        verify(owner).restartWithNewVMAC();
+        verify(owner, never()).onConnectionIdle(any(SCConnection.class), anyBoolean());
+    }
+
+    @Test
+    public void awaitingAccept_bvlcResultNak_otherCode_whileClosing_stillRecordsError() {
+        // Same race, non-collision NAK: the peer's class/code must reach the connection status rather
+        // than being replaced by an unexplained failedToConnect.
+        int connectId = enterAwaitingAccept();
+        simulateClientClosing();
+
+        feedMessage(bvlcResultNak(connectId, ErrorCode.headerEncodingError));
+
+        assertEquals(SCConnection.State.IDLE, connection.getState());
+        verify(owner).onConnectionIdle(connection, false);
+        verify(owner, never()).restartWithNewVMAC();
+        assertConnectionError(SCConnectionState.failedToConnect, ErrorCode.headerEncodingError, null);
     }
 
     @Test

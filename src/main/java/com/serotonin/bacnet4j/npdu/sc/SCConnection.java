@@ -309,20 +309,16 @@ public class SCConnection {
                 }
             }
             case AWAITING_ACCEPT -> {
-                // check AB-11 "Connection Wait Timeout Expired" transition
-                if (event.isOneOf(Event.TIMEOUT, Event.DISCONNECT, Event.REMOTE_CLOSE, Event.TEXT_DATA)
-                        || !client.isOpen()) {
-                    LOG.debug("{} websocket connection closing: event={}, client state={}", name, event,
-                            client.getReadyState());
-                    if (event == Event.TEXT_DATA) {
-                        client.close(CloseFrame.REFUSE);
-                    } else {
-                        client.close();
-                    }
-                    connectionState = SCConnectionState.failedToConnect;
-                    connectTimestamp = new DateTime(localDevice);
-                    connectionClosed(false);
-                } else if (event == Event.MESSAGE && message != null) {
+                // A message that has already been received and parsed is processed before the
+                // closed-websocket transition below, not after it. A peer that rejects the
+                // Connect-Request closes the websocket immediately after sending the NAK (AB.6.2.2),
+                // and that close frame is handled inline on the read thread while this message event
+                // is still queued on the serial executor - so by the time it runs, the websocket is
+                // usually already CLOSING. Deciding on client.isOpen() first would discard the NAK
+                // unread, and with it the nodeDuplicateVmac detection that AB.6.2.2 VMAC-collision
+                // recovery depends on. Whatever state the message leaves the machine in, the pending
+                // REMOTE_CLOSE is handled there.
+                if (event == Event.MESSAGE && message != null) {
                     switch (message.getFunction()) {
                         case SCBVLC.CONNECT_ACCEPT -> {
                             if (checkId(message)) {
@@ -383,6 +379,19 @@ public class SCConnection {
                                         "{} protocol violation: Unexpected message {} received in WAITING_ACCEPT state",
                                         name, message.getFunction());
                     }
+                } else if (event.isOneOf(Event.TIMEOUT, Event.DISCONNECT, Event.REMOTE_CLOSE, Event.TEXT_DATA)
+                        || !client.isOpen()) {
+                    // check AB-11 "Connection Wait Timeout Expired" transition
+                    LOG.debug("{} websocket connection closing: event={}, client state={}", name, event,
+                            client.getReadyState());
+                    if (event == Event.TEXT_DATA) {
+                        client.close(CloseFrame.REFUSE);
+                    } else {
+                        client.close();
+                    }
+                    connectionState = SCConnectionState.failedToConnect;
+                    connectTimestamp = new DateTime(localDevice);
+                    connectionClosed(false);
                 } else {
                     illegalState(event, args);
                 }
