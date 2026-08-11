@@ -33,8 +33,8 @@ public class TagData {
     public long length;
     public int tagLength;
 
-    public int getTotalLength() {
-        return (int) (length + tagLength);
+    public long getTotalLength() {
+        return (length + tagLength);
     }
 
     public boolean isStartTag() {
