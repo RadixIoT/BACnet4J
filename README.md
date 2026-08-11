@@ -114,6 +114,8 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
   `InMemeoryStreamAccess`. `FileStreamAccess` can be used as a drop in replacement for existing references to
   `StreamAccess`
 - Many non-breaking changes that bring BACnet4J up to compliance with protocol revision 30
+- The return value of `TagData.getTotalLength` has been changed from `int` to `long`. Fields that were previously public
+  have been changed to private and getters created.
 
 *Version 6.2.0*
 
