@@ -31,8 +31,8 @@ import java.util.Arrays;
 import java.util.Objects;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
-import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Primitive;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.StreamUtils;
@@ -61,9 +61,7 @@ public class AmbiguousValue extends Encodable {
     }
 
     public AmbiguousValue(ByteQueue queue) {
-        TagData tagData = new TagData();
-        peekTagData(queue, tagData);
-        readAmbiguousData(queue, tagData);
+        readAmbiguousData(queue, new TagData().peek(queue));
     }
 
     public AmbiguousValue(ByteQueue queue, int contextId) throws BACnetException {
@@ -71,7 +69,7 @@ public class AmbiguousValue extends Encodable {
 
         TagData tagData = new TagData();
         while (true) {
-            peekTagData(queue, tagData);
+            tagData.peek(queue);
             if (tagData.isEndTag(contextId))
                 break;
             readAmbiguousData(queue, tagData);
@@ -108,37 +106,6 @@ public class AmbiguousValue extends Encodable {
         this.data = newData;
     }
 
-    private void readAmbiguousData(ByteQueue queue, TagData tagData, ByteQueue data) {
-        if (!tagData.contextSpecific) {
-            // Application class.
-            if (tagData.tagNumber == Boolean.TYPE_ID)
-                copyData(queue, 1, data);
-            else
-                copyData(queue, tagData.getTotalLength(), data);
-        } else {
-            // Context specific class.
-            if (tagData.isStartTag()) {
-                // Copy the start tag
-                copyData(queue, 1, data);
-
-                // Remember the context id
-                int contextId = tagData.tagNumber;
-
-                // Read ambiguous data until we find the end tag.
-                while (true) {
-                    peekTagData(queue, tagData);
-                    if (tagData.isEndTag(contextId))
-                        break;
-                    readAmbiguousData(queue, tagData);
-                }
-
-                // Copy the end tag
-                copyData(queue, 1, data);
-            } else
-                copyData(queue, tagData.getTotalLength(), data);
-        }
-    }
-
     @Override
     public String toString() {
         if (data != null) {
@@ -155,7 +122,7 @@ public class AmbiguousValue extends Encodable {
                 try {
                     s = convertTo(Primitive.class).toString();
                 } catch (BACnetException e) {
-                    throw new RuntimeException(e);
+                    throw new BACnetRuntimeException(e);
                 }
                 return s;
             } else {
@@ -164,12 +131,6 @@ public class AmbiguousValue extends Encodable {
         } else {
             return "Ambiguous []";
         }
-    }
-
-    private static void copyData(ByteQueue queue, int length, ByteQueue data) {
-        int len = length;
-        while (len-- > 0)
-            data.push(queue.pop());
     }
 
     public boolean isNull() {

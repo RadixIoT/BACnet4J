@@ -28,7 +28,6 @@
 package com.serotonin.bacnet4j.type;
 
 import static com.serotonin.bacnet4j.util.BACnetUtils.toInt;
-import static com.serotonin.bacnet4j.util.BACnetUtils.toLong;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -37,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.exception.ReflectionException;
 import com.serotonin.bacnet4j.obj.ObjectProperties;
@@ -54,6 +54,7 @@ import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
+import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.Primitive;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
@@ -74,34 +75,6 @@ public abstract class Encodable {
     @Override
     public String toString() {
         return "Encodable(" + getClass().getName() + ")";
-    }
-
-    protected static void popTagData(ByteQueue queue, TagData tagData) {
-        peekTagData(queue, tagData);
-        queue.pop(tagData.tagLength);
-    }
-
-    protected static void peekTagData(ByteQueue queue, TagData tagData) {
-        int peekIndex = 0;
-        byte b = queue.peek(peekIndex++);
-        tagData.tagNumber = (b & 0xff) >> 4;
-        tagData.contextSpecific = (b & 8) == 8;
-        tagData.length = b & 7;
-
-        if (tagData.tagNumber == 0xf)
-            // Extended tag.
-            tagData.tagNumber = toInt(queue.peek(peekIndex++));
-
-        if (tagData.length == 5) {
-            tagData.length = toInt(queue.peek(peekIndex++));
-            if (tagData.length == 254)
-                tagData.length = toLong(queue.peek(peekIndex++)) << 8 | toLong(queue.peek(peekIndex++));
-            else if (tagData.length == 255)
-                tagData.length = toLong(queue.peek(peekIndex++)) << 24 | toLong(queue.peek(peekIndex++)) << 16
-                        | toLong(queue.peek(peekIndex++)) << 8 | toLong(queue.peek(peekIndex++));
-        }
-
-        tagData.tagLength = peekIndex;
     }
 
     protected static boolean isContextTag(ByteQueue queue) {
@@ -136,7 +109,7 @@ public abstract class Encodable {
     // Write context tags for base types.
     protected void writeContextTag(ByteQueue queue, int contextId, boolean start) {
         if (contextId < 0 || contextId > 254)
-            throw new RuntimeException("Invalid context id: " + contextId);
+            throw new BACnetRuntimeException("Invalid context id: " + contextId);
 
         if (contextId <= 14)
             queue.push(contextId << 4 | (start ? 0xe : 0xf));
@@ -370,8 +343,7 @@ public abstract class Encodable {
     }
 
     private static Encodable readUnknown(ByteQueue queue, int contextId) throws BACnetException {
-        TagData tagData = new TagData();
-        peekTagData(queue, tagData);
+        TagData tagData = new TagData().peek(queue);
 
         // Check if the tag number matches the context id. If they match, then create the context-specific parameter,
         // otherwise an AmbiguousValue.
@@ -383,8 +355,8 @@ public abstract class Encodable {
 
         // Get the first tagData
         popStart(queue, contextId);
-        peekTagData(queue, tagData);
-        if (tagData.contextSpecific || !Primitive.isPrimitive(tagData.tagNumber)) {
+        tagData.peek(queue);
+        if (tagData.isContextSpecific() || !Primitive.isPrimitive(tagData.getTagNumber())) {
             // Constructed type or unknown primitive type. Give up and create an ambiguous.
             queue.clear();
             queue.push(originalQueue);
@@ -394,7 +366,7 @@ public abstract class Encodable {
             Primitive primitive = Primitive.createPrimitive(queue);
 
             // Peek again to see what the next tagData is.
-            peekTagData(queue, tagData);
+            tagData.peek(queue);
             if (tagData.isEndTag()) {
                 // Just one primitive. Check contextId in the End-Tag.
                 popEnd(queue, contextId);
@@ -405,13 +377,13 @@ public abstract class Encodable {
                 seq.add(primitive);
                 while (queue.size() > 0 && !tagData.isEndTag()) {
                     //If the data is something special, give up and create an ambiguous.
-                    if (tagData.contextSpecific || !Primitive.isPrimitive(tagData.tagNumber)) {
+                    if (tagData.isContextSpecific() || !Primitive.isPrimitive(tagData.getTagNumber())) {
                         queue.clear();
                         queue.push(originalQueue);
                         return new AmbiguousValue(queue, contextId);
                     }
                     seq.add(Primitive.createPrimitive(queue));
-                    peekTagData(queue, tagData);
+                    tagData.peek(queue);
                 }
                 // Check contextId in the End-Tag.
                 popEnd(queue, contextId);
@@ -635,4 +607,55 @@ public abstract class Encodable {
             type.write(queue, contextId);
     }
 
+    protected static void readAmbiguousData(ByteQueue queue, TagData tagData, ByteQueue data) {
+        if (!tagData.isContextSpecific()) {
+            // Application class.
+            if (tagData.getTagNumber() == Boolean.TYPE_ID)
+                copyAmbiguousData(queue, 1, data);
+            else
+                copyAmbiguousData(queue, tagData.getTotalLength(), data);
+        } else {
+            readContextSpecificAmbiguousData(queue, tagData, data);
+        }
+    }
+
+    protected static void readContextSpecificAmbiguousData(ByteQueue queue, TagData tagData, ByteQueue data) {
+        // Context specific class.
+        if (tagData.isStartTag()) {
+            // Copy the start tag
+            copyAmbiguousData(queue, 1, data);
+
+            // Remember the context id
+            var contextId = tagData.getTagNumber();
+
+            // Read ambiguous data until we find the end tag. The nested content must be written into the same
+            // queue as the enclosing start and end tags, otherwise it is appended to the accumulated data
+            // ahead of the start tag that introduces it.
+            while (true) {
+                tagData.peek(queue);
+                if (tagData.isEndTag(contextId))
+                    break;
+                readAmbiguousData(queue, tagData, data);
+            }
+
+            // Copy the end tag
+            copyAmbiguousData(queue, 1, data);
+        } else if (tagData.isEndTag()) {
+            // The callers break out of their read loops on the end tag that matches the start tag they are
+            // inside, so any end tag reaching here closes a context that was never opened.
+            throw new BACnetRuntimeException(
+                    "Unbalanced end tag " + tagData.getTagNumber() + ", encoded data may be corrupt");
+        } else {
+            copyAmbiguousData(queue, tagData.getTotalLength(), data);
+        }
+    }
+
+    private static void copyAmbiguousData(ByteQueue queue, long length, ByteQueue data) {
+        if (length > queue.size()) {
+            // Guard for https://github.com/RadixIoT/BACnet4J/issues/66
+            throw new BACnetRuntimeException("Illegal copy length: " + length + ", encoded data may be corrupt");
+        }
+        while (length-- > 0)
+            data.push(queue.pop());
+    }
 }
