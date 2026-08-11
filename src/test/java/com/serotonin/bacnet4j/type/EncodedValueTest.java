@@ -100,8 +100,8 @@ public class EncodedValueTest {
      */
     @Test(timeout = 5_000)
     public void wellFormedContentIsAccepted() throws Exception {
-        assertArrayEquals(new byte[] { 0x20 }, new EncodedValue(new ByteQueue("3e203f"), 3).getData());
-        assertArrayEquals(new byte[] { 0x21, 0x0d }, new EncodedValue(new ByteQueue("3e210d3f"), 3).getData());
+        assertArrayEquals(new byte[] {0x20}, new EncodedValue(new ByteQueue("3e203f"), 3).getData());
+        assertArrayEquals(new byte[] {0x21, 0x0d}, new EncodedValue(new ByteQueue("3e210d3f"), 3).getData());
     }
 
     private static void assertCorrupt(String hex, int contextId) {
