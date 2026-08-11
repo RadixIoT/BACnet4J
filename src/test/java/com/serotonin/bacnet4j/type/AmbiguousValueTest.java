@@ -131,7 +131,7 @@ public class AmbiguousValueTest {
     public void nestedStartAndEndTagsAreCopied() throws BACnetException {
         // 3e ( 5e ( 21 0d ) 5f ) 3f
         var amb = new AmbiguousValue(new ByteQueue("3e5e210d5f3f"), 3);
-        assertArrayEquals(new byte[] { 0x5e, 0x21, 0x0d, 0x5f }, amb.getData());
+        assertArrayEquals(new byte[] {0x5e, 0x21, 0x0d, 0x5f}, amb.getData());
     }
 
     /**
@@ -141,7 +141,7 @@ public class AmbiguousValueTest {
     public void zeroLengthTagIsNotCorrupt() throws BACnetException {
         var queue = new ByteQueue("3e203f");
         var amb = new AmbiguousValue(queue, 3);
-        assertArrayEquals(new byte[] { 0x20 }, amb.getData());
+        assertArrayEquals(new byte[] {0x20}, amb.getData());
     }
 
     private static void assertCorrupt(String hex, int contextId) {

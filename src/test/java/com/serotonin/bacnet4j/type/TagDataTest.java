@@ -181,7 +181,7 @@ public class TagDataTest {
 
         assertEquals(4, tagData.getTagLength());
         assertEquals(0x1234, tagData.getLength());
-        assertArrayEquals(new byte[] { (byte) 0xaa, (byte) 0xbb }, queue.popAll());
+        assertArrayEquals(new byte[] {(byte) 0xaa, (byte) 0xbb}, queue.popAll());
     }
 
     /**
