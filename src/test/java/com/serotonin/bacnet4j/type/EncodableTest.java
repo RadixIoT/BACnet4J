@@ -28,8 +28,8 @@
 package com.serotonin.bacnet4j.type;
 
 import static org.junit.Assert.assertEquals;
-
-import java.io.UnsupportedEncodingException;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -150,7 +150,6 @@ public class EncodableTest {
                 new CharacterString("This is a BACnet string!"));
         decodePrimitive("FD7F1900546869732069732061204241436E657420737472696E6721", 127,
                 new CharacterString("This is a BACnet string!"));
-        // TODO The spec say this starts with '75'. Should probably point this out.
         decodePrimitive("7D0A004672616EC3A7616973", 7, new CharacterString("Français"));
         decodePrimitive("0A03A8", 0, new BitString(new boolean[] {true, false, true, false, true,}));
         decodePrimitive("9900", 9, new Enumerated(0));
@@ -160,7 +159,7 @@ public class EncodableTest {
     }
 
     @Test
-    public void shouldDecodeJapaneseEncoding() throws BACnetException, UnsupportedEncodingException {
+    public void shouldDecodeJapaneseEncoding() throws BACnetException {
         ByteQueue queue = new ByteQueue();
         String text = "JapaneseEncoding ｦ";
         CharacterString value = new CharacterString(
@@ -173,10 +172,10 @@ public class EncodableTest {
         assertEquals(text, characterString.getValue());
     }
 
-    private static void decodePrimitive(final String hex, final Primitive expected) throws BACnetException {
+    private static void decodePrimitive(String hex, Primitive expected) throws BACnetException {
         // Decode the given hex and compare
-        final ByteQueue queue = new ByteQueue(hex);
-        final Primitive p = Encodable.read(queue, Primitive.class);
+        ByteQueue queue = new ByteQueue(hex);
+        Primitive p = Encodable.read(queue, Primitive.class);
         assertEquals(expected, p);
 
         assertEquals(0, queue.size());
@@ -186,11 +185,10 @@ public class EncodableTest {
         assertEquals(new ByteQueue(hex), queue);
     }
 
-    private static void decodePrimitive(final String hex, final int ctxId, final Primitive expected)
-            throws BACnetException {
+    private static void decodePrimitive(String hex, int ctxId, Primitive expected) throws BACnetException {
         // Decode the given hex and compare
-        final ByteQueue queue = new ByteQueue(hex);
-        final Primitive p = Encodable.read(queue, expected.getClass(), ctxId);
+        ByteQueue queue = new ByteQueue(hex);
+        Primitive p = Encodable.read(queue, expected.getClass(), ctxId);
         assertEquals(expected, p);
 
         assertEquals(0, queue.size());
@@ -202,28 +200,28 @@ public class EncodableTest {
 
     @Test
     public void portPermission() throws BACnetException {
-        final PortPermission pp = new PortPermission(new Unsigned8(14), Boolean.TRUE);
-        final ByteQueue queue = new ByteQueue();
+        PortPermission pp = new PortPermission(new Unsigned8(14), Boolean.TRUE);
+        ByteQueue queue = new ByteQueue();
         Encodable.write(queue, pp, 9);
 
         assertEquals(new ByteQueue("9e090e19019f"), queue);
 
-        final PortPermission pp2 = Encodable.read(queue, PortPermission.class, 9);
+        PortPermission pp2 = Encodable.read(queue, PortPermission.class, 9);
         assertEquals(14, pp2.getPortId().intValue());
-        assertEquals(true, pp2.getEnabled().booleanValue());
+        assertTrue(pp2.getEnabled().booleanValue());
     }
 
     @Test
     public void calendarEntry() throws BACnetException {
-        final CalendarEntry ce = new CalendarEntry(
+        CalendarEntry ce = new CalendarEntry(
                 new DateRange(new Date(2017, Month.JANUARY, 19, null), new Date(2017, Month.JANUARY, 23, null)));
-        final ByteQueue queue = new ByteQueue();
+        ByteQueue queue = new ByteQueue();
         Encodable.write(queue, ce, 43);
 
         assertEquals(new ByteQueue("fe2b1ea4750113ffa4750117ff1fff2b"), queue);
 
-        final CalendarEntry ce2 = Encodable.read(queue, CalendarEntry.class, 43);
-        assertEquals(true, ce2.isDateRange());
+        CalendarEntry ce2 = Encodable.read(queue, CalendarEntry.class, 43);
+        assertTrue(ce2.isDateRange());
         assertEquals(19, ce2.getDateRange().getStartDate().getDay());
         assertEquals(Month.JANUARY, ce2.getDateRange().getStartDate().getMonth());
         assertEquals(DayOfWeek.UNSPECIFIED, ce2.getDateRange().getStartDate().getDayOfWeek());
@@ -236,14 +234,14 @@ public class EncodableTest {
 
     @Test
     public void scale() throws BACnetException {
-        final Scale scale = new Scale(new SignedInteger(-123));
-        final ByteQueue queue = new ByteQueue();
+        Scale scale = new Scale(new SignedInteger(-123));
+        ByteQueue queue = new ByteQueue();
         Encodable.write(queue, scale, 123);
 
         assertEquals(new ByteQueue("fe7b1985ff7b"), queue);
 
-        final Scale scale2 = Encodable.read(queue, Scale.class, 123);
-        assertEquals(false, scale2.isReal());
+        Scale scale2 = Encodable.read(queue, Scale.class, 123);
+        assertFalse(scale2.isReal());
         assertEquals(-123, scale2.getSignedInteger().intValue());
     }
 
@@ -279,14 +277,14 @@ public class EncodableTest {
                 254, "fefe3e09031c42dc00002c40a000003c3f800000493c59083ffffe");
     }
 
-    private static void testTimerStateChangeValue(final TimerStateChangeValue value, final int ctxId, final String hex)
+    private static void testTimerStateChangeValue(TimerStateChangeValue value, int ctxId, String hex)
             throws BACnetException {
-        final ByteQueue queue = new ByteQueue();
+        ByteQueue queue = new ByteQueue();
         Encodable.write(queue, value, ctxId);
 
         assertEquals(new ByteQueue(hex), queue);
 
-        final TimerStateChangeValue value2 = Encodable.read(queue, TimerStateChangeValue.class, ctxId);
+        TimerStateChangeValue value2 = Encodable.read(queue, TimerStateChangeValue.class, ctxId);
         assertEquals(value, value2);
     }
 }
