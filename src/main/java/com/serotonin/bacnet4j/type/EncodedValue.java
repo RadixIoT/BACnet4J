@@ -120,13 +120,11 @@ public class EncodedValue extends Encodable {
         return "Encoded(" + StreamUtils.dumpArrayHex(data) + ")";
     }
 
-    private static void copyData(final ByteQueue queue, final int length, final ByteQueue data) {
-        if (length <= 0) {
-            // Guard for https://github.com/RadixIoT/BACnet4J/issues/66
+    private static void copyData(ByteQueue queue, long length, ByteQueue data) {
+        if (length > queue.size()) {
             throw new BACnetRuntimeException("Illegal copy length: " + length + ", encoded data may be corrupt");
         }
-        int len = length;
-        while (len-- > 0)
+        while (length-- > 0)
             data.push(queue.pop());
     }
 

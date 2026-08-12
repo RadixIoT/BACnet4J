@@ -30,6 +30,7 @@ package com.serotonin.bacnet4j.type;
 import java.util.Arrays;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.Primitive;
@@ -166,9 +167,11 @@ public class AmbiguousValue extends Encodable {
         }
     }
 
-    private static void copyData(final ByteQueue queue, final int length, final ByteQueue data) {
-        int len = length;
-        while (len-- > 0)
+    private static void copyData(ByteQueue queue, long length, ByteQueue data) {
+        if (length > queue.size()) {
+            throw new BACnetRuntimeException("Illegal copy length: " + length + ", encoded data may be corrupt");
+        }
+        while (length-- > 0)
             data.push(queue.pop());
     }
 

@@ -27,10 +27,13 @@
 
 package com.serotonin.bacnet4j.type;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
 
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
@@ -75,5 +78,34 @@ public class EncodedValueTest {
         assertEquals(new DateTime(1491329790372L), Encodable.read(queue, DateTime.class, 0));
         assertEquals(Boolean.TRUE, Encodable.read(queue, Boolean.class, 1));
         assertEquals(Boolean.FALSE, Encodable.read(queue, Boolean.class, 12));
+    }
+
+    /**
+     * EncodedValue has its own copy of the read loop and the copy length guard, so it needs the same coverage as
+     * AmbiguousValue. The timeout is the regression check for the infinite loop.
+     */
+    @Test(timeout = 5_000)
+    public void corruptExtendedLengthIsRejected() {
+        assertCorrupt("3e25ff7ffffffa", 3);
+        assertCorrupt("3e25fffffffffa", 3);
+        assertCorrupt("3e25fffffffffb", 3);
+        assertCorrupt("3e2dfff0000000", 3);
+        assertCorrupt("3ef550ff7ffffff9", 3);
+        assertCorrupt("3ef550fffffffff9", 3);
+        assertCorrupt("3e25ff7ffffff9", 3);
+    }
+
+    /**
+     * Lengths that the content satisfies are still accepted, so the guard is not over-broad.
+     */
+    @Test(timeout = 5_000)
+    public void wellFormedContentIsAccepted() throws Exception {
+        assertArrayEquals(new byte[] {0x20}, new EncodedValue(new ByteQueue("3e203f"), 3).getData());
+        assertArrayEquals(new byte[] {0x21, 0x0d}, new EncodedValue(new ByteQueue("3e210d3f"), 3).getData());
+    }
+
+    private static void assertCorrupt(String hex, int contextId) {
+        ByteQueue queue = new ByteQueue(hex);
+        assertThrows(hex, BACnetRuntimeException.class, () -> new EncodedValue(queue, contextId));
     }
 }
