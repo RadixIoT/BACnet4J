@@ -200,7 +200,7 @@ public class UnackedMessageContext {
      * acknowledgement is returned. Clause 5.4.1 defines this as being equal to ActualWindowSize.
      */
     public int getNdup() {
-        return actualWindowSize;
+        return getActualWindowSize();
     }
 
     public int getSegmentRetryCount() {
@@ -335,7 +335,7 @@ public class UnackedMessageContext {
     }
 
     @FunctionalInterface
-    public static interface ConsumerClient {
+    public interface ConsumerClient {
         void use(ResponseConsumer consumer);
     }
 }
