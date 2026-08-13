@@ -36,6 +36,8 @@ import java.util.Arrays;
 
 import org.apache.commons.lang3.StringUtils;
 
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
+
 public class ByteQueue implements Cloneable {
     private byte[] queue;
     private int head = -1;
@@ -50,35 +52,33 @@ public class ByteQueue implements Cloneable {
         this(1024);
     }
 
-    public ByteQueue(final int initialLength) {
+    public ByteQueue(int initialLength) {
         queue = new byte[initialLength];
     }
 
-    public ByteQueue(final byte[] b) {
+    public ByteQueue(byte[] b) {
         this(b.length);
         push(b, 0, b.length);
     }
 
-    public ByteQueue(final byte[] b, final int pos, final int length) {
+    public ByteQueue(byte[] b, int pos, int length) {
         this(length);
         push(b, pos, length);
     }
 
-    public ByteQueue(final String hex) {
+    public ByteQueue(String hex) {
         this(hex.length() / 2);
         push(hex);
     }
 
-    public void push(final String hex) {
+    public void push(String hex) {
         if (hex.length() % 2 != 0)
             throw new IllegalArgumentException("Hex string must have an even number of characters");
-        final byte[] b = new byte[hex.length() / 2];
-        for (int i = 0; i < b.length; i++)
-            b[i] = (byte) Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+        byte[] b = StreamUtils.fromHex(hex);
         push(b, 0, b.length);
     }
 
-    public void push(final byte b) {
+    public void push(byte b) {
         if (room() == 0)
             expand();
 
@@ -90,18 +90,18 @@ public class ByteQueue implements Cloneable {
         size++;
     }
 
-    public void push(final int i) {
+    public void push(int i) {
         push((byte) i);
     }
 
-    public void push(final long l) {
+    public void push(long l) {
         push((byte) l);
     }
 
     /**
      * Push unsigned 2 bytes.
      */
-    public void pushU2B(final int i) {
+    public void pushU2B(int i) {
         push((byte) (i >> 8));
         push((byte) i);
     }
@@ -109,7 +109,7 @@ public class ByteQueue implements Cloneable {
     /**
      * Push unsigned 3 bytes.
      */
-    public void pushU3B(final int i) {
+    public void pushU3B(int i) {
         push((byte) (i >> 16));
         push((byte) (i >> 8));
         push((byte) i);
@@ -118,41 +118,41 @@ public class ByteQueue implements Cloneable {
     /**
      * Push signed 4 bytes.
      */
-    public void pushS4B(final int i) {
+    public void pushS4B(int i) {
         pushInt(i);
     }
 
     /**
      * Push unsigned 4 bytes.
      */
-    public void pushU4B(final long l) {
+    public void pushU4B(long l) {
         push((byte) (l >> 24));
         push((byte) (l >> 16));
         push((byte) (l >> 8));
         push((byte) l);
     }
 
-    public void pushChar(final char c) {
+    public void pushChar(char c) {
         push((byte) (c >> 8));
         push((byte) c);
     }
 
-    public void pushDouble(final double d) {
+    public void pushDouble(double d) {
         pushLong(Double.doubleToLongBits(d));
     }
 
-    public void pushFloat(final float f) {
+    public void pushFloat(float f) {
         pushInt(Float.floatToIntBits(f));
     }
 
-    public void pushInt(final int i) {
+    public void pushInt(int i) {
         push((byte) (i >> 24));
         push((byte) (i >> 16));
         push((byte) (i >> 8));
         push((byte) i);
     }
 
-    public void pushLong(final long l) {
+    public void pushLong(long l) {
         push((byte) (l >> 56));
         push((byte) (l >> 48));
         push((byte) (l >> 40));
@@ -163,23 +163,20 @@ public class ByteQueue implements Cloneable {
         push((byte) l);
     }
 
-    public void pushShort(final short s) {
+    public void pushShort(short s) {
         push((byte) (s >> 8));
         push((byte) s);
     }
 
-    public void read(final InputStream in, final int length) throws IOException {
+    public void read(InputStream in, int length) throws IOException {
         if (length == 0)
             return;
 
         while (room() < length)
             expand();
 
-        final int tailLength = queue.length - tail;
-        if (tailLength > length)
-            readImpl(in, tail, length);
-        else
-            readImpl(in, tail, tailLength);
+        int tailLength = queue.length - tail;
+        readImpl(in, tail, Math.min(tailLength, length));
 
         if (length > tailLength)
             readImpl(in, 0, length - tailLength);
@@ -190,33 +187,29 @@ public class ByteQueue implements Cloneable {
         size += length;
     }
 
-    private void readImpl(final InputStream in, final int offset, final int length) throws IOException {
+    private void readImpl(InputStream in, int offset, int length) throws IOException {
         int readcount;
         int off = offset;
-        int len = length;
         while (length > 0) {
-            readcount = in.read(queue, off, len);
+            readcount = in.read(queue, off, length);
             off += readcount;
-            len -= readcount;
+            length -= readcount;
         }
     }
 
-    public void push(final byte[] b) {
+    public void push(byte[] b) {
         push(b, 0, b.length);
     }
 
-    public void push(final byte[] b, final int pos, final int length) {
+    public void push(byte[] b, int pos, int length) {
         if (length == 0)
             return;
 
         while (room() < length)
             expand();
 
-        final int tailLength = queue.length - tail;
-        if (tailLength > length)
-            System.arraycopy(b, pos, queue, tail, length);
-        else
-            System.arraycopy(b, pos, queue, tail, tailLength);
+        int tailLength = queue.length - tail;
+        System.arraycopy(b, pos, queue, tail, Math.min(tailLength, length));
 
         if (length > tailLength)
             System.arraycopy(b, tailLength + pos, queue, 0, length - tailLength);
@@ -227,7 +220,7 @@ public class ByteQueue implements Cloneable {
         size += length;
     }
 
-    public void push(final ByteQueue source) {
+    public void push(ByteQueue source) {
         if (source.size == 0)
             return;
 
@@ -244,26 +237,23 @@ public class ByteQueue implements Cloneable {
             push(q.queue, 0, q.tail);
     }
 
-    public void push(final ByteQueue source, final int len) {
-        // TODO There is certainly a more elegant way to do this...
+    public void push(ByteQueue source, int len) {
+        // There is certainly a more elegant way to do this...
         int l = len;
         while (l-- > 0)
             push(source.pop());
     }
 
-    public void push(final ByteBuffer source) {
-        final int length = source.remaining();
+    public void push(ByteBuffer source) {
+        int length = source.remaining();
         if (length == 0)
             return;
 
         while (room() < length)
             expand();
 
-        final int tailLength = queue.length - tail;
-        if (tailLength > length)
-            source.get(queue, tail, length);
-        else
-            source.get(queue, tail, tailLength);
+        int tailLength = queue.length - tail;
+        source.get(queue, tail, Math.min(tailLength, length));
 
         if (length > tailLength)
             source.get(queue, 0, length - tailLength);
@@ -287,7 +277,13 @@ public class ByteQueue implements Cloneable {
     }
 
     public byte pop() {
-        final byte retval = queue[head];
+        // Emptying the queue sets head to -1, so without this an over-read indexes the backing array with it and
+        // fails with a message about array indices rather than about the queue being empty. The other extraction
+        // methods already check, so match them.
+        if (size == 0)
+            throw new ArrayIndexOutOfBoundsException(-1);
+
+        byte retval = queue[head];
 
         if (size == 1) {
             head = -1;
@@ -324,12 +320,12 @@ public class ByteQueue implements Cloneable {
         return (long) (pop() & 0xff) << 24 | (long) (pop() & 0xff) << 16 | (long) (pop() & 0xff) << 8 | pop() & 0xff;
     }
 
-    public int pop(final byte[] buf) {
+    public int pop(byte[] buf) {
         return pop(buf, 0, buf.length);
     }
 
-    public int pop(final byte[] buf, final int pos, final int length) {
-        final int len = peek(buf, pos, length);
+    public int pop(byte[] buf, int pos, int length) {
+        int len = peek(buf, pos, length);
 
         size -= len;
 
@@ -342,7 +338,7 @@ public class ByteQueue implements Cloneable {
         return len;
     }
 
-    public int pop(final int length) {
+    public int pop(int length) {
         if (length == 0)
             return 0;
         if (size == 0)
@@ -363,23 +359,23 @@ public class ByteQueue implements Cloneable {
         return len;
     }
 
-    public String popString(final int length, final Charset charset) {
-        final byte[] b = new byte[length];
+    public String popString(int length, Charset charset) {
+        byte[] b = new byte[length];
         pop(b);
         return new String(b, charset);
     }
 
     public byte[] popAll() {
-        final byte[] data = new byte[size];
+        byte[] data = new byte[size];
         pop(data, 0, data.length);
         return data;
     }
 
-    public void write(final OutputStream out) throws IOException {
+    public void write(OutputStream out) throws IOException {
         write(out, size);
     }
 
-    public void write(final OutputStream out, final int length) throws IOException {
+    public void write(OutputStream out, int length) throws IOException {
         if (length == 0)
             return;
         if (size == 0)
@@ -411,7 +407,7 @@ public class ByteQueue implements Cloneable {
             throw new ArrayIndexOutOfBoundsException(-1);
 
         tail = (tail + queue.length - 1) % queue.length;
-        final byte retval = queue[tail];
+        byte retval = queue[tail];
 
         if (size == 1) {
             head = -1;
@@ -423,33 +419,33 @@ public class ByteQueue implements Cloneable {
         return retval;
     }
 
-    public byte peek(final int index) {
+    public byte peek(int index) {
         if (index >= size)
             throw new IllegalArgumentException("index " + index + " is >= queue size " + size);
 
-        final int pos = (index + head) % queue.length;
+        int pos = (index + head) % queue.length;
         return queue[pos];
     }
 
-    public byte[] peek(final int index, final int length) {
-        final byte[] result = new byte[length];
-        // TODO: use System.arraycopy instead.
+    public byte[] peek(int index, int length) {
+        byte[] result = new byte[length];
+        // Maybe use System.arraycopy instead.
         for (int i = 0; i < length; i++)
             result[i] = peek(index + i);
         return result;
     }
 
     public byte[] peekAll() {
-        final byte[] data = new byte[size];
+        byte[] data = new byte[size];
         peek(data, 0, data.length);
         return data;
     }
 
-    public int peek(final byte[] buf) {
+    public int peek(byte[] buf) {
         return peek(buf, 0, buf.length);
     }
 
-    public int peek(final byte[] buf, final int pos, final int length) {
+    public int peek(byte[] buf, int pos, int length) {
         if (length == 0)
             return 0;
         if (size == 0)
@@ -470,11 +466,11 @@ public class ByteQueue implements Cloneable {
         return len;
     }
 
-    public int indexOf(final byte b) {
+    public int indexOf(byte b) {
         return indexOf(b, 0);
     }
 
-    public int indexOf(final byte b, final int start) {
+    public int indexOf(byte b, int start) {
         if (start >= size)
             return -1;
 
@@ -487,11 +483,11 @@ public class ByteQueue implements Cloneable {
         return -1;
     }
 
-    public int indexOf(final byte[] b) {
+    public int indexOf(byte[] b) {
         return indexOf(b, 0);
     }
 
-    public int indexOf(final byte[] b, final int start) {
+    public int indexOf(byte[] b, int start) {
         if (b == null || b.length == 0)
             throw new IllegalArgumentException("cannot search for empty values");
 
@@ -530,7 +526,7 @@ public class ByteQueue implements Cloneable {
     }
 
     private void expand() {
-        final byte[] newb = new byte[queue.length * 2];
+        byte[] newb = new byte[queue.length * 2];
 
         if (head == -1) {
             queue = newb;
@@ -552,13 +548,13 @@ public class ByteQueue implements Cloneable {
     @Override
     public Object clone() {
         try {
-            final ByteQueue clone = (ByteQueue) super.clone();
+            ByteQueue clone = (ByteQueue) super.clone();
             // Array is mutable, so make a copy of it too.
             clone.queue = queue.clone();
             return clone;
-        } catch (final CloneNotSupportedException e) {
+        } catch (CloneNotSupportedException e) {
             // Will never happen because we're Cloneable
-            throw new RuntimeException(e);
+            throw new BACnetRuntimeException(e);
         }
     }
 
@@ -567,7 +563,7 @@ public class ByteQueue implements Cloneable {
         if (size == 0)
             return "[]";
 
-        final StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         sb.append('[');
         sb.append(Integer.toHexString(peek(0) & 0xff));
         for (int i = 1; i < size; i++)
@@ -578,14 +574,14 @@ public class ByteQueue implements Cloneable {
     }
 
     public String toHexString() {
-        final StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < size; i++)
             sb.append(StringUtils.leftPad(Integer.toHexString(peek(i) & 0xff), 2, '0'));
         return sb.toString();
     }
 
     public String dumpQueue() {
-        final StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder();
 
         if (queue.length == 0)
             sb.append("[]");
@@ -605,7 +601,7 @@ public class ByteQueue implements Cloneable {
 
     @Override
     public int hashCode() {
-        final int prime = 31;
+        int prime = 31;
         int result = 1;
         result = prime * result + head;
         result = prime * result + Arrays.hashCode(queue);
@@ -615,14 +611,14 @@ public class ByteQueue implements Cloneable {
     }
 
     @Override
-    public boolean equals(final Object obj) {
+    public boolean equals(Object obj) {
         if (this == obj)
             return true;
         if (obj == null)
             return false;
         if (getClass() != obj.getClass())
             return false;
-        final ByteQueue other = (ByteQueue) obj;
+        ByteQueue other = (ByteQueue) obj;
 
         if (size != other.size)
             return false;
