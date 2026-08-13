@@ -79,10 +79,18 @@ public class CharacterString extends Primitive {
     // Reading and writing
     //
     public CharacterString(ByteQueue queue) throws BACnetErrorException {
-        int length = (int) readTag(queue, TYPE_ID);
+        // 135-2024 clause 20.2.9: an initial octet specifying the character set, then zero or more octets of data,
+        // so the declared length is at least one.
+        int length = readTag(queue, TYPE_ID, 1, NO_MAX_LENGTH);
 
         var parsedEncoding = createCharacterEncoding(queue);
         var headerLength = calcHeaderLength(parsedEncoding);
+        // DBCS carries a two octet code page after the character set octet, so the header can be longer than the
+        // declared length. Left unchecked, the subtraction goes negative and the allocation below fails.
+        if (length < headerLength) {
+            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType,
+                    "Character string length " + length + " is shorter than its " + headerLength + " octet header");
+        }
         var bytes = new byte[length - headerLength];
         queue.pop(bytes);
 
@@ -140,12 +148,16 @@ public class CharacterString extends Primitive {
         return headerLength;
     }
 
-    private CharacterEncoding createCharacterEncoding(ByteQueue queue) {
+    private CharacterEncoding createCharacterEncoding(ByteQueue queue) throws BACnetErrorException {
         byte encodingValue = queue.pop();
         if (encodingValue != IBM_MS_DBCS) {
             return new CharacterEncoding(encodingValue);
         }
         //Decode the codePage
+        if (queue.size() < 2) {
+            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType,
+                    "Truncated DBCS code page");
+        }
         int codePage = queue.popU2B();
         return new CharacterEncoding(encodingValue, codePage);
     }

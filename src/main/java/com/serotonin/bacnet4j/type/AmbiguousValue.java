@@ -30,6 +30,7 @@ package com.serotonin.bacnet4j.type;
 import java.util.Arrays;
 import java.util.Objects;
 
+import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
@@ -60,7 +61,7 @@ public class AmbiguousValue extends Encodable {
         data = queue.popAll();
     }
 
-    public AmbiguousValue(ByteQueue queue) {
+    public AmbiguousValue(ByteQueue queue) throws BACnetErrorException {
         readAmbiguousData(queue, new TagData().peek(queue));
     }
 
@@ -90,7 +91,7 @@ public class AmbiguousValue extends Encodable {
         queue.push(data);
     }
 
-    private void readAmbiguousData(ByteQueue queue, TagData tagData) {
+    private void readAmbiguousData(ByteQueue queue, TagData tagData) throws BACnetErrorException {
         ByteQueue tmp = new ByteQueue();
         readAmbiguousData(queue, tagData, tmp);
         byte[] element = tmp.popAll();

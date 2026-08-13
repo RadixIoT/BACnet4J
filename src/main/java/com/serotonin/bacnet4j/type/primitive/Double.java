@@ -27,6 +27,8 @@
 
 package com.serotonin.bacnet4j.type.primitive;
 
+import java.util.Objects;
+
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.util.BACnetUtils;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -36,7 +38,7 @@ public class Double extends Primitive {
 
     private final double value;
 
-    public Double(final double value) {
+    public Double(double value) {
         this.value = value;
     }
 
@@ -47,13 +49,14 @@ public class Double extends Primitive {
     //
     // Reading and writing
     //
-    public Double(final ByteQueue queue) throws BACnetErrorException {
-        readTag(queue, TYPE_ID);
+    public Double(ByteQueue queue) throws BACnetErrorException {
+        // 135-2024 clause 20.2.7: eight contents octets.
+        readTag(queue, TYPE_ID, 8, 8);
         value = java.lang.Double.longBitsToDouble(BACnetUtils.popLong(queue));
     }
 
     @Override
-    public void writeImpl(final ByteQueue queue) {
+    public void writeImpl(ByteQueue queue) {
         BACnetUtils.pushLong(queue, java.lang.Double.doubleToLongBits(value));
     }
 
@@ -68,27 +71,16 @@ public class Double extends Primitive {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        long temp;
-        temp = java.lang.Double.doubleToLongBits(value);
-        result = PRIME * result + (int) (temp ^ temp >>> 32);
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Double aDouble = (Double) o;
+        return java.lang.Double.compare(value, aDouble.value) == 0;
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final Double other = (Double) obj;
-        if (java.lang.Double.doubleToLongBits(value) != java.lang.Double.doubleToLongBits(other.value))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hashCode(value);
     }
 
     @Override

@@ -28,6 +28,7 @@
 package com.serotonin.bacnet4j.service.confirmed;
 
 import com.serotonin.bacnet4j.LocalDevice;
+import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetRejectException;
 import com.serotonin.bacnet4j.service.Service;
@@ -109,9 +110,39 @@ public abstract class ConfirmedRequestService extends Service {
         throw new BACnetRejectException(RejectReason.unrecognizedService);
     }
 
+    /**
+     * The BACnet-Error choice for a failure that is not tied to a particular service: {@code other [127]} in the
+     * clause 21 production. BACnetErrorException uses it whenever no service choice is supplied, so it marks a
+     * decoding failure that no service has shaped into a response of its own.
+     */
+    private static final int UNCLAIMED_ERROR_CHOICE = 127;
+
     public static ConfirmedRequestService createConfirmedRequestService(byte type, ByteQueue queue)
             throws BACnetException {
-        ConfirmedRequestService result = switch (type) {
+        ConfirmedRequestService result;
+        try {
+            result = createService(type, queue);
+        } catch (BACnetErrorException e) {
+            // 135-2024 18.9: only confirmed request PDUs can be rejected, and a request whose parameters could not
+            // be decoded was not understood at all, so it is rejected rather than answered with an Error, which
+            // reports a request that was understood but could not be carried out.
+            //
+            // Services that shape their own failure are left alone. Those throwing BACnetRejectException are not
+            // caught here at all, and those that claim the error with their own service choice - to carry a
+            // service specific error type, or an error index - are rethrown unchanged.
+            if (e.getBacnetError().getChoice() != UNCLAIMED_ERROR_CHOICE)
+                throw e;
+            throw new BACnetRejectException(RejectReason.invalidDataEncoding, e);
+        }
+        // To pass the standard test 135.1-2013 13.4.5 we have to check if too many arguments have been sent.
+        if (queue.size() != 0) {
+            throw new BACnetRejectException(RejectReason.tooManyArguments);
+        }
+        return result;
+    }
+
+    private static ConfirmedRequestService createService(byte type, ByteQueue queue) throws BACnetException {
+        return switch (type) {
             case AcknowledgeAlarmRequest.TYPE_ID -> new AcknowledgeAlarmRequest(queue); // 0
             case ConfirmedCovNotificationRequest.TYPE_ID -> new ConfirmedCovNotificationRequest(queue); // 1
             case ConfirmedEventNotificationRequest.TYPE_ID -> new ConfirmedEventNotificationRequest(queue); // 2
@@ -149,11 +180,6 @@ public abstract class ConfirmedRequestService extends Service {
                 //Standard test 135.1-2013, 9.39.1
                     throw new BACnetRejectException(RejectReason.unrecognizedService);
         };
-        // To pass the standard test 135.1-2013 13.4.5 we have to check if too many arguments have been sent.
-        if (queue.size() != 0) {
-            throw new BACnetRejectException(RejectReason.tooManyArguments);
-        }
-        return result;
     }
 
     public abstract AcknowledgementService handle(LocalDevice localDevice, Address from) throws BACnetException;

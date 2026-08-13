@@ -32,7 +32,7 @@ import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
 
-import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
+import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.type.constructed.DateTime;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
@@ -96,6 +96,6 @@ public class EncodedValueTest {
 
     private static void assertCorrupt(String hex, int contextId) {
         ByteQueue queue = new ByteQueue(hex);
-        assertThrows(hex, BACnetRuntimeException.class, () -> new EncodedValue(queue, contextId));
+        assertThrows(hex, BACnetErrorException.class, () -> new EncodedValue(queue, contextId));
     }
 }

@@ -28,21 +28,24 @@
 package com.serotonin.bacnet4j.type.primitive;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
+import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
+import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.util.BACnetUtils;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class BitString extends Primitive {
     public static final byte TYPE_ID = 8;
 
-    private boolean[] value;
+    private final boolean[] value;
 
-    public BitString(final boolean[] value) {
+    public BitString(boolean[] value) {
         this.value = value;
     }
 
-    public BitString(final int size, final boolean defaultValue) {
+    public BitString(int size, boolean defaultValue) {
         value = new boolean[size];
         if (defaultValue) {
             for (int i = 0; i < size; i++)
@@ -50,7 +53,7 @@ public class BitString extends Primitive {
         }
     }
 
-    public BitString(final BitString that) {
+    public BitString(BitString that) {
         this(Arrays.copyOf(that.value, that.value.length));
     }
 
@@ -58,38 +61,39 @@ public class BitString extends Primitive {
         return value;
     }
 
-    public boolean getValue(final int indexBase1) {
+    public boolean getValue(int indexBase1) {
         return value[indexBase1 - 1];
     }
 
-    public boolean getArrayValue(final int index) {
-        final boolean[] ba = getValue();
-        if (index < ba.length)
+    public boolean getArrayValue(int index) {
+        boolean[] ba = getValue();
+        try {
             return ba[index];
-        return false;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            return false;
+        }
     }
 
-    public BitString setAll(final boolean b) {
-        for (int i = 0; i < value.length; i++)
-            value[i] = b;
+    public BitString setAll(boolean b) {
+        Arrays.fill(value, b);
         return this;
     }
 
-    public void setValue(final int indexBase1, final boolean b) {
+    public void setValue(int indexBase1, boolean b) {
         value[indexBase1 - 1] = b;
     }
 
     public boolean allFalse() {
-        for (int i = 0; i < value.length; i++) {
-            if (value[i])
+        for (boolean b : value) {
+            if (b)
                 return false;
         }
         return true;
     }
 
     public boolean allTrue() {
-        for (int i = 0; i < value.length; i++) {
-            if (!value[i])
+        for (boolean b : value) {
+            if (!b)
                 return false;
         }
         return true;
@@ -98,11 +102,11 @@ public class BitString extends Primitive {
     /**
      * Performs a bit-wise AND operation.
      */
-    public BitString and(final BitString that) {
+    public BitString and(BitString that) {
         if (value.length != that.value.length)
             throw new IllegalArgumentException("Bitstrings are of different lengths");
 
-        final boolean[] result = new boolean[value.length];
+        boolean[] result = new boolean[value.length];
         for (int i = 0; i < value.length; i++) {
             result[i] = value[i] && that.value[i];
         }
@@ -112,28 +116,39 @@ public class BitString extends Primitive {
     //
     // Reading and writing
     //
-    public BitString(final ByteQueue queue) throws BACnetErrorException {
-        final int length = (int) readTag(queue, TYPE_ID) - 1;
-        final int remainder = queue.popU1B();
+    public BitString(ByteQueue queue) throws BACnetErrorException {
+        // 135-2024 clause 20.2.10: an initial octet holding the number of unused bits, then zero or more octets of
+        // bit string, so the declared length is at least one and the subsequent octet count is length - 1.
+        int length = readTag(queue, TYPE_ID, 1, NO_MAX_LENGTH) - 1;
+        // Bit strings are encoded in bytes, and so if the number of bits is not a multiple of 8, there will be a
+        // non-zero number of unused bits.
+        int unusedBits = queue.popU1B();
+
+        // The number of unused bits shall be zero to seven, and shall be zero when the bit string is empty. Left
+        // unchecked, a larger value makes the bit count negative or pushes it past the end of the data.
+        if (unusedBits > 7 || length == 0 && unusedBits != 0) {
+            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType,
+                    "Invalid unused bit count " + unusedBits + " for a bit string of " + length + " octets");
+        }
 
         if (length == 0)
             value = new boolean[0];
         else {
-            final byte[] data = new byte[length];
+            byte[] data = new byte[length];
             queue.pop(data);
-            value = BACnetUtils.convertToBooleans(data, length * 8 - remainder);
+            value = BACnetUtils.convertToBooleans(data, length * 8 - unusedBits);
         }
     }
 
     @Override
-    public void writeImpl(final ByteQueue queue) {
+    public void writeImpl(ByteQueue queue) {
         if (value.length == 0)
             queue.push((byte) 0);
         else {
-            int remainder = value.length % 8;
-            if (remainder > 0)
-                remainder = 8 - remainder;
-            queue.push((byte) remainder);
+            int unusedBits = value.length % 8;
+            if (unusedBits > 0)
+                unusedBits = 8 - unusedBits;
+            queue.push((byte) unusedBits);
             queue.push(BACnetUtils.convertToBytes(value));
         }
     }
@@ -142,7 +157,7 @@ public class BitString extends Primitive {
     protected long getLength() {
         if (value.length == 0)
             return 1;
-        return (value.length - 1) / 8 + 2;
+        return (value.length - 1) / 8L + 2;
     }
 
     @Override
@@ -151,25 +166,16 @@ public class BitString extends Primitive {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + Arrays.hashCode(value);
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        BitString bitString = (BitString) o;
+        return Objects.deepEquals(value, bitString.value);
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final BitString other = (BitString) obj;
-        if (!Arrays.equals(value, other.value))
-            return false;
-        return true;
+    public int hashCode() {
+        return Arrays.hashCode(value);
     }
 
     @Override

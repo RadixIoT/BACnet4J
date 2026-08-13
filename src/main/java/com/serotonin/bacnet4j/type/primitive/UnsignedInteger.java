@@ -28,6 +28,7 @@
 package com.serotonin.bacnet4j.type.primitive;
 
 import java.math.BigInteger;
+import java.util.Objects;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -39,17 +40,17 @@ public class UnsignedInteger extends Primitive {
     private int smallValue;
     private BigInteger bigValue;
 
-    public UnsignedInteger(final int value) {
+    public UnsignedInteger(int value) {
         if (value < 0)
             throw new IllegalArgumentException("Value cannot be less than zero");
         smallValue = value;
     }
 
-    public UnsignedInteger(final long value) {
+    public UnsignedInteger(long value) {
         bigValue = BigInteger.valueOf(value);
     }
 
-    public UnsignedInteger(final BigInteger value) {
+    public UnsignedInteger(BigInteger value) {
         if (value.signum() == -1)
             throw new IllegalArgumentException("Value cannot be less than zero");
         bigValue = value;
@@ -58,13 +59,13 @@ public class UnsignedInteger extends Primitive {
     public int intValue() {
         if (bigValue == null)
             return smallValue;
-        return bigValue.intValue();
+        return saturatedIntValue(bigValue);
     }
 
     public long longValue() {
         if (bigValue == null)
             return smallValue;
-        return bigValue.longValue();
+        return saturatedLongValue(bigValue);
     }
 
     public BigInteger bigIntegerValue() {
@@ -80,7 +81,7 @@ public class UnsignedInteger extends Primitive {
         return increment32(1);
     }
 
-    public UnsignedInteger increment32(final long amount) {
+    public UnsignedInteger increment32(long amount) {
         return new UnsignedInteger((longValue() + amount) % 0x100000000L);
     }
 
@@ -91,7 +92,7 @@ public class UnsignedInteger extends Primitive {
         return increment16(1);
     }
 
-    public UnsignedInteger increment16(final int amount) {
+    public UnsignedInteger increment16(int amount) {
         return new UnsignedInteger((intValue() + amount) % 0x10000L);
     }
 
@@ -102,30 +103,31 @@ public class UnsignedInteger extends Primitive {
     //
     // Reading and writing
     //
-    public UnsignedInteger(final ByteQueue queue) throws BACnetErrorException {
-        int length = (int) readTag(queue, TYPE_ID);
+    public UnsignedInteger(ByteQueue queue) throws BACnetErrorException {
+        // 135-2024 clause 20.2.4: at least one contents octet.
+        int length = readTag(queue, TYPE_ID, 1, MAX_INTEGER_LENGTH);
         if (length < 4) {
             while (length > 0)
                 smallValue |= (queue.pop() & 0xff) << --length * 8;
         } else {
-            final byte[] bytes = new byte[length + 1];
+            byte[] bytes = new byte[length + 1];
             queue.pop(bytes, 1, length);
             bigValue = new BigInteger(bytes);
         }
     }
 
     @Override
-    protected void writeImpl(final ByteQueue queue) {
+    protected void writeImpl(ByteQueue queue) {
         int length = (int) getLength();
         if (bigValue == null) {
             while (length > 0)
                 queue.push(smallValue >> --length * 8);
         } else {
-            final byte[] bytes = new byte[length];
+            byte[] bytes = new byte[length];
 
             for (int i = 0; i < bigValue.bitLength(); i++) {
                 if (bigValue.testBit(i))
-                    bytes[length - i / 8 - 1] |= 1 << i % 8;
+                    bytes[length - i / 8 - 1] |= (byte) (1 << i % 8);
             }
 
             queue.push(bytes);
@@ -159,24 +161,16 @@ public class UnsignedInteger extends Primitive {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (bigValue == null ? 0 : bigValue.hashCode());
-        result = PRIME * result + smallValue;
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        UnsignedInteger that = (UnsignedInteger) o;
+        return Objects.equals(bigIntegerValue(), that.bigIntegerValue());
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final UnsignedInteger other = (UnsignedInteger) obj;
-        return bigIntegerValue().equals(other.bigIntegerValue());
+    public int hashCode() {
+        return Objects.hash(bigIntegerValue());
     }
 
     @Override

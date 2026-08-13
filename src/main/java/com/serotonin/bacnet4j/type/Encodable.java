@@ -607,7 +607,8 @@ public abstract class Encodable {
             type.write(queue, contextId);
     }
 
-    protected static void readAmbiguousData(ByteQueue queue, TagData tagData, ByteQueue data) {
+    protected static void readAmbiguousData(ByteQueue queue, TagData tagData, ByteQueue data)
+            throws BACnetErrorException {
         if (!tagData.isContextSpecific()) {
             // Application class.
             if (tagData.getTagNumber() == Boolean.TYPE_ID)
@@ -619,7 +620,8 @@ public abstract class Encodable {
         }
     }
 
-    protected static void readContextSpecificAmbiguousData(ByteQueue queue, TagData tagData, ByteQueue data) {
+    protected static void readContextSpecificAmbiguousData(ByteQueue queue, TagData tagData, ByteQueue data)
+            throws BACnetErrorException {
         // Context specific class.
         if (tagData.isStartTag()) {
             // Copy the start tag
@@ -643,17 +645,19 @@ public abstract class Encodable {
         } else if (tagData.isEndTag()) {
             // The callers break out of their read loops on the end tag that matches the start tag they are
             // inside, so any end tag reaching here closes a context that was never opened.
-            throw new BACnetRuntimeException(
+            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataEncoding,
                     "Unbalanced end tag " + tagData.getTagNumber() + ", encoded data may be corrupt");
         } else {
             copyAmbiguousData(queue, tagData.getTotalLength(), data);
         }
     }
 
-    private static void copyAmbiguousData(ByteQueue queue, long length, ByteQueue data) {
+    private static void copyAmbiguousData(ByteQueue queue, long length, ByteQueue data)
+            throws BACnetErrorException {
         if (length > queue.size()) {
             // Guard for https://github.com/RadixIoT/BACnet4J/issues/66
-            throw new BACnetRuntimeException("Illegal copy length: " + length + ", encoded data may be corrupt");
+            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataEncoding,
+                    "Illegal copy length: " + length + ", encoded data may be corrupt");
         }
         while (length-- > 0)
             data.push(queue.pop());

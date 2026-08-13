@@ -35,8 +35,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetException;
-import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -92,7 +92,7 @@ public class AmbiguousValueTest {
     @Test(timeout = 5_000)
     public void corruptExtendedLengthIsRejectedWithoutContextId() {
         var queue = new ByteQueue("3e25fff0000000");
-        assertThrows(BACnetRuntimeException.class, () -> new AmbiguousValue(queue));
+        assertThrows(BACnetErrorException.class, () -> new AmbiguousValue(queue));
     }
 
     /**
@@ -146,6 +146,6 @@ public class AmbiguousValueTest {
 
     private static void assertCorrupt(String hex, int contextId) {
         var queue = new ByteQueue(hex);
-        assertThrows(hex, BACnetRuntimeException.class, () -> new AmbiguousValue(queue, contextId));
+        assertThrows(hex, BACnetErrorException.class, () -> new AmbiguousValue(queue, contextId));
     }
 }

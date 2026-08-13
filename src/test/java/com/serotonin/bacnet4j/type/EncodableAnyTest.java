@@ -52,7 +52,6 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class EncodableAnyTest {
-
     private final ByteQueue queue = new ByteQueue();
     private final PropertyIdentifier proprietaryProperty = PropertyIdentifier.forId(888); //proprietary property
 
@@ -131,7 +130,9 @@ public class EncodableAnyTest {
     @Test
     public void decodeProprietaryOctetString() throws BACnetException {
         queue.push("4e"); //Opening-Tag (Context Specific Tag, TagNumber 4)
-        OctetString value = new OctetString(new ByteQueue("7c5d3a"));
+        // Note: use the byte[] constructor. OctetString(ByteQueue) is the parse constructor, so passing a
+        // ByteQueue here decoded the bytes as a tag instead of using them as content.
+        OctetString value = new OctetString(new byte[] {0x7c, 0x5d, 0x3a});
         value.write(queue);
         queue.push("4f"); //Closing-Tag
 
@@ -162,7 +163,7 @@ public class EncodableAnyTest {
     }
 
     @Test
-    public void decodeProprietaryEnumarated() throws BACnetException {
+    public void decodeProprietaryEnumerated() throws BACnetException {
         queue.push("4e"); //Opening-Tag (Context Specific Tag, TagNumber 4)
         Enumerated value = new Enumerated(5);
         value.write(queue);
@@ -195,7 +196,7 @@ public class EncodableAnyTest {
     }
 
     @Test
-    public void decodeProprietaryObjectidentifier() throws BACnetException {
+    public void decodeProprietaryObjectIdentifier() throws BACnetException {
         queue.push("4e"); //Opening-Tag (Context Specific Tag, TagNumber 4)
         ObjectIdentifier value = new ObjectIdentifier(ObjectType.device, 1);
         value.write(queue);
@@ -205,6 +206,7 @@ public class EncodableAnyTest {
         assertEquals(ObjectIdentifier.class, encodable.getClass());
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void decodeProprietarySequenceOfCharacterString() throws BACnetException {
         queue.push("4e"); //Opening-Tag (Context Specific Tag, TagNumber 4)
@@ -225,9 +227,9 @@ public class EncodableAnyTest {
     }
 
     @Test
-    public void decodeProprietaryAmbigousPrimitive() throws BACnetException {
+    public void decodeProprietaryAmbiguousPrimitive() throws BACnetException {
         String data =
-                "e50d00546869732069732074657874"; // String "This is Text" with unknown primtive datatype Nr.14 (Hex 'e5')
+                "e50d00546869732069732074657874"; // String "This is Text" with unknown primitive datatype Nr.14 (Hex 'e5')
         queue.push("4e"); //Opening-Tag (Context Specific Tag, TagNumber 4)
         queue.push(data);
         queue.push("4f"); //Closing-Tag
@@ -240,7 +242,7 @@ public class EncodableAnyTest {
     }
 
     @Test
-    public void decodeProprietaryAmbigousConstructed() throws BACnetException {
+    public void decodeProprietaryAmbiguousConstructed() throws BACnetException {
         String data = "8201feb400000000b4173b3b630c0200295d2100118205e0"; //BACnetLIST of BACnetDestination
         queue.push("4e"); //Opening-Tag (Context Specific Tag, TagNumber 4)
         queue.push(data);
@@ -252,5 +254,4 @@ public class EncodableAnyTest {
         encodable.write(resultQueue);
         assertEquals(data, resultQueue.toHexString());
     }
-
 }
