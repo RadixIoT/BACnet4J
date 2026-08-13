@@ -28,6 +28,7 @@
 package com.serotonin.bacnet4j.type.primitive;
 
 import java.math.BigInteger;
+import java.util.Objects;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -41,28 +42,28 @@ public class SignedInteger extends Primitive {
     private int smallValue;
     private BigInteger bigValue;
 
-    public SignedInteger(final int value) {
+    public SignedInteger(int value) {
         smallValue = value;
     }
 
-    public SignedInteger(final long value) {
+    public SignedInteger(long value) {
         bigValue = BigInteger.valueOf(value);
     }
 
-    public SignedInteger(final BigInteger value) {
+    public SignedInteger(BigInteger value) {
         bigValue = value;
     }
 
     public int intValue() {
         if (bigValue == null)
             return smallValue;
-        return bigValue.intValue();
+        return saturatedIntValue(bigValue);
     }
 
     public long longValue() {
         if (bigValue == null)
             return smallValue;
-        return bigValue.longValue();
+        return saturatedLongValue(bigValue);
     }
 
     public BigInteger bigIntegerValue() {
@@ -74,13 +75,14 @@ public class SignedInteger extends Primitive {
     //
     // Reading and writing
     //
-    public SignedInteger(final ByteQueue queue) throws BACnetErrorException {
-        // Read the data length value.
-        final int length = (int) readTag(queue, TYPE_ID);
+    public SignedInteger(ByteQueue queue) throws BACnetErrorException {
+        // Read the data length value. 135-2024 clause 20.2.5: at least one contents octet. A length of zero would
+        // otherwise reach BigInteger as an empty array, which it rejects with a NumberFormatException.
+        int length = readTag(queue, TYPE_ID, 1, MAX_INTEGER_LENGTH);
 
-        final byte[] bytes = new byte[length];
+        byte[] bytes = new byte[length];
         queue.pop(bytes);
-        final BigInteger bi = new BigInteger(bytes);
+        BigInteger bi = new BigInteger(bytes);
 
         if (length < 5)
             smallValue = bi.intValue();
@@ -89,7 +91,7 @@ public class SignedInteger extends Primitive {
     }
 
     @Override
-    public void writeImpl(final ByteQueue queue) {
+    public void writeImpl(ByteQueue queue) {
         if (bigValue == null) {
             long length = getLength();
             while (length > 0)
@@ -121,24 +123,16 @@ public class SignedInteger extends Primitive {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (bigValue == null ? 0 : bigValue.hashCode());
-        result = PRIME * result + smallValue;
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        SignedInteger that = (SignedInteger) o;
+        return Objects.equals(bigIntegerValue(), that.bigIntegerValue());
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final SignedInteger other = (SignedInteger) obj;
-        return bigIntegerValue().equals(other.bigIntegerValue());
+    public int hashCode() {
+        return Objects.hash(bigIntegerValue());
     }
 
     @Override

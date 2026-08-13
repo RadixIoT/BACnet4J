@@ -128,11 +128,19 @@ public class ReadPropertyMultipleRequestTest {
         assertEquals(g0.getId(), readAccessResults.get(0).getObjectIdentifier());
         List<Result> results = readAccessResults.get(0).getListOfResults().getValues();
         assertEquals(5, results.size());
-        assertEquals(new Result(PropertyIdentifier.objectType, null, ObjectType.group), results.get(0));
-        assertEquals(new Result(PropertyIdentifier.listOfGroupMembers, null, new SequenceOf<>()), results.get(1));
-        assertEquals(new Result(PropertyIdentifier.presentValue, null, new SequenceOf<>()), results.get(2));
-        assertEquals(new Result(PropertyIdentifier.objectIdentifier, null, g0.getId()), results.get(3));
-        assertEquals(new Result(PropertyIdentifier.objectName, null, new CharacterString("g0")), results.get(4));
+        // Compare ignoring order. The results are produced by iterating the object's property map, which is a
+        // ConcurrentHashMap keyed by PropertyIdentifier, so the order follows the key hash codes rather than
+        // anything the standard specifies.
+        assertEquals(
+                Set.of(
+                        new Result(PropertyIdentifier.objectType, null, ObjectType.group),
+                        new Result(PropertyIdentifier.listOfGroupMembers, null, new SequenceOf<>()),
+                        new Result(PropertyIdentifier.presentValue, null, new SequenceOf<>()),
+                        new Result(PropertyIdentifier.objectIdentifier, null, g0.getId()),
+                        new Result(PropertyIdentifier.objectName, null, new CharacterString("g0"))
+                ),
+                new HashSet<>(results)
+        );
     }
 
     @Test

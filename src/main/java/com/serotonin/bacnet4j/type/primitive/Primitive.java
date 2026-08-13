@@ -27,19 +27,41 @@
 
 package com.serotonin.bacnet4j.type.primitive;
 
+import java.math.BigInteger;
+
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.type.Encodable;
+import com.serotonin.bacnet4j.type.TagData;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.util.BACnetUtils;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
-abstract public class Primitive extends Encodable {
+public abstract class Primitive extends Encodable {
+    private static final BigInteger INT_MAX = BigInteger.valueOf(Integer.MAX_VALUE);
+    private static final BigInteger INT_MIN = BigInteger.valueOf(Integer.MIN_VALUE);
+    private static final BigInteger LONG_MAX = BigInteger.valueOf(Long.MAX_VALUE);
+    private static final BigInteger LONG_MIN = BigInteger.valueOf(Long.MIN_VALUE);
+
+    /**
+     * Passed as the maximum length for a datatype whose encoded length has no upper bound of its own, leaving it
+     * constrained only by the data available.
+     */
+    protected static final int NO_MAX_LENGTH = Integer.MAX_VALUE;
+
+    /**
+     * The most content octets the integer datatypes are read from. Unsigned64 is the widest named unsigned type and
+     * Integer32 the widest signed type (135-2024 clause 21), so eight octets covers every integer value the standard
+     * defines a datatype for. Note that the base Unsigned production is {@code INTEGER (0..MAX)} and Integer is
+     * unconstrained, so this is a pragmatic limit rather than one the standard states.
+     */
+    protected static final int MAX_INTEGER_LENGTH = 8;
+
     /**
      * Creates a primitive value where it is encoded immediately in the queue.
      */
-    public static Primitive createPrimitive(final ByteQueue queue) throws BACnetErrorException {
+    public static Primitive createPrimitive(ByteQueue queue) throws BACnetErrorException {
         // Get the first byte. The 4 high-order bits will tell us what the data type is.
         byte type = queue.peek(0);
         type = (byte) ((type & 0xff) >> 4);
@@ -50,25 +72,25 @@ abstract public class Primitive extends Encodable {
      * Creates a primitive value where it is encoded between context tags in the queue. If the value in the tags
      * is not a primitive, null is returned.
      */
-    public static Primitive createPrimitive(final ByteQueue queue, final int contextId) throws BACnetErrorException {
-        final int tagNumber = peekTagNumber(queue);
+    public static Primitive createPrimitive(ByteQueue queue, int contextId) throws BACnetErrorException {
+        int tagNumber = peekTagNumber(queue);
 
         // Check if the tag number matches the context id. If they match, then create the context-specific parameter,
         // otherwise return null.
         if (tagNumber != contextId)
             return null;
 
-        final int typeId = getPrimitiveTypeId(queue.peek(getTagLength(queue)));
+        int typeId = getPrimitiveTypeId(queue.peek(getTagLength(queue)));
         if (typeId == -1)
             return null;
 
         popStart(queue, contextId);
-        final Primitive result = createPrimitive(typeId, queue);
+        Primitive result = createPrimitive(typeId, queue);
         popEnd(queue, contextId);
         return result;
     }
 
-    private static Primitive createPrimitive(final int typeId, final ByteQueue queue) throws BACnetErrorException {
+    private static Primitive createPrimitive(int typeId, ByteQueue queue) throws BACnetErrorException {
         if (typeId == Null.TYPE_ID)
             return new Null(queue);
         if (typeId == Boolean.TYPE_ID)
@@ -99,15 +121,15 @@ abstract public class Primitive extends Encodable {
         throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType);
     }
 
-    public static int getPrimitiveTypeId(final byte firstByte) {
+    public static int getPrimitiveTypeId(byte firstByte) {
         // Get the first byte. The 4 high-order bits will tell us what the data type is.
-        final int typeId = (int) ((firstByte & 0xff) >> 4);
+        int typeId = (firstByte & 0xff) >> 4;
         if (isPrimitive(typeId))
             return typeId;
         return -1;
     }
 
-    public static boolean isPrimitive(final byte firstByte) {
+    public static boolean isPrimitive(byte firstByte) {
         return getPrimitiveTypeId(firstByte) != -1;
     }
 
@@ -116,44 +138,43 @@ abstract public class Primitive extends Encodable {
     }
 
     @Override
-    public void write(final ByteQueue queue) {
+    public void write(ByteQueue queue) {
         writeTag(queue, getTypeId(), false, getLength());
         writeImpl(queue);
     }
 
     @Override
-    public void write(final ByteQueue queue, final int contextId) {
+    public void write(ByteQueue queue, int contextId) {
         writeTag(queue, contextId, true, getLength());
         writeImpl(queue);
     }
 
-    final public void writeWithContextTag(final ByteQueue queue, final int contextId) {
+    public final void writeWithContextTag(ByteQueue queue, int contextId) {
         writeContextTag(queue, contextId, true);
         write(queue);
         writeContextTag(queue, contextId, false);
     }
 
-    abstract protected void writeImpl(ByteQueue queue);
+    protected abstract void writeImpl(ByteQueue queue);
 
-    abstract protected long getLength();
+    protected abstract long getLength();
 
-    abstract public byte getTypeId();
+    public abstract byte getTypeId();
 
-    protected static void writeTag(final ByteQueue queue, final int tagNumber, final boolean classTag,
-            final long length) {
-        final int classValue = classTag ? 8 : 0;
+    protected static void writeTag(ByteQueue queue, int tagNumber, boolean classTag, long length) {
+        int classValue = classTag ? 8 : 0;
 
-        if (length < 0 || length > 0x100000000l)
+        if (length < 0 || length > 0x100000000L)
             throw new IllegalArgumentException("Invalid length: " + length);
 
-        final boolean extendedTag = tagNumber > 14;
+        boolean extendedTag = tagNumber > 14;
 
         if (length < 5) {
             if (extendedTag) {
                 queue.push(0xf0 | classValue | length);
                 queue.push(tagNumber);
             } else
-                queue.push(tagNumber << 4 | classValue | length);
+                queue.push((long) tagNumber << 4 | classValue | length);
         } else {
             if (extendedTag) {
                 queue.push(0xf5 | classValue);
@@ -173,37 +194,108 @@ abstract public class Primitive extends Encodable {
         }
     }
 
-    protected long readTag(final ByteQueue queue, byte type_Id) throws BACnetErrorException {
-        final byte b = queue.pop();
-        typeId = type_Id;
-        tagNumber = (b & 0xff) >> 4;
-        contextSpecific = (b & 8) != 0;
-        long length = b & 7;
-
-        if (tagNumber == 0xf)
-            // Extended tag.
-            tagNumber = queue.popU1B();
-
-
-        if (length == 5) {
-            length = queue.popU1B();
-            if (length == 254)
-                length = queue.popU2B();
-            else if (length == 255)
-                length = queue.popU4B();
-        }
-
-        return length;
+    /**
+     * Reads a tag whose content length is constrained only by the amount of data remaining in the queue. For the
+     * datatypes whose encoded length is genuinely variable, and for which the standard therefore states no maximum.
+     */
+    protected int readTag(ByteQueue queue, byte typeId) throws BACnetErrorException {
+        return readTag(queue, typeId, 0, NO_MAX_LENGTH);
     }
 
-    private int tagNumber;
+    /**
+     * Reads a tag and validates the declared content length, both against the range of lengths that the datatype
+     * can be encoded in and against the amount of data actually remaining in the queue.
+     *
+     * <p>Both checks are needed. A length outside the datatype's range has to be rejected even when the peer
+     * supplies enough data to back it, and a length within range has to be rejected when the data is not present.
+     * Unvalidated, the declared length is used directly to size an array, and a corrupted or hostile value fails
+     * with an unchecked exception - NegativeArraySizeException where the length feeds a {@code length + 1}
+     * expression that overflows int, or ArithmeticException where BigInteger rejects an oversized magnitude -
+     * rather than with a decoding error the caller can turn into a response.</p>
+     *
+     * <p>The return type is the point of the validation: the raw length is a long because an extended length is
+     * read as an unsigned 32 bit value, but a validated length always fits in an int, so callers get one and do
+     * not narrow it themselves. Narrowing before validating is what turned a corrupt length into a negative
+     * array size.</p>
+     *
+     * @param minLength the fewest content octets this datatype can be encoded in
+     * @param maxLength the most content octets this datatype can be encoded in, or {@link #NO_MAX_LENGTH}
+     */
+    protected int readTag(ByteQueue queue, byte typeId, int minLength, int maxLength)
+            throws BACnetErrorException {
+        long length = readTagHeader(queue, typeId);
+        if (length < minLength || length > maxLength)
+            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType,
+                    "Length " + length + " is outside the range " + minLength + ".." + maxLength
+                            + " for primitive type " + typeId);
+        if (length > queue.size())
+            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType,
+                    "Length " + length + " exceeds the " + queue.size() + " octets remaining");
+        // Both bounds are ints, so the validated length cannot be truncated by this narrowing.
+        return (int) length;
+    }
+
+    /**
+     * Reads a tag without validating its length/value field, and returns that field verbatim. Only for Boolean,
+     * where it carries the value rather than a count of content octets (135-2024 clause 20.2.3) and so cannot be
+     * range checked here. Every other primitive should use one of the readTag methods so that the length is
+     * validated.
+     */
+    protected long readTagHeader(ByteQueue queue, byte typeId) throws BACnetErrorException {
+        tagData.pop(queue);
+        this.typeId = typeId;
+        return tagData.getLength();
+    }
+
+    /**
+     * Narrows to an int by clamping to the int range rather than truncating to its low order bits.
+     *
+     * <p>A BACnet integer can hold values that do not fit in a Java int - Unsigned32 above 0x7FFFFFFF and
+     * Unsigned64 above 0x7FFFFFFFFFFFFFFF are both legal - and truncating those produces a negative number for a
+     * value that is not negative. Callers treat these as sizes, counts, bounds and limits, where a sign flip
+     * inverts the meaning of a comparison rather than merely losing precision. Clamping keeps the narrowing
+     * monotonic, so a value too large to represent arrives as an implausibly large one instead.</p>
+     *
+     * <p>Use {@code bigIntegerValue()} where the exact value matters.</p>
+     */
+    protected static int saturatedIntValue(BigInteger value) {
+        if (value.compareTo(INT_MAX) > 0)
+            return Integer.MAX_VALUE;
+        if (value.compareTo(INT_MIN) < 0)
+            return Integer.MIN_VALUE;
+        return value.intValue();
+    }
+
+    /**
+     * Narrows to a long by clamping to the long range rather than truncating. See {@link #saturatedIntValue}.
+     */
+    protected static long saturatedLongValue(BigInteger value) {
+        if (value.compareTo(LONG_MAX) > 0)
+            return Long.MAX_VALUE;
+        if (value.compareTo(LONG_MIN) < 0)
+            return Long.MIN_VALUE;
+        return value.longValue();
+    }
+
+    protected final int getTagNumber() {
+        return tagData.getTagNumber();
+    }
+
+    protected final boolean isContextSpecific() {
+        return tagData.isContextSpecific();
+    }
+
+    /**
+     * The decoded tag this value was read from, empty until one of the readTag methods has run. The expected type
+     * is held separately because it is what the caller asked for, not what the encoding declared.
+     */
+    private final TagData tagData = new TagData();
     private int typeId;
-    private boolean contextSpecific;
 
     @Override
     public void validate() throws BACnetServiceException {
-        //if the tagNumber its not contextSpecific, validate the type
-        if (!contextSpecific && tagNumber != typeId) {
+        // If the tagNumber is not contextSpecific, validate the type
+        if (!tagData.isContextSpecific() && tagData.getTagNumber() != typeId) {
             throw new BACnetServiceException(ErrorClass.property, ErrorCode.invalidDataType);
         }
     }

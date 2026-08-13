@@ -65,7 +65,7 @@ public class OctetString extends Primitive {
     // Reading and writing
     //
     public OctetString(ByteQueue queue) throws BACnetErrorException {
-        int length = (int) readTag(queue, TYPE_ID);
+        int length = readTag(queue, TYPE_ID);
         value = new byte[length];
         queue.pop(value);
     }

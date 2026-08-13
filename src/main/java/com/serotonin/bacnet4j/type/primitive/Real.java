@@ -27,6 +27,8 @@
 
 package com.serotonin.bacnet4j.type.primitive;
 
+import java.util.Objects;
+
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.util.BACnetUtils;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -36,7 +38,7 @@ public class Real extends Primitive {
 
     private final float value;
 
-    public Real(final float value) {
+    public Real(float value) {
         this.value = value;
     }
 
@@ -47,13 +49,14 @@ public class Real extends Primitive {
     //
     // Reading and writing
     //
-    public Real(final ByteQueue queue) throws BACnetErrorException {
-        readTag(queue, TYPE_ID);
+    public Real(ByteQueue queue) throws BACnetErrorException {
+        // 135-2024 clause 20.2.6: four contents octets.
+        readTag(queue, TYPE_ID, 4, 4);
         value = Float.intBitsToFloat(BACnetUtils.popInt(queue));
     }
 
     @Override
-    public void writeImpl(final ByteQueue queue) {
+    public void writeImpl(ByteQueue queue) {
         BACnetUtils.pushInt(queue, Float.floatToIntBits(value));
     }
 
@@ -68,25 +71,16 @@ public class Real extends Primitive {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + Float.floatToIntBits(value);
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Real real = (Real) o;
+        return Float.compare(value, real.value) == 0;
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final Real other = (Real) obj;
-        if (Float.floatToIntBits(value) != Float.floatToIntBits(other.value))
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hashCode(value);
     }
 
     @Override

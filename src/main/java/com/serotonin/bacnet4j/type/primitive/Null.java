@@ -39,12 +39,13 @@ public class Null extends Primitive {
         // no op
     }
 
-    public Null(final ByteQueue queue) throws BACnetErrorException {
-        readTag(queue, TYPE_ID);
+    public Null(ByteQueue queue) throws BACnetErrorException {
+        // 135-2024 clause 20.2.2: no contents octets.
+        readTag(queue, TYPE_ID, 0, 0);
     }
 
     @Override
-    public void writeImpl(final ByteQueue queue) {
+    public void writeImpl(ByteQueue queue) {
         // no op
     }
 
@@ -69,9 +70,7 @@ public class Null extends Primitive {
             return true;
         if (obj == null)
             return false;
-        if (getClass() != obj.getClass())
-            return false;
-        return true;
+        return getClass() == obj.getClass();
     }
 
     @Override

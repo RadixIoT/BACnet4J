@@ -29,6 +29,7 @@ package com.serotonin.bacnet4j.type.primitive;
 
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.Objects;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.enums.DayOfWeek;
@@ -56,7 +57,7 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
     private int day;
     private DayOfWeek dayOfWeek;
 
-    public Date(final int year, final Month month, final int day, final DayOfWeek dayOfWeek) {
+    public Date(int year, Month month, int day, DayOfWeek dayOfWeek) {
         if (year >= 1900)
             this.year = year - 1900;
         else if (year == -1)
@@ -71,28 +72,21 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
         else
             this.day = day;
 
-        if (month == null)
-            this.month = Month.UNSPECIFIED;
-        else
-            this.month = month;
-
-        if (dayOfWeek == null)
-            this.dayOfWeek = DayOfWeek.UNSPECIFIED;
-        else
-            this.dayOfWeek = dayOfWeek;
+        this.month = Objects.requireNonNullElse(month, Month.UNSPECIFIED);
+        this.dayOfWeek = Objects.requireNonNullElse(dayOfWeek, DayOfWeek.UNSPECIFIED);
     }
 
-    public Date(final LocalDevice localDevice) {
-        final GregorianCalendar gc = new GregorianCalendar();
+    public Date(LocalDevice localDevice) {
+        GregorianCalendar gc = new GregorianCalendar();
         gc.setTimeInMillis(localDevice.getClock().millis());
         resetTo(gc);
     }
 
-    public Date(final GregorianCalendar gc) {
+    public Date(GregorianCalendar gc) {
         resetTo(gc);
     }
 
-    private void resetTo(final GregorianCalendar gc) {
+    private void resetTo(GregorianCalendar gc) {
         this.year = gc.get(Calendar.YEAR) - 1900;
         this.month = Month.valueOf((byte) (gc.get(Calendar.MONTH) + 1));
         this.day = gc.get(Calendar.DATE);
@@ -145,20 +139,17 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
             return false;
         if (!month.isSpecific())
             return false;
-        if (day == UNSPECIFIED_DAY || day == LAST_DAY_OF_MONTH || day == ODD_DAYS || day == EVEN_DAYS)
-            return false;
-        return true;
+        return day != UNSPECIFIED_DAY && day != LAST_DAY_OF_MONTH && day != ODD_DAYS && day != EVEN_DAYS;
     }
 
     /**
      * Matches this presumably wildcard date with a (that) necessarily specifically defined date to determine if (true)
-     * the given date is one of this' defined dates or (false) not.
+     * the given date is one of this's defined dates or (false) not.
      *
      * @param that the specific date with which to compare.
-     * @return
      */
     @Override
-    public boolean matches(final Date that) {
+    public boolean matches(Date that) {
         if (!that.isSpecific())
             throw new BACnetRuntimeException("Dates for matching must be completely specified: " + that);
 
@@ -171,37 +162,34 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
         if (!matchDay(that))
             return false;
 
-        if (!dayOfWeek.matches(that))
-            return false;
-
-        return true;
+        return dayOfWeek.matches(that);
     }
 
-    private boolean matchYear(final int that) {
+    private boolean matchYear(int that) {
         if (year == UNSPECIFIED_YEAR)
             return true;
         return year == that;
     }
 
-    private boolean matchDay(final Date that) {
+    private boolean matchDay(Date that) {
         if (day == UNSPECIFIED_DAY)
             return true;
         if (day == LAST_DAY_OF_MONTH) {
-            final GregorianCalendar gc = that.calculateGC();
-            final int lastDay = gc.getActualMaximum(Calendar.DATE);
+            GregorianCalendar gc = that.calculateGC();
+            int lastDay = gc.getActualMaximum(Calendar.DATE);
             return lastDay == that.day;
         }
         if (day == ODD_DAYS) {
-            final GregorianCalendar gc = that.calculateGC();
-            int day = gc.get(Calendar.DAY_OF_MONTH);
-            if (day % 2 != 0) {
+            GregorianCalendar gc = that.calculateGC();
+            int dom = gc.get(Calendar.DAY_OF_MONTH);
+            if (dom % 2 != 0) {
                 return true;
             }
         }
         if (day == EVEN_DAYS) {
-            final GregorianCalendar gc = that.calculateGC();
-            int day = gc.get(Calendar.DAY_OF_MONTH);
-            if (day % 2 == 0) {
+            GregorianCalendar gc = that.calculateGC();
+            int dom = gc.get(Calendar.DAY_OF_MONTH);
+            if (dom % 2 == 0) {
                 return true;
             }
         }
@@ -209,7 +197,7 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
     }
 
     @Override
-    public int compareTo(final Date that) {
+    public int compareTo(Date that) {
         if (!isSpecific())
             throw new BACnetRuntimeException("Comparisons can only be made between specific dates: " + this);
         if (!that.isSpecific())
@@ -223,35 +211,35 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
         return year - that.year;
     }
 
-    public boolean before(final Date that) {
+    public boolean before(Date that) {
         return compareTo(that) < 0;
     }
 
-    public boolean after(final Date that) {
+    public boolean after(Date that) {
         return compareTo(that) > 0;
     }
 
-    public boolean sameAs(final Date that) {
+    public boolean sameAs(Date that) {
         return compareTo(that) == 0;
     }
 
-    public Date calculateLeastMatchOnOrBefore(final Date that) {
+    public Date calculateLeastMatchOnOrBefore(Date that) {
         if (equals(UNSPECIFIED)) // Performance improvement
             return MINIMUM_DATE;
 
         boolean matched = matches(that);
-        final GregorianCalendar gc = that.calculateGC();
+        GregorianCalendar gc = that.calculateGC();
 
         if (year != UNSPECIFIED_YEAR && year < that.year) // Performance improvement
             gc.add(Calendar.YEAR, year - that.year + 1);
 
-        final Date date = new Date(gc);
+        Date date = new Date(gc);
         while (true) {
             if (date.sameAs(MINIMUM_DATE))
                 return matched ? date : null;
             gc.add(Calendar.DATE, -1);
             date.resetTo(gc);
-            final boolean b = matches(date);
+            boolean b = matches(date);
             if (b && !matched)
                 matched = true;
             else if (matched && !b)
@@ -265,11 +253,11 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
         return date;
     }
 
-    public Date calculateGreatestMatchOnOrBefore(final Date that) {
+    public Date calculateGreatestMatchOnOrBefore(Date that) {
         if (equals(UNSPECIFIED)) // Performance improvement
             return null;
 
-        final GregorianCalendar gc = that.calculateGC();
+        GregorianCalendar gc = that.calculateGC();
         if (year != UNSPECIFIED_YEAR && year < that.year) // Performance improvement
             gc.add(Calendar.YEAR, year - that.year + 1);
 
@@ -277,13 +265,13 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
             // Start a day ahead
             gc.add(Calendar.DATE, 1);
         }
-        final Date date = new Date(gc);
+        Date date = new Date(gc);
 
         boolean matched = matches(date);
         while (true) {
             gc.add(Calendar.DATE, -1);
             date.resetTo(gc);
-            final boolean b = matches(date);
+            boolean b = matches(date);
             if (!b && matched)
                 matched = false;
             else if (!matched && b)
@@ -297,19 +285,19 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
         return date;
     }
 
-    public Date calculateLeastMatchOnOrAfter(final Date that) {
-        final GregorianCalendar gc = that.calculateGC();
+    public Date calculateLeastMatchOnOrAfter(Date that) {
+        GregorianCalendar gc = that.calculateGC();
         if (!that.sameAs(MINIMUM_DATE)) {
             // Start a day behind
             gc.add(Calendar.DATE, -1);
         }
-        final Date date = new Date(gc);
+        Date date = new Date(gc);
 
         boolean matched = matches(date);
         while (true) {
             gc.add(Calendar.DATE, 1);
             date.resetTo(gc);
-            final boolean b = matches(date);
+            boolean b = matches(date);
             if (!b && matched)
                 matched = false;
             else if (!matched && b)
@@ -321,18 +309,18 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
         return date;
     }
 
-    public Date calculateGreatestMatchOnOrAfter(final Date that) {
+    public Date calculateGreatestMatchOnOrAfter(Date that) {
         if (equals(UNSPECIFIED))
             return MAXIMUM_DATE;
 
         boolean matched = matches(that);
-        final GregorianCalendar gc = that.calculateGC();
+        GregorianCalendar gc = that.calculateGC();
 
-        final Date date = new Date(gc);
+        Date date = new Date(gc);
         while (true) {
             gc.add(Calendar.DATE, 1);
             date.resetTo(gc);
-            final boolean b = matches(date);
+            boolean b = matches(date);
             if (b && !matched)
                 matched = true;
             else if (matched && !b)
@@ -349,8 +337,9 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
     //
     // Reading and writing
     //
-    public Date(final ByteQueue queue) throws BACnetErrorException {
-        readTag(queue, TYPE_ID);
+    public Date(ByteQueue queue) throws BACnetErrorException {
+        // 135-2024 clause 20.2.12: four contents octets.
+        readTag(queue, TYPE_ID, 4, 4);
         year = queue.popU1B();
         month = Month.valueOf(queue.pop());
         day = queue.popU1B();
@@ -358,7 +347,7 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
     }
 
     @Override
-    public void writeImpl(final ByteQueue queue) {
+    public void writeImpl(ByteQueue queue) {
         queue.push(year);
         queue.push(month.getId());
         queue.push((byte) day);
@@ -376,40 +365,16 @@ public class Date extends Primitive implements Comparable<Date>, DateMatchable {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + day;
-        result = PRIME * result + (dayOfWeek == null ? 0 : dayOfWeek.hashCode());
-        result = PRIME * result + (month == null ? 0 : month.hashCode());
-        result = PRIME * result + year;
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Date date = (Date) o;
+        return year == date.year && day == date.day && month == date.month && dayOfWeek == date.dayOfWeek;
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final Date other = (Date) obj;
-        if (day != other.day)
-            return false;
-        if (dayOfWeek == null) {
-            if (other.dayOfWeek != null)
-                return false;
-        } else if (!dayOfWeek.equals(other.dayOfWeek))
-            return false;
-        if (month == null) {
-            if (other.month != null)
-                return false;
-        } else if (!month.equals(other.month))
-            return false;
-        if (year != other.year)
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(year, month, day, dayOfWeek);
     }
 
     @Override
