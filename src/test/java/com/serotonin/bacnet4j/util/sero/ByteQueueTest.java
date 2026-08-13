@@ -43,7 +43,8 @@ public class ByteQueueTest {
      */
     @Test
     public void popOnAnEmptyQueue() {
-        assertThrows("never pushed", ArrayIndexOutOfBoundsException.class, () -> new ByteQueue().pop());
+        var queue = new ByteQueue();
+        assertThrows("never pushed", ArrayIndexOutOfBoundsException.class, queue::pop);
 
         ByteQueue emptiedByPop = new ByteQueue("01");
         assertEquals(1, emptiedByPop.pop());
@@ -71,9 +72,12 @@ public class ByteQueueTest {
      */
     @Test
     public void multiOctetPopsPastTheEnd() {
-        assertThrows(ArrayIndexOutOfBoundsException.class, () -> new ByteQueue("01").popU2B());
-        assertThrows(ArrayIndexOutOfBoundsException.class, () -> new ByteQueue("0102").popU4B());
-        assertThrows(ArrayIndexOutOfBoundsException.class, () -> new ByteQueue("01").popS2B());
+        var queue1 = new ByteQueue("01");
+        assertThrows(ArrayIndexOutOfBoundsException.class, queue1::popU2B);
+        var queue2 = new ByteQueue("0102");
+        assertThrows(ArrayIndexOutOfBoundsException.class, queue2::popU4B);
+        var queue3 = new ByteQueue("01");
+        assertThrows(ArrayIndexOutOfBoundsException.class, queue3::popS2B);
     }
 
     /**
