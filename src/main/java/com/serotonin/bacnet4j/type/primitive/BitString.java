@@ -67,9 +67,11 @@ public class BitString extends Primitive {
 
     public boolean getArrayValue(int index) {
         boolean[] ba = getValue();
-        if (index < ba.length)
+        try {
             return ba[index];
-        return false;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            return false;
+        }
     }
 
     public BitString setAll(boolean b) {
