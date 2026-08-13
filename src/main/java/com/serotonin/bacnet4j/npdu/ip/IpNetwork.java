@@ -520,6 +520,14 @@ public class IpNetwork extends Network {
 
         // Initial parsing of IP message.
         // BACnet/IP
+        // The BVLC header is four octets: type, function, and a two octet length. Check for them before reading,
+        // so that a datagram too short to hold a header is reported as a malformed message rather than as an
+        // unchecked exception out of ByteQueue.
+        if (queue.size() < 4) {
+            throw new MessageValidationException("Truncated BVLC header: 4 octets needed, " + queue.size()
+                    + " remaining");
+        }
+
         if (queue.pop() != BVLC_TYPE)
             throw new MessageValidationException("Protocol id is not BACnet/IP (0x81)");
 

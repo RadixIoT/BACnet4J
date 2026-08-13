@@ -34,11 +34,9 @@ import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 /**
  * Network layer protocol control information. This class currently only implements the reading of information.
- *
- * @author mlohbihler
  */
 public class NPCI {
-    public static enum NetworkPriority {
+    public enum NetworkPriority {
         lifeSafety(3), criticalEquipment(2), urgent(1), normal(0);
 
         public final int value;
@@ -142,33 +140,53 @@ public class NPCI {
         }
     }
 
-    public NPCI(ByteQueue queue) {
+    public NPCI(ByteQueue queue) throws MessageValidationException {
+        // Each field is checked against the data remaining before it is read. The control octet says which of the
+        // optional fields follow, so a truncated message can otherwise run the queue empty part way through and
+        // fail with an unchecked exception out of ByteQueue rather than as a malformed message.
+        requireAvailable(queue, 2, "version and control");
         version = queue.popU1B();
         control = BigInteger.valueOf(queue.popU1B());
 
         if (control.testBit(5)) {
+            requireAvailable(queue, 3, "destination network and length");
             destinationNetwork = queue.popU2B();
             destinationLength = queue.popU1B();
             if (destinationLength > 0) {
+                requireAvailable(queue, destinationLength, "destination address");
                 destinationAddress = new byte[destinationLength];
                 queue.pop(destinationAddress);
             }
         }
 
         if (control.testBit(3)) {
+            requireAvailable(queue, 3, "source network and length");
             sourceNetwork = queue.popU2B();
             sourceLength = queue.popU1B();
+            requireAvailable(queue, sourceLength, "source address");
             sourceAddress = new byte[sourceLength];
             queue.pop(sourceAddress);
         }
 
-        if (control.testBit(5))
+        if (control.testBit(5)) {
+            requireAvailable(queue, 1, "hop count");
             hopCount = queue.popU1B();
+        }
 
         if (control.testBit(7)) {
+            requireAvailable(queue, 1, "message type");
             messageType = queue.popU1B();
-            if (messageType >= 80)
+            if (messageType >= 80) {
+                requireAvailable(queue, 2, "vendor id");
                 vendorId = queue.popU2B();
+            }
+        }
+    }
+
+    private static void requireAvailable(ByteQueue queue, int count, String field) throws MessageValidationException {
+        if (queue.size() < count) {
+            throw new MessageValidationException("Truncated NPCI: " + count + " octets needed for the " + field
+                    + ", " + queue.size() + " remaining");
         }
     }
 
@@ -266,14 +284,4 @@ public class NPCI {
     public int getVersion() {
         return version;
     }
-    //    
-    // public static void main(String[] args) {
-    // byte[] b1 = {(byte)0x81,(byte)0xb,(byte)0x0,(byte)0x18};
-    // byte[] b2 = {(byte)0x1,(byte)0x8,(byte)0x0,(byte)0x64,(byte)0x1,
-    // (byte)0x2,(byte)0x10,(byte)0x0,(byte)0xc4,(byte)0x2,(byte)0x0,(byte)0x7,(byte)0xd0,(byte)0x22,
-    // (byte)0x1,(byte)0xe0,(byte)0x91,(byte)0x0,(byte)0x21,(byte)0x23};
-    // ByteQueue q = new ByteQueue(b2);
-    // new NPCI(q);
-    //
-    // }
 }
