@@ -27,7 +27,10 @@
 
 package com.serotonin.bacnet4j.type.primitive;
 
+import java.util.Objects;
+
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
+import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
@@ -61,30 +64,25 @@ public class Boolean extends Primitive {
     }
 
     public Boolean(final ByteQueue queue) throws BACnetErrorException {
-        final byte b = queue.pop();
-        int tagNumber = (b & 0xff) >> 4;
-        final boolean contextSpecific = (b & 8) != 0;
-        long length = b & 7;
+        // 135-2024 clause 20.2.3: Boolean is the one primitive whose length/value field can hold the value rather
+        // than a count of contents octets, so the field cannot be range checked as a length here.
+        long length = readTagHeader(queue, TYPE_ID);
 
-        if (tagNumber == 0xf)
-            // Extended tag.
-            tagNumber = queue.popU1B();
-
-        if (length == 5) {
-            length = queue.popU1B();
-            if (length == 254)
-                length = queue.popU2B();
-            else if (length == 255)
-                length = queue.popU4B();
-        }
-
-        if (contextSpecific) {
+        if (isContextSpecific()) {
+            // Context-tagged Boolean data has exactly one contents octet.
+            if (length != 1 || queue.size() < 1)
+                throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType,
+                        "Context-tagged boolean with a length of " + length);
             value = queue.pop() == 1;
         } else {
-            //if the tagNumber its not contextSpecific, validate the type
-            if (tagNumber != TYPE_ID) {
+            // If the tagNumber is not contextSpecific, validate the type
+            if (getTagNumber() != TYPE_ID) {
                 throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType);
             }
+            // Application-tagged Boolean values carry the value in the length/value field, with no contents octets.
+            if (length > 1)
+                throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataType,
+                        "Application-tagged boolean with a length/value of " + length);
             value = length == 1;
         }
     }
@@ -102,12 +100,12 @@ public class Boolean extends Primitive {
 
     @Override
     public void writeImpl(final ByteQueue queue) {
-        throw new RuntimeException("Should not be called because length is context specific");
+        throw new BACnetRuntimeException("Should not be called because length is context specific");
     }
 
     @Override
     protected long getLength() {
-        throw new RuntimeException("Should not be called because length is context specific");
+        throw new BACnetRuntimeException("Should not be called because length is context specific");
     }
 
     @Override
@@ -116,25 +114,16 @@ public class Boolean extends Primitive {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + (value ? 1231 : 1237);
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Boolean aBoolean = (Boolean) o;
+        return value == aBoolean.value;
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final Boolean other = (Boolean) obj;
-        if (value != other.value)
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hashCode(value);
     }
 
     @Override

@@ -35,11 +35,12 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class TagDataTest {
     @Test
-    public void applicationTagWithLiteralLength() {
+    public void applicationTagWithLiteralLength() throws BACnetErrorException {
         TagData tagData = new TagData().peek(new ByteQueue("210d"));
 
         assertEquals(2, tagData.getTagNumber());
@@ -51,7 +52,7 @@ public class TagDataTest {
     }
 
     @Test
-    public void extendedTagNumberLengthensTheHeader() {
+    public void extendedTagNumberLengthensTheHeader() throws BACnetErrorException {
         // f = extended tag number, so the tag number is taken from the second byte.
         TagData tagData = new TagData().peek(new ByteQueue("f55002"));
 
@@ -61,7 +62,7 @@ public class TagDataTest {
     }
 
     @Test
-    public void twoByteExtendedLength() {
+    public void twoByteExtendedLength() throws BACnetErrorException {
         // 5 = extended length, fe = 2-byte length follows.
         TagData tagData = new TagData().peek(new ByteQueue("25fe1234"));
 
@@ -75,7 +76,7 @@ public class TagDataTest {
      * decoded length without truncating it, otherwise callers see a non-positive length and consume nothing.
      */
     @Test
-    public void fourByteExtendedLengthIsNotTruncated() {
+    public void fourByteExtendedLengthIsNotTruncated() throws BACnetErrorException {
         // 7 = tag number, 5 = extended length, ff = 4-byte length follows.
         TagData tagData = new TagData().peek(new ByteQueue("75fff0000000"));
 
@@ -91,7 +92,7 @@ public class TagDataTest {
      * loops that consume getTotalLength bytes at a time.
      */
     @Test
-    public void maximumExtendedLengthStaysPositive() {
+    public void maximumExtendedLengthStaysPositive() throws BACnetErrorException {
         TagData tagData = new TagData().peek(new ByteQueue("75ffffffffff"));
 
         assertEquals(0xffffffffL, tagData.getLength());
@@ -104,7 +105,7 @@ public class TagDataTest {
      * reported itself as a start tag.
      */
     @Test
-    public void startAndEndTagsAreDistinct() {
+    public void startAndEndTagsAreDistinct() throws BACnetErrorException {
         TagData tagData = new TagData();
 
         tagData.peek(new ByteQueue("3e"));
@@ -127,7 +128,7 @@ public class TagDataTest {
      * are ordinary lengths.
      */
     @Test
-    public void applicationTagIsNeverAStartOrEndTag() {
+    public void applicationTagIsNeverAStartOrEndTag() throws BACnetErrorException {
         TagData tagData = new TagData();
 
         tagData.peek(new ByteQueue("26"));
@@ -147,7 +148,7 @@ public class TagDataTest {
      * those markers must not be reported as a start or end tag.
      */
     @Test
-    public void extendedLengthIsNotMistakenForAMarker() {
+    public void extendedLengthIsNotMistakenForAMarker() throws BACnetErrorException {
         TagData tagData = new TagData();
 
         // 7 = tag number, d = context specific with extended length, ff = 4-byte length follows.
@@ -166,7 +167,7 @@ public class TagDataTest {
     }
 
     @Test
-    public void peekLeavesTheQueueIntact() {
+    public void peekLeavesTheQueueIntact() throws BACnetErrorException {
         ByteQueue queue = new ByteQueue("25fe1234aabb");
         TagData tagData = new TagData().peek(queue);
 
@@ -175,7 +176,7 @@ public class TagDataTest {
     }
 
     @Test
-    public void popConsumesExactlyTheHeader() {
+    public void popConsumesExactlyTheHeader() throws BACnetErrorException {
         ByteQueue queue = new ByteQueue("25fe1234aabb");
         TagData tagData = new TagData().pop(queue);
 
@@ -188,7 +189,7 @@ public class TagDataTest {
      * Both entry points return this, so they can be chained from a constructor call.
      */
     @Test
-    public void peekAndPopReturnTheSameInstance() {
+    public void peekAndPopReturnTheSameInstance() throws BACnetErrorException {
         TagData tagData = new TagData();
         assertSame(tagData, tagData.peek(new ByteQueue("210d")));
         assertSame(tagData, tagData.pop(new ByteQueue("210d")));

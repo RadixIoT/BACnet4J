@@ -75,7 +75,8 @@ public class ObjectIdentifier extends Primitive {
     // Reading and writing
     //
     public ObjectIdentifier(ByteQueue queue) throws BACnetErrorException {
-        readTag(queue, TYPE_ID);
+        // 135-2024 clause 20.2.14: four contents octets.
+        readTag(queue, TYPE_ID, 4, 4);
 
         int type = queue.popU1B() << 2;
         int i = queue.popU1B();
@@ -90,9 +91,9 @@ public class ObjectIdentifier extends Primitive {
 
     @Override
     public void writeImpl(ByteQueue queue) {
-        int objectType = this.objectType.intValue();
-        queue.push(objectType >> 2);
-        queue.push((objectType & 3) << 6 | instanceNumber >> 16);
+        int objectTypeInt = this.objectType.intValue();
+        queue.push(objectTypeInt >> 2);
+        queue.push((objectTypeInt & 3) << 6 | instanceNumber >> 16);
         queue.push(instanceNumber >> 8);
         queue.push(instanceNumber);
     }

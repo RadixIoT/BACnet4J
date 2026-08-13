@@ -30,23 +30,26 @@ package com.serotonin.bacnet4j.type;
 import static com.serotonin.bacnet4j.util.BACnetUtils.toInt;
 import static com.serotonin.bacnet4j.util.BACnetUtils.toLong;
 
+import com.serotonin.bacnet4j.exception.BACnetErrorException;
+import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
+import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class TagData {
     /**
      * An LVT of 5 means the tag header carries an extended length.
      */
-    static final int LVT_EXTENDED_LENGTH = 5;
+    public static final int LVT_EXTENDED_LENGTH = 5;
 
     /**
      * An LVT of 6 marks a start tag, which carries no length of its own.
      */
-    static final int LVT_START_TAG = 6;
+    public static final int LVT_START_TAG = 6;
 
     /**
      * An LVT of 7 marks an end tag, which carries no length of its own.
      */
-    static final int LVT_END_TAG = 7;
+    public static final int LVT_END_TAG = 7;
 
     private int tagNumber;
     private boolean contextSpecific;
@@ -102,14 +105,25 @@ public class TagData {
         return tagLength;
     }
 
-    public TagData pop(ByteQueue queue) {
+    /**
+     * Decodes the tag at the head of the queue and consumes it.
+     */
+    public TagData pop(ByteQueue queue) throws BACnetErrorException {
         peek(queue);
         queue.pop(tagLength);
         return this;
     }
 
-    public TagData peek(ByteQueue queue) {
+    /**
+     * Decodes the tag at the head of the queue without consuming it.
+     *
+     * <p>This is the only decoder for a BACnet tag header. A tag that runs off the end of the queue is reported as
+     * a decoding error the caller can turn into a response, rather than as an unchecked exception out of
+     * {@link ByteQueue#peek(int)}.</p>
+     */
+    public TagData peek(ByteQueue queue) throws BACnetErrorException {
         var peekIndex = 0;
+        requireAvailable(queue, peekIndex + 1);
         var b = queue.peek(peekIndex++);
         tagNumber = (b & 0xff) >> 4;
         contextSpecific = (b & 8) == 8;
@@ -118,14 +132,18 @@ public class TagData {
 
         if (tagNumber == 0xf) {
             // Extended tag.
+            requireAvailable(queue, peekIndex + 1);
             tagNumber = toInt(queue.peek(peekIndex++));
         }
 
         if (lvt == TagData.LVT_EXTENDED_LENGTH) {
+            requireAvailable(queue, peekIndex + 1);
             length = toInt(queue.peek(peekIndex++));
             if (length == 254) {
+                requireAvailable(queue, peekIndex + 2);
                 length = toLong(queue.peek(peekIndex++)) << 8 | toLong(queue.peek(peekIndex++));
             } else if (length == 255) {
+                requireAvailable(queue, peekIndex + 4);
                 length = toLong(queue.peek(peekIndex++)) << 24 | toLong(queue.peek(peekIndex++)) << 16
                         | toLong(queue.peek(peekIndex++)) << 8 | toLong(queue.peek(peekIndex++));
             }
@@ -134,5 +152,15 @@ public class TagData {
         tagLength = peekIndex;
 
         return this;
+    }
+
+    /**
+     * Guards the reads of the tag itself, so that a tag truncated part way through an extended tag number or an
+     * extended length fails as a decoding error instead of an unchecked ByteQueue exception.
+     */
+    private static void requireAvailable(ByteQueue queue, int count) throws BACnetErrorException {
+        if (queue.size() < count)
+            throw new BACnetErrorException(ErrorClass.property, ErrorCode.invalidDataEncoding,
+                    "Truncated tag: " + count + " octets needed, " + queue.size() + " remaining");
     }
 }

@@ -31,6 +31,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.math.BigInteger;
 import java.util.Map;
+import java.util.Objects;
 
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
 import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
@@ -42,13 +43,13 @@ public class Enumerated extends Primitive {
     private int smallValue;
     private BigInteger bigValue;
 
-    public Enumerated(final int value) {
+    public Enumerated(int value) {
         if (value < 0)
             throw new IllegalArgumentException("Value cannot be less than zero");
         smallValue = value;
     }
 
-    public Enumerated(final BigInteger value) {
+    public Enumerated(BigInteger value) {
         if (value.signum() == -1)
             throw new IllegalArgumentException("Value cannot be less than zero");
         bigValue = value;
@@ -57,7 +58,7 @@ public class Enumerated extends Primitive {
     public int intValue() {
         if (bigValue == null)
             return smallValue;
-        return bigValue.intValue();
+        return saturatedIntValue(bigValue);
     }
 
     public BigInteger bigIntegerValue() {
@@ -70,33 +71,33 @@ public class Enumerated extends Primitive {
         return (byte) intValue();
     }
 
-    public boolean equals(final int that) {
+    public boolean equals(int that) {
         return intValue() == that;
     }
 
-    public boolean equals(final Enumerated that) {
+    public boolean equals(Enumerated that) {
         if (that == null)
             return false;
         return intValue() == that.intValue();
     }
 
-    public boolean isOneOf(final Enumerated... those) {
-        final int id = intValue();
-        for (final Enumerated that : those) {
+    public boolean isOneOf(Enumerated... those) {
+        int id = intValue();
+        for (Enumerated that : those) {
             if (id == that.intValue())
                 return true;
         }
         return false;
     }
 
-    public static Enumerated forName(final Map<String, Enumerated> nameMap, final String name) {
-        final Enumerated e = nameMap.get(name);
+    public static Enumerated forName(Map<String, Enumerated> nameMap, String name) {
+        Enumerated e = nameMap.get(name);
         if (e == null)
             throw new BACnetRuntimeException("No enumerated found for name '" + name + "'");
         return e;
     }
 
-    public String toString(final Map<Integer, String> prettyMap) {
+    public String toString(Map<Integer, String> prettyMap) {
         String s = prettyMap.get(intValue());
         if (s == null)
             s = Integer.toString(intValue());
@@ -106,30 +107,31 @@ public class Enumerated extends Primitive {
     //
     // Reading and writing
     //
-    public Enumerated(final ByteQueue queue) throws BACnetErrorException {
-        int length = (int) readTag(queue, TYPE_ID);
+    public Enumerated(ByteQueue queue) throws BACnetErrorException {
+        // 135-2024 clause 20.2.11: at least one contents octet.
+        int length = readTag(queue, TYPE_ID, 1, MAX_INTEGER_LENGTH);
         if (length < 4) {
             while (length > 0)
                 smallValue |= (queue.pop() & 0xff) << --length * 8;
         } else {
-            final byte[] bytes = new byte[length + 1];
+            byte[] bytes = new byte[length + 1];
             queue.pop(bytes, 1, length);
             bigValue = new BigInteger(bytes);
         }
     }
 
     @Override
-    protected void writeImpl(final ByteQueue queue) {
+    protected void writeImpl(ByteQueue queue) {
         int length = (int) getLength();
         if (bigValue == null) {
             while (length > 0)
                 queue.push(smallValue >> --length * 8);
         } else {
-            final byte[] bytes = new byte[length];
+            byte[] bytes = new byte[length];
 
             for (int i = 0; i < bigValue.bitLength(); i++) {
                 if (bigValue.testBit(i))
-                    bytes[length - i / 8 - 1] |= 1 << i % 8;
+                    bytes[length - i / 8 - 1] |= (byte) (1 << i % 8);
             }
 
             queue.push(bytes);
@@ -152,7 +154,7 @@ public class Enumerated extends Primitive {
             return length;
         }
 
-        if (bigValue.intValue() == 0)
+        if (bigValue.compareTo(BigInteger.ZERO) == 0)
             return 1;
         return (bigValue.bitLength() + 7) / 8;
     }
@@ -165,23 +167,23 @@ public class Enumerated extends Primitive {
     //
     // Initialization
     //
-    protected static void init(final Class<?> clazz, final Map<Integer, Enumerated> idMap,
-            final Map<String, Enumerated> nameMap, final Map<Integer, String> prettyMap) {
+    protected static void init(Class<?> clazz, Map<Integer, Enumerated> idMap, Map<String, Enumerated> nameMap,
+            Map<Integer, String> prettyMap) {
         try {
-            final Field[] fields = clazz.getFields();
-            for (final Field field : fields) {
+            Field[] fields = clazz.getFields();
+            for (Field field : fields) {
                 if (Modifier.isPublic(field.getModifiers()) //
                         && Modifier.isStatic(field.getModifiers()) //
                         && Modifier.isFinal(field.getModifiers()) //
                         && field.getType() == clazz) {
-                    final Enumerated e = (Enumerated) field.get(null);
-                    final String name = field.getName();
+                    Enumerated e = (Enumerated) field.get(null);
+                    String name = field.getName();
                     idMap.put(e.intValue(), e);
 
                     // Replace all capital letters in the name with dash and lower case.
-                    final StringBuilder sb = new StringBuilder();
+                    StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < name.length(); i++) {
-                        final char c = name.charAt(i);
+                        char c = name.charAt(i);
                         if (Character.isUpperCase(c)) {
                             sb.append('-').append(Character.toLowerCase(c));
                         } else {
@@ -193,66 +195,26 @@ public class Enumerated extends Primitive {
                     prettyMap.put(e.intValue(), sb.toString());
                 }
             }
-        } catch (final Exception e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new BACnetRuntimeException(e);
         }
     }
 
     @Override
     public String toString() {
-        if (bigValue == null) {
-            return "Enumerated [" + Integer.toString(smallValue) + "]";
-        }
-        return "Enumerated [" + bigValue.toString() + "]";
+        return "Enumerated [" + Objects.requireNonNullElseGet(bigValue, () -> smallValue) + "]";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Enumerated that = (Enumerated) o;
+        return Objects.equals(bigIntegerValue(), that.bigIntegerValue());
     }
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (bigValue == null ? 0 : bigValue.hashCode());
-        result = prime * result + smallValue;
-        return result;
+        return Objects.hash(bigIntegerValue());
     }
-
-    @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final Enumerated other = (Enumerated) obj;
-        if (bigValue == null) {
-            if (other.bigValue != null)
-                return false;
-        } else if (!bigValue.equals(other.bigValue))
-            return false;
-        if (smallValue != other.smallValue)
-            return false;
-        return true;
-    }
-
-    //
-    //    @Override
-    //    public int hashCode() {
-    //        final int PRIME = 31;
-    //        int result = 1;
-    //        result = PRIME * result + (bigValue == null ? 0 : bigValue.hashCode());
-    //        result = PRIME * result + smallValue;
-    //        return result;
-    //    }
-    //
-    //    @Override
-    //    public boolean equals(final Object obj) {
-    //        if (this == obj)
-    //            return true;
-    //        if (obj == null)
-    //            return false;
-    //        if (!Enumerated.class.isAssignableFrom(obj.getClass()))
-    //            return false;
-    //        final Enumerated other = (Enumerated) obj;
-    //        return bigIntegerValue().equals(other.bigIntegerValue());
-    //    }
 }

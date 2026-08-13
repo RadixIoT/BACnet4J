@@ -29,9 +29,75 @@ package com.serotonin.bacnet4j.type.primitive;
 
 import static org.junit.Assert.assertEquals;
 
+import java.math.BigInteger;
+
 import org.junit.Test;
 
+import com.serotonin.bacnet4j.exception.BACnetException;
+import com.serotonin.bacnet4j.util.sero.ByteQueue;
+
 public class UnsignedIntegerTest {
+    /**
+     * The value is held in either an int or a BigInteger depending on how the instance was created, and that is an
+     * implementation detail that equality must not expose. Note that the long constructor uses the BigInteger field
+     * whatever the magnitude, so this is not limited to large values.
+     */
+    @Test
+    public void equalsIgnoresInternalRepresentation() {
+        assertEquals(new UnsignedInteger(14), new UnsignedInteger(14L));
+        assertEquals(new UnsignedInteger(14).hashCode(), new UnsignedInteger(14L).hashCode());
+
+        assertEquals(new UnsignedInteger(0), new UnsignedInteger(BigInteger.ZERO));
+        assertEquals(new UnsignedInteger(0).hashCode(), new UnsignedInteger(BigInteger.ZERO).hashCode());
+
+        assertEquals(new UnsignedInteger(0xFFFFFFFFL), new UnsignedInteger(new BigInteger("4294967295")));
+    }
+
+    /**
+     * A value written and read back has to equal the original. The parser uses the BigInteger field for any value
+     * encoded in four or more octets, so anything from 0x1000000 up takes a different representation than the int
+     * constructor does.
+     */
+    @Test
+    public void roundTripEquality() throws BACnetException {
+        for (long value : new long[] {0, 1, 0xFF, 0x100, 0xFFFF, 0xFFFFFF, 0x1000000, 0x2000000, 0xFFFFFFFFL}) {
+            UnsignedInteger original = new UnsignedInteger(value);
+            ByteQueue queue = new ByteQueue();
+            original.write(queue);
+            UnsignedInteger parsed = new UnsignedInteger(queue);
+
+            assertEquals("value " + value, value, parsed.longValue());
+            assertEquals("value " + value, original, parsed);
+            assertEquals("value " + value, original.hashCode(), parsed.hashCode());
+        }
+    }
+
+    /**
+     * A value too large for the requested primitive type is clamped rather than truncated. Truncating produced a
+     * negative number for a value that cannot be negative, which inverts any comparison the caller makes against
+     * it - see the sizes, counts and bounds derived from Unsigned32 properties.
+     */
+    @Test
+    public void narrowingSaturatesInsteadOfTruncating() {
+        // Unsigned32 maximum: fits in a long, not in an int.
+        UnsignedInteger u32Max = new UnsignedInteger(0xFFFFFFFFL);
+        assertEquals(Integer.MAX_VALUE, u32Max.intValue());
+        assertEquals(0xFFFFFFFFL, u32Max.longValue());
+
+        // Either side of the int boundary.
+        assertEquals(Integer.MAX_VALUE, new UnsignedInteger(0x7FFFFFFF).intValue());
+        assertEquals(Integer.MAX_VALUE, new UnsignedInteger(0x80000000L).intValue());
+        assertEquals(0x80000000L, new UnsignedInteger(0x80000000L).longValue());
+
+        // Unsigned64 maximum: fits in neither.
+        UnsignedInteger u64Max = new UnsignedInteger(new BigInteger("18446744073709551615"));
+        assertEquals(Integer.MAX_VALUE, u64Max.intValue());
+        assertEquals(Long.MAX_VALUE, u64Max.longValue());
+
+        // The exact value is always available.
+        assertEquals(new BigInteger("18446744073709551615"), u64Max.bigIntegerValue());
+    }
+
     @Test
     public void increment32() {
         UnsignedInteger i = new UnsignedInteger(0xFFFFFFFDL);

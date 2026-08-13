@@ -29,6 +29,7 @@ package com.serotonin.bacnet4j.type.primitive;
 
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.Objects;
 
 import com.serotonin.bacnet4j.LocalDevice;
 import com.serotonin.bacnet4j.exception.BACnetErrorException;
@@ -46,24 +47,24 @@ public class Time extends Primitive {
     private final int second;
     private final int hundredth;
 
-    public Time(final int hour, final int minute, final int second, final int hundredth) {
+    public Time(int hour, int minute, int second, int hundredth) {
         this.hour = hour;
         this.minute = minute;
         this.second = second;
         this.hundredth = hundredth;
     }
 
-    public Time(final LocalDevice localDevice) {
+    public Time(LocalDevice localDevice) {
         this(getNow(localDevice));
     }
 
-    private static GregorianCalendar getNow(final LocalDevice localDevice) {
-        final GregorianCalendar gc = new GregorianCalendar();
+    private static GregorianCalendar getNow(LocalDevice localDevice) {
+        GregorianCalendar gc = new GregorianCalendar();
         gc.setTimeInMillis(localDevice.getClock().millis());
         return gc;
     }
 
-    public Time(final GregorianCalendar now) {
+    public Time(GregorianCalendar now) {
         this.hour = now.get(Calendar.HOUR_OF_DAY);
         this.minute = now.get(Calendar.MINUTE);
         this.second = now.get(Calendar.SECOND);
@@ -113,9 +114,9 @@ public class Time extends Primitive {
                 + hundredth;
     }
 
-    public int getSmallestDiff(final Time that) {
-        final int thishun = getHundredthInDay();
-        final int thathun = that.getHundredthInDay();
+    public int getSmallestDiff(Time that) {
+        int thishun = getHundredthInDay();
+        int thathun = that.getHundredthInDay();
 
         if (thishun == thathun)
             return 0;
@@ -131,14 +132,14 @@ public class Time extends Primitive {
             wraparound = thishun + MAX_TIME - thathun;
         }
 
-        return contiguous > wraparound ? wraparound : contiguous;
+        return Math.min(contiguous, wraparound);
     }
 
     /**
      * @param that The time with which to compare this
      * @return true if this < that.
      */
-    public boolean before(final Time that) {
+    public boolean before(Time that) {
         if (!this.isHourUnspecified() && !that.isHourUnspecified()) {
             if (this.hour < that.hour)
                 return true;
@@ -170,7 +171,7 @@ public class Time extends Primitive {
      * @param that The time with which to compare this
      * @return true if this > that
      */
-    public boolean after(final Time that) {
+    public boolean after(Time that) {
         if (!this.isHourUnspecified() && !that.isHourUnspecified()) {
             if (this.hour > that.hour)
                 return true;
@@ -201,8 +202,9 @@ public class Time extends Primitive {
     //
     // Reading and writing
     //
-    public Time(final ByteQueue queue) throws BACnetErrorException {
-        readTag(queue, TYPE_ID);
+    public Time(ByteQueue queue) throws BACnetErrorException {
+        // 135-2024 clause 20.2.13: four contents octets.
+        readTag(queue, TYPE_ID, 4, 4);
         hour = queue.popU1B();
         minute = queue.popU1B();
         second = queue.popU1B();
@@ -210,7 +212,7 @@ public class Time extends Primitive {
     }
 
     @Override
-    public void writeImpl(final ByteQueue queue) {
+    public void writeImpl(ByteQueue queue) {
         queue.push((byte) hour);
         queue.push((byte) minute);
         queue.push((byte) second);
@@ -228,40 +230,20 @@ public class Time extends Primitive {
     }
 
     @Override
-    public int hashCode() {
-        final int PRIME = 31;
-        int result = 1;
-        result = PRIME * result + hour;
-        result = PRIME * result + hundredth;
-        result = PRIME * result + minute;
-        result = PRIME * result + second;
-        return result;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass())
+            return false;
+        Time time = (Time) o;
+        return hour == time.hour && minute == time.minute && second == time.second && hundredth == time.hundredth;
     }
 
     @Override
-    public boolean equals(final Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        final Time other = (Time) obj;
-        if (hour != other.hour)
-            return false;
-        if (hundredth != other.hundredth)
-            return false;
-        if (minute != other.minute)
-            return false;
-        if (second != other.second)
-            return false;
-        return true;
+    public int hashCode() {
+        return Objects.hash(hour, minute, second, hundredth);
     }
 
     @Override
     public String toString() {
-        return Integer.toString(hour) + ":" + Integer.toString(minute) + ":" + Integer.toString(second) + "."
-                + hundredth;
-
+        return hour + ":" + minute + ":" + second + "." + hundredth;
     }
 }

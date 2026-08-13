@@ -116,6 +116,23 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
 - Many non-breaking changes that bring BACnet4J up to compliance with protocol revision 30
 - The return value of `TagData.getTotalLength` has been changed from `int` to `long`. Fields that were previously public
   have been changed to private and getters created.
+- Malformed confirmed requests are now answered with a Reject of `invalidDataEncoding` rather than an Error of
+  `services / operationalProblem`, per 135-2024 18.9. Client code catching `ErrorAPDUException` for undecodable requests
+  will need to catch `RejectAPDUException`.
+- Decoding of primitive values is stricter. A tag whose declared length is outside the range its datatype can be encoded
+  in, or which exceeds the data present, is rejected. A value encoded as the wrong datatype no longer decodes to a
+  nonsense value, so a device that sends one will now fail the read, and in a ReadPropertyMultiple response a single
+  such value fails the whole response.
+- `intValue()` and `longValue()` on `UnsignedInteger`, `SignedInteger` and `Enumerated` now clamp to the range of the
+  return type rather than truncating to its low order bits, so a value too large no longer arrives as a negative number.
+  Use `bigIntegerValue()` where the exact value is required.
+- `equals` and `hashCode` on `UnsignedInteger`, `SignedInteger` and `Enumerated` now compare by value rather than by
+  internal representation, so `new UnsignedInteger(14)` equals `new UnsignedInteger(14L)`. The hash codes of these
+  types, including `PropertyIdentifier` and `ObjectType`, have changed, which changes the iteration order of hash based
+  collections keyed by them.
+- Fixes: corrupt tag lengths no longer raise `ArithmeticException` or `NegativeArraySizeException` while decoding;
+  `Enumerated` values that are a multiple of 2^32 no longer encode with an incorrect length; and a zero length
+  `SignedInteger` no longer raises `NumberFormatException`.
 
 *Version 6.2.0*
 
