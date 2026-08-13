@@ -103,8 +103,8 @@ public class MstpNetwork extends Network {
     }
 
     @Override
-    public void sendNPDU(Address recipient, OctetString router, ByteQueue npdu, boolean broadcast, boolean expectsReply)
-            throws BACnetException {
+    public void sendNPDU(Address recipient, OctetString router, ByteQueue npdu, boolean broadcast,
+            boolean expectsReply) {
         byte[] data = npdu.popAll();
 
         OctetString dest = getDestination(recipient, router);
@@ -131,7 +131,8 @@ public class MstpNetwork extends Network {
     // Incoming frames
     //
     void receivedFrame(Frame frame) {
-        handleIncomingData(new ByteQueue(frame.getData()), MstpNetworkUtils.toOctetString(frame.getSourceAddress()));
+        handleIncomingData(new ByteQueue(frame.getData()), MstpNetworkUtils.toOctetString(frame.getSourceAddress()),
+                frame.broadcast());
     }
 
     @Override

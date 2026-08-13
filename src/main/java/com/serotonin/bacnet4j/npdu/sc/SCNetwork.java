@@ -587,7 +587,8 @@ public class SCNetwork extends Network {
     void onIncoming(SCBVLC message) {
         var sender = message.getOriginating();
         handleIncomingData(new ByteQueue(message.getPayload()),
-                new OctetString(sender == null ? new byte[0] : sender.getBytes()));
+                new OctetString(sender == null ? new byte[0] : sender.getBytes()),
+                SCNetworkUtils.isBroadcast(message.getDestination()));
     }
 
     @Override

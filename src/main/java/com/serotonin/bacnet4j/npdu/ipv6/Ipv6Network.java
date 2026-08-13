@@ -330,7 +330,7 @@ public class Ipv6Network extends Network implements Runnable {
         NPDU npdu = null;
 
         if (function == 0x0) {
-            // BVLC-Result. Currently can only be the answer to the foreign device registration request.
+            // BVLC-Result. Currently, can only be the answer to the foreign device registration request.
             int result = BACnetUtils.popShort(queue);
             if (result != 0)
                 // TODO need to do something better here.
@@ -340,6 +340,8 @@ public class Ipv6Network extends Network implements Runnable {
             if (function == 0x1) // Unicast only
                 BACnetUtils.popDeviceId(queue);
             npdu = parseNpduData(queue, sourceVMAC);
+            if (npdu != null && function == 0x2)
+                npdu.broadcast(true);
         } else if (function == 0x3 || function == 0x4) {
             // Address-Resolution or Forwarded-Address-Resolution
             OctetString targetVMAC = BACnetUtils.popDeviceId(queue);
@@ -394,6 +396,9 @@ public class Ipv6Network extends Network implements Runnable {
             queue.pop(addr);
             vmacTable.put(sourceVMAC, new OctetString(addr));
             npdu = parseNpduData(queue, sourceVMAC);
+            if (npdu != null)
+                // A Forwarded-NPDU conveys a message that was originally broadcast.
+                npdu.broadcast(true);
         } else
             throw new MessageValidationException(
                     "Unhandled BVLC function type: 0x" + Integer.toHexString(function & 0xff));
