@@ -1399,9 +1399,9 @@ public class DefaultTransport implements Transport, Runnable {
         // CannotSendSegmentedComplexACK, case (c), the client's limit. Case (d), the number of segments this device
         // can transmit, is not implemented: it is a separate local quantity from Max_Segments_Accepted, which clause
         // 12.11.20 defines only as what this device will accept.
-        if (segmentsRequired > request.getMaxSegmentsAccepted().getMaxSegments()) {
+        if (segmentsRequired > request.getMaxSegmentsAccepted().getMaxSegmentCount()) {
             LOG.warn("Response requires {} segments but the client accepts at most {}", segmentsRequired,
-                    request.getMaxSegmentsAccepted().getMaxSegments());
+                    request.getMaxSegmentsAccepted().getMaxSegmentCount());
             throw new BACnetAbortException(AbortReason.bufferOverflow);
         }
 

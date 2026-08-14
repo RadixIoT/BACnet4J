@@ -38,20 +38,20 @@ public enum MaxSegments {
     MORE_THAN_64(7, Integer.MAX_VALUE), //
     ;
 
-    private byte id;
-    private int maxSegments;
+    private final byte id;
+    private final int maxSegmentCount;
 
-    MaxSegments(int id, int maxSegments) {
+    MaxSegments(int id, int maxSegmentCount) {
         this.id = (byte) id;
-        this.maxSegments = maxSegments;
+        this.maxSegmentCount = maxSegmentCount;
     }
 
     public byte getId() {
         return id;
     }
 
-    public int getMaxSegments() {
-        return maxSegments;
+    public int getMaxSegmentCount() {
+        return maxSegmentCount;
     }
 
     /**
@@ -64,16 +64,16 @@ public enum MaxSegments {
      * @return the value to encode
      */
     public static MaxSegments forCount(int count) {
-        if (count < UP_TO_2.maxSegments)
+        if (count < UP_TO_2.maxSegmentCount)
             throw new IllegalArgumentException("Segment count must be at least 2: " + count);
-        if (count > UP_TO_64.maxSegments)
+        if (count > UP_TO_64.maxSegmentCount)
             return MORE_THAN_64;
 
         // The greatest tier that does not overstate the count. UNSPECIFIED and MORE_THAN_64 are excluded implicitly,
         // because the check above has established that the count is no greater than that of UP_TO_64.
         MaxSegments best = UP_TO_2;
         for (MaxSegments value : values()) {
-            if (value.maxSegments <= count)
+            if (value.maxSegmentCount <= count)
                 best = value;
         }
         return best;
