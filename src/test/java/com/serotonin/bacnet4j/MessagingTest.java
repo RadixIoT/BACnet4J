@@ -31,8 +31,8 @@ import static com.serotonin.bacnet4j.TestUtils.assertListEqualsIgnoreOrder;
 import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
 import static com.serotonin.bacnet4j.TestUtils.toList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,8 +69,8 @@ import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
 import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.WriteAccessSpecification;
-import com.serotonin.bacnet4j.type.enumerated.EngineeringUnits;
 import com.serotonin.bacnet4j.type.enumerated.AbortReason;
+import com.serotonin.bacnet4j.type.enumerated.EngineeringUnits;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.EventState;
@@ -80,8 +80,8 @@ import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
-import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.type.primitive.Real;
+import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 /**
  * Primarily this is a test of the DefaultTransport, but also tests aspects of Network and LocalDevice.
