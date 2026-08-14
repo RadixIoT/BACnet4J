@@ -60,7 +60,7 @@ public enum MaxSegments {
      * than the given count, since the field cannot express an exact number above 64.
      *
      * @param count the number of segments accepted, which must be at least 2. Clause 12.11.20 requires
-     *            Max_Segments_Accepted to be greater than one for a device that receives segmented messages.
+     *              Max_Segments_Accepted to be greater than one for a device that receives segmented messages.
      * @return the value to encode
      */
     public static MaxSegments forCount(int count) {
