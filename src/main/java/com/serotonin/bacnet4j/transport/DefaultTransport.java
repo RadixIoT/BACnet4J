@@ -64,6 +64,7 @@ import com.serotonin.bacnet4j.exception.ServiceTooBigException;
 import com.serotonin.bacnet4j.npdu.NPDU;
 import com.serotonin.bacnet4j.npdu.Network;
 import com.serotonin.bacnet4j.npdu.NetworkIdentifier;
+import com.serotonin.bacnet4j.obj.DeviceObject;
 import com.serotonin.bacnet4j.service.acknowledgement.AcknowledgementService;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedRequestService;
 import com.serotonin.bacnet4j.service.confirmed.DeviceCommunicationControlRequest.EnableDisable;
@@ -71,21 +72,23 @@ import com.serotonin.bacnet4j.service.unconfirmed.IAmRequest;
 import com.serotonin.bacnet4j.service.unconfirmed.UnconfirmedRequestService;
 import com.serotonin.bacnet4j.service.unconfirmed.WhoIsRequest;
 import com.serotonin.bacnet4j.service.unconfirmed.YouAreRequest;
+import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
 import com.serotonin.bacnet4j.type.enumerated.AbortReason;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
+import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.RejectReason;
 import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 import com.serotonin.bacnet4j.type.error.ErrorClassAndCode;
 import com.serotonin.bacnet4j.type.primitive.OctetString;
+import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 import com.serotonin.bacnet4j.util.sero.ThreadUtils;
 
 public class DefaultTransport implements Transport, Runnable {
     static final Logger LOG = LoggerFactory.getLogger(DefaultTransport.class);
-    static final MaxSegments MAX_SEGMENTS = MaxSegments.MORE_THAN_64;
 
     final Map<Integer, OctetString> networkRouters = new ConcurrentHashMap<>();
 
@@ -171,6 +174,26 @@ public class DefaultTransport implements Transport, Runnable {
     @Override
     public int getSegWindow() {
         return segWindow;
+    }
+
+    /**
+     * The greatest number of segments this device will assemble from one message, which is the meaning clause
+     * 12.11.20 gives to Max_Segments_Accepted. It does not bound what this device sends.
+     * <p>
+     * This is read from the local device's Max_Segments_Accepted property on each use rather than cached, because
+     * that property is what remote devices read to learn the limit, and client code may write to it. A cached copy
+     * could disagree with what this device advertises.
+     *
+     * @return the segment limit, never less than two
+     */
+    int getMaxSegments() {
+        Encodable value = localDevice == null ? null : localDevice.get(PropertyIdentifier.maxSegmentsAccepted);
+        if (value instanceof UnsignedInteger u && u.intValue() >= 2)
+            return u.intValue();
+
+        // The property is absent, of the wrong type, or below the minimum that clause 12.11.20 allows for a device
+        // that receives segmented messages. Fall back rather than leave the message unbounded.
+        return DeviceObject.DEFAULT_MAX_SEGMENTS_ACCEPTED;
     }
 
     @Override
@@ -456,8 +479,8 @@ public class DefaultTransport implements Transport, Runnable {
                 ctx.setState(TsmState.AWAIT_CONFIRMATION);
                 ctx.setSentAllSegments(true);
                 // We can send the whole APDU in one shot.
-                ctx.setOriginalApdu(new ConfirmedRequest(false, false, true, MAX_SEGMENTS, network.getMaxApduLength(),
-                        key.getInvokeId(), (byte) 0, 0, service.getChoiceId(), serviceData,
+                ctx.setOriginalApdu(new ConfirmedRequest(false, false, true, MaxSegments.forCount(getMaxSegments()),
+                        network.getMaxApduLength(), key.getInvokeId(), (byte) 0, 0, service.getChoiceId(), serviceData,
                         service.getNetworkPriority()));
                 sendForResponse(key, ctx);
                 if (consumer != null) {
@@ -476,7 +499,9 @@ public class DefaultTransport implements Transport, Runnable {
 
             int segmentsRequired = UnackedMessageContext.segmentCount(serviceData.size(), maxServiceData);
 
-            // Clause 5.4.4.1 CannotSend. The check is only made when the peer's Max_Segments_Accepted is known.
+            // Clause 5.4.4.1 CannotSend. Only checked when the peer's Max_Segments_Accepted is known. There is no
+            // corresponding limit of this device's own: Max_Segments_Accepted is what this device will accept, and
+            // clause 12.11.20 says nothing about how many segments it will send.
             if (maxSegmentsAccepted != null && segmentsRequired > maxSegmentsAccepted) {
                 throw new ServiceTooBigException("Request requires " + segmentsRequired
                         + " segments but the device accepts at most " + maxSegmentsAccepted);
@@ -485,8 +510,9 @@ public class DefaultTransport implements Transport, Runnable {
             // Clause 5.4.4.1 SendConfirmedSegmented.
             UnackedMessageKey key = unackedMessages.addClient(address, linkService, ctx);
             ctx.setState(TsmState.SEGMENTED_REQUEST_CLIENT);
-            ctx.setSegmentTemplate(new ConfirmedRequest(true, true, true, MAX_SEGMENTS, network.getMaxApduLength(),
-                    key.getInvokeId(), 0, segWindow, service.getChoiceId(), null, service.getNetworkPriority()));
+            ctx.setSegmentTemplate(new ConfirmedRequest(true, true, true, MaxSegments.forCount(getMaxSegments()),
+                    network.getMaxApduLength(), key.getInvokeId(), 0, segWindow, service.getChoiceId(), null,
+                    service.getNetworkPriority()));
             ctx.setSegmentData(serviceData, maxServiceData);
 
             beginSendingSegments(key, ctx);
@@ -976,6 +1002,8 @@ public class DefaultTransport implements Transport, Runnable {
                 msg.getProposedWindowSize(), actualWindowSize);
 
         ctx.setSegmentedMessage(msg);
+        // Captured once here rather than read per segment, so that the limit cannot change part way through.
+        ctx.setMaxSegments(getMaxSegments());
         ctx.setActualWindowSize(actualWindowSize);
         ctx.setLastSequenceNumber(0);
         ctx.setInitialSequenceNumber(0);
@@ -989,6 +1017,15 @@ public class DefaultTransport implements Transport, Runnable {
         int seq = msg.getSequenceNumber() & 0xff;
 
         if (seq == SegmentSequence.next(ctx.getLastSequenceNumber())) {
+            // 5.4.4.4 NewSegmentReceived_NoSpace. The message is longer than this device is prepared to assemble.
+            // Without this the peer could go on sending segments until the heap was exhausted.
+            if (ctx.getSegmentsReceived() >= ctx.getMaxSegments()) {
+                LOG.warn("Aborting a segmented message from {} that exceeds the limit of {} segments",
+                        key.getAddress(), ctx.getMaxSegments());
+                abortTransaction(key, ctx, AbortReason.bufferOverflow);
+                return;
+            }
+
             // The next segment in order.
             ctx.appendSegment(msg);
             ctx.setLastSequenceNumber(seq);
@@ -1359,7 +1396,9 @@ public class DefaultTransport implements Transport, Runnable {
 
         int segmentsRequired = UnackedMessageContext.segmentCount(serviceData.size(), maxServiceData);
 
-        // CannotSendSegmentedComplexACK, cases (c) and (d).
+        // CannotSendSegmentedComplexACK, case (c), the client's limit. Case (d), the number of segments this device
+        // can transmit, is not implemented: it is a separate local quantity from Max_Segments_Accepted, which clause
+        // 12.11.20 defines only as what this device will accept.
         if (segmentsRequired > request.getMaxSegmentsAccepted().getMaxSegments()) {
             LOG.warn("Response requires {} segments but the client accepts at most {}", segmentsRequired,
                     request.getMaxSegmentsAccepted().getMaxSegments());

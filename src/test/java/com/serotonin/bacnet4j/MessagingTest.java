@@ -31,6 +31,7 @@ import static com.serotonin.bacnet4j.TestUtils.assertListEqualsIgnoreOrder;
 import static com.serotonin.bacnet4j.TestUtils.awaitTrue;
 import static com.serotonin.bacnet4j.TestUtils.toList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertNull;
 
 import java.util.ArrayList;
@@ -42,6 +43,7 @@ import org.junit.Test;
 
 import com.serotonin.bacnet4j.enums.MaxApduLength;
 import com.serotonin.bacnet4j.event.DeviceEventAdapter;
+import com.serotonin.bacnet4j.exception.AbortAPDUException;
 import com.serotonin.bacnet4j.exception.BACnetServiceException;
 import com.serotonin.bacnet4j.exception.BACnetTimeoutException;
 import com.serotonin.bacnet4j.exception.ErrorAPDUException;
@@ -68,6 +70,7 @@ import com.serotonin.bacnet4j.type.constructed.ServicesSupported;
 import com.serotonin.bacnet4j.type.constructed.StatusFlags;
 import com.serotonin.bacnet4j.type.constructed.WriteAccessSpecification;
 import com.serotonin.bacnet4j.type.enumerated.EngineeringUnits;
+import com.serotonin.bacnet4j.type.enumerated.AbortReason;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.EventState;
@@ -77,6 +80,7 @@ import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
 import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
+import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.type.primitive.Real;
 
 /**
@@ -404,6 +408,164 @@ public class MessagingTest {
         final CharacterString received = ack.getValue();
         assertEquals(longString.length(), received.getValue().length());
         assertEquals(longString, received.getValue());
+
+        d1.terminate();
+        d2.terminate();
+    }
+
+    /**
+     * A device lowers its Max_Segments_Accepted, and a peer sending a message longer than that is aborted with
+     * `bufferOverflow` rather than having the message assembled without bound.
+     * <p>
+     * This exercises the property as the source of the limit: the value is written by client code after the device
+     * is running, and the transport honours it without being reconfigured.
+     */
+    @Test
+    public void messageBeyondTheReceiversSegmentLimitIsAborted() throws Exception {
+        final LocalDevice d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
+        d1.initialize();
+
+        final LocalDevice d2 = new LocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 0)));
+        final ObjectIdentifier av0 = new ObjectIdentifier(ObjectType.analogValue, 0);
+        createAnalogValue(d2, 0);
+        d2.initialize();
+        // Only short APDUs, so the write has to be segmented, and only a handful of segments accepted.
+        d2.getDeviceObject().writePropertyInternal(PropertyIdentifier.maxApduLengthAccepted,
+                MaxApduLength.UP_TO_50.getMaxLength());
+        d2.getDeviceObject().writePropertyInternal(PropertyIdentifier.maxSegmentsAccepted, new UnsignedInteger(4));
+
+        d1.sendGlobalBroadcast(d1.getIAm());
+        d2.sendGlobalBroadcast(d2.getIAm());
+
+        final RemoteDevice r2 = d1.getRemoteDevice(2).get();
+        r2.setDeviceProperty(PropertyIdentifier.segmentationSupported, Segmentation.segmentedBoth);
+        final ServicesSupported ss = new ServicesSupported();
+        ss.setAll(true);
+        r2.setDeviceProperty(PropertyIdentifier.protocolServicesSupported, ss);
+
+        // Long enough to need far more than four segments.
+        final StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 100; i++)
+            sb.append(String.format("%04d-abcdefghij-", i));
+
+        final AbortAPDUException e = assertThrows(AbortAPDUException.class,
+                () -> d1.send(r2, new WritePropertyRequest(av0, PropertyIdentifier.description, null,
+                        new CharacterString(sb.toString()), null)).get());
+        assertEquals(AbortReason.bufferOverflow.intValue(), e.getApdu().getAbortReason().intValue());
+
+        d1.terminate();
+        d2.terminate();
+    }
+
+    /**
+     * A remote device cannot raise this device's Max_Segments_Accepted. The transport enforces that property as the
+     * limit on the segments it will assemble, so a writable property would let a peer lift the limit and then send a
+     * message of any size. Table 12-13 gives the property a conformance code of O rather than W, so refusing the
+     * write is conformant.
+     */
+    @Test
+    public void segmentationPropertiesCannotBeWrittenRemotely() throws Exception {
+        final LocalDevice d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
+        d1.initialize();
+
+        final LocalDevice d2 = new LocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 0)));
+        d2.initialize();
+
+        d1.sendGlobalBroadcast(d1.getIAm());
+        d2.sendGlobalBroadcast(d2.getIAm());
+
+        final RemoteDevice r2 = d1.getRemoteDevice(2).get();
+        final ServicesSupported ss = new ServicesSupported();
+        ss.setAll(true);
+        r2.setDeviceProperty(PropertyIdentifier.protocolServicesSupported, ss);
+
+        final UnsignedInteger before = d2.get(PropertyIdentifier.maxSegmentsAccepted);
+
+        final ErrorAPDUException e = assertThrows(ErrorAPDUException.class,
+                () -> d1.send(r2, new WritePropertyRequest(d2.getId(), PropertyIdentifier.maxSegmentsAccepted, null,
+                        new UnsignedInteger(2_000_000_000), null)).get());
+        assertEquals(ErrorClass.property, e.getError().getErrorClass());
+        assertEquals(ErrorCode.writeAccessDenied, e.getError().getErrorCode());
+
+        // The limit is unchanged, so the bound still holds.
+        assertEquals(before, d2.get(PropertyIdentifier.maxSegmentsAccepted));
+
+        // Segmentation_Supported is likewise read only. It declares a capability of this device rather than a
+        // setting, and Table 12-13 gives it a conformance code of R.
+        final ErrorAPDUException e2 = assertThrows(ErrorAPDUException.class,
+                () -> d1.send(r2, new WritePropertyRequest(d2.getId(), PropertyIdentifier.segmentationSupported, null,
+                        Segmentation.noSegmentation, null)).get());
+        assertEquals(ErrorCode.writeAccessDenied, e2.getError().getErrorCode());
+        assertEquals(Segmentation.segmentedBoth, d2.get(PropertyIdentifier.segmentationSupported));
+
+        // Max_APDU_Length_Accepted is read only for the same reason, and is likewise code R.
+        final ErrorAPDUException e3 = assertThrows(ErrorAPDUException.class,
+                () -> d1.send(r2, new WritePropertyRequest(d2.getId(), PropertyIdentifier.maxApduLengthAccepted, null,
+                        MaxApduLength.UP_TO_50.getMaxLength(), null)).get());
+        assertEquals(ErrorCode.writeAccessDenied, e3.getError().getErrorCode());
+
+        // Local code may still change them.
+        d2.getDeviceObject().writePropertyInternal(PropertyIdentifier.maxSegmentsAccepted, new UnsignedInteger(32));
+        assertEquals(new UnsignedInteger(32), d2.get(PropertyIdentifier.maxSegmentsAccepted));
+
+        d1.terminate();
+        d2.terminate();
+    }
+
+    /**
+     * A device configured with a custom Max_Segments_Accepted before it is started advertises that value to peers
+     * and enforces it, rather than the default. A message within the limit still succeeds, so the test distinguishes
+     * the configured limit being applied from everything simply being refused.
+     */
+    @Test
+    public void customMaxSegmentsIsAdvertisedAndEnforced() throws Exception {
+        final int maxSegments = 8;
+
+        final LocalDevice d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
+        d1.initialize();
+
+        final LocalDevice d2 = new LocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 0)));
+        final ObjectIdentifier av0 = new ObjectIdentifier(ObjectType.analogValue, 0);
+        createAnalogValue(d2, 0);
+        // Configure the device before starting it. Short APDUs, so that a modest string needs many segments.
+        d2.getDeviceObject().writePropertyInternal(PropertyIdentifier.maxApduLengthAccepted,
+                MaxApduLength.UP_TO_50.getMaxLength());
+        d2.getDeviceObject().writePropertyInternal(PropertyIdentifier.maxSegmentsAccepted,
+                new UnsignedInteger(maxSegments));
+        d2.initialize();
+
+        d1.sendGlobalBroadcast(d1.getIAm());
+        d2.sendGlobalBroadcast(d2.getIAm());
+
+        final RemoteDevice r2 = d1.getRemoteDevice(2).get();
+        r2.setDeviceProperty(PropertyIdentifier.segmentationSupported, Segmentation.segmentedBoth);
+        final ServicesSupported ss = new ServicesSupported();
+        ss.setAll(true);
+        r2.setDeviceProperty(PropertyIdentifier.protocolServicesSupported, ss);
+
+        // The configured value is what a peer reads, so it is also what a peer would size its messages against.
+        final ReadPropertyAck limitAck = d1.send(r2,
+                new ReadPropertyRequest(d2.getId(), PropertyIdentifier.maxSegmentsAccepted)).get();
+        assertEquals(new UnsignedInteger(maxSegments), limitAck.getValue());
+
+        // A segmented write needing fewer than the configured number of segments is accepted.
+        final String shortValue = "a".repeat(100);
+        d1.send(r2, new WritePropertyRequest(av0, PropertyIdentifier.description, null,
+                new CharacterString(shortValue), null)).get();
+        final ReadPropertyAck ack = d1.send(r2,
+                new ReadPropertyRequest(av0, PropertyIdentifier.description)).get();
+        assertEquals(shortValue, ack.getValue().toString());
+
+        // One needing more than the configured number is aborted.
+        final AbortAPDUException e = assertThrows(AbortAPDUException.class,
+                () -> d1.send(r2, new WritePropertyRequest(av0, PropertyIdentifier.description, null,
+                        new CharacterString("b".repeat(2_000)), null)).get());
+        assertEquals(AbortReason.bufferOverflow.intValue(), e.getApdu().getAbortReason().intValue());
+
+        // The rejected write did not take effect.
+        final ReadPropertyAck after = d1.send(r2,
+                new ReadPropertyRequest(av0, PropertyIdentifier.description)).get();
+        assertEquals(shortValue, after.getValue().toString());
 
         d1.terminate();
         d2.terminate();
