@@ -74,6 +74,7 @@ public class UnackedMessageContext {
     //
     private Segmentable segmentedMessage;
     private int segmentsReceived;
+    private int maxSegments;
 
     //
     // Sending a segmented message. The serialized service data is retained in full rather than consumed, because
@@ -249,6 +250,18 @@ public class UnackedMessageContext {
      */
     public int getSegmentsReceived() {
         return segmentsReceived;
+    }
+
+    /**
+     * The greatest number of segments this message may have, captured when it began so that the limit cannot change
+     * part way through assembling it.
+     */
+    public int getMaxSegments() {
+        return maxSegments;
+    }
+
+    public void setMaxSegments(int maxSegments) {
+        this.maxSegments = maxSegments;
     }
 
     //

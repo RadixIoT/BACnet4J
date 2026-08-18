@@ -81,6 +81,13 @@ import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 public class DeviceObject extends BACnetObject {
     private static final int VENDOR_ID = 865; // Radix IoT LLC
 
+    /**
+     * The value is intended to be large enough never to be reached by a legitimate message, while still bounding the
+     * memory a peer can cause to be allocated: at the largest APDU size it corresponds to roughly six megabytes per
+     * message. Client code may write a different value to the property, and the transport honours whatever it holds.
+     */
+    public static final int DEFAULT_MAX_SEGMENTS_ACCEPTED = 256;
+
     public DeviceObject(LocalDevice localDevice, int instanceNumber) {
         super(localDevice, ObjectType.device, instanceNumber, "BACnet4J device " + instanceNumber);
 
@@ -89,7 +96,8 @@ public class DeviceObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.vendorIdentifier, new Unsigned16(VENDOR_ID));
         writePropertyInternal(PropertyIdentifier.vendorName, new CharacterString("Radix IoT LLC"));
         writePropertyInternal(PropertyIdentifier.segmentationSupported, Segmentation.segmentedBoth);
-        writePropertyInternal(PropertyIdentifier.maxSegmentsAccepted, new UnsignedInteger(Integer.MAX_VALUE));
+        writePropertyInternal(PropertyIdentifier.maxSegmentsAccepted,
+                new UnsignedInteger(DEFAULT_MAX_SEGMENTS_ACCEPTED));
         writePropertyInternal(PropertyIdentifier.apduSegmentTimeout,
                 new UnsignedInteger(Transport.DEFAULT_SEG_TIMEOUT));
         writePropertyInternal(PropertyIdentifier.apduTimeout, new UnsignedInteger(Transport.DEFAULT_TIMEOUT));
@@ -253,7 +261,9 @@ public class DeviceObject extends BACnetObject {
         addMixin(new ActiveCovSubscriptionMixin(this));
         addMixin(new HasStatusFlagsMixin(this));
         addMixin(new ReadOnlyPropertyMixin(this, PropertyIdentifier.activeCovSubscriptions,
-                PropertyIdentifier.localTime, PropertyIdentifier.localDate, PropertyIdentifier.deviceAddressBinding));
+                PropertyIdentifier.localTime, PropertyIdentifier.localDate, PropertyIdentifier.deviceAddressBinding,
+                PropertyIdentifier.segmentationSupported, PropertyIdentifier.maxSegmentsAccepted,
+                PropertyIdentifier.maxApduLengthAccepted));
         addMixin(new ObjectListMixin(this));
     }
 

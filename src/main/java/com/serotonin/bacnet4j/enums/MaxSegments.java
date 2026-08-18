@@ -38,20 +38,45 @@ public enum MaxSegments {
     MORE_THAN_64(7, Integer.MAX_VALUE), //
     ;
 
-    private byte id;
-    private int maxSegments;
+    private final byte id;
+    private final int maxSegmentCount;
 
-    MaxSegments(int id, int maxSegments) {
+    MaxSegments(int id, int maxSegmentCount) {
         this.id = (byte) id;
-        this.maxSegments = maxSegments;
+        this.maxSegmentCount = maxSegmentCount;
     }
 
     public byte getId() {
         return id;
     }
 
-    public int getMaxSegments() {
-        return maxSegments;
+    public int getMaxSegmentCount() {
+        return maxSegmentCount;
+    }
+
+    /**
+     * Returns the value to encode in the 'max-segments-accepted' field of a confirmed request for a device that
+     * accepts the given number of segments. This is the greatest value that does not claim to accept more segments
+     * than the given count, since the field cannot express an exact number above 64.
+     *
+     * @param count the number of segments accepted, which must be at least 2. Clause 12.11.20 requires
+     *              Max_Segments_Accepted to be greater than one for a device that receives segmented messages.
+     * @return the value to encode
+     */
+    public static MaxSegments forCount(int count) {
+        if (count < UP_TO_2.maxSegmentCount)
+            throw new IllegalArgumentException("Segment count must be at least 2: " + count);
+        if (count > UP_TO_64.maxSegmentCount)
+            return MORE_THAN_64;
+
+        // The greatest tier that does not overstate the count. UNSPECIFIED and MORE_THAN_64 are excluded implicitly,
+        // because the check above has established that the count is no greater than that of UP_TO_64.
+        MaxSegments best = UP_TO_2;
+        for (MaxSegments value : values()) {
+            if (value.maxSegmentCount <= count)
+                best = value;
+        }
+        return best;
     }
 
     public static MaxSegments valueOf(byte id) {

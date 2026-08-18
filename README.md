@@ -137,7 +137,7 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
   are now the modulo 256 values the standard defines, so messages of more than 256 segments are sent and received
   correctly; previously such a transfer stalled at the wrap and timed out with no abort sent. Segments received out of
   order are now discarded and negatively acknowledged, as the standard requires, rather than being buffered and
-  reordered. Negative segment acknowledgements are also now sent once too many duplicates arr**ive within a window, and
+  reordered. Negative segment acknowledgements are also now sent once too many duplicates arrive within a window, and
   are acted upon when received. After a segment timeout the segments of the current window are retransmitted rather than
   the first segment of the message.
 - A segmented message whose proposed window size is outside the range 1 to 127 is now aborted with
@@ -152,6 +152,18 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
   `DiscoveryUtils.getExtendedDeviceInformation`, so for a device discovered by broadcast it is unknown and such a
   request is attempted as before, which is what clause 5.4.4.1 requires. The existing `send` overloads are unchanged, so
   this is not a breaking change.
+- The Device object's Max_Segments_Accepted property now defaults to 256 rather than 2147483647, and the transport
+  enforces it. This value is intended to be unrealistically large while still not being irresponsibly so. A segmented
+  message longer than the property allows is aborted with `bufferOverflow` rather than assembled, closing an attack by
+  which a peer could exhaust the heap. The limit is read from the property on each use, so a value written by client
+  code takes effect immediately, and the 'max-segments-accepted' field of outgoing confirmed requests is now derived
+  from it rather than being fixed at 'more than 64'. Clause 12.11.20 defines the property as the number of segments a
+  device will accept and says nothing about how many it will send, so it does not bound outgoing messages.
+- The Device object properties Max_Segments_Accepted, Segmentation_Supported and Max_APDU_Length_Accepted are no longer
+  writable by remote devices, which now receive an error of `writeAccessDenied`. They declare capabilities that the
+  transport enforces, and a writable Max_Segments_Accepted would have let a peer raise the limit described above and
+  then send a message of any size. Table 12-13 gives the three conformance codes of O, R and R, none of which is W, so
+  refusing the writes is conformant. Local code can still change them with `writePropertyInternal`.
 
 *Version 6.2.0*
 
