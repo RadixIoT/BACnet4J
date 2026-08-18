@@ -133,6 +133,25 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
 - Fixes: corrupt tag lengths no longer raise `ArithmeticException` or `NegativeArraySizeException` while decoding;
   `Enumerated` values that are a multiple of 2^32 no longer encode with an incorrect length; and a zero length
   `SignedInteger` no longer raises `NumberFormatException`.
+- Segmentation handling has been rewritten to follow clause 5.4 as amended by addendum 135-2020ch-1. Sequence numbers
+  are now the modulo 256 values the standard defines, so messages of more than 256 segments are sent and received
+  correctly; previously such a transfer stalled at the wrap and timed out with no abort sent. Segments received out of
+  order are now discarded and negatively acknowledged, as the standard requires, rather than being buffered and
+  reordered. Negative segment acknowledgements are also now sent once too many duplicates arr**ive within a window, and
+  are acted upon when received. After a segment timeout the segments of the current window are retransmitted rather than
+  the first segment of the message.
+- A segmented message whose proposed window size is outside the range 1 to 127 is now aborted with
+  `windowSizeOutOfRange` instead of stalling, and `Transport.setSegWindow` clamps its argument to that range.
+- Confirmed requests received at a broadcast or multicast address are now discarded without a response.
+- Abort reasons have been corrected. A response that cannot be segmented because the client will not accept one is now
+  `segmentationNotSupported` rather than `bufferOverflow`, and segment acknowledgements are now sent with
+  data-expecting-reply false.
+- `RemoteDevice.getMaxSegmentsAccepted()` has been added, and `Transport.send` has two new overloads that accept it.
+  Where the peer's `Max_Segments_Accepted` is known, a request needing more segments than that is now failed locally
+  rather than attempted. The property is not carried by I-Am and is read only by
+  `DiscoveryUtils.getExtendedDeviceInformation`, so for a device discovered by broadcast it is unknown and such a
+  request is attempted as before, which is what clause 5.4.4.1 requires. The existing `send` overloads are unchanged, so
+  this is not a breaking change.
 
 *Version 6.2.0*
 
@@ -212,7 +231,7 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
 
 *Version 4.1.7*
 
-- Add support for Relatime MS/TP linux realtime driver to handle token passing timing
+- Add support for Realtime MS/TP Linux realtime driver to handle token passing timing
 - Change Vendor ID to 865 Infinite Automation Systems, Inc.
 
 *Version 4.1.6*

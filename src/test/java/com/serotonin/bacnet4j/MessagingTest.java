@@ -75,13 +75,12 @@ import com.serotonin.bacnet4j.type.enumerated.ObjectType;
 import com.serotonin.bacnet4j.type.enumerated.PropertyIdentifier;
 import com.serotonin.bacnet4j.type.enumerated.Segmentation;
 import com.serotonin.bacnet4j.type.primitive.Boolean;
+import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.ObjectIdentifier;
 import com.serotonin.bacnet4j.type.primitive.Real;
 
 /**
  * Primarily this is a test of the DefaultTransport, but also tests aspects of Network and LocalDevice.
- *
- * @author Matthew
  */
 public class MessagingTest {
     private TestNetworkMap map;
@@ -112,12 +111,12 @@ public class MessagingTest {
 
         d1.sendLocalBroadcast(new WhoIsRequest());
 
-        awaitTrue(() -> o.getValue() != null);
+        awaitTrue(() -> o.get() != null);
 
         d1.terminate();
         d2.terminate();
 
-        assertEquals(a2, o.getValue().getAddress());
+        assertEquals(a2, o.get().getAddress());
     }
 
     @Test
@@ -304,6 +303,107 @@ public class MessagingTest {
         assertNull(ack.getPropertyArrayIndex());
         assertEquals(PropertyIdentifier.units, ack.getPropertyIdentifier());
         assertEquals(EngineeringUnits.btus, ack.getValue());
+
+        d1.terminate();
+        d2.terminate();
+    }
+
+    /**
+     * Sequence numbers are modulo 256, so a segmented message may be longer than 256 segments. Sending the request
+     * to a device that accepts only 50 octet APDUs forces enough segments for the sequence numbers to wrap. Before
+     * the segmentation rewrite this stalled at the wrap and timed out.
+     */
+    @Test
+    public void segmentedRequestLongerThanTheSequenceNumberSpace() throws Exception {
+        final int objectCount = 600;
+
+        final LocalDevice d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
+        d1.initialize();
+
+        final LocalDevice d2 = new LocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 0)));
+        for (int i = 0; i < objectCount; i++)
+            createAnalogValue(d2, i);
+        d2.initialize();
+        // Have the second device accept only short APDUs, so that the request needs more than 256 segments. This is
+        // what its I-Am advertises, and so what the first device uses when it segments.
+        d2.getDeviceObject().writePropertyInternal(PropertyIdentifier.maxApduLengthAccepted,
+                MaxApduLength.UP_TO_50.getMaxLength());
+
+        d1.sendGlobalBroadcast(d1.getIAm());
+        d2.sendGlobalBroadcast(d2.getIAm());
+
+        final RemoteDevice r2 = d1.getRemoteDevice(2).get();
+        r2.setDeviceProperty(PropertyIdentifier.segmentationSupported, Segmentation.segmentedBoth);
+        final ServicesSupported ss = new ServicesSupported();
+        ss.setAll(true);
+        r2.setDeviceProperty(PropertyIdentifier.protocolServicesSupported, ss);
+
+        final List<PropertyValue> propertyValues = new ArrayList<>();
+        propertyValues.add(new PropertyValue(PropertyIdentifier.presentValue, new Real(2.28F)));
+        propertyValues.add(new PropertyValue(PropertyIdentifier.units, EngineeringUnits.btus));
+        final List<WriteAccessSpecification> specs = new ArrayList<>();
+        for (int i = 0; i < objectCount; i++)
+            specs.add(new WriteAccessSpecification(new ObjectIdentifier(ObjectType.analogValue, i),
+                    new SequenceOf<>(propertyValues)));
+
+        assertEquals(MaxApduLength.UP_TO_50.getMaxLengthInt(), r2.getMaxAPDULengthAccepted());
+        d1.send(r2, new WritePropertyMultipleRequest(new SequenceOf<>(specs))).get();
+
+        // Read one of the just-written values to confirm the whole request was received and applied.
+        final ReadPropertyAck ack = d1.send(r2, new ReadPropertyRequest(
+                new ObjectIdentifier(ObjectType.analogValue, objectCount - 1), PropertyIdentifier.units)).get();
+        assertEquals(EngineeringUnits.btus, ack.getValue());
+
+        d1.terminate();
+        d2.terminate();
+    }
+
+    /**
+     * Writes a single long character string, which has to be segmented on the way out and again on the way back, and
+     * compares it with what was sent.
+     * <p>
+     * The other segmentation tests establish that a transfer completes; this one establishes that it reassembles
+     * faithfully. Because the value is one contiguous string rather than many independent elements, an off by one at
+     * a segment boundary, or a dropped, duplicated or reordered window, changes the value that comes back. Each
+     * sixteen character block carries its own index so that such a fault is localised rather than merely detected.
+     */
+    @Test
+    public void segmentedCharacterStringRoundTrip() throws Exception {
+        final StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 500; i++)
+            sb.append(String.format("%04d-abcdefghij-", i));
+        final String longString = sb.toString();
+
+        final LocalDevice d1 = new LocalDevice(1, new DefaultTransport(new TestNetwork(map, 1, 0)));
+        d1.initialize();
+
+        final LocalDevice d2 = new LocalDevice(2, new DefaultTransport(new TestNetwork(map, 2, 0)));
+        final ObjectIdentifier av0 = new ObjectIdentifier(ObjectType.analogValue, 0);
+        createAnalogValue(d2, 0);
+        d2.initialize();
+        // Have the second device accept only short APDUs, so that the write has to be segmented.
+        d2.getDeviceObject().writePropertyInternal(PropertyIdentifier.maxApduLengthAccepted,
+                MaxApduLength.UP_TO_50.getMaxLength());
+
+        d1.sendGlobalBroadcast(d1.getIAm());
+        d2.sendGlobalBroadcast(d2.getIAm());
+
+        final RemoteDevice r2 = d1.getRemoteDevice(2).get();
+        r2.setDeviceProperty(PropertyIdentifier.segmentationSupported, Segmentation.segmentedBoth);
+        final ServicesSupported ss = new ServicesSupported();
+        ss.setAll(true);
+        r2.setDeviceProperty(PropertyIdentifier.protocolServicesSupported, ss);
+
+        assertEquals(MaxApduLength.UP_TO_50.getMaxLengthInt(), r2.getMaxAPDULengthAccepted());
+        d1.send(r2, new WritePropertyRequest(av0, PropertyIdentifier.description, null,
+                new CharacterString(longString), null)).get();
+
+        // Read it back. The response exceeds this device's APDU length, so it is segmented as well.
+        final ReadPropertyAck ack = d1.send(r2, new ReadPropertyRequest(av0, PropertyIdentifier.description)).get();
+
+        final CharacterString received = ack.getValue();
+        assertEquals(longString.length(), received.getValue().length());
+        assertEquals(longString, received.getValue());
 
         d1.terminate();
         d2.terminate();

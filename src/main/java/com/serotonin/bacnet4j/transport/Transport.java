@@ -97,5 +97,23 @@ public interface Transport {
     void send(Address address, int maxAPDULengthAccepted, Segmentation segmentationSupported,
             ConfirmedRequestService service, ResponseConsumer consumer);
 
+    /**
+     * @param maxSegmentsAccepted the maximum number of segments the peer will accept, or null if it is not known. See
+     *                            clause 5.4.4.1 CannotSend.
+     */
+    default ServiceFuture send(Address address, int maxAPDULengthAccepted, Segmentation segmentationSupported,
+            Integer maxSegmentsAccepted, ConfirmedRequestService service) {
+        return send(address, maxAPDULengthAccepted, segmentationSupported, service);
+    }
+
+    /**
+     * @param maxSegmentsAccepted the maximum number of segments the peer will accept, or null if it is not known. See
+     *                            clause 5.4.4.1 CannotSend.
+     */
+    default void send(Address address, int maxAPDULengthAccepted, Segmentation segmentationSupported,
+            Integer maxSegmentsAccepted, ConfirmedRequestService service, ResponseConsumer consumer) {
+        send(address, maxAPDULengthAccepted, segmentationSupported, service, consumer);
+    }
+
     void incoming(NPDU npdu);
 }

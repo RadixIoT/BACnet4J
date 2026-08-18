@@ -42,6 +42,12 @@ public class NPDU {
     private final ByteQueue queue;
 
     /**
+     * Whether the message was addressed to a broadcast or multicast address, either at the network layer or at the
+     * data link layer. Clause 5.4.5.1 requires that confirmed requests so addressed be ignored.
+     */
+    private boolean broadcast;
+
+    /**
      * Constructor for APDU messages.
      */
     public NPDU(Address from, OctetString linkService, ByteQueue queue) {
@@ -75,6 +81,18 @@ public class NPDU {
         return networkMessage;
     }
 
+    /**
+     * Whether the message was addressed to a broadcast or multicast address.
+     */
+    public boolean isBroadcast() {
+        return broadcast;
+    }
+
+    public NPDU broadcast(boolean broadcast) {
+        this.broadcast = broadcast;
+        return this;
+    }
+
     public int getNetworkMessageType() {
         return networkMessageType;
     }
@@ -98,7 +116,8 @@ public class NPDU {
     public String toString() {
         if (networkMessage)
             return "NPDU [from=" + from + ", linkService=" + linkService + ", networkMessageType=" + networkMessageType
-                    + "]";
-        return "NPDU [from=" + from + ", linkService=" + linkService + ", queue=" + queue + "]";
+                    + ", broadcast=" + broadcast + "]";
+        return "NPDU [from=" + from + ", linkService=" + linkService + ", broadcast=" + broadcast + ", queue=" + queue
+                + "]";
     }
 }

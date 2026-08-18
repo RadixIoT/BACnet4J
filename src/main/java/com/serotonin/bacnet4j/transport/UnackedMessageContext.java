@@ -28,7 +28,6 @@
 package com.serotonin.bacnet4j.transport;
 
 import java.time.Clock;
-import java.util.Arrays;
 
 import com.serotonin.bacnet4j.ResponseConsumer;
 import com.serotonin.bacnet4j.apdu.APDU;
@@ -36,6 +35,10 @@ import com.serotonin.bacnet4j.apdu.Segmentable;
 import com.serotonin.bacnet4j.service.confirmed.ConfirmedRequestService;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
+/**
+ * The state of a single transaction, i.e. an instance of one of the Transaction State Machines of clause 5.4. The
+ * variable names of clause 5.4.1 are used where applicable.
+ */
 public class UnackedMessageContext {
     private long deadline;
     private int attemptsLeft;
@@ -51,35 +54,56 @@ public class UnackedMessageContext {
     // The original APDU for resending in case of timeout.
     private APDU originalApdu;
 
-    // Segment info for receiving segmented messages.
-    private SegmentWindow segmentWindow;
+    // The state of this transaction's state machine.
+    private TsmState state;
+
+    //
+    // Clause 5.4.1 segmentation variables. Sequence numbers are unsigned eight bit values; all arithmetic on them is
+    // modulo 256. See SegmentSequence.
+    //
+    private int lastSequenceNumber;
+    private int initialSequenceNumber;
+    private int actualWindowSize;
+    private int proposedWindowSize;
+    private int duplicateCount;
+    private int segmentRetryCount;
+    private boolean sentAllSegments;
+
+    //
+    // Receiving a segmented message.
+    //
     private Segmentable segmentedMessage;
+    private int segmentsReceived;
 
-    // Segment info for sending segmented messages.
+    //
+    // Sending a segmented message. The serialized service data is retained in full rather than consumed, because
+    // FillWindow must be able to retransmit the segments of the current window.
+    //
     private Segmentable segmentTemplate;
-    private ByteQueue serviceData;
-    private byte[] segBuf;
-    private int lastIdSent;
+    private byte[] segmentData;
+    private int segmentSize;
+    private int segmentCount;
+    private int windowStartIndex;
 
-    public UnackedMessageContext(final Clock clock, final int timeout, final int retries,
-            final ResponseConsumer consumer, final ConfirmedRequestService service) {
+    public UnackedMessageContext(Clock clock, int timeout, int retries, ResponseConsumer consumer,
+            ConfirmedRequestService service) {
         this.clock = clock;
         reset(timeout, retries);
         this.consumer = consumer;
         this.service = service;
     }
 
-    public void retry(final int timeout) {
+    public void retry(int timeout) {
         this.deadline = clock.millis() + timeout;
         attemptsLeft--;
     }
 
-    public void reset(final int timeout, final int retries) {
+    public void reset(int timeout, int retries) {
         this.deadline = clock.millis() + timeout;
         this.attemptsLeft = retries;
     }
 
-    public void resetTimer(final int timeout) {
+    public void resetTimer(int timeout) {
         this.deadline = clock.millis() + timeout;
     }
 
@@ -103,64 +127,196 @@ public class UnackedMessageContext {
         return originalApdu;
     }
 
-    public void setOriginalApdu(final APDU originalApdu) {
+    public void setOriginalApdu(APDU originalApdu) {
         this.originalApdu = originalApdu;
     }
 
-    public SegmentWindow getSegmentWindow() {
-        return segmentWindow;
+    public TsmState getState() {
+        return state;
     }
 
-    public void setSegmentWindow(final SegmentWindow segmentWindow) {
-        this.segmentWindow = segmentWindow;
+    public void setState(TsmState state) {
+        this.state = state;
     }
 
+    public boolean isExpired(long now) {
+        return deadline < now;
+    }
+
+    //
+    //
+    // Clause 5.4.1 variables
+    //
+    public int getLastSequenceNumber() {
+        return lastSequenceNumber;
+    }
+
+    public void setLastSequenceNumber(int lastSequenceNumber) {
+        this.lastSequenceNumber = lastSequenceNumber;
+    }
+
+    public int getInitialSequenceNumber() {
+        return initialSequenceNumber;
+    }
+
+    public void setInitialSequenceNumber(int initialSequenceNumber) {
+        this.initialSequenceNumber = initialSequenceNumber;
+    }
+
+    public int getActualWindowSize() {
+        return actualWindowSize;
+    }
+
+    public void setActualWindowSize(int actualWindowSize) {
+        this.actualWindowSize = actualWindowSize;
+    }
+
+    /**
+     * The window size this device proposes on each segment it sends. Clause 5.4.3 FillWindow puts this value, rather
+     * than the negotiated ActualWindowSize, into every transmitted segment.
+     */
+    public int getProposedWindowSize() {
+        return proposedWindowSize;
+    }
+
+    public void setProposedWindowSize(int proposedWindowSize) {
+        this.proposedWindowSize = proposedWindowSize;
+    }
+
+    public int getDuplicateCount() {
+        return duplicateCount;
+    }
+
+    public void setDuplicateCount(int duplicateCount) {
+        this.duplicateCount = duplicateCount;
+    }
+
+    public void incrementDuplicateCount() {
+        duplicateCount++;
+    }
+
+    /**
+     * Ndup, the number of duplicates that will be silently dropped per window before a negative segment
+     * acknowledgement is returned. Clause 5.4.1 defines this as being equal to ActualWindowSize.
+     */
+    public int getNdup() {
+        return getActualWindowSize();
+    }
+
+    public int getSegmentRetryCount() {
+        return segmentRetryCount;
+    }
+
+    public void setSegmentRetryCount(int segmentRetryCount) {
+        this.segmentRetryCount = segmentRetryCount;
+    }
+
+    public void incrementSegmentRetryCount() {
+        segmentRetryCount++;
+    }
+
+    public boolean isSentAllSegments() {
+        return sentAllSegments;
+    }
+
+    public void setSentAllSegments(boolean sentAllSegments) {
+        this.sentAllSegments = sentAllSegments;
+    }
+
+    //
+    //
+    // Receiving a segmented message
+    //
     public Segmentable getSegmentedMessage() {
         return segmentedMessage;
     }
 
-    public void setSegmentedMessage(final Segmentable segmentedResponse) {
+    public void setSegmentedMessage(Segmentable segmentedResponse) {
         this.segmentedMessage = segmentedResponse;
+        this.segmentsReceived = 1;
     }
 
-    public boolean isExpired(final long now) {
-        return deadline < now;
+    /**
+     * Appends the given segment's service data onto the message being assembled.
+     */
+    public void appendSegment(Segmentable segment) {
+        segmentedMessage.appendServiceData(segment.getServiceData());
+        segmentsReceived++;
     }
 
+    /**
+     * The number of segments of the incoming message that have been saved, including the first.
+     */
+    public int getSegmentsReceived() {
+        return segmentsReceived;
+    }
+
+    //
+    //
+    // Sending a segmented message
+    //
     public Segmentable getSegmentTemplate() {
         return segmentTemplate;
     }
 
-    public void setSegmentTemplate(final Segmentable segmentTemplate) {
+    public void setSegmentTemplate(Segmentable segmentTemplate) {
         this.segmentTemplate = segmentTemplate;
     }
 
-    public ByteQueue getServiceData() {
-        return serviceData;
+    /**
+     * Sets the data to be segmented, and the maximum size of each segment.
+     */
+    public void setSegmentData(ByteQueue serviceData, int segmentSize) {
+        this.segmentData = serviceData.popAll();
+        this.segmentSize = segmentSize;
+        this.segmentCount = segmentCount(this.segmentData.length, segmentSize);
+        this.windowStartIndex = 0;
     }
 
-    public void setServiceData(final ByteQueue serviceData) {
-        this.serviceData = serviceData;
+    /**
+     * The number of segments required to send the given number of bytes.
+     */
+    public static int segmentCount(int dataLength, int segmentSize) {
+        if (dataLength == 0)
+            return 1;
+        return (dataLength + segmentSize - 1) / segmentSize;
     }
 
-    public void setSegBuf(final byte[] segBuf) {
-        this.segBuf = segBuf;
+    /**
+     * The total number of segments in the message being sent.
+     */
+    public int getSegmentCount() {
+        return segmentCount;
     }
 
-    public ByteQueue getNextSegment() {
-        final int count = serviceData.pop(segBuf);
-        return new ByteQueue(segBuf, 0, count);
+    /**
+     * The absolute index of the first segment of the current window.
+     */
+    public int getWindowStartIndex() {
+        return windowStartIndex;
     }
 
-    public int getLastIdSent() {
-        return lastIdSent;
+    public void setWindowStartIndex(int windowStartIndex) {
+        this.windowStartIndex = windowStartIndex;
     }
 
-    public void setLastIdSent(final int lastIdSent) {
-        this.lastIdSent = lastIdSent;
+    /**
+     * The data of the segment at the given absolute index.
+     */
+    public ByteQueue getSegment(int index) {
+        int offset = index * segmentSize;
+        int length = Math.min(segmentSize, segmentData.length - offset);
+        return new ByteQueue(segmentData, offset, length);
     }
 
-    public void useConsumer(final ConsumerClient client) {
+    /**
+     * Whether the segment at the given absolute index is the last one of the message.
+     */
+    public boolean isFinalSegment(int index) {
+        return index == segmentCount - 1;
+    }
+
+    public void useConsumer(ConsumerClient client) {
         if (consumer != null) {
             client.use(consumer);
         }
@@ -169,14 +325,17 @@ public class UnackedMessageContext {
     @Override
     public String toString() {
         return "UnackedMessageContext [deadline=" + deadline + ", attemptsLeft=" + attemptsLeft + ", clock=" + clock
-                + ", service=" + service + ", consumer=" + consumer + ", originalApdu=" + originalApdu
-                + ", segmentWindow=" + segmentWindow + ", segmentedMessage=" + segmentedMessage + ", segmentTemplate="
-                + segmentTemplate + ", serviceData=" + serviceData + ", segBuf=" + Arrays.toString(segBuf)
-                + ", lastIdSent=" + lastIdSent + "]";
+                + ", service=" + service + ", consumer=" + consumer + ", originalApdu=" + originalApdu + ", state="
+                + state + ", lastSequenceNumber=" + lastSequenceNumber + ", initialSequenceNumber="
+                + initialSequenceNumber + ", actualWindowSize=" + actualWindowSize + ", proposedWindowSize="
+                + proposedWindowSize + ", duplicateCount=" + duplicateCount + ", segmentRetryCount=" + segmentRetryCount
+                + ", sentAllSegments=" + sentAllSegments + ", segmentedMessage=" + segmentedMessage
+                + ", segmentsReceived=" + segmentsReceived + ", segmentTemplate=" + segmentTemplate + ", segmentCount="
+                + segmentCount + ", windowStartIndex=" + windowStartIndex + "]";
     }
 
     @FunctionalInterface
-    public static interface ConsumerClient {
+    public interface ConsumerClient {
         void use(ResponseConsumer consumer);
     }
 }

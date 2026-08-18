@@ -1069,7 +1069,7 @@ public class LocalDevice implements AutoCloseable {
     public ServiceFuture send(RemoteDevice d, ConfirmedRequestService serviceRequest) {
         ensureInitialized(serviceRequest);
         return transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(),
-                serviceRequest);
+                d.getMaxSegmentsAccepted(), serviceRequest);
     }
 
     public ServiceFuture send(Address address, ConfirmedRequestService serviceRequest) {
@@ -1085,8 +1085,8 @@ public class LocalDevice implements AutoCloseable {
 
     public void send(RemoteDevice d, ConfirmedRequestService serviceRequest, ResponseConsumer consumer) {
         ensureInitialized(serviceRequest);
-        transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(), serviceRequest,
-                consumer);
+        transport.send(d.getAddress(), d.getMaxAPDULengthAccepted(), d.getSegmentationSupported(),
+                d.getMaxSegmentsAccepted(), serviceRequest, consumer);
     }
 
     public void send(Address address, ConfirmedRequestService serviceRequest, ResponseConsumer consumer) {

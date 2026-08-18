@@ -192,6 +192,22 @@ public class RemoteDevice implements Serializable {
         return getDeviceProperty(PropertyIdentifier.segmentationSupported);
     }
 
+    /**
+     * The maximum number of segments of an APDU that this device will accept, or null if it is not known. Clause
+     * 5.4.4.1 distinguishes these cases: a request that requires more segments than a known value can be sent is
+     * aborted rather than attempted.
+     */
+    public Integer getMaxSegmentsAccepted() {
+        // The cache can hold an ErrorClassAndCode for a property whose read failed, so the type is checked rather
+        // than cast. A value of zero is not legal for this property, whose value is a count and not the encoding
+        // used by the 'max-segments-accepted' APDU field, so it is reported as unknown rather than as a limit of
+        // zero, which would prevent any segmented message from ever being sent to the device.
+        Encodable p = getDeviceProperty(PropertyIdentifier.maxSegmentsAccepted);
+        if (!(p instanceof UnsignedInteger u) || u.intValue() == 0)
+            return null;
+        return u.intValue();
+    }
+
     public int getVendorIdentifier() {
         // This is actually an Unsigned16, but it will work anyway.
         return getUnsignedIntegerProperty(PropertyIdentifier.vendorIdentifier);

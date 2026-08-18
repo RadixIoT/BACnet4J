@@ -199,10 +199,20 @@ public abstract class Network {
         return nn == Address.LOCAL_NETWORK || nn == localNetworkNumber;
     }
 
-    protected synchronized void handleIncomingData(ByteQueue queue, OctetString linkService) {
+    protected void handleIncomingData(ByteQueue queue, OctetString linkService) {
+        handleIncomingData(queue, linkService, false);
+    }
+
+    /**
+     * @param broadcast whether the data link layer received the message at a broadcast or multicast address. Network
+     *                  layer broadcast is determined separately, in parseNpduData.
+     */
+    protected synchronized void handleIncomingData(ByteQueue queue, OctetString linkService, boolean broadcast) {
         try {
             NPDU npdu = handleIncomingDataImpl(queue, linkService);
             if (npdu != null) {
+                if (broadcast)
+                    npdu.broadcast(true);
                 LOG.debug("Received NPDU from {}: {}", linkService, npdu);
                 getTransport().incoming(npdu);
             }
@@ -251,11 +261,16 @@ public abstract class Network {
             LOG.debug("Received NPDU from remote network. From={}, local={}", from, localNetworkNumber);
         }
 
+        // A message is broadcast at the network layer if it is addressed to the global network, or if it carries
+        // destination information with a zero length address, which denotes a broadcast on the destination network.
+        boolean broadcast = npci.hasDestinationInfo()
+                && (npci.getDestinationNetwork() == 0xffff || npci.isDestinationBroadcast());
+
         if (npci.isNetworkMessage())
             // Network message
-            return new NPDU(from, ls, npci.getMessageType(), queue);
+            return new NPDU(from, ls, npci.getMessageType(), queue).broadcast(broadcast);
 
         // APDU message
-        return new NPDU(from, ls, queue);
+        return new NPDU(from, ls, queue).broadcast(broadcast);
     }
 }

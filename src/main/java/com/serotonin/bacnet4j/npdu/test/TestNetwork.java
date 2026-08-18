@@ -185,23 +185,23 @@ public class TestNetwork extends Network implements Runnable {
                 if (d.recipient.equals(getLocalBroadcastAddress()) || d.recipient.equals(Address.GLOBAL)) {
                     // A broadcast. Send to everyone.
                     for (TestNetwork network : networkMap)
-                        receive(network, d.data);
+                        receive(network, d.data, true);
                 } else {
                     // A directed message. Find the network to pass it to.
                     TestNetwork network = networkMap.get(d.recipient);
                     if (network != null)
-                        receive(network, d.data);
+                        receive(network, d.data, false);
                 }
             }
         }
     }
 
     /**
-     * Passes the the data over to the given network instance.
+     * Passes the data over to the given network instance.
      */
-    private void receive(TestNetwork recipient, byte[] data) {
+    private void receive(TestNetwork recipient, byte[] data, boolean broadcast) {
         LOG.debug("Sending data from {} to {}", address, recipient.address);
-        recipient.handleIncomingData(new ByteQueue(data), address.getMacAddress());
+        recipient.handleIncomingData(new ByteQueue(data), address.getMacAddress(), broadcast);
     }
 
     @Override

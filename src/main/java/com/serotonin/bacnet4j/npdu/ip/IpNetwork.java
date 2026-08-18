@@ -587,6 +587,9 @@ public class IpNetwork extends Network {
                 queue.pop(address);
                 OctetString origin = new OctetString(address);
                 npdu = parseNpduData(queue, origin);
+                if (npdu != null)
+                    // A Forwarded-NPDU conveys a message that was originally broadcast.
+                    npdu.broadcast(true);
             }
         } else if (function == 0x5)
             // Register-Foreign-Device
@@ -604,9 +607,12 @@ public class IpNetwork extends Network {
         else if (function == 0x9) {
             // Distribute-Broadcast-To-Network
             boolean ok = distributeBroadcastToNetwork(queue, linkService);
-            if (ok)
+            if (ok) {
                 // Only process locally if the foreign device is valid.
                 npdu = parseNpduData(queue, linkService);
+                if (npdu != null)
+                    npdu.broadcast(true);
+            }
         } else if (function == 0xa)
             // Original-Unicast-NPDU
             npdu = parseNpduData(queue, linkService);
@@ -615,6 +621,8 @@ public class IpNetwork extends Network {
             originalBroadcast(queue, linkService);
 
             npdu = parseNpduData(queue, linkService);
+            if (npdu != null)
+                npdu.broadcast(true);
         } else
             throw new MessageValidationException(
                     "Unhandled BVLC function type: 0x" + Integer.toHexString(function & 0xff));
