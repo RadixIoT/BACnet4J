@@ -152,7 +152,7 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
   `DiscoveryUtils.getExtendedDeviceInformation`, so for a device discovered by broadcast it is unknown and such a
   request is attempted as before, which is what clause 5.4.4.1 requires. The existing `send` overloads are unchanged, so
   this is not a breaking change.
-- The Device object's Max_Segments_Accepted property now defaults to 4096 rather than 2147483647, and the transport
+- The Device object's Max_Segments_Accepted property now defaults to 256 rather than 2147483647, and the transport
   enforces it. This value is intended to be unrealistically large while still not being irresponsibly so. A segmented
   message longer than the property allows is aborted with `bufferOverflow` rather than assembled, closing an attack by
   which a peer could exhaust the heap. The limit is read from the property on each use, so a value written by client

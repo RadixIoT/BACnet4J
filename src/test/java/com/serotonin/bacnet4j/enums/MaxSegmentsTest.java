@@ -55,6 +55,7 @@ public class MaxSegmentsTest {
     @Test
     public void forCountAboveSixtyFour() {
         assertEquals(MaxSegments.MORE_THAN_64, MaxSegments.forCount(65));
+        assertEquals(MaxSegments.MORE_THAN_64, MaxSegments.forCount(256));
         assertEquals(MaxSegments.MORE_THAN_64, MaxSegments.forCount(4096));
         assertEquals(MaxSegments.MORE_THAN_64, MaxSegments.forCount(Integer.MAX_VALUE));
     }

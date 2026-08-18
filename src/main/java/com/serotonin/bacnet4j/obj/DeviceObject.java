@@ -86,7 +86,7 @@ public class DeviceObject extends BACnetObject {
      * memory a peer can cause to be allocated: at the largest APDU size it corresponds to roughly six megabytes per
      * message. Client code may write a different value to the property, and the transport honours whatever it holds.
      */
-    public static final int DEFAULT_MAX_SEGMENTS_ACCEPTED = 4096;
+    public static final int DEFAULT_MAX_SEGMENTS_ACCEPTED = 256;
 
     public DeviceObject(LocalDevice localDevice, int instanceNumber) {
         super(localDevice, ObjectType.device, instanceNumber, "BACnet4J device " + instanceNumber);
