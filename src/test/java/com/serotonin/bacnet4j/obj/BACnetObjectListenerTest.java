@@ -28,6 +28,7 @@
 package com.serotonin.bacnet4j.obj;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +57,8 @@ public class BACnetObjectListenerTest extends AbstractTest {
                 new CharacterString("On"), //
                 new CharacterString("Auto"));
         mv = d2.addObject(new MultistateValueObject(d2, 0, "mv0", 3, stateText, 1, false));
-        mv.supportCommandable(UnsignedInteger.ZERO);
+        // Zero is not a valid state value, and so not a valid Relinquish_Default. See 12.20.4 and 19.2(c).
+        mv.supportCommandable(new UnsignedInteger(1));
     }
 
     @Test
@@ -85,11 +87,11 @@ public class BACnetObjectListenerTest extends AbstractTest {
 
         assertEquals(3, changes.size());
         assertEquals(PropertyIdentifier.description, changes.get(2).pid);
-        assertEquals(null, changes.get(2).oldValue);
+        assertNull(changes.get(2).oldValue);
         assertEquals(new CharacterString("a new description"), changes.get(2).newValue);
     }
 
-    class PropChange {
+    static class PropChange {
         PropertyIdentifier pid;
         Encodable oldValue;
         Encodable newValue;

@@ -108,8 +108,8 @@ public class WritePropertyMultipleRequestTest {
                                 new CharacterString("CC"), null),
                         // Can write an entire list.
                         new PropertyValue(PropertyIdentifier.alarmValues,
-                                new SequenceOf<>(new UnsignedInteger(11), new UnsignedInteger(12),
-                                        new UnsignedInteger(13)))
+                                new SequenceOf<>(new UnsignedInteger(1), new UnsignedInteger(2),
+                                        new UnsignedInteger(3)))
                 )),
                 new WriteAccessSpecification(remoteDevice.getId(), new SequenceOf<>(
                         new PropertyValue(PropertyIdentifier.timeSynchronizationRecipients, recipients)
@@ -129,9 +129,9 @@ public class WritePropertyMultipleRequestTest {
         assertEquals("my new description", msv0.get(PropertyIdentifier.description).toString());
         SequenceOf<UnsignedInteger> newAlarmValues = msv0.get(PropertyIdentifier.alarmValues);
         assertEquals(3, newAlarmValues.size());
-        assertEquals(11, newAlarmValues.getBase1(1).intValue());
-        assertEquals(12, newAlarmValues.getBase1(2).intValue());
-        assertEquals(13, newAlarmValues.getBase1(3).intValue());
+        assertEquals(1, newAlarmValues.getBase1(1).intValue());
+        assertEquals(2, newAlarmValues.getBase1(2).intValue());
+        assertEquals(3, newAlarmValues.getBase1(3).intValue());
 
         SequenceOf<Recipient> newRecipients = remoteDevice.get(PropertyIdentifier.timeSynchronizationRecipients);
         assertEquals(2, newRecipients.size());
@@ -201,7 +201,7 @@ public class WritePropertyMultipleRequestTest {
                 // Write 2 — succeeds.
                 new WriteAccessSpecification(msv0.getId(), new SequenceOf<>(
                         new PropertyValue(PropertyIdentifier.alarmValues,
-                                new SequenceOf<>(new UnsignedInteger(7), new UnsignedInteger(8))))),
+                                new SequenceOf<>(new UnsignedInteger(2), new UnsignedInteger(3))))),
                 // Write 3 — fails: object doesn't exist on the remote device.
                 new WriteAccessSpecification(nonExistentObject, new SequenceOf<>(
                         new PropertyValue(PropertyIdentifier.eventMessageTexts, new UnsignedInteger(1),
@@ -222,8 +222,8 @@ public class WritePropertyMultipleRequestTest {
         assertEquals("updated", msv0.get(PropertyIdentifier.description).toString());
         SequenceOf<UnsignedInteger> newAlarmValues = msv0.get(PropertyIdentifier.alarmValues);
         assertEquals(2, newAlarmValues.size());
-        assertEquals(7, newAlarmValues.getBase1(1).intValue());
-        assertEquals(8, newAlarmValues.getBase1(2).intValue());
+        assertEquals(2, newAlarmValues.getBase1(1).intValue());
+        assertEquals(3, newAlarmValues.getBase1(2).intValue());
     }
 
     /**

@@ -54,6 +54,9 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class MultistateOutputObject extends BACnetObject {
+    /** Owns the Reliability property for the first stage of reliability-evaluation. See Clause 13.2.2.2. */
+    private final MultistateMixin multistateMixin;
+
     public MultistateOutputObject(final LocalDevice localDevice, final int instanceNumber, final String name,
             final int numberOfStates, final BACnetArray<CharacterString> stateText, final int presentValueBase1,
             final int relinquishDefaultBase1, final boolean outOfService) throws BACnetServiceException {
@@ -75,7 +78,13 @@ public class MultistateOutputObject extends BACnetObject {
         // Mixins
         addMixin(new HasStatusFlagsMixin(this));
         addMixin(new CommandableMixin(this, PropertyIdentifier.presentValue));
-        addMixin(new MultistateMixin(this));
+        // Per 12.19.11, Priority_Array, Relinquish_Default and Feedback_Value left out of range by a reduction
+        // of Number_Of_States are reported as a configuration error.
+        multistateMixin = addMixin(new MultistateMixin(this)
+                .withRangeCheckedProperties(
+                        PropertyIdentifier.priorityArray,
+                        PropertyIdentifier.relinquishDefault,
+                        PropertyIdentifier.feedbackValue));
 
         writePropertyInternal(PropertyIdentifier.numberOfStates, new UnsignedInteger(numberOfStates));
         if (stateText != null) {
@@ -95,6 +104,8 @@ public class MultistateOutputObject extends BACnetObject {
 
         _supportCommandable(new UnsignedInteger(relinquishDefaultBase1));
         _supportValueSource();
+
+        multistateMixin.evaluateReliability();
     }
 
     public MultistateOutputObject supportCovReporting() {
@@ -117,7 +128,8 @@ public class MultistateOutputObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.eventDetectionEnable, Boolean.TRUE);
 
         addMixin(new IntrinsicReportingMixin(this, new CommandFailureAlgo(), null, PropertyIdentifier.presentValue,
-                new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.feedbackValue}));
+                new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.feedbackValue}))
+                .withInternalFaultCheck(multistateMixin::hasInternalFault);
 
         return this;
     }

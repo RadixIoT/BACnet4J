@@ -164,6 +164,23 @@ trendLogMult.writeProperty(PropertyIdentifier.recordCount, new UnsignedInteger(1
   transport enforces, and a writable Max_Segments_Accepted would have let a peer raise the limit described above and
   then send a message of any size. Table 12-13 gives the three conformance codes of O, R and R, none of which is W, so
   refusing the writes is conformant. Local code can still change them with `writePropertyInternal`.
+- State values of Multi-state Output and Multi-state Value objects are now constrained to the range 1 to
+  `Number_Of_States`, which previously only `Present_Value` enforced. A write of `Relinquish_Default`,
+  `Feedback_Value`, `Alarm_Values` or `Fault_Values` outside that range is refused with `property / valueOutOfRange`;
+  previously an out-of-range `Relinquish_Default` was accepted and became the `Present_Value` once the priority array
+  emptied (issue #206). Range failures on `Present_Value` and `Number_Of_States` now also return `valueOutOfRange`
+  rather than `inconsistentConfiguration`, per 135-2024 15.9.1.3.1, so client code testing for the latter needs
+  updating. Where the standard requires the out-of-range state to be tolerated rather than refused, being a reduction
+  of `Number_Of_States` beneath a stored value or a value supplied when the object is constructed, the object now
+  reports it through `Reliability` as `multiStateOutOfRange` or `configurationError`, per 12.19.11 and 12.20.10 as
+  amended by addendum 135-2016br-5. On objects that support intrinsic reporting this also raises `Event_State` to
+  `fault`. Multi-state Input is unaffected, as 12.18.11 states no equivalent requirement.
+- When the `Reliability` property of an object with intrinsic reporting returns to `noFaultDetected` by a route other
+  than its fault algorithm, such as a simulated fault being removed under 13.2.2.3, a resolved configuration conflict,
+  or the object relinquishing a fault it reported itself, the fault algorithm is now re-evaluated against the current
+  monitored value rather than being left until that value is next written. Previously the object could report
+  `noFaultDetected` while the algorithm's own condition still held. This affects every object type that applies a
+  standardized fault algorithm.
 
 *Version 6.2.0*
 

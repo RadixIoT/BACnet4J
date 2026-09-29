@@ -29,6 +29,7 @@ package com.serotonin.bacnet4j.obj.mixin.event;
 
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 import org.slf4j.Logger;
@@ -89,6 +90,10 @@ public abstract class EventReportingMixin extends AbstractMixin {
     private final FaultAlgorithm faultAlgo;
     private final CORPropertyValueProducer[] changeOfReliabilityProperties;
     private Consumer<NotificationParameters> postNotificationAction;
+    // Per 13.2.2.2, the first stage of reliability-evaluation is internal to the object, and faults that it
+    // detects take precedence over those detected by a fault algorithm, which is the second stage. Objects whose
+    // first stage is evaluated elsewhere provide it here so that the fault algorithm defers to it.
+    private BooleanSupplier internalFaultCheck = () -> false;
 
     // Runtime
     private Delayer delayer;
@@ -205,6 +210,35 @@ public abstract class EventReportingMixin extends AbstractMixin {
         }
     }
 
+    /**
+     * Registers the first stage of reliability-evaluation, when it is performed outside this mixin. While the
+     * check indicates a fault, the fault algorithm's result is discarded, per 13.2.2.2.
+     *
+     * @param internalFaultCheck indicates whether the first stage currently detects an internal fault
+     */
+    protected void setInternalFaultCheck(BooleanSupplier internalFaultCheck) {
+        this.internalFaultCheck = internalFaultCheck;
+    }
+
+    /**
+     * @return whether the first stage of reliability-evaluation currently detects an internal fault
+     */
+    protected boolean hasInternalFault() {
+        return internalFaultCheck.getAsBoolean();
+    }
+
+    /**
+     * Initializes the event state from the current value of the Reliability property. Per 13.2.2.1.1 the object
+     * is in the Fault state whenever reliability-evaluation indicates a value other than NO_FAULT_DETECTED, so
+     * an object that already reports a fault when event reporting is added to it starts in that state.
+     */
+    protected void evaluateEventStateFromReliability() {
+        Reliability reli = get(PropertyIdentifier.reliability);
+        if (reli != null && !reli.equals(Reliability.noFaultDetected)) {
+            doStateTransitionInternal(EventState.fault);
+        }
+    }
+
     protected void updateEventState(StateTransition transition) {
         if (transition.getDelay() == null)
             // Do an immediate state transition.
@@ -240,8 +274,13 @@ public abstract class EventReportingMixin extends AbstractMixin {
 
     protected synchronized boolean executeFaultAlgo(Encodable oldValue, Encodable newValue) {
         if (faultAlgo != null) {
-            Reliability newReli = evaluateFaultState(oldValue, newValue, bo, faultAlgo);
+            var newReli = evaluateFaultState(oldValue, newValue, bo, faultAlgo);
             if (newReli != null) {
+                if (hasInternalFault()) {
+                    // Per 13.2.2.2, a fault detected by the first stage of reliability-evaluation takes
+                    // precedence over one detected by the fault algorithm, so this result is discarded.
+                    return false;
+                }
                 if (reliabilityWriteBlock) {
                     // Per 13.2.2.3 (addendum 135-2020co-1), a simulated internal fault is in effect
                     // and the object must not update the Reliability property. The fault algorithm is

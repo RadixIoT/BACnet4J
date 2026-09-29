@@ -27,6 +27,7 @@
 
 package com.serotonin.bacnet4j.obj.mixin.event;
 
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -74,6 +75,7 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
         // Update the state with the current values in the object.
         for (PropertyIdentifier pid : triggerProperties)
             afterWriteProperty(pid, null, get(pid));
+        evaluateEventStateFromReliability();
     }
 
     public IntrinsicReportingMixin withPostNotificationAction(Consumer<NotificationParameters> postNotificationAction) {
@@ -92,6 +94,19 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
         this.configurationConflictCheck = check;
         this.configurationProperties = configurationProperties;
         evaluateConfigurationConflict();
+        return this;
+    }
+
+    /**
+     * Registers the first stage of reliability-evaluation, when it is performed outside this mixin, for example
+     * by MultistateMixin. While the check indicates a fault, this mixin reports no reliability of its own, and
+     * neither the event nor the fault algorithm is executed, per 13.2.2.2.
+     *
+     * @param internalFaultCheck indicates whether the first stage currently detects an internal fault
+     * @return this, for chaining
+     */
+    public IntrinsicReportingMixin withInternalFaultCheck(BooleanSupplier internalFaultCheck) {
+        setInternalFaultCheck(internalFaultCheck);
         return this;
     }
 
@@ -202,6 +217,23 @@ public class IntrinsicReportingMixin extends EventReportingMixin {
             // Per addendum 135-2020co-2, a conflicting configuration inhibits the execution of the
             // event and fault algorithms.
             return;
+        }
+
+        if (hasInternalFault()) {
+            // Per 13.2.2.2, a fault detected by the first stage of reliability-evaluation takes precedence over
+            // one detected by the fault algorithm. The object reporting that fault owns the Reliability property
+            // while it holds, so neither algorithm is executed here.
+            return;
+        }
+
+        if (PropertyIdentifier.reliability.equals(pid) && Reliability.noFaultDetected.equals(newValue)
+                && !newValue.equals(oldValue) && monitoredProperty != null) {
+            // Reliability was cleared by something other than the fault algorithm: the first stage of
+            // reliability-evaluation relinquishing a fault it reported, a resolved configuration conflict, or a
+            // simulated fault being removed. The algorithm's own condition may still hold, and per 13.4 its
+            // result has to reflect the current monitored value, so it is re-derived now rather than left until
+            // the next write of that value.
+            executeFaultAlgo(null, get(monitoredProperty));
         }
 
         if (pid.isOneOf(triggerProperties)) {
