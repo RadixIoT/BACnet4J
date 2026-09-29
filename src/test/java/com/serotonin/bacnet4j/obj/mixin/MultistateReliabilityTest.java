@@ -41,6 +41,7 @@ import com.serotonin.bacnet4j.obj.MultistateInputObject;
 import com.serotonin.bacnet4j.obj.MultistateOutputObject;
 import com.serotonin.bacnet4j.obj.MultistateValueObject;
 import com.serotonin.bacnet4j.obj.NotificationClassObject;
+import com.serotonin.bacnet4j.service.confirmed.WritePropertyMultipleRequest;
 import com.serotonin.bacnet4j.type.Encodable;
 import com.serotonin.bacnet4j.type.constructed.Address;
 import com.serotonin.bacnet4j.type.constructed.BACnetArray;
@@ -48,9 +49,8 @@ import com.serotonin.bacnet4j.type.constructed.EventTransitionBits;
 import com.serotonin.bacnet4j.type.constructed.PropertyValue;
 import com.serotonin.bacnet4j.type.constructed.SequenceOf;
 import com.serotonin.bacnet4j.type.constructed.StatusFlags;
-import com.serotonin.bacnet4j.type.constructed.WriteAccessSpecification;
 import com.serotonin.bacnet4j.type.constructed.ValueSource;
-import com.serotonin.bacnet4j.service.confirmed.WritePropertyMultipleRequest;
+import com.serotonin.bacnet4j.type.constructed.WriteAccessSpecification;
 import com.serotonin.bacnet4j.type.enumerated.ErrorClass;
 import com.serotonin.bacnet4j.type.enumerated.ErrorCode;
 import com.serotonin.bacnet4j.type.enumerated.EventState;
@@ -320,10 +320,10 @@ public class MultistateReliabilityTest extends AbstractTest {
 
         // The other order fails at the first element, and nothing is applied.
         TestUtils.assertErrorAPDUException(() -> d2.send(rd1, new WritePropertyMultipleRequest(new SequenceOf<>(
-                new WriteAccessSpecification(misordered.getId(), new SequenceOf<>( //
-                        new PropertyValue(PropertyIdentifier.relinquishDefault, new UnsignedInteger(7)),
-                        new PropertyValue(PropertyIdentifier.numberOfStates,
-                                new UnsignedInteger(NUMBER_OF_STATES))))))).get(), //
+                        new WriteAccessSpecification(misordered.getId(), new SequenceOf<>( //
+                                new PropertyValue(PropertyIdentifier.relinquishDefault, new UnsignedInteger(7)),
+                                new PropertyValue(PropertyIdentifier.numberOfStates,
+                                        new UnsignedInteger(NUMBER_OF_STATES))))))).get(), //
                 ErrorClass.property, ErrorCode.valueOutOfRange);
         assertEquals(new UnsignedInteger(4), misordered.get(PropertyIdentifier.numberOfStates));
         assertEquals(new UnsignedInteger(1), misordered.get(PropertyIdentifier.relinquishDefault));
