@@ -52,9 +52,9 @@ public class BACnetObjectListenerTest extends AbstractTest {
 
     @Override
     public void afterInit() throws Exception {
-        final BACnetArray<CharacterString> stateText = new BACnetArray<>( //
-                new CharacterString("Off"), //
-                new CharacterString("On"), //
+        BACnetArray<CharacterString> stateText = new BACnetArray<>(
+                new CharacterString("Off"),
+                new CharacterString("On"),
                 new CharacterString("Auto"));
         mv = d2.addObject(new MultistateValueObject(d2, 0, "mv0", 3, stateText, 1, false));
         // Zero is not a valid state value, and so not a valid Relinquish_Default. See 12.20.4 and 19.2(c).
@@ -63,9 +63,9 @@ public class BACnetObjectListenerTest extends AbstractTest {
 
     @Test
     public void listener() throws BACnetException {
-        final List<PropChange> changes = new ArrayList<>();
+        List<PropChange> changes = new ArrayList<>();
         mv.addListener((pid, oldValue, newValue) -> {
-            final PropChange change = new PropChange();
+            PropChange change = new PropChange();
             change.pid = pid;
             change.oldValue = oldValue;
             change.newValue = newValue;

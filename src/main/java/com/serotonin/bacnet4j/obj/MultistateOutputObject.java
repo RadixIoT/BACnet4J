@@ -57,16 +57,16 @@ public class MultistateOutputObject extends BACnetObject {
     /** Owns the Reliability property for the first stage of reliability-evaluation. See Clause 13.2.2.2. */
     private final MultistateMixin multistateMixin;
 
-    public MultistateOutputObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final int numberOfStates, final BACnetArray<CharacterString> stateText, final int presentValueBase1,
-            final int relinquishDefaultBase1, final boolean outOfService) throws BACnetServiceException {
+    public MultistateOutputObject(LocalDevice localDevice, int instanceNumber, String name, int numberOfStates,
+            BACnetArray<CharacterString> stateText, int presentValueBase1, int relinquishDefaultBase1,
+            boolean outOfService) throws BACnetServiceException {
         super(localDevice, ObjectType.multiStateOutput, instanceNumber, name);
 
         if (numberOfStates < 1) {
             throw new IllegalArgumentException("numberOfStates cannot be less than 1");
         }
 
-        final ValueSource valueSource = new ValueSource(new DeviceObjectReference(localDevice.getId(), getId()));
+        ValueSource valueSource = new ValueSource(new DeviceObjectReference(localDevice.getId(), getId()));
 
         writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);
         writeProperty(valueSource, PropertyIdentifier.presentValue, new UnsignedInteger(presentValueBase1));
@@ -113,9 +113,8 @@ public class MultistateOutputObject extends BACnetObject {
         return this;
     }
 
-    public MultistateOutputObject supportIntrinsicReporting(final int timeDelay, final int notificationClass,
-            final int feedbackValue, final EventTransitionBits eventEnable, final NotifyType notifyType,
-            final int timeDelayNormal) {
+    public MultistateOutputObject supportIntrinsicReporting(int timeDelay, int notificationClass, int feedbackValue,
+            EventTransitionBits eventEnable, NotifyType notifyType, int timeDelayNormal) {
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
 
