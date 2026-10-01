@@ -51,6 +51,9 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class MultistateValueObject extends BACnetObject {
+    /** Owns the Reliability property for the first stage of reliability-evaluation. See Clause 13.2.2.2. */
+    private final MultistateMixin multistateMixin;
+
     public MultistateValueObject(LocalDevice localDevice, int instanceNumber, String name, int numberOfStates,
             BACnetArray<CharacterString> stateText, int presentValueBase1, boolean outOfService)
             throws BACnetServiceException {
@@ -72,7 +75,15 @@ public class MultistateValueObject extends BACnetObject {
         addMixin(new HasStatusFlagsMixin(this));
         addMixin(new CommandableMixin(this, PropertyIdentifier.presentValue));
         addMixin(new WritablePropertyOutOfServiceMixin(this, PropertyIdentifier.reliability));
-        addMixin(new MultistateMixin(this));
+        // Per 12.20.10, Priority_Array, Relinquish_Default, Alarm_Values and Fault_Values left out of range by a
+        // reduction of Number_Of_States are reported as a configuration error.
+        multistateMixin = addMixin(new MultistateMixin(this)
+                .withRangeCheckedProperties(
+                        PropertyIdentifier.priorityArray,
+                        PropertyIdentifier.relinquishDefault,
+                        PropertyIdentifier.alarmValues,
+                        PropertyIdentifier.faultValues)
+                .withAlarmFaultOverlapCheck());
 
         writePropertyInternal(PropertyIdentifier.numberOfStates, new UnsignedInteger(numberOfStates));
         if (stateText != null) {
@@ -111,7 +122,7 @@ public class MultistateValueObject extends BACnetObject {
         }
         addMixin(new IntrinsicReportingMixin(this, eventAlgo, faultAlgo, PropertyIdentifier.presentValue,
                 new PropertyIdentifier[] {PropertyIdentifier.presentValue}))
-                .withAlarmFaultCommonPropertyConflictCheck();
+                .withInternalFaultCheck(multistateMixin::hasInternalFault);
 
         return this;
     }
@@ -123,6 +134,8 @@ public class MultistateValueObject extends BACnetObject {
 
     public MultistateValueObject supportCommandable(UnsignedInteger relinquishDefault) {
         _supportCommandable(relinquishDefault);
+
+        multistateMixin.evaluateReliability();
         return this;
     }
 

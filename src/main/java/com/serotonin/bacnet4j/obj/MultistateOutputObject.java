@@ -54,16 +54,19 @@ import com.serotonin.bacnet4j.type.primitive.CharacterString;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 
 public class MultistateOutputObject extends BACnetObject {
-    public MultistateOutputObject(final LocalDevice localDevice, final int instanceNumber, final String name,
-            final int numberOfStates, final BACnetArray<CharacterString> stateText, final int presentValueBase1,
-            final int relinquishDefaultBase1, final boolean outOfService) throws BACnetServiceException {
+    /** Owns the Reliability property for the first stage of reliability-evaluation. See Clause 13.2.2.2. */
+    private final MultistateMixin multistateMixin;
+
+    public MultistateOutputObject(LocalDevice localDevice, int instanceNumber, String name, int numberOfStates,
+            BACnetArray<CharacterString> stateText, int presentValueBase1, int relinquishDefaultBase1,
+            boolean outOfService) throws BACnetServiceException {
         super(localDevice, ObjectType.multiStateOutput, instanceNumber, name);
 
         if (numberOfStates < 1) {
             throw new IllegalArgumentException("numberOfStates cannot be less than 1");
         }
 
-        final ValueSource valueSource = new ValueSource(new DeviceObjectReference(localDevice.getId(), getId()));
+        ValueSource valueSource = new ValueSource(new DeviceObjectReference(localDevice.getId(), getId()));
 
         writePropertyInternal(PropertyIdentifier.eventState, EventState.normal);
         writeProperty(valueSource, PropertyIdentifier.presentValue, new UnsignedInteger(presentValueBase1));
@@ -75,7 +78,13 @@ public class MultistateOutputObject extends BACnetObject {
         // Mixins
         addMixin(new HasStatusFlagsMixin(this));
         addMixin(new CommandableMixin(this, PropertyIdentifier.presentValue));
-        addMixin(new MultistateMixin(this));
+        // Per 12.19.11, Priority_Array, Relinquish_Default and Feedback_Value left out of range by a reduction
+        // of Number_Of_States are reported as a configuration error.
+        multistateMixin = addMixin(new MultistateMixin(this)
+                .withRangeCheckedProperties(
+                        PropertyIdentifier.priorityArray,
+                        PropertyIdentifier.relinquishDefault,
+                        PropertyIdentifier.feedbackValue));
 
         writePropertyInternal(PropertyIdentifier.numberOfStates, new UnsignedInteger(numberOfStates));
         if (stateText != null) {
@@ -95,6 +104,8 @@ public class MultistateOutputObject extends BACnetObject {
 
         _supportCommandable(new UnsignedInteger(relinquishDefaultBase1));
         _supportValueSource();
+
+        multistateMixin.evaluateReliability();
     }
 
     public MultistateOutputObject supportCovReporting() {
@@ -102,9 +113,8 @@ public class MultistateOutputObject extends BACnetObject {
         return this;
     }
 
-    public MultistateOutputObject supportIntrinsicReporting(final int timeDelay, final int notificationClass,
-            final int feedbackValue, final EventTransitionBits eventEnable, final NotifyType notifyType,
-            final int timeDelayNormal) {
+    public MultistateOutputObject supportIntrinsicReporting(int timeDelay, int notificationClass, int feedbackValue,
+            EventTransitionBits eventEnable, NotifyType notifyType, int timeDelayNormal) {
         Objects.requireNonNull(eventEnable);
         Objects.requireNonNull(notifyType);
 
@@ -117,7 +127,8 @@ public class MultistateOutputObject extends BACnetObject {
         writePropertyInternal(PropertyIdentifier.eventDetectionEnable, Boolean.TRUE);
 
         addMixin(new IntrinsicReportingMixin(this, new CommandFailureAlgo(), null, PropertyIdentifier.presentValue,
-                new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.feedbackValue}));
+                new PropertyIdentifier[] {PropertyIdentifier.presentValue, PropertyIdentifier.feedbackValue}))
+                .withInternalFaultCheck(multistateMixin::hasInternalFault);
 
         return this;
     }
