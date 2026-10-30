@@ -128,7 +128,7 @@ public class UnconfirmedEventNotificationRequest extends UnconfirmedRequestServi
         ackRequired = readOptional(queue, Boolean.class, 9);
         fromState = readOptional(queue, EventState.class, 10);
         toState = read(queue, EventState.class, 11);
-        eventValues = read(queue, NotificationParameters.class, 12);
+        eventValues = readOptional(queue, NotificationParameters.class, 12);
     }
 
     @Override
