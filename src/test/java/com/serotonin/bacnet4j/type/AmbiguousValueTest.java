@@ -29,17 +29,42 @@ package com.serotonin.bacnet4j.type;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import com.serotonin.bacnet4j.exception.BACnetException;
 import com.serotonin.bacnet4j.exception.BACnetRuntimeException;
+import com.serotonin.bacnet4j.type.primitive.Null;
 import com.serotonin.bacnet4j.type.primitive.UnsignedInteger;
 import com.serotonin.bacnet4j.util.sero.ByteQueue;
 
 public class AmbiguousValueTest {
+    @Test
+    public void recognizesContextualNullAsNull() throws BACnetException {
+        var content = new ByteQueue("4e004f");
+        var amb = new AmbiguousValue(content, 4);
+        assertTrue(amb.isNull());
+        assertEquals(Null.instance, amb.convertTo(Null.class));
+    }
+
+    @Test
+    public void recognizesContextualBlankAsNull() throws BACnetException {
+        var content = new ByteQueue("4e4f");
+        var amb = new AmbiguousValue(content, 4);
+        assertTrue(amb.isNull());
+    }
+
+    @Test
+    public void recognizesContextualIntAsNotNull() throws BACnetException {
+        var content = new ByteQueue("ae210daf");
+        var amb = new AmbiguousValue(content, 0xa);
+        assertFalse(amb.isNull());
+        assertEquals(new UnsignedInteger(13), amb.convertTo(UnsignedInteger.class));
+    }
+
     /**
      * A corrupt 4-byte extended length used to wrap to zero or negative in TagData.getTotalLength, which made
      * copyData consume nothing and left the read loop below spinning forever. The timeouts on these tests are the
@@ -94,16 +119,12 @@ public class AmbiguousValueTest {
     }
 
     /**
-     * The matching end tag terminates the read immediately, leaving no content.
-     * <p>
-     * Note that isNull() cannot be called on the result on this branch: it dereferences data without a null check,
-     * so an empty ambiguous value throws NullPointerException. That is a pre-existing defect, unrelated to the copy
-     * length fix, so this test asserts the parsed state directly instead.
+     * The matching end tag terminates the read immediately, leaving empty content, which is interpreted as Null.
      */
     @Test(timeout = 5_000)
     public void matchingEndTagTerminatesRead() throws BACnetException {
         AmbiguousValue amb = new AmbiguousValue(new ByteQueue("3e3f"), 3);
-        assertNull(amb.getData());
+        assertTrue(amb.isNull());
     }
 
     /**
